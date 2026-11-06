@@ -11,10 +11,12 @@ public static class Sc2ObservationNormalizer
     public static NormalizedObservation Normalize(
         ResponseObservation response,
         uint playerId,
-        IReadOnlyDictionary<uint, string> unitNames)
+        IReadOnlyDictionary<uint, string> unitNames,
+        IReadOnlyDictionary<uint, string> buffNames)
     {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(unitNames);
+        ArgumentNullException.ThrowIfNull(buffNames);
 
         var observation = response.Observation
             ?? throw new ArgumentException("The response does not contain an observation.", nameof(response));
@@ -43,7 +45,7 @@ public static class Sc2ObservationNormalizer
                     position?.X ?? 0,
                     position?.Y ?? 0,
                     position is not null,
-                    unit.CargoSpaceTaken > 0,
+                    HasResourceCargo(unit, buffNames),
                     unit.Orders.Count > 0,
                     unit.IsFlying,
                     unit.IsBurrowed,
@@ -58,6 +60,14 @@ public static class Sc2ObservationNormalizer
 
         return new NormalizedObservation(observation.GameLoop, playerId, units, deadTags);
     }
+
+    private static bool HasResourceCargo(Unit unit, IReadOnlyDictionary<uint, string> buffNames) =>
+        unit.BuffIds.Any(buffId =>
+            buffNames.TryGetValue(buffId, out var name) &&
+            (name.Contains("Mineral", StringComparison.OrdinalIgnoreCase) ||
+             name.Contains("Vespene", StringComparison.OrdinalIgnoreCase)) &&
+            (name.Contains("Carry", StringComparison.OrdinalIgnoreCase) ||
+             name.Contains("Cargo", StringComparison.OrdinalIgnoreCase)));
 
     private static UnitAlliance MapAlliance(Alliance alliance) => alliance switch
     {

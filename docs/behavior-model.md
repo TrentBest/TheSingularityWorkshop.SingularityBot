@@ -20,11 +20,13 @@ The bot is organized as cooperating FSM layers:
    phase changes.
 2. **Economy** — worker allocation, resource balance, production capacity,
    construction scheduling and supply management.
-3. **Army / squad** — composition, formation, objective selection, threat
+3. **Resource logistics** — worker dispatch, node service-window estimates,
+   travel/queue overlap, reservations and measured cycle efficiency.
+4. **Army / squad** — composition, formation, objective selection, threat
    assessment, focus fire and retreat/regroup coordination.
-4. **Unit** — per-entity behavior such as gathering, returning cargo, building,
+5. **Unit** — per-entity behavior such as gathering, returning cargo, building,
    defending, advancing, engaging, retreating and regrouping.
-5. **Action adapter** — translates selected intents into validated SC2 actions.
+6. **Action adapter** — translates selected intents into validated SC2 actions.
 
 The parent layers own goals and constraints; child layers own local execution.
 A child may report facts and outcomes upward, but cannot silently override a
@@ -45,13 +47,39 @@ The worker behavior graph is shared, but race-specific abilities and constructio
 semantics belong to the adapter/profile layer. Zealot, Marine and Zergling share
 a combat lifecycle initially; their tactical policies and tuning remain distinct.
 
+## Opening economy is the first proof
+
+Before tactical optimization, the bot must complete the opening economy:
+- assign and schedule workers across mineral nodes;
+- produce race-appropriate supply;
+- construct the first production structure;
+- train the first tier-one unit (Marine, Zealot or Zergling).
+
+The logistics scheduler optimizes complete worker cycles, not just gather-command
+speed. It estimates travel, node service availability, queue/wait, gathering,
+return and unload. Dispatch should consider predicted availability at *arrival*:
+a farther resource node can be productive when its service window opens as the
+worker arrives, hiding travel behind another worker's resource interaction.
+Availability is an estimate, not an assumed exclusive mineral-patch lock.
+
+The economy controller owns global worker assignments and reservations. Unit
+FSMs execute those assignments and report observed facts; they must not make
+conflicting independent node selections. Race-specific supply and construction
+opportunity costs remain in ontology/capability data (including the distinct
+Drone, SCV and Probe construction semantics).
+
+See [Opening economy and resource logistics](opening-economy-logistics.md) for
+the experiment protocol, scheduling model, metrics and implementation gates.
+
 ## Expertise is evidence-driven
 
 The first profile values are provisional configuration, not claims of optimal
-play. We will calibrate them using deterministic observation fixtures and
-recorded replays. Metrics should include worker idle time, resource collection,
-lost mining time, supply block duration, damage dealt/taken, survival, target
-selection quality, overkill, retreat timing and objective completion.
+play. Calibrate using deterministic observation fixtures and recorded replays.
+For the opening, measure time-to-first-unit alongside mineral/gas income,
+worker idle/travel/queue/gather/return/construction time, reassignment waste,
+resource banking/starvation, supply-block duration, structure timing and
+invalid actions. A faster first unit is not an improvement if the economy stalls
+afterward.
 
 Do not introduce a neural policy as the authority for actions at this stage.
 A deterministic FSM policy is the baseline. NeuralNetworks may later propose or
@@ -66,6 +94,8 @@ The editor should expose the same versioned definitions used by the runtime:
 - Reusable behavior patterns and nested behavior composition.
 - Typed context facts, command intents and race/unit capability bindings.
 - Strategy parameters with ranges, defaults and validation.
+- Worker-to-node assignments, predicted service windows and measured cycle
+  phases over a map/timeline.
 - Preview/simulation against recorded observations.
 - Explanation of the active state, eligible transitions, rejected guards and
   selected intent.
@@ -81,12 +111,17 @@ creates per-unit contexts/instances, and ticks their processing group once per
 SC2 observation. The current no-op SC2 shell does not yet reconcile live
 observations into those contexts or translate emitted intents into game actions.
 Therefore this is a compiling FSM foundation, not yet an active-playing bot.
+The opening economy and resource scheduler described above are specifications,
+not implemented or experimentally validated behavior.
 
 ## Next implementation gates
 
-1. Map SC2 raw units into stable unit tags, race/unit profiles and observation facts.
-2. Attach/invalidate per-unit FSM contexts as units appear and disappear.
-3. Implement intent arbitration and SC2 ability/target validation.
-4. Add worker economy decisions and one safe legal action in a local match.
-5. Add replay fixtures and metrics before tuning Zealot, Marine and Zergling tactics.
-6. Add squad/commander hierarchy, then expose the versioned graph to GUI builders.
+1. Map SC2 raw observations and game data into stable worker, mineral-node,
+   town-hall, resource, supply, order and construction facts.
+2. Implement deterministic worker assignment, reservations and baseline metrics.
+3. Add saturation-aware and arrival-window scheduling; compare through replay.
+4. Implement race-specific supply, construction and production planning.
+5. Complete one race's first-unit opening end-to-end, then generalize to the
+   other two races through ontology/capabilities.
+6. Add replay regression and expose the same versioned strategy/scheduler data
+   to GUI builders.

@@ -110,8 +110,10 @@ The runtime now normalizes SC2 raw observations into protocol-independent unit
 facts using the game-data unit catalog, orders facts deterministically by stable
 unit tag, and reconciles visible own units into persistent per-unit FSM contexts.
 Snapshot/hidden observations and mere absence do not retire a context; explicit
-dead-unit events do. The context receives current health, position, cargo, order,
-build-progress and movement facts. Unsupported unit kinds are ignored rather
+dead-unit events do. The context receives current health, position, order, build-progress and movement
+facts; worker resource cargo is inferred from named game-data buffs rather than
+transport cargo-space fields. Contexts retained through fog/absence are marked
+not currently visible so later action validation can fail closed. Unsupported unit kinds are ignored rather
 than guessed. The behavior callback is still intentionally a no-op: intents are
 not yet translated or submitted as SC2 actions. The bot is therefore not yet
 an active-playing bot.

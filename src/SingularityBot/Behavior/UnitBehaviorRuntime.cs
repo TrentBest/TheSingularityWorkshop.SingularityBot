@@ -52,6 +52,9 @@ public sealed class UnitBehaviorRuntime
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(emit);
 
+        foreach (var context in _contexts.Values)
+            context.IsCurrentlyVisible = false;
+
         foreach (var deadTag in observation.DeadUnitTags.OrderBy(tag => tag))
             Remove(deadTag);
 

@@ -20,6 +20,7 @@ SingularityBot separates the StarCraft II client protocol from game ontology, FS
 - [Documentation site](https://trentbest.github.io/TheSingularityWorkshop.SingularityBot/)
 - [Architecture](docs/architecture.md)
 - [Strategy format](docs/strategy-format.md)
+- [FSM-native behavior model and first unit expertise set](docs/behavior-model.md)
 - [Strategy JSON Schema](schemas/strategy.schema.json)
 - [Example strategy](strategies/terran-opening.example.json)
 - [Lineage and licensing](docs/lineage.md)
@@ -33,6 +34,7 @@ SingularityBot separates the StarCraft II client protocol from game ontology, FS
 | Concern | Workshop system |
 |---|---|
 | Match, player and unit lifecycles | FSM_API |
+| Hierarchical worker, squad and unit behavior | FSM_API behavior definitions + per-entity contexts |
 | Game vocabulary and protocol concepts | GrammarAi / ProtocolAi |
 | Goals and command decomposition | CommandAi |
 | Spatial reasoning | Physics |

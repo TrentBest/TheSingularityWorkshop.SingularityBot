@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using SC2APIProtocol;
 using SingularityBot.Behavior;
-using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot;
 
@@ -11,6 +10,7 @@ namespace SingularityBot;
 /// </summary>
 public sealed class SingularityBot : SC2API_CSharp.Bot
 {
+    private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private bool _behaviorCatalogRegistered;
 
     public void OnStart(
@@ -21,25 +21,25 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         uint playerId,
         string opponentId)
     {
-        if (!_behaviorCatalogRegistered)
-        {
-            UnitBehaviorCatalog.Register();
-            _behaviorCatalogRegistered = true;
-        }
+        if (_behaviorCatalogRegistered)
+            return;
+
+        UnitBehaviorCatalog.Register();
+        _behaviorCatalogRegistered = true;
     }
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
     {
-        // One deterministic FSM processing pass per SC2 observation.
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProcessingGroup);
+        // The FSM runtime receives exactly one processing pass per observation.
+        _unitBehaviors.Update();
 
-        // The observation-to-context and intent-to-action adapters are the
-        // next integration step. Until then, no unvalidated actions are sent.
+        // Observation-to-context reconciliation and intent-to-action translation
+        // are deliberately separate adapter steps. No unvalidated action is sent.
         return [];
     }
 
     public void OnEnd(ResponseObservation observation, Result result)
     {
-        // Unit contexts will be invalidated and detached during match teardown.
+        _unitBehaviors.RemoveAll();
     }
 }

@@ -96,7 +96,7 @@ public sealed class ObservationReconciliationTests
         Assert.False(runtime.TryGetContext(45, out _));
 
         runtime.Reconcile(
-            new NormalizedObservation(13, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong>()),
+            new NormalizedObservation(12, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong>()),
             static (_, _) => { });
 
         Assert.True(runtime.TryGetContext(44, out var retained));
@@ -105,7 +105,7 @@ public sealed class ObservationReconciliationTests
         Assert.False(retained.IsCurrentlyVisible);
 
         runtime.Reconcile(
-            new NormalizedObservation(12, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
+            new NormalizedObservation(13, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
             static (_, _) => { });
 
         Assert.False(runtime.TryGetContext(44, out _));

@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "SingularityBot": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "workingDirectory": "$(ProjectDir)"
+    }
+  }
+}

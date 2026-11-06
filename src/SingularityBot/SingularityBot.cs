@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SC2APIProtocol;
 using SingularityBot.Behavior;
+using SingularityBot.Observation;
 
 namespace SingularityBot;
 
@@ -11,6 +12,8 @@ namespace SingularityBot;
 public sealed class SingularityBot : SC2API_CSharp.Bot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
+    private readonly Dictionary<uint, string> _unitNames = new();
+    private uint _playerId;
     private bool _behaviorCatalogRegistered;
 
     public void OnStart(
@@ -21,6 +24,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         uint playerId,
         string opponentId)
     {
+        _playerId = playerId;
+        _unitNames.Clear();
+
+        if (data is not null)
+        {
+            foreach (var unitType in data.Units.OrderBy(unit => unit.UnitId))
+                _unitNames[unitType.UnitId] = unitType.Name;
+        }
+
         if (_behaviorCatalogRegistered)
             return;
 
@@ -30,11 +42,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
     {
-        // The FSM runtime receives exactly one processing pass per observation.
+        var normalized = Sc2ObservationNormalizer.Normalize(observation, _playerId, _unitNames);
+
+        // Issue #1 captures intents only at the domain callback boundary. They
+        // are deliberately not translated or submitted as SC2 actions yet.
+        _unitBehaviors.Reconcile(normalized, static (_, _) => { });
         _unitBehaviors.Update();
 
-        // Observation-to-context reconciliation and intent-to-action translation
-        // are deliberately separate adapter steps. No unvalidated action is sent.
         return [];
     }
 

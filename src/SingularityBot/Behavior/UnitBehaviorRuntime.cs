@@ -3,12 +3,13 @@ using TheSingularityWorkshop.FSM_API;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Owns per-unit FSM instances while sharing immutable FSM definitions.
-/// Unit tags are the stable key; contexts are invalidated when units disappear.
+/// Owns the per-unit contexts and FSM handles while sharing immutable FSM definitions.
+/// Unit tags are the stable key; removal explicitly retires the corresponding FSM handle.
 /// </summary>
 public sealed class UnitBehaviorRuntime
 {
     private readonly Dictionary<ulong, UnitBehaviorContext> _contexts = new();
+    private readonly Dictionary<ulong, FSMHandle> _handles = new();
 
     public int Count => _contexts.Count;
 
@@ -29,26 +30,34 @@ public sealed class UnitBehaviorRuntime
             profile.IsWorker,
             emit);
 
-        FSM_API.Create.CreateInstance(
+        // FSM_API owns the live instance. Keep its handle so lifecycle and
+        // current-state inspection remain explicit at the adapter boundary.
+        var handle = FSM_API.Create.CreateInstance(
             profile.BehaviorFsm,
             context,
             UnitBehaviorCatalog.ProcessingGroup);
 
         _contexts.Add(unitTag, context);
+        _handles.Add(unitTag, handle);
         return context;
     }
 
     public bool TryGetContext(ulong unitTag, out UnitBehaviorContext context) =>
         _contexts.TryGetValue(unitTag, out context);
 
+    public bool TryGetHandle(ulong unitTag, out FSMHandle handle) =>
+        _handles.TryGetValue(unitTag, out handle);
+
     public bool Remove(ulong unitTag)
     {
         if (!_contexts.Remove(unitTag, out var context))
             return false;
 
-        // FSM_API stops processing and retires the instance when its context
-        // becomes invalid. The context object itself remains owned by this runtime.
         context.IsValid = false;
+
+        if (_handles.Remove(unitTag, out var handle))
+            FSM_API.Interaction.DestroyInstance(handle);
+
         return true;
     }
 
@@ -57,7 +66,11 @@ public sealed class UnitBehaviorRuntime
         foreach (var context in _contexts.Values)
             context.IsValid = false;
 
+        foreach (var handle in _handles.Values)
+            FSM_API.Interaction.DestroyInstance(handle);
+
         _contexts.Clear();
+        _handles.Clear();
     }
 
     public void Update() =>

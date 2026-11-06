@@ -54,7 +54,7 @@ FSM_Bot's later strategy/runtime code is not copied wholesale. It contains known
 - New SDK-style project files target .NET 8.
 - A minimal no-op `SingularityBot` implementation and runner establish the protocol-facing entry point.
 - The bot is intentionally not advertised as competitive or ladder-ready.
-- GitHub Actions now restores and builds the runner. The first build result is pending; the outcome will be recorded after completion.
+- GitHub Actions now restores and builds the runner. The initial .NET 8 build passed on GitHub Actions (run `42138262819`). A subsequent build including JSON Schema validation also passed (run `42138542803`). This verifies restore, compilation and strategy-document validation; it does not yet verify a live SC2 match.
 
 ## Provenance policy
 

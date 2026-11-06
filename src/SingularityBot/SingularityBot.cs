@@ -38,7 +38,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             foreach (var buff in data.Buffs.OrderBy(buff => buff.BuffId))
                 _buffNames[buff.BuffId] = buff.Name;
             foreach (var ability in data.Abilities.OrderBy(ability => ability.AbilityId))
-                _abilityNames[ability.AbilityId] = ability.Name;
+                _abilityNames[ability.AbilityId] = ability.LinkName;
         }
 
         if (_behaviorCatalogRegistered)

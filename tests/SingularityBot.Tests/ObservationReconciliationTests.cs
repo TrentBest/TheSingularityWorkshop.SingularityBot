@@ -20,7 +20,7 @@ public sealed class ObservationReconciliationTests
             DisplayType = DisplayType.Visible,
             Health = 45,
             HealthMax = 45,
-            CargoSpaceTaken = 1
+            BuffIds = { 11 }
         });
         raw.Units.Add(new Unit
         {
@@ -45,7 +45,8 @@ public sealed class ObservationReconciliationTests
         var normalized = Sc2ObservationNormalizer.Normalize(
             response,
             1,
-            new Dictionary<uint, string> { [7] = "SCV", [8] = "Marine" });
+            new Dictionary<uint, string> { [7] = "SCV", [8] = "Marine" },
+            new Dictionary<uint, string> { [11] = "CarryingMinerals" });
 
         Assert.Equal((uint)123, normalized.GameLoop);
         Assert.Equal((uint)1, normalized.PlayerId);

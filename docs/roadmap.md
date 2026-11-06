@@ -15,26 +15,34 @@
 - [ ] Remove IDE state, generated output and stale project references.
 - [ ] Establish a supported, reproducible build.
 
-## Phase 2 — Make one local match work
+## Phase 2 — First local economy
 
-- [ ] Launch locally against Blizzard AI.
-- [ ] Normalize observations and game data behind a game-adapter boundary.
-- [ ] Submit a minimal legal action through validation.
-- [ ] Add a headless smoke test and structured diagnostics.
-- [ ] Capture a reproducible local match/replay fixture.
-- [ ] Verify ladder packaging separately from local execution.
+The first playable milestone is a complete opening economy, not ladder play or combat tactics.
 
-## Phase 3 — FSM runtime
+- [ ] Normalize observations and game data for workers, mineral fields, town halls, resources, supply, orders and construction.
+- [ ] Add deterministic worker-to-mineral assignment with reservations.
+- [ ] Measure worker travel, queue/wait, gather, return, unload and idle time.
+- [ ] Compare baseline, saturation-aware and arrival-window resource scheduling from equivalent starting conditions.
+- [ ] Implement race-specific supply planning: Supply Depot, Pylon and Overlord.
+- [ ] Implement race-specific production prerequisites: Barracks, Gateway and Spawning Pool.
+- [ ] Train the first tier-one unit: Marine, Zealot and Zergling.
+- [ ] Add local-match replay fixtures, metrics and invalid-action diagnostics.
+- [ ] Verify the opening remains economically healthy after the first unit.
+
+See [Opening economy and resource logistics](opening-economy-logistics.md) for the experiment contract and metrics.
+
+## Phase 3 — FSM runtime and action safety
 
 - [ ] Introduce match/player/unit lifecycles through FSM_API.
 - [ ] Add stable unit identity and visibility/death reconciliation.
-- [ ] Implement command validation and arbitration.
+- [ ] Implement intent arbitration, worker reservations and command validation.
 - [ ] Keep SC2 protocol details behind the adapter boundary.
+- [ ] Ensure deterministic decisions from identical normalized observations and strategy versions.
 
 ## Phase 4 — Strategy as data
 
 - [ ] Implement schema validation and ontology resolution.
-- [ ] Compile a minimal Terran opening into FSM definitions.
+- [ ] Compile the opening economy into versioned FSM definitions.
 - [ ] Add goal/priority/constraint evaluation.
 - [ ] Add scouting, composition and tactical triggers incrementally.
 
@@ -43,7 +51,7 @@
 - [ ] Prove local bot-vs-bot/self-play using the same session and action contracts.
 - [ ] Investigate and prove a private local human-vs-bot session; keep it separate from ladder mode.
 - [ ] Rebuild editor against the versioned strategy contract.
-- [ ] Add map overlays and build-order visualization.
+- [ ] Add map overlays, worker logistics visualization and build-order timeline.
 - [ ] Persist match/replay experience through DataWarehouse.
 - [ ] Add replay regression and strategy evaluation through CiAi/HeadlessAi.
 - [ ] Evaluate a separate FPS adapter only after selecting a game with an official local mod/plugin/bot API.

@@ -14,8 +14,16 @@ public sealed record UnitExpertiseProfile(
 
 public static class UnitExpertiseProfiles
 {
-    public static readonly UnitExpertiseProfile Worker =
-        new("Worker", true, UnitBehaviorCatalog.WorkerFsm, 0, 0.20, 1);
+    // Race-specific worker identities share a behavior graph; the SC2 adapter
+    // supplies race-specific gather/build abilities and resource semantics.
+    public static readonly UnitExpertiseProfile SCV =
+        new("SCV", true, UnitBehaviorCatalog.WorkerFsm, 0, 0.20, 1);
+
+    public static readonly UnitExpertiseProfile Probe =
+        new("Probe", true, UnitBehaviorCatalog.WorkerFsm, 0, 0.20, 1);
+
+    public static readonly UnitExpertiseProfile Drone =
+        new("Drone", true, UnitBehaviorCatalog.WorkerFsm, 0, 0.20, 1);
 
     public static readonly UnitExpertiseProfile Zealot =
         new("Zealot", false, UnitBehaviorCatalog.CombatFsm, 1, 0.25, 2);
@@ -27,5 +35,5 @@ public static class UnitExpertiseProfiles
         new("Zergling", false, UnitBehaviorCatalog.CombatFsm, 1, 0.20, 6);
 
     public static IReadOnlyList<UnitExpertiseProfile> InitialSet =>
-        [Worker, Zealot, Marine, Zergling];
+        [SCV, Probe, Drone, Zealot, Marine, Zergling];
 }

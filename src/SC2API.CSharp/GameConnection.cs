@@ -49,9 +49,29 @@ namespace SC2API_CSharp
             RequestCreateGame createGame = new RequestCreateGame();
             createGame.Realtime = false;
 
-            string mapPath = Path.Combine(starcraftDir, "Maps", mapName);
+            string mapsDirectory = Path.Combine(starcraftDir, "Maps");
+            string mapPath = Path.Combine(mapsDirectory, mapName);
+
             if (!File.Exists(mapPath))
-                throw new Exception("Could not find map at " + mapPath);
+            {
+                string mapFileName = Path.GetFileName(mapName);
+                string[] matches = Directory.Exists(mapsDirectory)
+                    ? Directory.GetFiles(mapsDirectory, mapFileName, SearchOption.AllDirectories)
+                    : Array.Empty<string>();
+
+                if (matches.Length == 1)
+                    mapPath = matches[0];
+                else if (matches.Length > 1)
+                    throw new Exception(
+                        "Found more than one map named " + mapFileName + " under " + mapsDirectory
+                        + ". Set MapName to a relative path to select one: "
+                        + string.Join("; ", matches));
+                else
+                    throw new Exception(
+                        "Could not find map " + mapName + " under " + mapsDirectory
+                        + ". Keep the Maps subfolders intact; set MapName to a relative path if the map is in a subfolder.");
+            }
+
             createGame.LocalMap = new LocalMap();
             createGame.LocalMap.MapPath = mapPath;
 

@@ -31,6 +31,10 @@ The first schema is deliberately small. It captures identity, race, opening buil
 | composition | Desired army composition and tolerance bands |
 | evaluation | Metrics and scenario tags for testing |
 
+## Machine-readable schema
+
+The initial JSON Schema is available at [schemas/strategy.schema.json](../schemas/strategy.schema.json). GitHub Actions validates every strategy JSON file against it before building the runtime.
+
 ## Compilation pipeline
 
 1. Parse JSON.

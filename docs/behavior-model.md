@@ -106,22 +106,29 @@ engine. The runtime remains authoritative.
 
 ## Current implementation boundary
 
-The first implementation registers shared worker and combat FSM definitions,
-creates per-unit contexts/instances, and ticks their processing group once per
-SC2 observation. The current no-op SC2 shell does not yet reconcile live
-observations into those contexts or translate emitted intents into game actions.
-Therefore this is a compiling FSM foundation, not yet an active-playing bot.
+The runtime now normalizes SC2 raw observations into protocol-independent unit
+facts using the game-data unit catalog, orders facts deterministically by stable
+unit tag, and reconciles visible own units into persistent per-unit FSM contexts.
+Snapshot/hidden observations and mere absence do not retire a context; explicit
+dead-unit events do. The context receives current health, position, cargo, order,
+build-progress and movement facts. Unsupported unit kinds are ignored rather
+than guessed. The behavior callback is still intentionally a no-op: intents are
+not yet translated or submitted as SC2 actions. The bot is therefore not yet
+an active-playing bot.
+
+Automated fixtures cover deterministic normalization, snapshot visibility,
+explicit death evidence, stable context refresh, fog/absence retention and
+authoritative retirement. These fixtures run in CI.
 The opening economy and resource scheduler described above are specifications,
 not implemented or experimentally validated behavior.
 
 ## Next implementation gates
 
-1. Map SC2 raw observations and game data into stable worker, mineral-node,
-   town-hall, resource, supply, order and construction facts.
+1. Complete normalized economy facts for workers, mineral nodes, town halls,
+   resources, supply, orders and construction.
 2. Implement deterministic worker assignment, reservations and baseline metrics.
 3. Add saturation-aware and arrival-window scheduling; compare through replay.
 4. Implement race-specific supply, construction and production planning.
-5. Complete one race's first-unit opening end-to-end, then generalize to the
-   other two races through ontology/capabilities.
-6. Add replay regression and expose the same versioned strategy/scheduler data
-   to GUI builders.
+5. Add intent capture, validation and legal action translation as a separate gate.
+6. Complete one race's first-unit opening end-to-end, then generalize through
+   ontology/capabilities; add replay regression and expose versioned strategy data.

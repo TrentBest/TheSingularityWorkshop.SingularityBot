@@ -13,6 +13,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly Dictionary<uint, string> _unitNames = new();
+    private readonly Dictionary<uint, string> _buffNames = new();
     private uint _playerId;
     private bool _behaviorCatalogRegistered;
 
@@ -26,11 +27,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     {
         _playerId = playerId;
         _unitNames.Clear();
+        _buffNames.Clear();
 
         if (data is not null)
         {
             foreach (var unitType in data.Units.OrderBy(unit => unit.UnitId))
                 _unitNames[unitType.UnitId] = unitType.Name;
+            foreach (var buff in data.Buffs.OrderBy(buff => buff.BuffId))
+                _buffNames[buff.BuffId] = buff.Name;
         }
 
         if (_behaviorCatalogRegistered)
@@ -42,7 +46,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
     {
-        var normalized = Sc2ObservationNormalizer.Normalize(observation, _playerId, _unitNames);
+        var normalized = Sc2ObservationNormalizer.Normalize(observation, _playerId, _unitNames, _buffNames);
 
         // Issue #1 captures intents only at the domain callback boundary. They
         // are deliberately not translated or submitted as SC2 actions yet.

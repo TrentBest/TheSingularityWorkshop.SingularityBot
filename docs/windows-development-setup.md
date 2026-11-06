@@ -54,7 +54,14 @@ git pull
 
 The repository's intended branch set is exactly `master` and `development`. Do not create a feature branch for this work unless we explicitly decide to change that policy.
 
-## 4. Build without launching the game
+## 4. Open the solution in Visual Studio Community
+
+1. Open the repository folder after cloning and switching to `development`.
+2. Double-click `TheSingularityWorkshop.SingularityBot.sln` in the repository root, or use **File → Open → Project/Solution** in Visual Studio.
+3. In Solution Explorer, right-click **SingularityBot.Runner** and choose **Set as Startup Project**. The bot project is a class library; the Runner is the executable entry point, just as `DotnetCoreRunner` is the executable entry point in Simon Prins' ExampleBot solution.
+4. Select **Debug** or **Release** and build the solution. The solution contains the protocol, API adapter, bot and runner projects.
+
+## 5. Build without launching the game
 
 From the repository root:
 
@@ -65,7 +72,7 @@ dotnet build .\src\SingularityBot.Runner\SingularityBot.Runner.csproj --configur
 
 This builds the .NET 8 runner, bot, protocol adapter and referenced projects. It does not start StarCraft II.
 
-## 5. Check the configured local map
+## 6. Check the configured local map
 
 The current local program is configured for:
 
@@ -75,7 +82,7 @@ InterloperLE.SC2Map
 
 The adapter looks for the map beneath the StarCraft II installation's `Maps` directory. If that exact file is not present, the current launcher will stop with a clear “Could not find map” error. Do not download a random map into the game directory; first report the map files visible under the installed `Maps` directory so we can select a known-valid local map and record it as configuration.
 
-## 6. Launch a local session (after the Terran controller is ready)
+## 7. Launch a local session (after the Terran controller is ready)
 
 From the repository root:
 
@@ -85,7 +92,7 @@ dotnet run --project .\src\SingularityBot.Runner\SingularityBot.Runner.csproj --
 
 With no arguments, the runner selects the local single-player path. Do not pass ladder arguments. Close the game normally when the match ends; if startup fails, preserve the full console exception and the contents of `ExecuteInfo.txt` with personal paths redacted.
 
-## 7. What we will verify in the first Terran match
+## 8. What we will verify in the first Terran match
 
 The first test is not about winning. We will record whether the bot:
 

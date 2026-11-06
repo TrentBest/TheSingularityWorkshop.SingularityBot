@@ -7,7 +7,7 @@ public static class Program
 {
     private static readonly SC2API_CSharp.Bot Bot = new SingularityBot();
     private static readonly Race BotRace = Race.Terran;
-    private static readonly string MapName = "InterloperLE.SC2Map";
+    private static readonly string MapName = "AcolyteLE.SC2Map";
     private static readonly Race OpponentRace = Race.Random;
     private static readonly Difficulty OpponentDifficulty = Difficulty.VeryEasy;
 

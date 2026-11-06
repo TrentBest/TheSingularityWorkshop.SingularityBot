@@ -36,4 +36,18 @@ public static class UnitExpertiseProfiles
 
     public static IReadOnlyList<UnitExpertiseProfile> InitialSet =>
         [SCV, Probe, Drone, Zealot, Marine, Zergling];
+
+    private static readonly IReadOnlyDictionary<string, UnitExpertiseProfile> ByKind =
+        InitialSet.ToDictionary(profile => profile.UnitKind, StringComparer.OrdinalIgnoreCase);
+
+    public static bool TryGet(string unitKind, out UnitExpertiseProfile profile)
+    {
+        if (string.IsNullOrWhiteSpace(unitKind))
+        {
+            profile = null!;
+            return false;
+        }
+
+        return ByKind.TryGetValue(unitKind, out profile!);
+    }
 }

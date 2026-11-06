@@ -7,11 +7,12 @@
   ],
   "actual_branches": [
     "development",
+    "feature/observation-reconciliation-issue-1",
     "master"
   ],
-  "branch_count": 2,
-  "status": "COMPLIANT",
-  "evaluated_at": "2026-11-06T00:39:41Z",
-  "workflow_run": "https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42138426788",
-  "triggering_commit": "1f08afe910e7b1e7ee201de1ea2ae836ad3344e1"
+  "branch_count": 3,
+  "status": "NON-COMPLIANT",
+  "evaluated_at": "2026-11-06T12:04:42Z",
+  "workflow_run": "https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42214894813",
+  "triggering_commit": "432a26acab2bd8831e48073b6353d4ac791583e1"
 }

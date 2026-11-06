@@ -6,6 +6,7 @@ on:
     paths:
       - "docs/**"
       - "strategies/**"
+      - "schemas/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -32,6 +33,11 @@ jobs:
           mkdir -p _site/strategies
           cp strategies/*.json _site/strategies/
           touch _site/.nojekyll
+
+      - name: Include strategy schema
+        run: |
+          mkdir -p _site/schemas
+          cp schemas/*.json _site/schemas/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

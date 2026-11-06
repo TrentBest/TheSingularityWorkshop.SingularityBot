@@ -35,7 +35,7 @@ public sealed class ObservationReconciliationTests
 
         var response = new ResponseObservation
         {
-            Observation = new Observation
+            Observation = new SC2APIProtocol.Observation
             {
                 GameLoop = 123,
                 RawData = raw

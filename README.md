@@ -22,6 +22,7 @@ SingularityBot separates the StarCraft II client protocol from game ontology, FS
 - [Strategy format](docs/strategy-format.md)
 - [Example strategy](strategies/terran-opening.example.json)
 - [Lineage and licensing](docs/lineage.md)
+- [Source migration audit](docs/migration-audit.md)
 - [Roadmap](docs/roadmap.md)
 
 ## Workshop composition

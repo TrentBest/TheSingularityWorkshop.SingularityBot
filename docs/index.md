@@ -14,6 +14,7 @@ This repository is in its foundation phase. The architecture and strategy contra
 - [Lineage and licensing](lineage.md)
 - [Source migration audit](migration-audit.md)
 - [Roadmap](roadmap.md)
+- [GitHub Pages publishing](pages.md)
 
 ## Design rule
 

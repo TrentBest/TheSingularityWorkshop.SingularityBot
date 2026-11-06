@@ -15,12 +15,13 @@
 - [ ] Remove IDE state, generated output and stale project references.
 - [ ] Establish a supported, reproducible build.
 
-## Phase 2 — Make one match work
+## Phase 2 — Make one local match work
 
 - [ ] Launch locally against Blizzard AI.
-- [ ] Normalize observations and game data.
-- [ ] Submit a minimal legal action.
+- [ ] Normalize observations and game data behind a game-adapter boundary.
+- [ ] Submit a minimal legal action through validation.
 - [ ] Add a headless smoke test and structured diagnostics.
+- [ ] Capture a reproducible local match/replay fixture.
 - [ ] Verify ladder packaging separately from local execution.
 
 ## Phase 3 — FSM runtime
@@ -37,12 +38,16 @@
 - [ ] Add goal/priority/constraint evaluation.
 - [ ] Add scouting, composition and tactical triggers incrementally.
 
-## Phase 5 — Editor and learning
+## Phase 5 — Local play, editor and learning
 
+- [ ] Prove local bot-vs-bot/self-play using the same session and action contracts.
+- [ ] Investigate and prove a private local human-vs-bot session; keep it separate from ladder mode.
 - [ ] Rebuild editor against the versioned strategy contract.
 - [ ] Add map overlays and build-order visualization.
 - [ ] Persist match/replay experience through DataWarehouse.
 - [ ] Add replay regression and strategy evaluation through CiAi/HeadlessAi.
+- [ ] Evaluate a separate FPS adapter only after selecting a game with an official local mod/plugin/bot API.
+- [ ] Evaluate NeuralNetworks as an optional policy/evaluation advisor against a deterministic baseline.
 
 ## Release gates
 

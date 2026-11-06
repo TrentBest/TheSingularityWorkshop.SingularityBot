@@ -13,7 +13,7 @@
 
 SingularityBot separates the StarCraft II client protocol from game ontology, FSM-driven execution, strategy authoring, spatial reasoning, memory and evaluation. Strategies are intended to be declarative data compiled into runtime state machines—not hard-coded bot personalities.
 
-> **Status:** foundation in progress. The repository currently contains architecture, strategy-format documentation and an illustrative strategy file. It is not yet a working or ladder-ready bot.
+> **Status:** playable foundation under construction. The repository contains the SC2 protocol adapter, .NET 8 runner, FSM-based unit behavior foundation, strategy format and opening-economy specification. Observation reconciliation and intent-to-action translation are not complete, so it is not yet a functioning or ladder-ready autonomous bot.
 
 ## Start here
 
@@ -47,7 +47,7 @@ The SC2 adapter remains a replaceable boundary. FSM_API must remain independent 
 
 ## Lineage
 
-The historical upstream starting point is [SimonPrins/ExampleBot](https://github.com/SimonPrins/ExampleBot) by **Simon Prins**. The Workshop's later [FSM_Bot](https://github.com/TrentBest/FSM_Bot) contains an FSM-oriented evolution, but its Git history does not preserve ExampleBot's original ancestry. See [lineage and licensing](docs/lineage.md) before importing or redistributing upstream-derived files.
+The historical upstream starting point is [SimonPrins/ExampleBot](https://github.com/SimonPrins/ExampleBot) by **Simon Prins**. The user's reference snapshot is [ExampleBotFromSimon](https://github.com/TrentBest/ExampleBotFromSimon). The Workshop's later [FSM_Bot](https://github.com/TrentBest/FSM_Bot) contains an FSM-oriented evolution, but its Git history does not preserve ExampleBot's original ancestry. See [lineage and licensing](docs/lineage.md) and the [source migration audit](docs/migration-audit.md) before importing or redistributing upstream-derived files.
 
 ## Development
 

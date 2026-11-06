@@ -8,7 +8,7 @@
 1. Finish installing StarCraft II through the official Battle.net client.
 2. Install the **.NET 8 SDK** (not only the runtime). The runner targets `.NET 8`.
 3. Install Git for Windows.
-4. Optional but recommended: Visual Studio 2022 with the .NET desktop development workload, or Visual Studio Code with the C# Dev Kit.
+4. Visual Studio Community 2022 with the **.NET desktop development** workload.
 
 Open a new PowerShell window after installing the SDK and verify:
 
@@ -77,10 +77,10 @@ This builds the .NET 8 runner, bot, protocol adapter and referenced projects. It
 The current local program is configured for:
 
 ```text
-InterloperLE.SC2Map
+AcolyteLE.SC2Map
 ```
 
-The adapter looks for the map beneath the StarCraft II installation's `Maps` directory. If that exact file is not present, the current launcher will stop with a clear “Could not find map” error. Do not download a random map into the game directory; first report the map files visible under the installed `Maps` directory so we can select a known-valid local map and record it as configuration.
+The adapter checks the StarCraft II installation's `Maps` directory first, then searches its subfolders for that exact filename. You can keep folders such as `Maps\\Ladder2017Season3\\` intact; do not delete them just to make the map lookup work. If the same filename exists in more than one subfolder, set `MapName` to a relative path (for example, `Ladder2017Season3\\AcolyteLE.SC2Map`) to select the intended copy. The local launcher reports a clear error if no matching map is found.
 
 ## 7. Launch a local session (after the Terran controller is ready)
 

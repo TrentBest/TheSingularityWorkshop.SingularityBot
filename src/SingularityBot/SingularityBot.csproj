@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SC2API.CSharp/SC2API.CSharp.csproj" />
+    <PackageReference Include="TheSingularityWorkshop.FSM_API" Version="1.0.13" />
+  </ItemGroup>
+</Project>

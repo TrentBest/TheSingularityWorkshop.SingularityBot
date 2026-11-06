@@ -38,7 +38,7 @@ public sealed class UnitBehaviorContext : IStateContext
 
     public uint UnitTypeId { get; private set; }
     public uint LastObservedGameLoop { get; private set; }
-    public bool IsCurrentlyVisible { get; private set; }
+    public bool IsCurrentlyVisible { get; internal set; }
     public float Health { get; private set; }
     public float HealthMax { get; private set; }
     public float Shield { get; private set; }

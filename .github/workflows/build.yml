@@ -1,0 +1,27 @@
+name: Build
+
+on:
+  push:
+    branches: [master, development]
+    paths:
+      - "src/**"
+      - ".github/workflows/build.yml"
+  pull_request:
+    branches: [master, development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore src/SingularityBot.Runner/SingularityBot.Runner.csproj
+      - name: Build
+        run: dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj --configuration Release --no-restore

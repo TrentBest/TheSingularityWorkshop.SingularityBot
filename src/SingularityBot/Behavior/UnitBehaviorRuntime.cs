@@ -1,10 +1,11 @@
+using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
 
 /// <summary>
 /// Owns the per-unit contexts and FSM handles while sharing immutable FSM definitions.
-/// Unit tags are the stable key; removal explicitly retires the corresponding FSM handle.
+/// Unit tags are the stable key; only authoritative dead-unit events retire a context.
 /// </summary>
 public sealed class UnitBehaviorRuntime
 {
@@ -30,8 +31,6 @@ public sealed class UnitBehaviorRuntime
             profile.IsWorker,
             emit);
 
-        // FSM_API owns the live instance. Keep its handle so lifecycle and
-        // current-state inspection remain explicit at the adapter boundary.
         var handle = FSM_API.Create.CreateInstance(
             profile.BehaviorFsm,
             context,
@@ -40,6 +39,37 @@ public sealed class UnitBehaviorRuntime
         _contexts.Add(unitTag, context);
         _handles.Add(unitTag, handle);
         return context;
+    }
+
+    /// <summary>
+    /// Applies one normalized observation. Absence, snapshots, and hidden entries
+    /// never retire contexts; only explicit dead-unit tags do.
+    /// </summary>
+    public void Reconcile(
+        NormalizedObservation observation,
+        Action<ulong, BehaviorCommand> emit)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        ArgumentNullException.ThrowIfNull(emit);
+
+        foreach (var deadTag in observation.DeadUnitTags.OrderBy(tag => tag))
+            Remove(deadTag);
+
+        foreach (var facts in observation.Units)
+        {
+            if (facts.Alliance != UnitAlliance.Self ||
+                !facts.IsLiveVisible ||
+                observation.DeadUnitTags.Contains(facts.Tag) ||
+                !UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile))
+                continue;
+
+            if (!_contexts.TryGetValue(facts.Tag, out var context))
+            {
+                context = Attach(facts.Tag, profile, command => emit(facts.Tag, command));
+            }
+
+            context.Apply(facts);
+        }
     }
 
     public bool TryGetContext(ulong unitTag, out UnitBehaviorContext context) =>
@@ -54,6 +84,7 @@ public sealed class UnitBehaviorRuntime
             return false;
 
         context.IsValid = false;
+        context.IsCurrentlyVisible = false;
 
         if (_handles.Remove(unitTag, out var handle))
             FSM_API.Interaction.DestroyInstance(handle);
@@ -64,7 +95,10 @@ public sealed class UnitBehaviorRuntime
     public void RemoveAll()
     {
         foreach (var context in _contexts.Values)
+        {
             context.IsValid = false;
+            context.IsCurrentlyVisible = false;
+        }
 
         foreach (var handle in _handles.Values)
             FSM_API.Interaction.DestroyInstance(handle);

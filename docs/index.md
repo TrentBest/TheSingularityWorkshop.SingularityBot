@@ -12,6 +12,7 @@ This repository is in its foundation phase. The architecture and strategy contra
 - [Strategy format](strategy-format.md)
 - [Example strategy](../strategies/terran-opening.example.json)
 - [Lineage and licensing](lineage.md)
+- [Source migration audit](migration-audit.md)
 - [Roadmap](roadmap.md)
 
 ## Design rule

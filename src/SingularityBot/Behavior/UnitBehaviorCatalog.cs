@@ -30,7 +30,8 @@ public static class UnitBehaviorCatalog
                     if (unit.HasCargo) unit.Emit(BehaviorCommand.ReturnCarriedResources);
                     else if (unit.BuildOrderAvailable) unit.Emit(BehaviorCommand.BuildRequestedStructure);
                     else if (unit.HasVisibleThreat) unit.Emit(BehaviorCommand.DefendWorkerLine);
-                    else if (!unit.HasAssignedWork) unit.Emit(BehaviorCommand.AssignWorkerToMinerals);
+                    else if (!unit.HasAssignedWork && unit.WorkerRoutePhase != WorkerRoutePhase.Unassigned)
+                        unit.Emit(BehaviorCommand.AssignWorkerToMinerals);
                 },
                 onExit: null)
             .State("Returning",
@@ -53,9 +54,13 @@ public static class UnitBehaviorCatalog
             .Transition("Assess", "Returning", ctx => ctx is UnitBehaviorContext unit && unit.HasCargo)
             .Transition("Assess", "Building", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo && unit.BuildOrderAvailable)
             .Transition("Assess", "Defending", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo && !unit.BuildOrderAvailable && unit.HasVisibleThreat)
-            .Transition("Assess", "Working", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo && !unit.BuildOrderAvailable && !unit.HasVisibleThreat && !unit.HasAssignedWork)
+            .Transition("Assess", "Working", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo && !unit.BuildOrderAvailable && !unit.HasVisibleThreat && !unit.HasAssignedWork && unit.WorkerRoutePhase != WorkerRoutePhase.Unassigned)
             .Transition("Returning", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo)
-            .Transition("Working", "Assess", ctx => ctx is UnitBehaviorContext unit && (unit.HasCargo || unit.BuildOrderAvailable || unit.HasVisibleThreat))
+            .Transition("Working", "Assess", ctx => ctx is UnitBehaviorContext unit &&
+                (unit.HasCargo || unit.BuildOrderAvailable || unit.HasVisibleThreat ||
+                 unit.WorkerRoutePhase == WorkerRoutePhase.Unassigned ||
+                 (unit.WorkerRoutePhase == WorkerRoutePhase.Assigned &&
+                  unit.WorkerRoutePhaseChangedAtGameLoop == unit.LastObservedGameLoop)))
             .Transition("Building", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.BuildOrderAvailable)
             .Transition("Defending", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.HasVisibleThreat)
             .BuildDefinition();

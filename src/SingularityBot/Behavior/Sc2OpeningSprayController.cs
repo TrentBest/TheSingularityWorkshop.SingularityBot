@@ -47,10 +47,10 @@ public sealed class Sc2OpeningSprayController
         if (_stage != Stage.NotStarted || !initialScvProductionObserved)
             return null;
 
-        if (gameData.SprayAbilityId is not > 0)
+        if (gameData.SprayAbilityId is not > 0 || gameData.HarvestGatherAbilityId is not > 0)
         {
             _stage = Stage.Unavailable;
-            Console.WriteLine("[Control proof] SC2 game data did not expose one unambiguous Spray ability; no Spray command will be fabricated.");
+            Console.WriteLine("[Control proof] SC2 game data did not expose both an unambiguous Spray ability and a gather ability; no Spray command will be fabricated.");
             return null;
         }
 

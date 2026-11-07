@@ -135,8 +135,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var actions = new List<SC2APIProtocol.Action>();
         if (builderAction is not null)
             actions.Add(builderAction);
+        var workerIntents = intents.Drain()
+            .Where(intent => !_workerAssignments.IsReserved(intent.Key))
+            .ToArray();
         actions.AddRange(Sc2ActionTranslator.Translate(
-            intents.Drain(),
+            workerIntents,
             normalized,
             _gameData.HarvestGatherAbilityId,
             _gameData.HarvestReturnAbilityId,

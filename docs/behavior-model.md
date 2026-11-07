@@ -1,77 +1,75 @@
 # Behavior and FSM model
 
-## Core rule
+## Runtime rule
 
-The bot is an FSM-driven runtime. Strategy and execution are expressed as reusable FSM definitions bound to persistent, observation-derived contexts. FSM_API provides the heartbeat; FSM_Foundry executes the composed workload. SC2-specific types remain in the adapter.
+SingularityBot is a player runtime, not an editor project. The live decision path is:
 
-Behavior emits domain intents. A separate action pipeline arbitrates and validates them against the current observation before translation to SC2 actions.
+`StarCraft II -> SC2 adapter -> normalized facts -> game ontology/capabilities -> FSM_API contexts executed by FSM_Foundry -> intent arbitration/validation -> SC2 actions`.
 
-## Hierarchy
+FSM_API owns reusable lifecycle and state-machine behavior. FSM_Foundry executes the composed workload. SC2 protocol DTOs stay in the adapter. GUI, Renderer and Visualize inspect or author the same versioned contracts; they do not implement a second runtime and are not required to run the headless bot.
 
-1. **Match** — lifecycle, opponent/player identity, game result and global phase.
-2. **Commander / strategy** — current objective, priorities and hard constraints.
-3. **Economy** — worker allocation, resource budget, supply, construction and production schedule.
-4. **Resource route** — one persistent worker-to-resource operation, including travel, service, cargo return and unload.
-5. **Unit** — local behavior for the unit's current profile.
-6. **Action** — validate and translate the requested command.
+## Ownership hierarchy
 
-Parents own goals and global constraints. Children execute assigned work and report observed facts upward. A worker FSM does not independently pick a mineral patch if the economy controller has already assigned one.
+1. **Match / commander** — match lifecycle, global objective and hard constraints.
+2. **Economy controller** — worker assignments, reservations, resource budget, supply, construction and production priorities.
+3. **Resource-line scheduler** — coordinates mineral-node service windows and route assignments across workers.
+4. **Worker route FSM** — executes one persistent worker-to-node assignment and reports observed facts.
+5. **Unit FSM** — executes the current unit profile.
+6. **Action pipeline** — arbitrates intents, validates current evidence and translates accepted commands.
 
-## Persistent worker routes
+Parents own goals and global constraints. Children execute assigned work and report outcomes. A worker FSM must not independently choose a mineral patch when the economy controller has assigned one.
 
-A mining route is not a one-frame gather command. Its context retains the worker tag, mineral tag, town-hall tag, assignment generation, route identity, phase, last observed game loop, current order/target, cargo facts and cached route geometry.
+## Persistent worker-route model
 
-The route FSM advances from evidence in observations: dispatch, travel, gathering, cargo return, unloading, interruption or reassignment. It may use inexpensive game-loop deadlines to decide when to reevaluate. A timer expiring is not proof that travel or gathering completed; current facts must confirm the transition.
+A route is a long-lived operation, not a repeated one-frame gather command. Its context should retain worker, mineral and town-hall tags; assignment generation; route identity; current phase; current order/target; cargo facts; last observed game loop; cached outbound/return geometry; and phase-entry/deadline data.
 
-Cache the to-and-fro route geometry rather than repeatedly recomputing stable positions and distances. Recompute only when relevant positions, map/pathing identity, resource/town-hall identity or observed route error invalidate the cache. Keep estimates distinct from measured outcomes.
+Use game-loop deltas for inexpensive reevaluation. A deadline is only a prompt to inspect again: observations, cargo, orders and positions confirm transitions. Cache stable route geometry and recompute only when a relevant position, route identity, map/pathing basis or measured route error invalidates it. Keep predicted travel/service times distinct from measured results.
 
-The economy controller owns assignment and reservation decisions globally. The route FSM owns execution of its one assignment.
+The economy controller owns global assignments and reservations. The resource-line scheduler coordinates saturation and service windows. Each worker route FSM owns execution of its one assignment. Replanning a returning worker must not casually discard its current return leg.
 
-## First behavior target: Terran economy
+For the first Supply Depot, select the closest eligible SCV from the non-mining/available pool for the intended placement. Do not pull a productive miner merely because it is geometrically closest when another eligible worker is available. The opening command sequence is: queue Command Center SCV production; on the next scheduling pass assign existing SCVs to mineral routes; then select the Depot builder.
 
-The initial proof is a no-gas, four-Barracks, pure-Marine opening. It is intentionally narrower than a generalized multi-race strategy framework.
+## First playable proof
 
-- Start the Command Center's SCV production as appropriate.
-- Assign starting SCVs to mineral routes deterministically.
-- Select the closest eligible SCV for the first Supply Depot, accounting for its current route/work state.
-- Complete the first Depot and Barracks with validated placement, costs, prerequisites and builder selection.
-- Establish four Barracks and queue Marines as resources and supply permit.
-- Keep enough workers mining to sustain production; measure rather than assume the value of each reassignment.
+The first target is deliberately narrow: Terran, no gas, four Barracks, pure Marines. It is not a generalized multi-race optimizer.
 
-The build order is versioned data. Do not bake a particular timing or an assumed optimal schedule into the generic FSM runtime.
+- Maintain SCV production and deterministic mineral assignments.
+- Build the first Supply Depot and Barracks with validated placement, costs and prerequisites.
+- Expand to four Barracks.
+- Sustain Marine production without gas while preserving mining throughput.
+- Measure the complete economy, not only time-to-first-Marine.
 
-## Profile changes and entity identity
+Do not bake an assumed optimal build timing into the generic FSM runtime. Strategy/build-order data is versioned input; observed game state and validated game data remain authoritative.
 
-A unit tag may survive a morph while its role changes. Reconciliation must compare the observed unit kind and behavior profile. When a profile changes, retire the old handle/context safely and attach the correct profile, or perform an explicit compatible reconfiguration. Never let an SCV worker behavior continue controlling a Marine merely because the tag is unchanged.
+## Entity lifecycle and profile changes
 
-## Action pipeline
+Unit tags are stable keys within a match. Fog or temporary absence suspends behavior; it does not prove destruction. Explicit dead-unit evidence or authoritative match end retires the context. If a unit morph changes its supported behavior profile, retire/replace the old profile context safely so an SCV worker FSM cannot continue controlling a Marine.
 
-The FSM emits a domain intent. The action pipeline then:
-- verifies the source unit is owned, alive and currently actionable;
-- verifies current visibility/knowledge and the intended target;
-- resolves the ability from current game data rather than guessed constants;
-- checks ability availability, prerequisites, affordability, range and placement where relevant;
-- arbitrates multiple intents for one unit and conflicting economy reservations;
-- submits only validated protocol actions and records the result.
+## Action safety
 
-Unsupported intents remain diagnostics, not silent no-ops or fabricated actions.
+An FSM emits an intent, not permission to submit a protocol action. The action pipeline must verify current ownership, liveness, visibility, target identity, ability metadata and applicable resource, prerequisite, range and placement constraints. It must arbitrate duplicate or conflicting commands. Missing or stale evidence fails closed. Every accepted or rejected intent should be explainable and traceable to the observation/game loop that produced it.
+
+## Current implementation status on `development`
+
+Implemented and present in the integration branch:
+
+- SC2 observations are normalized into deterministic, protocol-independent unit facts using game-data catalogs.
+- Visible own units are reconciled into persistent FSM contexts. Fog/absence suspends participation while retaining context; explicit death evidence retires it.
+- Supported unit-profile morphs replace the old behavior context/handle.
+- FSM emissions are collected per observation rather than routed to a stale frame buffer.
+- Initial gather and return-cargo intents translate to SC2 unit commands for SCV/Probe/Drone workers. Gather resolves `Harvest_Gather`; return resolves `Harvest_Return` from game data and selects a visible friendly town hall deterministically.
+- Regression tests cover normalization, reconciliation, fog/death/morph behavior and initial gather/return translation. The build workflow invokes the test project.
+
+Not yet proven or implemented as a complete economy:
+
+- Per-unit available-ability validation and complete action-result/error handling.
+- Persistent worker-to-mineral assignments, reservation/saturation, route FSM scheduling and cached geometry.
+- Closest-eligible Depot builder selection and validated construction/placement.
+- Four-Barracks scheduling, resource/supply budgeting and Marine production.
+- Deterministic recorded-observation replay, cycle/throughput metrics and live-match proof.
+
+A wired test step is not the same as a successful current CI run. A passing unit test is not a live-match result. Keep those evidence levels separate in status reports.
 
 ## GUI contract
 
-GUI is the authoring and inspection surface for the runtime's actual versioned contracts. It should expose:
-- hierarchical FSM graphs and reusable behavior patterns;
-- typed facts, intents, capabilities and parameters;
-- worker/resource assignments and route timelines;
-- cached route geometry and measured travel/cycle phases;
-- active state, eligible/rejected transitions and reasons;
-- candidate intents, arbitration, validation and action outcomes;
-- deterministic replay against recorded observations;
-- versioned import/export used by CI and the runtime.
-
-The editor must not implement a second FSM engine or become a runtime dependency.
-
-## Current implementation status
-
-The active codebase has an FSM foundation, normalized observation model, persistent unit reconciliation, profile-aware morph handling, intent buffering, and initial SCV/Probe/Drone gather and return action translation. This is a partial vertical slice, not a completed economy.
-
-Persistent worker-to-mineral assignment, route scheduling/cache, builder selection, construction, four-Barracks production, live-match proof and replay-based performance evidence are still required. Documentation and tests must distinguish implemented behavior from intended behavior.
+GUI is a later authoring/inspection surface over the runtime's actual versioned contracts. It should expose state/transition graphs, typed facts and intents, route assignments/timelines, cached geometry, active-state explanations, rejected guards, arbitration/validation outcomes and replay inspection. It must not become a second behavior engine or delay the first playable economy.

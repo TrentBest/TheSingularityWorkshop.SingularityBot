@@ -194,7 +194,7 @@ public sealed class Sc2OpeningBuilderController
 
     public void OnPlacementQueryResult(ResponseQuery response)
     {
-        if (response is null)
+        if (response is null || _builderTag is null || _candidatePoints.Count == 0 || response.Placements.Count == 0)
             return;
 
         var count = Math.Min(response.Placements.Count, _candidatePoints.Count);

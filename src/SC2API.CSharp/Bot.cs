@@ -12,3 +12,13 @@ namespace SC2API_CSharp
         void OnStart(ResponseGameInfo gameInfo, ResponseData data, ResponsePing pingResponse, ResponseObservation observation, uint playerId, String opponentId);
     }
 }
+
+namespace SC2API_CSharp
+{
+    /// <summary>Optional SC2 query round-trip supported by bots that need authoritative placement or ability queries.</summary>
+    public interface QueryAwareBot
+    {
+        RequestQuery TakeQueryRequest();
+        void OnQueryResult(ResponseQuery response);
+    }
+}

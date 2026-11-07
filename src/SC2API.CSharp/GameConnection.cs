@@ -239,8 +239,7 @@ namespace SC2API_CSharp
                     var submittedActions = new List<SC2APIProtocol.Action>(actionRequest.Action.Actions);
                     Console.WriteLine($"[SC2 API] Submitting {submittedActions.Count} raw action(s).");
                     Response actionResponse = await proxy.SendRequest(actionRequest);
-                    if (actionResponse?.Action != null)
-                        bot.OnActionResult(submittedActions, actionResponse.Action);
+                    bot.OnActionResult(submittedActions, actionResponse?.Action);
                 }
 
                 if (bot is QueryAwareBot queryBot)

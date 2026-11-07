@@ -18,6 +18,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private uint _playerId;
     private bool _behaviorCatalogRegistered;
     private bool _spatialDiagnosticsReported;
+    private readonly Sc2OpeningProductionController _openingProduction = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public SpatialMap SpatialMap { get; private set; }
@@ -54,7 +55,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         UnitBehaviorCatalog.Register();
         _behaviorCatalogRegistered = true;
 
-        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, gather={_gameData.HarvestGatherAbilityId?.ToString() ?? "unavailable"}, return={_gameData.HarvestReturnAbilityId?.ToString() ?? "unavailable"}.");
+        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, gather={_gameData.HarvestGatherAbilityId?.ToString() ?? "unavailable"}, return={_gameData.HarvestReturnAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
     }
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
@@ -69,18 +70,42 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             _gameData.UnitNames,
             _gameData.BuffNames);
 
+        foreach (var actionError in observation.ActionErrors)
+            Console.WriteLine($"[SC2 API] Action error: unit={actionError.UnitTag}, ability={actionError.AbilityId}, result={actionError.Result}.");
+
         var assignments = _workerAssignments.Reconcile(normalized);
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
         _unitBehaviors.Update();
 
-        return Sc2ActionTranslator.Translate(
+        var actions = new List<SC2APIProtocol.Action>();
+        var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);
+        if (productionAction is not null)
+            actions.Add(productionAction);
+
+        actions.AddRange(Sc2ActionTranslator.Translate(
             intents.Drain(),
             normalized,
             _gameData.HarvestGatherAbilityId,
             _gameData.HarvestReturnAbilityId,
-            assignments);
+            assignments));
+        return actions;
+    }
+
+    public void OnActionResult(ResponseAction response)
+    {
+        if (response is null) return;
+        if (response.Result.Count == 0)
+        {
+            Console.WriteLine("[SC2 API] Action request returned no per-action result.");
+            _openingProduction.OnActionResult(null);
+            return;
+        }
+
+        foreach (var result in response.Result)
+            Console.WriteLine($"[SC2 API] Action result: {result}.");
+        _openingProduction.OnActionResult(response.Result[0]);
     }
 
     private void UpdateSpatialIntelligence(ResponseObservation response)

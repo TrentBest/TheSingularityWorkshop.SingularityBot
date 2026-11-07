@@ -13,6 +13,7 @@ public sealed class WorkerResourceAssignmentPlanner
 
     private readonly Dictionary<ulong, WorkerResourceAssignment> _assignments = new();
     private uint _nextGeneration;
+    private readonly HashSet<ulong> _reservedWorkers = new();
 
     public int Count => _assignments.Count;
 
@@ -46,12 +47,16 @@ public sealed class WorkerResourceAssignmentPlanner
         // replace that stale gather order with a new reservation. Other active
         // orders remain owned by their issuing behavior and are never overridden.
         var workersWithStaleMineralOrders = new HashSet<ulong>();
+        foreach (var reservedWorker in _reservedWorkers)
+            _assignments.Remove(reservedWorker);
+
         foreach (var pair in _assignments.ToArray())
         {
             var assignment = pair.Value;
             if (observation.DeadUnitTags.Contains(assignment.WorkerTag))
             {
                 _assignments.Remove(pair.Key);
+                _reservedWorkers.Remove(pair.Key);
                 continue;
             }
 
@@ -82,7 +87,7 @@ public sealed class WorkerResourceAssignmentPlanner
         // Starting SCVs commonly arrive with active gather orders; ignoring them
         // leaves the planner blind to the very routes it is supposed to manage.
         foreach (var worker in liveSelf.Values
-                     .Where(unit => IsWorker(unit.UnitKind) && !_assignments.ContainsKey(unit.Tag))
+                     .Where(unit => IsWorker(unit.UnitKind) && !_reservedWorkers.Contains(unit.Tag) && !_assignments.ContainsKey(unit.Tag))
                      .OrderBy(unit => unit.Tag))
         {
             var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
@@ -113,6 +118,7 @@ public sealed class WorkerResourceAssignmentPlanner
 
         foreach (var worker in liveSelf.Values
                      .Where(unit => IsWorker(unit.UnitKind) &&
+                                    !_reservedWorkers.Contains(unit.Tag) &&
                                     (!unit.HasOrders || workersWithStaleMineralOrders.Contains(unit.Tag)))
                      .OrderBy(unit => unit.Tag))
         {
@@ -163,9 +169,22 @@ public sealed class WorkerResourceAssignmentPlanner
 
     public bool Release(ulong workerTag) => _assignments.Remove(workerTag);
 
+    /// <summary>Remove a worker's mineral route and exclude it from future allocations.</summary>
+    public void Reserve(ulong workerTag)
+    {
+        if (workerTag == 0) throw new ArgumentOutOfRangeException(nameof(workerTag));
+        _assignments.Remove(workerTag);
+        _reservedWorkers.Add(workerTag);
+    }
+
+    public bool IsReserved(ulong workerTag) => _reservedWorkers.Contains(workerTag);
+
+    public bool Unreserve(ulong workerTag) => _reservedWorkers.Remove(workerTag);
+
     public void Clear()
     {
         _assignments.Clear();
+        _reservedWorkers.Clear();
         _nextGeneration = 0;
     }
 

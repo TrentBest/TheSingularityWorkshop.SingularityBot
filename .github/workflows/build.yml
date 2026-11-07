@@ -8,6 +8,8 @@ on:
       - "tests/**"
       - "schemas/**"
       - "strategies/**"
+      - "docs/**"
+      - "README.md"
       - ".github/workflows/build.yml"
   pull_request:
     branches: [master, development]

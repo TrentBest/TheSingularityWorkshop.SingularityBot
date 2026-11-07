@@ -50,7 +50,15 @@ public static class Sc2ObservationNormalizer
                     unit.IsFlying,
                     unit.IsBurrowed,
                     unit.IsHallucination,
-                    observation.GameLoop);
+                    observation.GameLoop)
+                {
+                    Orders = unit.Orders.Select(order => new UnitOrderObservationFacts(
+                        order.AbilityId,
+                        order.TargetCase == UnitOrder.TargetOneofCase.TargetUnitTag ? order.TargetUnitTag : null,
+                        order.TargetCase == UnitOrder.TargetOneofCase.TargetWorldSpacePos ? order.TargetWorldSpacePos?.X : null,
+                        order.TargetCase == UnitOrder.TargetOneofCase.TargetWorldSpacePos ? order.TargetWorldSpacePos?.Y : null))
+                        .ToArray()
+                };
             })
             .ToArray();
 

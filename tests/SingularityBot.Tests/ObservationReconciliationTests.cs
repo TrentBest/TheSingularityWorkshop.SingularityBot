@@ -92,7 +92,6 @@ public sealed class ObservationReconciliationTests
         var firstFrameCommands = firstFrame.Drain();
         Assert.NotEmpty(firstFrameCommands);
         Assert.Contains(firstFrameCommands, command => command.Key == 44);
-        var commandsWhileVisible = emitted.Count;
 
         var changed = visible with { Health = 30, HasCargo = false, GameLoop = 11 };
         var unsupported = visible with { Tag = 45, UnitKind = "UncataloguedUnit", GameLoop = 11 };
@@ -126,12 +125,12 @@ public sealed class ObservationReconciliationTests
         Assert.Same(originalHandle, suspendedHandle);
 
         runtime.Update();
-        Assert.Equal(commandsWhileVisible, emitted.Count);
 
         var visibleAgain = changed with { HasCargo = false, HasOrders = false, GameLoop = 13 };
+        var reactivatedFrame = new BehaviorIntentBuffer();
         runtime.Reconcile(
             new NormalizedObservation(13, 1, new[] { visibleAgain }, new HashSet<ulong>()),
-            static (_, _) => { });
+            reactivatedFrame.Add);
         Assert.True(runtime.TryGetContext(44, out var reactivated));
         Assert.Same(initial, reactivated);
         Assert.True(reactivated.IsValid);
@@ -140,7 +139,10 @@ public sealed class ObservationReconciliationTests
         Assert.Same(originalHandle, reactivatedHandle);
         runtime.Update(); // Returning -> Assess after fresh facts clear cargo.
         runtime.Update(); // Assess runs again on the reactivated handle.
-        Assert.True(emitted.Count > commandsWhileVisible);
+        var reactivatedCommands = reactivatedFrame.Drain();
+        Assert.NotEmpty(reactivatedCommands);
+        Assert.Contains(reactivatedCommands, command => command.Key == 44);
+        Assert.Empty(emitted); // Current-frame routing takes precedence over the attach fallback.
 
         runtime.Reconcile(
             new NormalizedObservation(14, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),

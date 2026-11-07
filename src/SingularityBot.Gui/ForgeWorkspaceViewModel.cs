@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -32,7 +33,7 @@ public sealed class ForgeWorkspaceViewModel : INotifyPropertyChanged
     {
         Definition=CreateSyntheticExample();
         SelectedGroup=Groups.FirstOrDefault(); SelectedProfile=Profiles.FirstOrDefault();
-        SelectedPhase=Phases.FirstOrDefault(); SelectedRule=Rules.FirstOrDefault(); SelectedBehavior=Behaviors.FirstOrDefault(); SelectedBehavior=Behaviors.FirstOrDefault();
+        SelectedPhase=Phases.FirstOrDefault(); SelectedRule=Rules.FirstOrDefault(); SelectedBehavior=Behaviors.FirstOrDefault();
     }
     public void AddGroup() { var n=Groups.Count+1; var x=new GroupDraft($"group-{n}",$"New Group {n}","Choose a unit membership selector","Describe the group's shared objective","Describe coordination policy"); Groups.Add(x); SelectedGroup=x; Status="New group added"; }
     public void AddPhase() { var n=Phases.Count+1; var x=new StrategyPhaseDraft($"phase-{n}",$"New Phase {n}","Describe the phase objective",n); Phases.Add(x); SelectedPhase=x; Status="New phase added"; }
@@ -53,7 +54,7 @@ public sealed class ForgeWorkspaceViewModel : INotifyPropertyChanged
             var loaded=JsonSerializer.Deserialize<BotDefinitionDraft>(File.ReadAllText(dialog.FileName));
             if(loaded is null)throw new InvalidDataException("The file did not contain a Forge definition.");
             Definition=loaded; OnPropertyChanged(nameof(Definition)); OnPropertyChanged(nameof(Groups)); OnPropertyChanged(nameof(Profiles)); OnPropertyChanged(nameof(Phases)); OnPropertyChanged(nameof(Rules)); OnPropertyChanged(nameof(Behaviors));
-            SelectedGroup=Groups.FirstOrDefault(); SelectedProfile=Profiles.FirstOrDefault(); SelectedPhase=Phases.FirstOrDefault(); SelectedRule=Rules.FirstOrDefault();
+            SelectedGroup=Groups.FirstOrDefault(); SelectedProfile=Profiles.FirstOrDefault(); SelectedPhase=Phases.FirstOrDefault(); SelectedRule=Rules.FirstOrDefault(); SelectedBehavior=Behaviors.FirstOrDefault();
             Status=$"Draft loaded · {Path.GetFileName(dialog.FileName)} · runtime validation not performed";
         } catch(Exception ex){Status=$"Could not load draft: {ex.Message}";}
     }

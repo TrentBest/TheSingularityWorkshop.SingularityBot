@@ -58,6 +58,19 @@ public sealed class Sc2OpeningProductionControllerTests
     }
 
     [Fact]
+    public void SuccessfulSubmissionRemainsLatchedUntilTrainingOrderIsObserved()
+    {
+        var controller = new Sc2OpeningProductionController();
+        Assert.NotNull(controller.TryCreateScvTrainingAction(
+            Snapshot(50, 12, 15, Fact(100, "CommandCenter"), gameLoop: 10), GameData()));
+
+        controller.OnActionResult(ActionResult.Success);
+
+        Assert.Null(controller.TryCreateScvTrainingAction(
+            Snapshot(50, 12, 15, Fact(100, "CommandCenter"), gameLoop: 10), GameData()));
+    }
+
+    [Fact]
     public void RejectedActionReleasesPendingRequestImmediately()
     {
         var controller = new Sc2OpeningProductionController();

@@ -128,13 +128,17 @@ closed.
 This is deliberately a thin vertical slice, not a completed economy scheduler.
 It does not yet query SC2's per-unit available-ability list, reserve/saturate
 mineral nodes, preserve long-lived worker-to-node assignments, or measure
-throughput. Return-cargo, construction, threat response and combat intents
-remain untranslated. It has not been validated in a live match.
+throughput. Construction, threat response and combat intents remain
+untranslated. The return-cargo path is implemented but still requires a live
+match/replay validation. The slice has not yet been validated in a live match.
 
 Automated fixtures cover deterministic normalization, snapshot visibility,
 explicit death evidence, stable context refresh, fog/absence retention and
-authoritative retirement. New action-translation fixtures cover nearest-node
-selection, dead-target rejection and missing ability metadata. The latest
+authoritative retirement. New action-translation fixtures cover nearest-node selection, dead-target
+rejection, missing gather metadata, nearest-town-hall return selection, and
+fail-closed return behavior when the ability or target is missing. Context
+reconciliation fixtures also cover a unit tag morphing from a worker profile
+to a combat profile. The latest
 workflow attempt failed in the independent Sith branch-policy job because the
 repository currently has more than the required `master` and `development`
 branches; that failure is not a build/test result.

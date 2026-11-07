@@ -63,7 +63,7 @@ Implemented and present in the integration branch:
 Not yet proven or implemented as a complete economy:
 
 - Per-unit available-ability validation and complete action-result/error handling.
-- Persistent worker-to-mineral assignments, reservation/saturation, route FSM scheduling and cached geometry.
+- Worker-to-mineral reservations are now persistent and saturation-aware (default two workers per mineral field), with deterministic tie-breaking, stable assignment generations, fog retention, and explicit death/target invalidation. Dedicated route FSM phase scheduling, observed target/order reconciliation, and cached path geometry remain open.
 - Closest-eligible Depot builder selection and validated construction/placement.
 - Four-Barracks scheduling, resource/supply budgeting and Marine production.
 - Deterministic recorded-observation replay, cycle/throughput metrics and live-match proof.

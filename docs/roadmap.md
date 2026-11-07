@@ -1,62 +1,57 @@
 # Roadmap
 
-## Phase 0 — Repository foundation
+This roadmap is ordered by the shortest path to a bot that plays a real game. Do not expand into generalized strategy tooling, neural policy, ladder operations or additional races until the Terran opening works and is measurable.
 
-- [x] Establish project purpose, architecture and initial strategy contract.
-- [x] Establish Pages documentation site.
-- [ ] Add permanent branch policy and live Sith badge.
-- [ ] Confirm the intended .NET target matrix and CI environment.
+## 1. Stabilize the vertical slice
 
-## Phase 1 — Recover the game adapter
+- [ ] Integrate observation normalization and reconciliation into the sole `development` branch.
+- [ ] Build and run all tests in CI; fix failures before adding more behavior.
+- [ ] Verify persistent-context behavior across repeated observations, fog, death and unit morphs.
+- [ ] Verify gather and return-cargo actions against the SC2 protocol and a local match.
+- [ ] Record every rejected action with a reason.
 
-- [ ] Build a file-level source map from SimonPrins/ExampleBot and FSM_Bot.
-- [ ] Identify the minimum protocol/client surface needed for a working match.
-- [ ] Preserve applicable licenses and protocol notices.
-- [ ] Remove IDE state, generated output and stale project references.
-- [ ] Establish a supported, reproducible build.
+## 2. Make workers productive
 
-## Phase 2 — First local economy
+- [ ] Normalize mineral fields, town halls, worker orders, cargo, positions and game-loop facts.
+- [ ] Assign each starting SCV to a persistent worker-to-mineral route.
+- [ ] Cache route positions/geometry and update only when relevant facts invalidate the cache.
+- [ ] Use game-loop deltas for cheap reevaluation deadlines; confirm transitions from observations.
+- [ ] Select the closest eligible SCV for the first Depot without needlessly destroying a productive mining route.
+- [ ] Measure delivered minerals, worker idle/travel/gather/return time and assignment churn.
 
-The first playable milestone is a complete opening economy, not ladder play or combat tactics.
+## 3. Complete the Terran opening
 
-- [ ] Normalize observations and game data for workers, mineral fields, town halls, resources, supply, orders and construction.
-- [ ] Add deterministic worker-to-mineral assignment with reservations.
-- [ ] Measure worker travel, queue/wait, gather, return, unload and idle time.
-- [ ] Compare baseline, saturation-aware and arrival-window resource scheduling from equivalent starting conditions.
-- [ ] Implement race-specific supply planning: Supply Depot, Pylon and Overlord.
-- [ ] Implement race-specific production prerequisites: Barracks, Gateway and Spawning Pool.
-- [ ] Train the first tier-one unit: Marine, Zealot and Zergling.
-- [ ] Add local-match replay fixtures, metrics and invalid-action diagnostics.
-- [ ] Verify the opening remains economically healthy after the first unit.
+- [ ] Validate and place the first Supply Depot.
+- [ ] Build the first Barracks and enforce supply/prerequisite/resource gates.
+- [ ] Establish four Barracks.
+- [ ] Train pure Marines with no gas dependency.
+- [ ] Preserve mining and production continuity.
+- [ ] Prove the opening in repeatable local matches from the same starting conditions.
 
-See [Opening economy and resource logistics](opening-economy-logistics.md) for the experiment contract and metrics.
+## 4. Make it explainable and repeatable
 
-## Phase 3 — FSM runtime and action safety
+- [ ] Save normalized observation and decision traces keyed by game loop.
+- [ ] Replay recorded traces deterministically.
+- [ ] Report invalid actions, idle time, delivered resources, structure timing, production uptime and Marine output.
+- [ ] Add regression fixtures for each discovered failure.
+- [ ] Expose the same runtime state and versioned definitions to GUI without duplicating execution logic.
 
-- [ ] Introduce match/player/unit lifecycles through FSM_API.
-- [ ] Add stable unit identity and visibility/death reconciliation.
-- [ ] Implement intent arbitration, worker reservations and command validation.
-- [ ] Keep SC2 protocol details behind the adapter boundary.
-- [ ] Ensure deterministic decisions from identical normalized observations and strategy versions.
+## 5. Expand only from evidence
 
-## Phase 4 — Strategy as data
+After the Terran opening is reliable:
+- generalize reusable economy capabilities to Protoss and Zerg;
+- add scouting, combat and tactical behavior in measurable slices;
+- evaluate neural policies as optional advisors, never as unchecked action authorities;
+- investigate ladder, self-play and other game adapters only when the local runtime is dependable.
 
-- [ ] Implement schema validation and ontology resolution.
-- [ ] Compile the opening economy into versioned FSM definitions.
-- [ ] Add goal/priority/constraint evaluation.
-- [ ] Add scouting, composition and tactical triggers incrementally.
+## Definition of done
 
-## Phase 5 — Local play, editor and learning
+A feature is done only when its contract, tests, runtime behavior and evidence agree. A successful compile alone is not proof of in-game behavior. No competitive-strength claim without repeatable match evidence.
 
-- [ ] Prove local bot-vs-bot/self-play using the same session and action contracts.
-- [ ] Investigate and prove a private local human-vs-bot session; keep it separate from ladder mode.
-- [ ] Rebuild editor against the versioned strategy contract.
-- [ ] Add map overlays, worker logistics visualization and build-order timeline.
-- [ ] Persist match/replay experience through DataWarehouse.
-- [ ] Add replay regression and strategy evaluation through CiAi/HeadlessAi.
-- [ ] Evaluate a separate FPS adapter only after selecting a game with an official local mod/plugin/bot API.
-- [ ] Evaluate NeuralNetworks as an optional policy/evaluation advisor against a deterministic baseline.
+## Branch policy
 
-## Release gates
+The repository has exactly two long-lived branches:
+- `development`: all active integration and testing.
+- `master`: stable release-aligned state.
 
-A milestone is not complete because the solution compiles alone. Each gate must name its tests and evidence. No NuGet publishing or external ladder deployment occurs without explicit authorization.
+Do not create feature branches for routine work. Integrate directly into `development` in small commits. Keep `master` aligned only at an explicitly authorized release point. NuGet publishing and external deployment require separate explicit authorization.

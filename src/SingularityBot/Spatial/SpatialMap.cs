@@ -23,8 +23,22 @@ public readonly record struct MapPoint(float X, float Y)
 }
 
 /// <summary>Playable world-space bounds. Max edges are exclusive for cell indexing.</summary>
-public readonly record struct MapBounds(float MinX, float MinY, float MaxX, float MaxY)
+public readonly struct MapBounds
 {
+    public MapBounds(float minX, float minY, float maxX, float maxY)
+    {
+        if (maxX <= minX) throw new ArgumentOutOfRangeException(nameof(maxX));
+        if (maxY <= minY) throw new ArgumentOutOfRangeException(nameof(maxY));
+        MinX = minX;
+        MinY = minY;
+        MaxX = maxX;
+        MaxY = maxY;
+    }
+
+    public float MinX { get; }
+    public float MinY { get; }
+    public float MaxX { get; }
+    public float MaxY { get; }
     public float Width => MaxX - MinX;
     public float Height => MaxY - MinY;
     public MapPoint Center => new((MinX + MaxX) * 0.5f, (MinY + MaxY) * 0.5f);
@@ -34,12 +48,6 @@ public readonly record struct MapBounds(float MinX, float MinY, float MaxX, floa
 
     public MapPoint Clamp(MapPoint point) =>
         new(Math.Clamp(point.X, MinX, MaxX), Math.Clamp(point.Y, MinY, MaxY));
-
-    public MapBounds
-    {
-        if (MaxX <= MinX) throw new ArgumentOutOfRangeException(nameof(MaxX));
-        if (MaxY <= MinY) throw new ArgumentOutOfRangeException(nameof(MaxY));
-    }
 }
 
 public enum MapSide

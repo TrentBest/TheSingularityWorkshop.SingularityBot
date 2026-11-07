@@ -87,20 +87,20 @@ public sealed class Side
         _friendlyToEnemy = (enemyStart - friendlyStart).Normalize();
         if (neutralTolerance < 0) throw new ArgumentOutOfRangeException(nameof(neutralTolerance));
         _neutralTolerance = neutralTolerance;
-        Center = (friendlyStart + enemyStart) * 0.5f;
-        DividingHalfLine = new SpatialLine(Center, new MapPoint(-_friendlyToEnemy.Y, _friendlyToEnemy.X));
+        DividerCenter = (friendlyStart + enemyStart) * 0.5f;
+        DividingHalfLine = new SpatialLine(DividerCenter, new MapPoint(-_friendlyToEnemy.Y, _friendlyToEnemy.X));
         FriendlyStart = friendlyStart;
         EnemyStart = enemyStart;
     }
 
     public MapPoint FriendlyStart { get; }
     public MapPoint EnemyStart { get; }
-    public MapPoint Center { get; }
+    public MapPoint DividerCenter { get; }
     public SpatialLine DividingHalfLine { get; }
 
     public MapSide Assess(MapPoint point)
     {
-        var signedDistance = MapPoint.Dot(point - Center, _friendlyToEnemy);
+        var signedDistance = MapPoint.Dot(point - DividerCenter, _friendlyToEnemy);
         if (MathF.Abs(signedDistance) <= _neutralTolerance) return MapSide.Neutral;
         return signedDistance < 0 ? MapSide.Friendly : MapSide.Enemy;
     }
@@ -161,6 +161,7 @@ public sealed class SpatialMap
 {
     private readonly Quadrant[] _quadrants;
     private readonly Sector[,] _sectors;
+    private readonly IReadOnlyList<Sector> _allSectors;
 
     public SpatialMap(MapBounds playableBounds, MapPoint friendlyStart, MapPoint enemyStart)
     {
@@ -192,15 +193,18 @@ public sealed class SpatialMap
                     column == 2 ? Bounds.MaxX : minX + sectorWidth,
                     row == 2 ? Bounds.MaxY : minY + sectorHeight));
         }
+
+        _allSectors = Array.AsReadOnly(Enumerable.Range(0, 3)
+            .SelectMany(row => Enumerable.Range(0, 3)
+                .Select(column => _sectors[column, row]))
+            .ToArray());
     }
 
     public MapBounds Bounds { get; }
     public MapPoint Center { get; }
     public Side Side { get; }
     public IReadOnlyList<Quadrant> Quadrants => _quadrants;
-    public IReadOnlyList<Sector> Sectors =>
-        Array.AsReadOnly(Enumerable.Range(0, 3).SelectMany(row =>
-            Enumerable.Range(0, 3).Select(column => _sectors[column, row])).ToArray());
+    public IReadOnlyList<Sector> Sectors => _allSectors;
 
     public Quadrant GetQuadrant(MapPoint point)
     {

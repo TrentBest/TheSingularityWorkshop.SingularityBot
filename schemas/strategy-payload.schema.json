@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trentbest.github.io/TheSingularityWorkshop.SingularityBot/schemas/strategy-payload.schema.json",
+  "title": "SingularityBot Strategy Payload",
+  "description": "Strategy-only payload nested inside a BotDefinition. Identity and race belong to the enclosing BotDefinition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "opening", "goals", "constraints", "tactics", "scouting", "composition", "evaluation"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "opening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["buildIntents"],
+      "properties": {
+        "buildIntents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "target", "count", "earliestGameLoop", "latestGameLoop", "priority"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "target": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 1 },
+              "earliestGameLoop": { "type": "integer", "minimum": 0 },
+              "latestGameLoop": { "type": "integer", "minimum": 0 },
+              "priority": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          }
+        }
+      }
+    },
+    "goals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "priority"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "priority": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "severity"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["Hard", "Soft"] }
+        }
+      }
+    },
+    "tactics": { "type": "array", "items": { "type": "object" } },
+    "scouting": { "type": "array", "items": { "type": "object" } },
+    "composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["desiredUnits"],
+      "properties": {
+        "desiredUnits": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tags", "metrics"],
+      "properties": {
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "metrics": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

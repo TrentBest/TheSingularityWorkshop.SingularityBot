@@ -26,6 +26,15 @@ public sealed class ForgeWorkspaceViewModel : INotifyPropertyChanged
     public BehaviorRuleDraft? SelectedRule { get => _selectedRule; set { _selectedRule=value; OnPropertyChanged(); } }
     public BehaviorDraft? SelectedBehavior { get => _selectedBehavior; set { _selectedBehavior=value; OnPropertyChanged(); } }
     public string Status { get => _status; private set { _status=value; OnPropertyChanged(); } }
+    public void ValidateDraft()
+    {
+        var diagnostics = ForgeDraftValidator.Validate(Definition);
+        var errors = diagnostics.Count(x => x.Severity == "Error");
+        var warnings = diagnostics.Count(x => x.Severity == "Warning");
+        Status = errors == 0
+            ? $"Editor checks passed · {warnings} warning(s) · runtime/catalog validation not performed"
+            : $"Editor checks found {errors} error(s) and {warnings} warning(s): {string.Join("; ", diagnostics.Where(x => x.Severity == "Error").Take(3).Select(x => x.Message))}";
+    }
     public string BotName { get => Definition.Bot.Name; set { Definition.Bot.Name=value; OnPropertyChanged(); } }
     public string Race { get => Definition.Bot.Race; set { Definition.Bot.Race=value; OnPropertyChanged(); } }
 

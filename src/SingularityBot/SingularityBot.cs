@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SC2APIProtocol;
 using SingularityBot.Behavior;
+using SingularityBot.Observation;
 using SingularityBot.Spatial;
 
 namespace SingularityBot;
@@ -12,6 +13,8 @@ namespace SingularityBot;
 public sealed class SingularityBot : SC2API_CSharp.Bot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
+    private Sc2GameDataCatalog _gameData;
+    private uint _playerId;
     private bool _behaviorCatalogRegistered;
     private bool _spatialDiagnosticsReported;
 
@@ -27,6 +30,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         uint playerId,
         string opponentId)
     {
+        _playerId = playerId;
+        _gameData = Sc2GameDataCatalog.Create(data);
+
         if (SpatialMapFactory.TryCreate(gameInfo, observation, out var spatialMap))
         {
             SpatialMap = spatialMap;
@@ -46,20 +52,32 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
 
         UnitBehaviorCatalog.Register();
         _behaviorCatalogRegistered = true;
+
+        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, gather={_gameData.HarvestGatherAbilityId?.ToString() ?? "unavailable"}, return={_gameData.HarvestReturnAbilityId?.ToString() ?? "unavailable"}.");
     }
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
     {
         UpdateSpatialIntelligence(observation);
 
-        // The FSM runtime receives exactly one processing pass per observation.
+        // Normalize once and use the same authoritative frame for reconciliation,
+        // FSM evaluation, target selection, and action translation.
+        var normalized = Sc2ObservationNormalizer.Normalize(
+            observation,
+            _playerId,
+            _gameData.UnitNames,
+            _gameData.BuffNames);
+
+        var intents = new BehaviorIntentBuffer();
+        _unitBehaviors.Reconcile(normalized, intents.Add);
         _unitBehaviors.Update();
 
-        // Intent-to-action translation remains a separate adapter step.
-        // No unvalidated action is sent.
-        return [];
+        return Sc2ActionTranslator.Translate(
+            intents.Drain(),
+            normalized,
+            _gameData.HarvestGatherAbilityId,
+            _gameData.HarvestReturnAbilityId);
     }
-
 
     private void UpdateSpatialIntelligence(ResponseObservation response)
     {

@@ -28,9 +28,14 @@ public sealed class Sc2ActionTranslatorTests
     [Fact]
     public void GatherIntentRejectsMissingOrNonFriendlyWorkerAndStaleMinerals()
     {
-        var observation = Snapshot(
-            Fact(10, "SCV", UnitAlliance.Enemy, 2, 2),
-            Fact(20, "MineralField750", UnitAlliance.Neutral, 3, 2));
+        var observation = new NormalizedObservation(
+            100, 1,
+            new[]
+            {
+                Fact(10, "SCV", UnitAlliance.Self, 2, 2),
+                Fact(20, "MineralField750", UnitAlliance.Neutral, 3, 2)
+            },
+            new HashSet<ulong> { 20 });
 
         var actions = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.AssignWorkerToMinerals) },

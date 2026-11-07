@@ -92,7 +92,7 @@ public sealed class Sc2OpeningBuilderController
             _builderTag = returner.Value.Worker.Tag;
             Console.WriteLine($"[Opening] 10-mineral threshold reached; pulling returning SCV {_builderTag.Value} from its mineral return cycle.");
             _returnTownHallTag = returner.Value.TownHallTag;
-            assignments.Reserve(returner.Tag);
+            assignments.Reserve(returner.Value.Worker.Tag);
             var townHall = observation.Units.FirstOrDefault(unit => unit.Tag == _returnTownHallTag.Value && unit.IsLiveVisible);
             if (townHall is null)
                 return null;

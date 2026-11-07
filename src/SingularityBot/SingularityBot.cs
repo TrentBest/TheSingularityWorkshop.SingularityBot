@@ -92,11 +92,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _initialScvProductionObserved |= scvTrainingOrderObserved;
 
         var assignments = _workerAssignments.Reconcile(normalized);
-        foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
-        {
-            if (_loggedWorkerAssignments.Add((assignment.WorkerTag, assignment.Generation)))
-                Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
-        }
 
         // The opening's first protocol action is isolated: train one SCV before
         // issuing worker-route commands. The next observation must show the order.
@@ -120,6 +115,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             var command = builderAction.ActionRaw.UnitCommand;
             Console.WriteLine($"[Opening] Builder SCV {_openingBuilder.BuilderTag}: ability={command.AbilityId}, target=({command.TargetWorldSpacePos.X:F1},{command.TargetWorldSpacePos.Y:F1}).");
+        }
+
+        // Refresh after a builder reservation so the same frame cannot emit a stale gather intent.
+        assignments = _workerAssignments.Reconcile(normalized);
+        foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
+        {
+            if (_loggedWorkerAssignments.Add((assignment.WorkerTag, assignment.Generation)))
+                Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
         }
 
         _pendingQuery = _openingBuilder.TakePlacementQuery(_gameData);

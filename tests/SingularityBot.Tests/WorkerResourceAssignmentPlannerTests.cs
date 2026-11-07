@@ -30,6 +30,44 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void AdoptsExistingMineralOrdersInsteadOfIgnoringAlreadyWorkingScvs()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var worker = Fact(10, "SCV", UnitAlliance.Self, 2, 0, hasOrders: true,
+            orders: new[] { new UnitOrderObservationFacts(3666, 20, null, null) });
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            worker,
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0));
+
+        var first = planner.Reconcile(observation);
+        var second = planner.Reconcile(observation);
+
+        Assert.Equal(20UL, first[10].MineralTag);
+        Assert.Equal(first[10], second[10]);
+        Assert.Equal(1, first.Count);
+    }
+
+    [Fact]
+    public void AdoptsExistingRoutesBeforeFillingRemainingMineralCapacity()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var assignments = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true,
+                orders: new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
+            Fact(11, "SCV", UnitAlliance.Self, 2, 0),
+            Fact(12, "SCV", UnitAlliance.Self, 3, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0)));
+
+        Assert.Equal(20UL, assignments[10].MineralTag);
+        Assert.Equal(21UL, assignments[11].MineralTag);
+        Assert.Equal(20UL, assignments[12].MineralTag);
+    }
+
+    [Fact]
     public void KeepsReservationAndGenerationWhenWorkerTemporarilyDisappears()
     {
         var planner = new WorkerResourceAssignmentPlanner();

@@ -42,6 +42,35 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void RecognizesCargoBearingMinerWhenSc2KeepsMineralTargetOnGatherOrder()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64), new MapPoint(10, 10), new MapPoint(54, 54));
+        var gameData = GameData();
+
+        var first = Snapshot(0, 10, 10,
+            Fact(10, "SCV", 5, 5, true, true,
+                new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(20, "MineralField750", 4, 5));
+        assignments.Reconcile(first);
+        controller.TryCreateAction(first, map, gameData, true, assignments);
+
+        var crossed = Snapshot(10, 10, 11,
+            Fact(10, "SCV", 5, 5, true, true,
+                new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(20, "MineralField750", 4, 5));
+        assignments.Reconcile(crossed);
+        controller.TryCreateAction(crossed, map, gameData, true, assignments);
+
+        Assert.Equal(10UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(10));
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
+    }
+
+    [Fact]
     public void MovesSelectedBuilderThenBuildsOnlyAtQueriedSiteWithSufficientMinerals()
     {
         var controller = new Sc2OpeningBuilderController();

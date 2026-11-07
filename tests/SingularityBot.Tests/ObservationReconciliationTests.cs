@@ -67,7 +67,9 @@ public sealed class ObservationReconciliationTests
     {
         UnitBehaviorCatalog.Register();
         var runtime = new UnitBehaviorRuntime();
-        var initial = runtime.Attach(44, UnitExpertiseProfiles.SCV, static _ => { });
+        var emitted = new List<BehaviorCommand>();
+        var initial = runtime.Attach(44, UnitExpertiseProfiles.SCV, emitted.Add);
+        Assert.True(runtime.TryGetHandle(44, out var originalHandle));
 
         var visible = new UnitObservationFacts(
             44, 7, "SCV", 1, UnitAlliance.Self, UnitVisibility.Visible,
@@ -82,6 +84,12 @@ public sealed class ObservationReconciliationTests
         Assert.Same(initial, refreshed);
         Assert.Equal((uint)10, refreshed.LastObservedGameLoop);
         Assert.True(refreshed.HasCargo);
+        Assert.True(refreshed.IsValid);
+        Assert.True(refreshed.IsCurrentlyVisible);
+
+        runtime.Update();
+        var commandsWhileVisible = emitted.Count;
+        Assert.True(commandsWhileVisible > 0);
 
         var changed = visible with { Health = 30, HasCargo = false, GameLoop = 11 };
         var unsupported = visible with { Tag = 45, UnitKind = "UncataloguedUnit", GameLoop = 11 };
@@ -101,15 +109,34 @@ public sealed class ObservationReconciliationTests
 
         Assert.True(runtime.TryGetContext(44, out var retained));
         Assert.Same(initial, retained);
-        Assert.True(retained.IsValid);
+        Assert.False(retained.IsValid);
         Assert.False(retained.IsCurrentlyVisible);
+        Assert.True(runtime.TryGetHandle(44, out var suspendedHandle));
+        Assert.Same(originalHandle, suspendedHandle);
+
+        runtime.Update();
+        Assert.Equal(commandsWhileVisible, emitted.Count);
+
+        var visibleAgain = changed with { HasCargo = true, GameLoop = 13 };
+        runtime.Reconcile(
+            new NormalizedObservation(13, 1, new[] { visibleAgain }, new HashSet<ulong>()),
+            static (_, _) => { });
+        Assert.True(runtime.TryGetContext(44, out var reactivated));
+        Assert.Same(initial, reactivated);
+        Assert.True(reactivated.IsValid);
+        Assert.True(reactivated.IsCurrentlyVisible);
+        Assert.True(runtime.TryGetHandle(44, out var reactivatedHandle));
+        Assert.Same(originalHandle, reactivatedHandle);
+        runtime.Update();
+        Assert.True(emitted.Count > commandsWhileVisible);
 
         runtime.Reconcile(
-            new NormalizedObservation(13, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
+            new NormalizedObservation(14, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
             static (_, _) => { });
 
         Assert.False(runtime.TryGetContext(44, out _));
         Assert.False(initial.IsValid);
+        Assert.False(runtime.TryGetHandle(44, out _));
         Assert.Equal(0, runtime.Count);
     }
 }

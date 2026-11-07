@@ -23,8 +23,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private bool _scvTrainingOrderObserved;
     private bool _initialScvProductionObserved;
     private bool _openingBuilderActionSubmitted;
+    private bool _openingSprayActionSubmitted;
     private RequestQuery _pendingQuery;
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
+    private readonly Sc2OpeningSprayController _openingSpray = new();
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
@@ -62,7 +64,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         UnitBehaviorCatalog.Register();
         _behaviorCatalogRegistered = true;
 
-        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, gather={_gameData.HarvestGatherAbilityId?.ToString() ?? "unavailable"}, return={_gameData.HarvestReturnAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
+        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, gather={_gameData.HarvestGatherAbilityId?.ToString() ?? "unavailable"}, return={_gameData.HarvestReturnAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
     }
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
@@ -104,6 +106,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             return new[] { productionAction };
         }
 
+        var sprayQuery = _openingSpray.PrepareAbilityQuery(
+            normalized,
+            assignments,
+            _gameData,
+            _initialScvProductionObserved,
+            _workerAssignments);
+        var sprayAction = _openingSpray.TryCreateAction(normalized, _gameData, _workerAssignments);
+        _openingSprayActionSubmitted = sprayAction is not null;
+
         var builderAction = _openingBuilder.TryCreateAction(
             normalized,
             SpatialMap,
@@ -125,7 +136,19 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
         }
 
-        _pendingQuery = _openingBuilder.TakePlacementQuery(_gameData);
+        var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
+        if (sprayQuery is not null || placementQuery is not null)
+        {
+            _pendingQuery = new RequestQuery();
+            if (sprayQuery is not null)
+                _pendingQuery.Abilities.Add(sprayQuery.Abilities);
+            if (placementQuery is not null)
+                _pendingQuery.Placements.Add(placementQuery.Placements);
+        }
+        else
+        {
+            _pendingQuery = null;
+        }
 
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
@@ -133,6 +156,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.Update();
 
         var actions = new List<SC2APIProtocol.Action>();
+        if (sprayAction is not null)
+            actions.Add(sprayAction);
         if (builderAction is not null)
             actions.Add(builderAction);
         var workerIntents = intents.Drain()
@@ -155,9 +180,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             Console.WriteLine("[SC2 API] Action request returned no per-action result.");
             if (_openingProductionActionSubmitted)
                 _openingProduction.OnActionResult(null);
+            if (_openingSprayActionSubmitted)
+                _openingSpray.OnActionResult(null, _workerAssignments);
             if (_openingBuilderActionSubmitted)
                 _openingBuilder.OnActionResult(null);
             _openingProductionActionSubmitted = false;
+            _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
             return;
         }
@@ -169,11 +197,24 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var unitTags = command is null ? string.Empty : string.Join(",", command.UnitTags);
             Console.WriteLine($"[SC2 API] Action {index}: ability={command?.AbilityId.ToString() ?? "unknown"}, units=[{unitTags}], result={result}.");
         }
+        var resultIndex = 0;
         if (_openingProductionActionSubmitted)
-            _openingProduction.OnActionResult(response.Result[0]);
+        {
+            _openingProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
+        if (_openingSprayActionSubmitted)
+        {
+            _openingSpray.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _workerAssignments);
+            resultIndex++;
+        }
         if (_openingBuilderActionSubmitted)
-            _openingBuilder.OnActionResult(response.Result[0]);
+        {
+            _openingBuilder.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
         _openingProductionActionSubmitted = false;
+        _openingSprayActionSubmitted = false;
         _openingBuilderActionSubmitted = false;
     }
 
@@ -187,6 +228,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public void OnQueryResult(ResponseQuery response)
     {
         _openingBuilder.OnPlacementQueryResult(response);
+        _openingSpray.OnQueryResult(response, _workerAssignments);
     }
 
     private void UpdateSpatialIntelligence(ResponseObservation response)

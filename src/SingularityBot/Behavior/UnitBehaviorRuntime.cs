@@ -78,12 +78,20 @@ public sealed class UnitBehaviorRuntime
                 !UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile))
                 continue;
 
-            if (!_contexts.TryGetValue(facts.Tag, out var context))
+            if (_contexts.TryGetValue(facts.Tag, out var context) &&
+                (!context.UnitKind.Equals(profile.UnitKind, StringComparison.OrdinalIgnoreCase) ||
+                 context.IsWorker != profile.IsWorker))
             {
-                context = Attach(facts.Tag, profile, static _ => { });
+                // SC2 tags can survive morphs. A worker/combat or unit-kind
+                // change invalidates the old expertise graph and context shape.
+                // Retire it before creating the new profile's FSM instance.
+                Remove(facts.Tag);
             }
 
-            context.Apply(facts);
+            if (!_contexts.TryGetValue(facts.Tag, out var currentContext))
+                currentContext = Attach(facts.Tag, profile, static _ => { });
+
+            currentContext.Apply(facts);
         }
     }
 

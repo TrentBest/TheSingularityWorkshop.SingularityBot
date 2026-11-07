@@ -117,13 +117,19 @@ facts; worker resource cargo is inferred from named game-data buffs rather than
 transport cargo-space fields. Contexts retained through fog/absence are marked
 not currently visible so later action validation can fail closed. Unsupported unit kinds are ignored rather
 than guessed. FSM emissions are now collected once per observation and the
-first protocol action path handles `AssignWorkerToMinerals`: it resolves the
-`Harvest_Gather` ability from SC2 game data, requires a currently visible own
-SCV and a currently visible mineral-field target, excludes dead tags, then
-chooses the nearest mineral field with unit-tag tie-breaking. The translator
-emits a raw unit command through the existing `GameConnection.Run` action
-submission path. Missing ability metadata, stale units and invalid targets fail
-closed.
+protocol action path handles two worker intents. `AssignWorkerToMinerals`
+resolves `Harvest_Gather` from SC2 game data, requires a currently visible
+friendly worker without cargo and a currently visible mineral-field target, and
+chooses the nearest mineral field with unit-tag tie-breaking.
+`ReturnCarriedResources` resolves `Harvest_Return`, requires a currently
+visible friendly worker with cargo and a currently visible friendly town hall
+(Command Center/Orbital/Planetary Fortress, Nexus, Hatchery/Lair/Hive), then
+chooses the nearest town hall with deterministic unit-tag tie-breaking. Both
+commands emit raw unit actions through the existing `GameConnection.Run`
+submission path. Missing ability metadata, stale units, missing targets and
+invalid worker states fail closed. A persistent unit tag that changes to a
+different supported expertise profile is retired and receives a fresh context
+and FSM rather than silently retaining the old profile.
 
 This is deliberately a thin vertical slice, not a completed economy scheduler.
 It does not yet query SC2's per-unit available-ability list, reserve/saturate
@@ -152,6 +158,6 @@ specifications, not implemented or experimentally validated behavior.
 2. Implement stable worker-to-node assignments, reservations, saturation and
    baseline throughput metrics.
 3. Add arrival-window scheduling and compare against deterministic replays.
-4. Implement return-cargo, race-specific construction and production intents.
+4. Implement race-specific construction and production intents.
 5. Complete one race's first-unit opening end-to-end, then generalize through
    ontology/capabilities; add replay regression and expose versioned strategy data.

@@ -75,7 +75,10 @@ public sealed class Sc2OpeningBuilderController
             _builderTag = returner.Tag;
             _returnTownHallTag = returner.Orders[0].TargetUnitTag;
             assignments.Reserve(returner.Tag);
-            _candidatePoints = CreatePlacementCandidates(returner, spatialMap);
+            var townHall = observation.Units.FirstOrDefault(unit => unit.Tag == _returnTownHallTag.Value && unit.IsLiveVisible);
+            if (townHall is null)
+                return null;
+            _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
             _placementQueryPending = _candidatePoints.Count > 0;
             return null;
         }
@@ -247,11 +250,11 @@ public sealed class Sc2OpeningBuilderController
     }
 
     private static IReadOnlyList<MapPoint> CreatePlacementCandidates(
-        UnitObservationFacts builder,
+        UnitObservationFacts townHall,
         SpatialMap map)
     {
-        var townHall = map.Side.FriendlyStart;
-        var forward = (map.Side.EnemyStart - townHall).Normalize();
+        var origin = new MapPoint(townHall.PositionX, townHall.PositionY);
+        var forward = (map.Side.EnemyStart - origin).Normalize();
         var lateral = new MapPoint(-forward.Y, forward.X);
         var offsets = new (float Forward, float Lateral)[]
         {
@@ -260,7 +263,6 @@ public sealed class Sc2OpeningBuilderController
             (8.5f, 0), (8.5f, 2), (8.5f, -2), (8.5f, 4), (8.5f, -4)
         };
 
-        var origin = new MapPoint(builder.PositionX, builder.PositionY);
         return offsets
             .Select(offset => origin + forward * offset.Forward + lateral * offset.Lateral)
             .Where(map.Bounds.Contains)

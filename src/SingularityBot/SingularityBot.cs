@@ -174,8 +174,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnActionResult(IReadOnlyList<SC2APIProtocol.Action> submittedActions, ResponseAction response)
     {
-        if (response is null) return;
-        if (response.Result.Count == 0)
+        if (response is null || response.Result.Count == 0)
         {
             Console.WriteLine("[SC2 API] Action request returned no per-action result.");
             if (_openingProductionActionSubmitted)

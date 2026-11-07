@@ -112,3 +112,87 @@ The initial implementation does not require reverse simulation or full game-stat
 7. Expose scheduler parameters, active assignments, predicted availability and measured outcomes in the GUI.
 
 No competitive-optimality claim is made until repeated local experiments support it.
+
+
+## Event-driven mining operations and JIT scheduling
+
+A worker assignment is a persistent **mining operation**, not a one-frame command. Give each operation a stable identity derived from its worker, resource node and assignment generation, and retain its context while it progresses. The resource node also has a resource-side FSM/context. The worker FSM executes the assigned operation; the economy controller remains the sole owner of assignment and reservations.
+
+### Operation lifecycle
+
+Represent observed and predicted phases explicitly:
+
+- Unassigned
+- Dispatching
+- TravellingToResource
+- WaitingForService
+- Gathering
+- ReturningCargo
+- Unloading
+- ReassignmentPending
+- Suspended (for stale, hidden, blocked or otherwise insufficient observations)
+- Completed / Invalidated
+
+Transitions should be driven by observed events and validated state changes: order accepted, position enters/leaves a route segment, cargo acquired, cargo delivered, resource depleted, worker becomes unavailable, path becomes blocked, node becomes inaccessible, or the match ends. A predicted completion time is a forecast, never proof that a transition occurred.
+
+Each operation context records worker tag, resource tag, town-hall tag, assignment generation, phase, last observed game loop, current order/target, cargo facts, route identity, predicted phase deadlines, actual phase timestamps, confidence, and reason for suspension/reassignment. Keep event history append-only for the experiment trace. Reconcile against each fresh observation; do not tick a fog-hidden worker using stale facts, and do not destroy its retained context merely because it is absent from a snapshot. Explicit death/depletion or authoritative match events retire the relevant context.
+
+### Smallest actionable time delta
+
+Use the finest authoritative time unit exposed by the game protocol (normally game-loop identity) as the scheduler's time axis. Do not invent sub-frame precision. For each operation, predict the earliest next event that can change a decision: worker arrival, service becoming available, gather completion, cargo return/unload, construction completion, supply threshold, or reservation expiry.
+
+The scheduler evaluates the next decision at the minimum positive delta to a relevant predicted event, but still reconciles on every actual observation. When several events share a game loop, process them in a stable order (event class, resource tag, worker tag, operation generation). Clamp stale/past predictions to the current observation and record forecast error. Never issue a command merely because a predicted timer expired; first verify current facts and adapter legality.
+
+### Resource-node FSM and reservations
+
+A mineral patch/refinery context tracks stable tag, resource kind, remaining contents when visible, accessibility, observed workers/orders, estimated service availability, saturation curve, blocked/depleted state and confidence. Treat service windows as inferred, not literal exclusive locks: SC2's internal worker pathing and resource interaction may not expose exact occupancy. Preserve observed assignments and reservations across decisions, then update only when evidence materially changes.
+
+The resource FSM reports availability windows; it does not independently dispatch workers. The economy controller solves the worker-to-node assignment globally, with deterministic tie-breaking and diminishing returns for extra workers. This avoids worker/resource FSMs racing to claim one another.
+
+### Mining-lane geometry and cache
+
+Cache static or slowly changing route geometry by map identity/hash, town-hall tag, resource tag, movement profile and relevant pathing-layer version. For each town-hall/resource pair, retain the validated path polyline and a lane descriptor. A useful candidate lane is the path from the resource's interaction point toward the town hall, with a cached tangent/heading at the resource-side departure and at the town-hall approach.
+
+The "closest tangent" idea is a candidate route optimization, not an assumed SC2 pathing rule: compare the cached lane against observed worker trajectories and actual pathing queries where available. Invalidate/recompute when map/pathing identity changes, the town hall or resource is destroyed, a blocker changes connectivity, or observed travel error exceeds a configured threshold. Dynamic congestion and worker-specific deviations must not be baked into the static cache. Record cache hit/miss, route version, predicted distance/time and observed distance/time so we can tell whether caching improves decisions rather than merely reducing CPU work.
+
+### Bunker return-path experiment
+
+Treat worker passage through a friendly Bunker as an isolated, optional experiment—not a production assumption. First establish whether the exact SC2 build/API and map geometry permit a worker to enter, traverse and exit the Bunker safely and whether that route is legal and controllable. Measure the complete mineral cycle with and without the detour: entry/exit time, queueing, unload timing, lost mining time, pathing failures, unit safety and any effect on Bunker occupancy/defense.
+
+A bunker route is beneficial only if repeated controlled trials show a statistically credible increase in delivered minerals per game-loop (and no unacceptable safety/defense cost) versus the direct route. Do not route all workers through it by default. Gate it behind an experiment flag and map/build capability check; abort safely if entry, exit or path state is uncertain. Compare against the best non-Bunker lane policy from the same initial conditions.
+
+### Performance evaluation and replay record
+
+Create one event/decision trace per match with:
+- map file/hash, map provenance, game build, protocol/data version, bot commit, strategy/policy version and initial scenario;
+- observation/game-loop id and normalized facts used by each decision;
+- worker/resource/town-hall/operation ids, route-cache key/version and cache hit/miss;
+- candidate assignments and their predicted travel, wait, gather, return, unload and total cycle times;
+- selected assignment, reservation changes, reason codes and action validation/submission/result;
+- predicted event time versus observed transition time, including confidence and forecast error;
+- delivered mineral/gas amounts and all worker phase durations.
+
+Compute at least:
+- delivered minerals and gas per game-loop and per minute;
+- cumulative income curve and time to each resource threshold;
+- worker utilization by travel, wait, gather, return, unload, construction and idle;
+- per-node throughput, saturation, queue time and under/over-saturation;
+- cycle-time distribution (median, tail percentiles and variance), not just averages;
+- assignment churn, wasted travel, blocked-path time and failed/stale commands;
+- forecast error by phase and resource/map lane;
+- route-cache hit rate, recomputation cost and prediction improvement;
+- bunker versus direct-route throughput and safety/availability failures.
+
+Keep raw event traces and derived summaries separate. Replay the same normalized observation/event stream with a fixed policy version and parameters; require identical decisions, reservations and reason codes. For policy comparisons, run paired trials from equivalent initial conditions and report distributions/confidence intervals. Change one factor at a time before testing interactions. Optimize delivered resources over a declared horizon subject to safety, production and expansion constraints; do not optimize a proxy such as shortest path or time-to-first-unit in isolation.
+
+### Experiment ladder
+
+1. Instrument the current baseline before changing behavior.
+2. Reconstruct operation phases and forecast errors from real observations/replays.
+3. Add deterministic operation/resource contexts and event reconciliation.
+4. Compare nearest-node, saturation-aware and arrival-window/JIT assignment using identical traces.
+5. Add cached mining lanes and verify route prediction against observed trajectories.
+6. Test the Bunker hypothesis as a separately flagged paired experiment.
+7. Only promote a policy when replay gates pass and repeated local matches show a real throughput improvement without harming macro stability.
+
+No optimality claim is made from a single match or a geometric model alone.

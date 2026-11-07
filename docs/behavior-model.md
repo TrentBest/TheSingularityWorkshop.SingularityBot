@@ -29,7 +29,7 @@ Use game-loop deltas for inexpensive reevaluation. A deadline is only a prompt t
 
 The economy controller owns global assignments and reservations. The resource-line scheduler coordinates saturation and service windows. Each worker route FSM owns execution of its one assignment. Replanning a returning worker must not casually discard its current return leg.
 
-For the first Supply Depot, select the closest eligible SCV from the non-mining/available pool for the intended placement. Do not pull a productive miner merely because it is geometrically closest when another eligible worker is available. The opening command sequence is: queue Command Center SCV production; on the next scheduling pass assign existing SCVs to mineral routes; then select the Depot builder.
+For the first Supply Depot, wait for the first Command Center SCV-training order to be observed. When the mineral bank crosses 10, pull an SCV already returning to the Command Center (including a cargo-bearing miner whose gather order still targets its assigned patch), reserve it from mineral allocation, query SC2 for a legal forward-side placement, move it to that site, and build once the game-data cost is available. The first protocol action is the SCV-training command; worker-route actions follow after its order is observed.
 
 ## First playable proof
 

@@ -76,9 +76,10 @@ public sealed class ObservationReconciliationTests
             45, 45, 0, 0, 1, 10, 20, true, true, true,
             false, false, false, 10);
 
+        var firstFrame = new BehaviorIntentBuffer();
         runtime.Reconcile(
             new NormalizedObservation(10, 1, new[] { visible }, new HashSet<ulong>()),
-            static (_, _) => { });
+            firstFrame.Add);
 
         Assert.True(runtime.TryGetContext(44, out var refreshed));
         Assert.Same(initial, refreshed);
@@ -88,20 +89,30 @@ public sealed class ObservationReconciliationTests
         Assert.True(refreshed.IsCurrentlyVisible);
 
         runtime.Update();
+        var firstFrameCommands = firstFrame.Drain();
+        Assert.NotEmpty(firstFrameCommands);
+        Assert.Contains(firstFrameCommands, command => command.Key == 44);
         var commandsWhileVisible = emitted.Count;
-        Assert.True(commandsWhileVisible > 0);
 
         var changed = visible with { Health = 30, HasCargo = false, GameLoop = 11 };
         var unsupported = visible with { Tag = 45, UnitKind = "UncataloguedUnit", GameLoop = 11 };
+        var secondFrame = new BehaviorIntentBuffer();
         runtime.Reconcile(
             new NormalizedObservation(11, 1, new[] { changed, unsupported }, new HashSet<ulong>()),
-            static (_, _) => { });
+            secondFrame.Add);
 
         Assert.True(runtime.TryGetContext(44, out var changedContext));
         Assert.Same(initial, changedContext);
         Assert.Equal(30, changedContext.Health);
         Assert.False(changedContext.HasCargo);
         Assert.False(runtime.TryGetContext(45, out _));
+
+        // The same FSM context survives the frame boundary, but its emission
+        // must target this frame's buffer rather than the drained first buffer.
+        runtime.Update();
+        var secondFrameCommands = secondFrame.Drain();
+        Assert.NotEmpty(secondFrameCommands);
+        Assert.Contains(secondFrameCommands, command => command.Key == 44);
 
         runtime.Reconcile(
             new NormalizedObservation(12, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong>()),

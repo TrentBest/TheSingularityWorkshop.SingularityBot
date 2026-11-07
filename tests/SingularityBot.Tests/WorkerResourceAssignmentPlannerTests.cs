@@ -98,6 +98,49 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void ReassignsWorkerWhenItsCurrentOrderTargetsItsExplicitlyDeadAssignedMineral()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var first = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0)))[10];
+
+        var afterDeath = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0, loop: 120),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true, loop: 120,
+                orders: new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0, loop: 120))
+            with { DeadUnitTags = new HashSet<ulong> { 20 } };
+
+        var reassigned = planner.Reconcile(afterDeath)[10];
+
+        Assert.Equal(21UL, reassigned.MineralTag);
+        Assert.NotEqual(first.Generation, reassigned.Generation);
+    }
+
+    [Fact]
+    public void DoesNotOverrideAnUnrelatedActiveWorkerOrderWhenAssignedMineralDies()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0)));
+
+        var afterDeath = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0, loop: 120),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true, loop: 120,
+                orders: new[] { new UnitOrderObservationFacts(9999, 500, null, null) }),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0, loop: 120))
+            with { DeadUnitTags = new HashSet<ulong> { 20 } };
+
+        Assert.Empty(planner.Reconcile(afterDeath));
+    }
+
+    [Fact]
     public void DoesNotAssignWithoutTownHallOrBeyondMineralCapacity()
     {
         var planner = new WorkerResourceAssignmentPlanner();
@@ -141,8 +184,12 @@ public sealed class WorkerResourceAssignmentPlannerTests
 
     private static UnitObservationFacts Fact(
         ulong tag, string kind, UnitAlliance alliance, float x, float y,
-        bool hasOrders = false, uint loop = 100) =>
-        new(tag, 1, kind, alliance == UnitAlliance.Self ? 1 : 0, alliance,
+        bool hasOrders = false, uint loop = 100,
+        IReadOnlyList<UnitOrderObservationFacts> orders = null) =>
+        new UnitObservationFacts(tag, 1, kind, alliance == UnitAlliance.Self ? 1 : 0, alliance,
             UnitVisibility.Visible, 45, 45, 0, 0, 1, x, y, true,
-            false, hasOrders, false, false, false, loop);
+            false, hasOrders, false, false, false, loop)
+        {
+            Orders = orders ?? Array.Empty<UnitOrderObservationFacts>()
+        };
 }

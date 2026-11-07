@@ -13,7 +13,8 @@ public static class Sc2ActionTranslator
         IReadOnlyList<KeyValuePair<ulong, BehaviorCommand>> intents,
         NormalizedObservation observation,
         uint? harvestGatherAbilityId,
-        uint? harvestReturnAbilityId = null)
+        uint? harvestReturnAbilityId = null,
+        IReadOnlyDictionary<ulong, WorkerResourceAssignment> workerAssignments = null)
     {
         ArgumentNullException.ThrowIfNull(intents);
         ArgumentNullException.ThrowIfNull(observation);
@@ -40,8 +41,7 @@ public static class Sc2ActionTranslator
                            unit.HasPosition &&
                            unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) &&
                            !observation.DeadUnitTags.Contains(unit.Tag))
-            .OrderBy(unit => unit.Tag)
-            .ToArray();
+            .ToDictionary(unit => unit.Tag);
 
         var actions = new List<SC2APIProtocol.Action>();
         var commanded = new HashSet<ulong>();
@@ -58,14 +58,13 @@ public static class Sc2ActionTranslator
                 case BehaviorCommand.AssignWorkerToMinerals:
                 {
                     if (!TryGetAbilityId(harvestGatherAbilityId, out var gatherAbilityId) ||
-                        worker.HasCargo || mineralFields.Length == 0)
+                        worker.HasCargo ||
+                        workerAssignments is null ||
+                        !workerAssignments.TryGetValue(worker.Tag, out var assignment) ||
+                        !mineralFields.ContainsKey(assignment.MineralTag))
                         continue;
 
-                    var mineral = mineralFields
-                        .OrderBy(field => DistanceSquared(worker, field))
-                        .ThenBy(field => field.Tag)
-                        .First();
-                    actions.Add(CreateUnitCommand(worker.Tag, gatherAbilityId, mineral.Tag));
+                    actions.Add(CreateUnitCommand(worker.Tag, gatherAbilityId, assignment.MineralTag));
                     break;
                 }
                 case BehaviorCommand.ReturnCarriedResources:
@@ -128,10 +127,4 @@ public static class Sc2ActionTranslator
         unitKind.Equals("Lair", StringComparison.OrdinalIgnoreCase) ||
         unitKind.Equals("Hive", StringComparison.OrdinalIgnoreCase);
 
-    private static double DistanceSquared(UnitObservationFacts left, UnitObservationFacts right)
-    {
-        var dx = left.PositionX - right.PositionX;
-        var dy = left.PositionY - right.PositionY;
-        return (double)dx * dx + (double)dy * dy;
-    }
 }

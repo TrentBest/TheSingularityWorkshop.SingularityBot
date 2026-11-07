@@ -18,7 +18,8 @@ public sealed class Sc2GameDataCatalog
         float scvFoodRequired,
         uint? moveAbilityId,
         uint? supplyDepotBuildAbilityId,
-        uint supplyDepotMineralCost)
+        uint supplyDepotMineralCost,
+        uint? sprayAbilityId)
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
@@ -30,6 +31,7 @@ public sealed class Sc2GameDataCatalog
         MoveAbilityId = moveAbilityId;
         SupplyDepotBuildAbilityId = supplyDepotBuildAbilityId;
         SupplyDepotMineralCost = supplyDepotMineralCost;
+        SprayAbilityId = sprayAbilityId;
     }
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
@@ -42,6 +44,7 @@ public sealed class Sc2GameDataCatalog
     public uint? MoveAbilityId { get; }
     public uint? SupplyDepotBuildAbilityId { get; }
     public uint SupplyDepotMineralCost { get; }
+    public uint? SprayAbilityId { get; }
 
     public static Sc2GameDataCatalog Create(ResponseData data)
     {
@@ -72,7 +75,22 @@ public sealed class Sc2GameDataCatalog
             scv?.FoodRequired ?? 0,
             ResolveAbility(data.Abilities, "Move") ?? ResolveAbility(data.Abilities, "Move_Move"),
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
-            supplyDepot?.MineralCost ?? 0);
+            supplyDepot?.MineralCost ?? 0,
+            ResolveSprayAbility(data.Abilities));
+    }
+
+    private static uint? ResolveSprayAbility(IEnumerable<AbilityData> abilities)
+    {
+        var candidates = abilities
+            .Where(ability =>
+                string.Equals(ability.LinkName, "Spray", StringComparison.OrdinalIgnoreCase) ||
+                ability.LinkName.EndsWith("_Spray", StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+
+        return candidates.Length == 1 ? candidates[0] : null;
     }
 
     private static uint? ResolveAbility(

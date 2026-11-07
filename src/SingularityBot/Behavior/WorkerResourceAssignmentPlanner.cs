@@ -41,21 +41,33 @@ public sealed class WorkerResourceAssignmentPlanner
             .OrderBy(unit => unit.Tag)
             .ToArray();
 
-        // Explicit death events invalidate a reservation. A mineral omitted
-        // from this frame may be temporarily unobserved; retain its identity
-        // and let the translator fail closed until the target is visible again.
+        // Explicit death events invalidate a reservation. If a worker's current
+        // order still targets that exact dead assigned mineral, it is safe to
+        // replace that stale gather order with a new reservation. Other active
+        // orders remain owned by their issuing behavior and are never overridden.
+        var workersWithStaleMineralOrders = new HashSet<ulong>();
         foreach (var pair in _assignments.ToArray())
         {
             var assignment = pair.Value;
-            if (observation.DeadUnitTags.Contains(assignment.WorkerTag) ||
-                observation.DeadUnitTags.Contains(assignment.MineralTag))
+            if (observation.DeadUnitTags.Contains(assignment.WorkerTag))
             {
                 _assignments.Remove(pair.Key);
                 continue;
             }
 
-            if (liveSelf.TryGetValue(assignment.WorkerTag, out var worker) &&
-                !IsWorker(worker.UnitKind))
+            if (observation.DeadUnitTags.Contains(assignment.MineralTag))
+            {
+                if (liveSelf.TryGetValue(assignment.WorkerTag, out var worker) &&
+                    worker.Orders.Count > 0 &&
+                    worker.Orders[0].TargetUnitTag == assignment.MineralTag)
+                    workersWithStaleMineralOrders.Add(assignment.WorkerTag);
+
+                _assignments.Remove(pair.Key);
+                continue;
+            }
+
+            if (liveSelf.TryGetValue(assignment.WorkerTag, out var currentWorker) &&
+                !IsWorker(currentWorker.UnitKind))
                 _assignments.Remove(pair.Key);
         }
 
@@ -67,7 +79,8 @@ public sealed class WorkerResourceAssignmentPlanner
             .ToDictionary(group => group.Key, group => group.Count());
 
         foreach (var worker in liveSelf.Values
-                     .Where(unit => IsWorker(unit.UnitKind) && !unit.HasOrders)
+                     .Where(unit => IsWorker(unit.UnitKind) &&
+                                    (!unit.HasOrders || workersWithStaleMineralOrders.Contains(unit.Tag)))
                      .OrderBy(unit => unit.Tag))
         {
             if (_assignments.ContainsKey(worker.Tag))

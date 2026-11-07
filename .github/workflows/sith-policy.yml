@@ -44,6 +44,51 @@ jobs:
 
           if gh api --paginate "repos/$GH_REPO/branches?per_page=100" --jq '.[].name' > "$branch_file"; then
             mapfile -t branches < <(sort -u "$branch_file")
+
+            # Enforce the two-branch policy from an authoritative branch only.
+            # Preserve every removed branch head as an immutable archive tag first.
+            if [[ "$GITHUB_REF" == "refs/heads/development" ||
+                  "$GITHUB_REF" == "refs/heads/master" ||
+                  "$GITHUB_EVENT_NAME" == "schedule" ||
+                  "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+              open_pr_file="$(mktemp)"
+              if gh api --paginate "repos/$GH_REPO/pulls?state=open&per_page=100" --jq '.[].head.ref' > "$open_pr_file"; then
+                for branch in "${branches[@]}"; do
+                  case "$branch" in
+                    master|development) continue ;;
+                  esac
+
+                  if grep -Fxq "$branch" "$open_pr_file"; then
+                    echo "::warning::Keeping $branch because it still has an open pull request."
+                    continue
+                  fi
+
+                  if ! git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"; then
+                    echo "::warning::Could not fetch $branch; leaving it untouched."
+                    continue
+                  fi
+
+                  branch_sha="$(git rev-parse "refs/remotes/origin/$branch")"
+                  archive_tag="archive/sith/${branch}-${branch_sha:0:12}"
+                  if ! git ls-remote --exit-code origin "refs/tags/$archive_tag" >/dev/null 2>&1; then
+                    git tag "$archive_tag" "$branch_sha"
+                    git push origin "refs/tags/$archive_tag"
+                  fi
+
+                  echo "Archiving $branch at $branch_sha as $archive_tag, then removing the branch ref."
+                  git push origin --delete "$branch"
+                done
+              else
+                echo "::warning::Open pull-request inventory unavailable; branch cleanup skipped."
+              fi
+              rm -f "$open_pr_file"
+
+              # Re-read the inventory after cleanup; the badge and gate use actual refs.
+              if gh api --paginate "repos/$GH_REPO/branches?per_page=100" --jq '.[].name' > "$branch_file"; then
+                mapfile -t branches < <(sort -u "$branch_file")
+              fi
+            fi
+
             branch_count="${#branches[@]}"
             if [[ "$branch_count" -eq 2 &&
                   "${branches[0]}" == "development" &&

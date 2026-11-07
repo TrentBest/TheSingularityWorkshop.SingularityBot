@@ -21,25 +21,30 @@ All costs, prerequisites, build times, supply effects and abilities must come fr
 
 The economy controller is the sole owner of worker-to-resource assignments and reservations. It evaluates candidate mineral routes and assigns each worker deliberately. Unit FSMs execute their assigned work; they do not race each other to select patches.
 
+The current planner uses deterministic saturation-aware allocation (two workers per mineral by default), stable assignment generations and explicit death-event invalidation. It retains a reservation when the worker or target is temporarily absent from the observation; the action translator still requires a currently visible mineral before issuing a gather command. Each visible worker FSM context receives its assigned mineral/town-hall tags, generation and observed route phase. This is reservation/phase plumbing; it is not yet a complete route scheduler.
+
 For the first Depot, select the closest eligible SCV using current positions and work state. Prefer a worker whose assignment can be released with the least lost mining time, rather than blindly interrupting the closest busy worker. The selected builder's assignment is explicitly suspended/released and is not silently duplicated.
 
 ## Persistent route FSM
 
-Each worker-to-mineral assignment is a persistent operation with a stable assignment generation and context. It tracks:
+Each worker-to-mineral assignment is a persistent operation with a stable assignment generation and context. It currently tracks:
 - worker, mineral node and town-hall tags;
+- assignment generation;
+- observed phase (`Unassigned`, `Assigned`, `ExecutingOrder`, `CarryingResources`);
+- last observed game loop and phase-entry game loop.
+
+Still to add:
+- current order/target identity;
+- distinct outbound, gathering, returning, unloading and interrupted phases;
 - route identity and cached to/from positions or geometry;
-- current phase and observed order/target;
-- cargo state and last observed game loop;
 - predicted reevaluation deadline and actual phase timestamps;
-- confidence and the reason an assignment was suspended or invalidated.
+- confidence and reason for assignment suspension or invalidation.
 
 Phases are driven by observed facts: assigned, travelling, gathering, returning cargo, unloading, interrupted, reassignment pending and complete. Predictions help schedule work; they do not cause state transitions without confirmation.
 
 Cache route geometry and stable positions. Recompute only when the worker route, mineral/town-hall position, map/pathing identity or measured route error makes the cache stale. Use game-loop deltas for low-cost timers; never assume sub-loop precision.
 
 ## Scheduling and measurement
-
-The current baseline uses deterministic, saturation-aware assignment (two workers per mineral field by default), nearest-route tie-breaking, stable assignment generations, and explicit invalidation when a worker dies or its mineral target is confirmed dead/disappears. Worker absence alone does not discard a reservation. Arrival-window scheduling and cached path geometry remain later steps; measure the baseline before adding those heuristics.
 
 Record:
 - minerals delivered per game loop/minute;

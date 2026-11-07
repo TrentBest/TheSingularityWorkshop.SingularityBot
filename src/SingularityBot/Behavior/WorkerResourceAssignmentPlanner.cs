@@ -3,7 +3,7 @@ using SingularityBot.Observation;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Stable worker-to-resource reservations for one match. Assignments survive
+/// Stable worker-to-resource reservations for one match. Existing observed gather orders are adopted; new assignments survive
 /// observations and are replaced only when their worker or resource is retired.
 /// The planner does not issue commands; worker FSMs remain the execution owner.
 /// </summary>
@@ -77,6 +77,39 @@ public sealed class WorkerResourceAssignmentPlanner
         var occupancy = _assignments.Values
             .GroupBy(assignment => assignment.MineralTag)
             .ToDictionary(group => group.Key, group => group.Count());
+
+        // Adopt the game's initial mineral orders before assigning idle workers.
+        // Starting SCVs commonly arrive with active gather orders; ignoring them
+        // leaves the planner blind to the very routes it is supposed to manage.
+        foreach (var worker in liveSelf.Values
+                     .Where(unit => IsWorker(unit.UnitKind) && !_assignments.ContainsKey(unit.Tag))
+                     .OrderBy(unit => unit.Tag))
+        {
+            var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
+            if (targetTag is not ulong mineralTag || !minerals.TryGetValue(mineralTag, out var mineral))
+                continue;
+
+            var townHall = townHalls
+                .OrderBy(hall => DistanceSquared(worker, hall))
+                .ThenBy(hall => hall.Tag)
+                .First();
+
+            var adopted = new WorkerResourceAssignment(
+                worker.Tag,
+                mineral.Tag,
+                townHall.Tag,
+                NextGeneration(),
+                observation.GameLoop,
+                worker.PositionX,
+                worker.PositionY,
+                mineral.PositionX,
+                mineral.PositionY,
+                townHall.PositionX,
+                townHall.PositionY);
+
+            _assignments.Add(worker.Tag, adopted);
+            occupancy[mineral.Tag] = occupancy.GetValueOrDefault(mineral.Tag) + 1;
+        }
 
         foreach (var worker in liveSelf.Values
                      .Where(unit => IsWorker(unit.UnitKind) &&

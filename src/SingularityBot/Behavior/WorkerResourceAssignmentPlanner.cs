@@ -47,6 +47,14 @@ public sealed class WorkerResourceAssignmentPlanner
         // replace that stale gather order with a new reservation. Other active
         // orders remain owned by their issuing behavior and are never overridden.
         var workersWithStaleMineralOrders = new HashSet<ulong>();
+        foreach (var deadTag in observation.DeadUnitTags)
+            _reservedWorkers.Remove(deadTag);
+        foreach (var reservedTag in _reservedWorkers.ToArray())
+        {
+            if (liveSelf.TryGetValue(reservedTag, out var reservedUnit) &&
+                !IsWorker(reservedUnit.UnitKind))
+                _reservedWorkers.Remove(reservedTag);
+        }
         foreach (var reservedWorker in _reservedWorkers)
             _assignments.Remove(reservedWorker);
 

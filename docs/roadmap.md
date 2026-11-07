@@ -1,57 +1,63 @@
 # Roadmap
 
-This roadmap is ordered by the shortest path to a bot that plays a real game. Do not expand into generalized strategy tooling, neural policy, ladder operations or additional races until the Terran opening works and is measurable.
+The shortest path to a bot that actually plays a local StarCraft II match is the priority. Do not let editor polish, generalized strategy tooling, neural policy, ladder operations or additional races displace the first playable Terran economy.
 
-## 1. Stabilize the vertical slice
+## 1. Observation-to-action foundation
 
-- [ ] Integrate observation normalization and reconciliation into the sole `development` branch.
-- [ ] Build and run all tests in CI; fix failures before adding more behavior.
-- [ ] Verify persistent-context behavior across repeated observations, fog, death and unit morphs.
-- [ ] Verify gather and return-cargo actions against the SC2 protocol and a local match.
-- [ ] Record every rejected action with a reason.
+- [x] Integrate deterministic observation normalization into `development`.
+- [x] Reconcile persistent own-unit FSM contexts; distinguish fog/absence from authoritative death.
+- [x] Replace contexts when a unit morph changes its supported behavior profile.
+- [x] Buffer FSM intents per observation and add initial gather/return-cargo translation.
+- [x] Add regression tests for normalization, context lifecycle, morphs and initial worker action translation.
+- [x] Wire the test project into the GitHub Actions build workflow.
+- [ ] Obtain a current green CI run for the integrated `development` head; fix every failure.
+- [ ] Validate gather/return ability semantics and action results in a local SC2 match/replay.
+- [ ] Add per-unit available-ability checks and explicit rejection/result diagnostics.
 
 ## 2. Make workers productive
 
-- [ ] Normalize mineral fields, town halls, worker orders, cargo, positions and game-loop facts.
+- [ ] Normalize the economy facts needed by the scheduler: minerals/gas, supply, worker orders, cargo, mineral fields, town halls and construction state.
 - [ ] Assign each starting SCV to a persistent worker-to-mineral route.
-- [ ] Cache route positions/geometry and update only when relevant facts invalidate the cache.
-- [ ] Use game-loop deltas for cheap reevaluation deadlines; confirm transitions from observations.
-- [ ] Select the closest eligible SCV for the first Depot without needlessly destroying a productive mining route.
-- [ ] Measure delivered minerals, worker idle/travel/gather/return time and assignment churn.
+- [ ] Cache outbound/return geometry and invalidate only when route inputs change.
+- [ ] Use game-loop deltas for cheap phase reevaluation; confirm every transition from observations.
+- [ ] Coordinate node reservations and saturation centrally; prevent duplicate/conflicting assignments.
+- [ ] Select the closest eligible non-mining SCV for the first Depot builder.
+- [ ] Measure delivered minerals, worker idle/travel/queue/gather/return time and assignment churn.
 
-## 3. Complete the Terran opening
+## 3. Complete the first playable Terran opening
 
-- [ ] Validate and place the first Supply Depot.
-- [ ] Build the first Barracks and enforce supply/prerequisite/resource gates.
+- [ ] Queue Command Center SCV production and assign starting workers in the intended order.
+- [ ] Validate placement, prerequisites, affordability and builder selection for the first Supply Depot.
+- [ ] Build the first Barracks and enforce supply/resource gates.
 - [ ] Establish four Barracks.
-- [ ] Train pure Marines with no gas dependency.
-- [ ] Preserve mining and production continuity.
-- [ ] Prove the opening in repeatable local matches from the same starting conditions.
+- [ ] Train pure Marines without a gas dependency.
+- [ ] Preserve worker mining and production continuity.
+- [ ] Prove the opening repeatedly in local matches from controlled starting conditions.
 
-## 4. Make it explainable and repeatable
+## 4. Make behavior measurable and reproducible
 
-- [ ] Save normalized observation and decision traces keyed by game loop.
-- [ ] Replay recorded traces deterministically.
+- [ ] Record normalized observations, assignments, intents, arbitration, validation, submissions and outcomes by game loop.
+- [ ] Replay the same observation sequence deterministically.
 - [ ] Report invalid actions, idle time, delivered resources, structure timing, production uptime and Marine output.
-- [ ] Add regression fixtures for each discovered failure.
-- [ ] Expose the same runtime state and versioned definitions to GUI without duplicating execution logic.
+- [ ] Add a regression fixture for every discovered failure.
 
-## 5. Expand only from evidence
+## 5. Add supporting surfaces after the runtime works
 
-After the Terran opening is reliable:
-- generalize reusable economy capabilities to Protoss and Zerg;
-- add scouting, combat and tactical behavior in measurable slices;
-- evaluate neural policies as optional advisors, never as unchecked action authorities;
-- investigate ladder, self-play and other game adapters only when the local runtime is dependable.
+- [ ] Expose the same versioned runtime contracts to GUI for authoring and inspection.
+- [ ] Add spatial overlays and route timelines where they help diagnose measured behavior.
+- [ ] Use CiAi/HeadlessAi for repeatable build, test and replay evaluation.
+- [ ] Consider neural policies only as optional advisors against a deterministic baseline.
+- [ ] Generalize to Protoss/Zerg and tactical play only after the Terran opening is reliable.
 
 ## Definition of done
 
-A feature is done only when its contract, tests, runtime behavior and evidence agree. A successful compile alone is not proof of in-game behavior. No competitive-strength claim without repeatable match evidence.
+A feature is done only when its contract, automated tests, runtime behavior and evidence agree. Compilation alone is not proof of in-game behavior. CI wiring is not a green CI result; a unit-test pass is not a live-match result. Do not claim competitive strength without repeatable match evidence.
 
-## Branch policy
+## Sith branch policy
 
-The repository has exactly two long-lived branches:
-- `development`: all active integration and testing.
-- `master`: stable release-aligned state.
+Exactly two branches are permitted:
 
-Do not create feature branches for routine work. Integrate directly into `development` in small commits. Keep `master` aligned only at an explicitly authorized release point. NuGet publishing and external deployment require separate explicit authorization.
+- `development` — the only active integration, implementation and test branch.
+- `master` — the stable, release-aligned state.
+
+Do not create feature branches or parallel long-lived work branches. Integrate directly into `development` in small, reviewable commits. Keep `master` at the last approved release state; update it only at an explicitly authorized release point. NuGet publishing and external deployment require separate explicit authorization.

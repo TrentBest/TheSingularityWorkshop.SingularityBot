@@ -73,4 +73,7 @@ public sealed class NormalizedObservation
     public uint PlayerId { get; }
     public IReadOnlyList<UnitObservationFacts> Units { get; }
     public IReadOnlySet<ulong> DeadUnitTags { get; }
+    public uint Minerals { get; init; }
+    public uint FoodUsed { get; init; }
+    public uint FoodCap { get; init; }
 }

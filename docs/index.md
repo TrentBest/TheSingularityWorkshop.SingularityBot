@@ -9,6 +9,7 @@ This repository is in its foundation phase. The architecture and strategy contra
 ## Explore
 
 - [Architecture](architecture.md)
+- [Spatial language: Side, Quadrant and Sector](spatial-language.md)
 - [Strategy format](strategy-format.md)
 - [Example strategy](../strategies/terran-opening.example.json)
 - [Lineage and licensing](lineage.md)

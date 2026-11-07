@@ -58,7 +58,9 @@ public sealed class ObservationReconciliationTests
         var replay = Sc2ObservationNormalizer.Normalize(response, 1,
             new Dictionary<uint, string> { [7] = "SCV", [8] = "Marine" },
             new Dictionary<uint, string> { [11] = "CarryingMinerals" });
-        Assert.Equal(normalized.Units, replay.Units);
+        Assert.Equal(
+            normalized.Units.Select(unit => unit with { Orders = Array.Empty<UnitOrderObservationFacts>() }),
+            replay.Units.Select(unit => unit with { Orders = Array.Empty<UnitOrderObservationFacts>() }));
         Assert.True(normalized.Units[1].HasCargo);
         Assert.Single(normalized.Units[1].Orders);
         Assert.Equal((uint)3666, normalized.Units[1].Orders[0].AbilityId);

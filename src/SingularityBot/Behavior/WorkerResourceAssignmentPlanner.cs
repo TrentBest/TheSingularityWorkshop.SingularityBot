@@ -41,14 +41,14 @@ public sealed class WorkerResourceAssignmentPlanner
             .OrderBy(unit => unit.Tag)
             .ToArray();
 
-        // Explicit deaths and confirmed resource disappearance invalidate a
-        // reservation. Temporary worker absence (fog) does not.
+        // Explicit death events invalidate a reservation. A mineral omitted
+        // from this frame may be temporarily unobserved; retain its identity
+        // and let the translator fail closed until the target is visible again.
         foreach (var pair in _assignments.ToArray())
         {
             var assignment = pair.Value;
             if (observation.DeadUnitTags.Contains(assignment.WorkerTag) ||
-                observation.DeadUnitTags.Contains(assignment.MineralTag) ||
-                !minerals.ContainsKey(assignment.MineralTag))
+                observation.DeadUnitTags.Contains(assignment.MineralTag))
             {
                 _assignments.Remove(pair.Key);
                 continue;

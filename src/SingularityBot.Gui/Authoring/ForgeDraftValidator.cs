@@ -1,4 +1,3 @@
-using System.Globalization;
 using TheSingularityWorkshop.SingularityBot.Gui.Contracts;
 
 namespace TheSingularityWorkshop.SingularityBot.Gui.Authoring;
@@ -96,8 +95,6 @@ public static class ForgeDraftValidator
                 diagnostics.Add(new("non-finite-rule-value", "Error", $"$.rules[{i}].value", "Rule values must be finite.", [rule.Id]));
         }
 
-        foreach (var diagnostic in diagnostics.Where(x => x.Severity == "Error"))
-            _ = diagnostic;
         return diagnostics;
     }
 }

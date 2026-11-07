@@ -34,7 +34,7 @@ public sealed class UnitBehaviorRuntime
             $"{profile.UnitKind}:{unitTag}",
             profile.UnitKind,
             profile.IsWorker,
-            command => (_activeEmit ?? ((_, value) => emit(value)))(unitTag, command));
+            command => Emit(unitTag, emit, command));
 
         var handle = FSM_API.Create.CreateInstance(
             profile.BehaviorFsm,
@@ -85,6 +85,14 @@ public sealed class UnitBehaviorRuntime
 
             context.Apply(facts);
         }
+    }
+
+    private void Emit(ulong unitTag, Action<BehaviorCommand> fallback, BehaviorCommand command)
+    {
+        if (_activeEmit is { } activeEmit)
+            activeEmit(unitTag, command);
+        else
+            fallback(command);
     }
 
     public bool TryGetContext(ulong unitTag, out UnitBehaviorContext context) =>

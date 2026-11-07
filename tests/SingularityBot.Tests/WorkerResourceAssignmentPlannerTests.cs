@@ -55,6 +55,22 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void RetainsReservationWhenMineralIsTemporarilyAbsentFromObservation()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var first = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0)))[10];
+
+        var temporarilyUnobserved = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0, loop: 120),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0, loop: 120)));
+
+        Assert.Equal(first, temporarilyUnobserved[10]);
+    }
+
+    [Fact]
     public void ReassignsWhenReservedMineralDiesAndAdvancesGeneration()
     {
         var planner = new WorkerResourceAssignmentPlanner();

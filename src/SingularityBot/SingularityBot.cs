@@ -10,7 +10,7 @@ namespace SingularityBot;
 /// Protocol-facing bot shell. Strategic decisions belong to FSM behavior
 /// definitions; this class owns the game-loop boundary.
 /// </summary>
-public sealed class SingularityBot : SC2API_CSharp.Bot
+public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly WorkerResourceAssignmentPlanner _workerAssignments = new();
@@ -21,6 +21,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private readonly Sc2OpeningProductionController _openingProduction = new();
     private bool _openingProductionActionSubmitted;
     private bool _scvTrainingOrderObserved;
+    private bool _initialScvProductionObserved;
+    private bool _openingBuilderActionSubmitted;
+    private RequestQuery _pendingQuery;
+    private readonly Sc2OpeningBuilderController _openingBuilder = new();
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
@@ -85,6 +89,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         if (scvTrainingOrderObserved && !_scvTrainingOrderObserved)
             Console.WriteLine("[Opening] OBSERVED: Command Center has an SCV training order.");
         _scvTrainingOrderObserved = scvTrainingOrderObserved;
+        _initialScvProductionObserved |= scvTrainingOrderObserved;
 
         var assignments = _workerAssignments.Reconcile(normalized);
         foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
@@ -104,17 +109,36 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             return new[] { productionAction };
         }
 
+        var builderAction = _openingBuilder.TryCreateAction(
+            normalized,
+            SpatialMap,
+            _gameData,
+            _initialScvProductionObserved,
+            _workerAssignments);
+        _openingBuilderActionSubmitted = builderAction is not null;
+        if (builderAction is not null)
+        {
+            var command = builderAction.ActionRaw.UnitCommand;
+            Console.WriteLine($"[Opening] Builder SCV {_openingBuilder.BuilderTag}: ability={command.AbilityId}, target=({command.TargetWorldSpacePos.X:F1},{command.TargetWorldSpacePos.Y:F1}).");
+        }
+
+        _pendingQuery = _openingBuilder.TakePlacementQuery(_gameData);
+
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
         _unitBehaviors.Update();
 
-        return Sc2ActionTranslator.Translate(
+        var actions = new List<SC2APIProtocol.Action>();
+        if (builderAction is not null)
+            actions.Add(builderAction);
+        actions.AddRange(Sc2ActionTranslator.Translate(
             intents.Drain(),
             normalized,
             _gameData.HarvestGatherAbilityId,
             _gameData.HarvestReturnAbilityId,
-            assignments);
+            assignments));
+        return actions;
     }
 
     public void OnActionResult(IReadOnlyList<SC2APIProtocol.Action> submittedActions, ResponseAction response)
@@ -125,7 +149,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             Console.WriteLine("[SC2 API] Action request returned no per-action result.");
             if (_openingProductionActionSubmitted)
                 _openingProduction.OnActionResult(null);
+            if (_openingBuilderActionSubmitted)
+                _openingBuilder.OnActionResult(null);
             _openingProductionActionSubmitted = false;
+            _openingBuilderActionSubmitted = false;
             return;
         }
 
@@ -138,7 +165,22 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         }
         if (_openingProductionActionSubmitted)
             _openingProduction.OnActionResult(response.Result[0]);
+        if (_openingBuilderActionSubmitted)
+            _openingBuilder.OnActionResult(response.Result[0]);
         _openingProductionActionSubmitted = false;
+        _openingBuilderActionSubmitted = false;
+    }
+
+    public RequestQuery TakeQueryRequest()
+    {
+        var query = _pendingQuery;
+        _pendingQuery = null;
+        return query;
+    }
+
+    public void OnQueryResult(ResponseQuery response)
+    {
+        _openingBuilder.OnPlacementQueryResult(response);
     }
 
     private void UpdateSpatialIntelligence(ResponseObservation response)

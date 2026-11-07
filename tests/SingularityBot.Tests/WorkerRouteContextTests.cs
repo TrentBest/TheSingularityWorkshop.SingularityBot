@@ -34,6 +34,34 @@ public sealed class WorkerRouteContextTests
     }
 
     [Fact]
+    public void UsesObservedOrderTargetToDistinguishOutboundAndReturningRoutes()
+    {
+        var context = new UnitBehaviorContext(10, "SCV:10", "SCV", true, _ => { });
+        var assignment = new WorkerResourceAssignment(10, 20, 1, 7, 100, 1, 1, 5, 1, 0, 0);
+
+        context.Apply(Facts(hasOrders: true, hasCargo: false, loop: 101) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(3666, 20, null, null) }
+        });
+        context.ApplyWorkerAssignment(assignment, 101);
+        Assert.Equal(WorkerRoutePhase.Outbound, context.WorkerRoutePhase);
+
+        context.Apply(Facts(hasOrders: true, hasCargo: true, loop: 120) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(3667, 1, null, null) }
+        });
+        context.ApplyWorkerAssignment(assignment, 120);
+        Assert.Equal(WorkerRoutePhase.Returning, context.WorkerRoutePhase);
+
+        context.Apply(Facts(hasOrders: true, hasCargo: false, loop: 130) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(9999, 999, null, null) }
+        });
+        context.ApplyWorkerAssignment(assignment, 130);
+        Assert.Equal(WorkerRoutePhase.ExecutingOrder, context.WorkerRoutePhase);
+    }
+
+    [Fact]
     public void NewAssignmentGenerationResetsPhaseAndMissingAssignmentClearsRoute()
     {
         var context = new UnitBehaviorContext(10, "SCV:10", "SCV", true, _ => { });

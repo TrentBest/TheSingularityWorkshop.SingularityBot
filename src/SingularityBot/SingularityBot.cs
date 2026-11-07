@@ -82,7 +82,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         var actions = new List<SC2APIProtocol.Action>();
         var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);
         if (productionAction is not null)
+        {
+            var command = productionAction.ActionRaw.UnitCommand;
+            Console.WriteLine($"[Opening] Requesting first SCV: Command Center={command.UnitTags[0]}, ability={command.AbilityId}, minerals={normalized.Minerals}, supply={normalized.FoodUsed}/{normalized.FoodCap}.");
             actions.Add(productionAction);
+        }
 
         actions.AddRange(Sc2ActionTranslator.Translate(
             intents.Drain(),

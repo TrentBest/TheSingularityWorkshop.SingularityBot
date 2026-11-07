@@ -85,13 +85,13 @@ public sealed class Sc2OpeningBuilderController
 
         if (_builderTag is null)
         {
-            var returner = FindReturningScv(observation);
+            var returner = FindReturningScv(observation, assignments);
             if (returner is null)
                 return null;
 
-            _builderTag = returner.Tag;
-            Console.WriteLine($"[Opening] 10-mineral threshold reached; pulling returning SCV {returner.Tag} from Command Center return route.");
-            _returnTownHallTag = returner.Orders[0].TargetUnitTag;
+            _builderTag = returner.Value.Worker.Tag;
+            Console.WriteLine($"[Opening] 10-mineral threshold reached; pulling returning SCV {_builderTag.Value} from its mineral return cycle.");
+            _returnTownHallTag = returner.Value.TownHallTag;
             assignments.Reserve(returner.Tag);
             var townHall = observation.Units.FirstOrDefault(unit => unit.Tag == _returnTownHallTag.Value && unit.IsLiveVisible);
             if (townHall is null)
@@ -244,7 +244,9 @@ public sealed class Sc2OpeningBuilderController
         _previousMinerals = minerals;
     }
 
-    private static UnitObservationFacts FindReturningScv(NormalizedObservation observation)
+    private static (UnitObservationFacts Worker, ulong TownHallTag)? FindReturningScv(
+        NormalizedObservation observation,
+        WorkerResourceAssignmentPlanner assignments)
     {
         var townHallTags = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self &&
@@ -254,17 +256,29 @@ public sealed class Sc2OpeningBuilderController
             .Select(unit => unit.Tag)
             .ToHashSet();
 
-        return observation.Units
-            .Where(unit => unit.Alliance == UnitAlliance.Self &&
-                           unit.IsLiveVisible &&
-                           unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) &&
-                           unit.HasCargo &&
-                           unit.Orders.Count > 0 &&
-                           unit.Orders[0].TargetUnitTag is ulong target &&
-                           townHallTags.Contains(target) &&
-                           !observation.DeadUnitTags.Contains(unit.Tag))
-            .OrderBy(unit => unit.Tag)
-            .FirstOrDefault();
+        foreach (var worker in observation.Units
+                     .Where(unit => unit.Alliance == UnitAlliance.Self &&
+                                    unit.IsLiveVisible &&
+                                    unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) &&
+                                    unit.HasCargo &&
+                                    unit.Orders.Count > 0 &&
+                                    !observation.DeadUnitTags.Contains(unit.Tag))
+                     .OrderBy(unit => unit.Tag))
+        {
+            var targetTag = worker.Orders[0].TargetUnitTag;
+            if (targetTag is not ulong target)
+                continue;
+
+            if (townHallTags.Contains(target))
+                return (worker, target);
+
+            if (assignments.TryGet(worker.Tag, out var assignment) &&
+                assignment.MineralTag == target &&
+                townHallTags.Contains(assignment.TownHallTag))
+                return (worker, assignment.TownHallTag);
+        }
+
+        return null;
     }
 
     private static IReadOnlyList<MapPoint> CreatePlacementCandidates(

@@ -21,7 +21,9 @@ Parents own goals and global constraints. Children execute assigned work and rep
 
 ## Persistent worker-route model
 
-A route is a long-lived operation, not a repeated one-frame gather command. Its context should retain worker, mineral and town-hall tags; assignment generation; route identity; current phase; current order/target; cargo facts; last observed game loop; cached outbound/return geometry; and phase-entry/deadline data.
+A route is a long-lived operation, not a repeated one-frame gather command. Its context retains worker, mineral and town-hall tags; assignment generation; current observed phase; last observed game loop; and phase-entry game loop. The planner owns reservation identity; the worker FSM context owns the observed execution phase. Current phases are `Unassigned`, `Assigned`, `ExecutingOrder`, and `CarryingResources`.
+
+Phase changes are observation-driven: a new reservation generation enters `Assigned`; observed orders enter `ExecutingOrder`; observed cargo enters `CarryingResources`. The runtime does not claim a worker is gathering or returning merely because it issued a command. Hidden contexts retain their last known assignment/phase. Explicit death events invalidate reservations; temporary target occlusion does not erase the reservation, while action translation fails closed until the mineral is visible again.
 
 Use game-loop deltas for inexpensive reevaluation. A deadline is only a prompt to inspect again: observations, cargo, orders and positions confirm transitions. Cache stable route geometry and recompute only when a relevant position, route identity, map/pathing basis or measured route error invalidates it. Keep predicted travel/service times distinct from measured results.
 
@@ -58,12 +60,14 @@ Implemented and present in the integration branch:
 - Supported unit-profile morphs replace the old behavior context/handle.
 - FSM emissions are collected per observation rather than routed to a stale frame buffer.
 - Initial gather and return-cargo intents translate to SC2 unit commands for SCV/Probe/Drone workers. Gather resolves `Harvest_Gather`; return resolves `Harvest_Return` from game data and selects a visible friendly town hall deterministically.
-- Regression tests cover normalization, reconciliation, fog/death/morph behavior and initial gather/return translation. The build workflow invokes the test project.
+- Worker mineral reservations are deterministic and saturation-aware (two workers per mineral by default), with stable generations and retention through temporary worker/target occlusion. Explicit dead-unit events invalidate the affected reservation.
+- Reservation tags, generation and observation-derived route phase are synchronized into each visible worker FSM context; phase-entry game-loop timestamps are retained.
+- Regression tests cover normalization, reconciliation, fog/death/morph behavior, assignment planning, route-context phases and initial gather/return translation. The build workflow invokes the test project.
 
 Not yet proven or implemented as a complete economy:
 
 - Per-unit available-ability validation and complete action-result/error handling.
-- Worker-to-mineral reservations are now persistent and saturation-aware (default two workers per mineral field), with deterministic tie-breaking, stable assignment generations, fog retention, and explicit death/target invalidation. Dedicated route FSM phase scheduling, observed target/order reconciliation, and cached path geometry remain open.
+- Worker order target identity/reconciliation, separate outbound/gather/return/unload phases, cached path geometry and arrival-window scheduling.
 - Closest-eligible Depot builder selection and validated construction/placement.
 - Four-Barracks scheduling, resource/supply budgeting and Marine production.
 - Deterministic recorded-observation replay, cycle/throughput metrics and live-match proof.

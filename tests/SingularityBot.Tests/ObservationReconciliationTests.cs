@@ -117,7 +117,7 @@ public sealed class ObservationReconciliationTests
         runtime.Update();
         Assert.Equal(commandsWhileVisible, emitted.Count);
 
-        var visibleAgain = changed with { HasCargo = true, GameLoop = 13 };
+        var visibleAgain = changed with { HasCargo = false, HasOrders = false, GameLoop = 13 };
         runtime.Reconcile(
             new NormalizedObservation(13, 1, new[] { visibleAgain }, new HashSet<ulong>()),
             static (_, _) => { });
@@ -127,7 +127,8 @@ public sealed class ObservationReconciliationTests
         Assert.True(reactivated.IsCurrentlyVisible);
         Assert.True(runtime.TryGetHandle(44, out var reactivatedHandle));
         Assert.Same(originalHandle, reactivatedHandle);
-        runtime.Update();
+        runtime.Update(); // Returning -> Assess after fresh facts clear cargo.
+        runtime.Update(); // Assess runs again on the reactivated handle.
         Assert.True(emitted.Count > commandsWhileVisible);
 
         runtime.Reconcile(

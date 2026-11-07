@@ -114,23 +114,38 @@ dead-unit events do. The context receives current health, position, order, build
 facts; worker resource cargo is inferred from named game-data buffs rather than
 transport cargo-space fields. Contexts retained through fog/absence are marked
 not currently visible so later action validation can fail closed. Unsupported unit kinds are ignored rather
-than guessed. The behavior callback is still intentionally a no-op: intents are
-not yet translated or submitted as SC2 actions. The bot is therefore not yet
-an active-playing bot.
+than guessed. FSM emissions are now collected once per observation and the
+first protocol action path handles `AssignWorkerToMinerals`: it resolves the
+`Harvest_Gather` ability from SC2 game data, requires a currently visible own
+SCV and a currently visible mineral-field target, excludes dead tags, then
+chooses the nearest mineral field with unit-tag tie-breaking. The translator
+emits a raw unit command through the existing `GameConnection.Run` action
+submission path. Missing ability metadata, stale units and invalid targets fail
+closed.
+
+This is deliberately a thin vertical slice, not a completed economy scheduler.
+It does not yet query SC2's per-unit available-ability list, reserve/saturate
+mineral nodes, preserve long-lived worker-to-node assignments, or measure
+throughput. Return-cargo, construction, threat response and combat intents
+remain untranslated. It has not been validated in a live match.
 
 Automated fixtures cover deterministic normalization, snapshot visibility,
 explicit death evidence, stable context refresh, fog/absence retention and
-authoritative retirement. These fixtures run in CI.
-The opening economy and resource scheduler described above are specifications,
-not implemented or experimentally validated behavior.
+authoritative retirement. New action-translation fixtures cover nearest-node
+selection, dead-target rejection and missing ability metadata. The latest
+workflow attempt failed in the independent Sith branch-policy job because the
+repository currently has more than the required `master` and `development`
+branches; that failure is not a build/test result.
+
+The opening economy and resource scheduler described above remain
+specifications, not implemented or experimentally validated behavior.
 
 ## Next implementation gates
 
-1. Complete normalized economy facts for workers, mineral nodes, town halls,
-   resources, supply, orders and construction.
-2. Implement deterministic worker assignment, reservations and baseline metrics.
-3. Add saturation-aware and arrival-window scheduling; compare through replay.
-4. Implement race-specific supply, construction and production planning.
-5. Add intent capture, validation and legal action translation as a separate gate.
-6. Complete one race's first-unit opening end-to-end, then generalize through
+1. Add per-unit available-ability validation and action-result/error handling.
+2. Implement stable worker-to-node assignments, reservations, saturation and
+   baseline throughput metrics.
+3. Add arrival-window scheduling and compare against deterministic replays.
+4. Implement return-cargo, race-specific construction and production intents.
+5. Complete one race's first-unit opening end-to-end, then generalize through
    ontology/capabilities; add replay regression and expose versioned strategy data.

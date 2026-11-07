@@ -72,6 +72,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         var assignments = _workerAssignments.Reconcile(normalized);
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
+        _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
         _unitBehaviors.Update();
 
         return Sc2ActionTranslator.Translate(

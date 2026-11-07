@@ -1,0 +1,27 @@
+{
+  "fixtureKind": "synthetic-authoring-example",
+  "notRuntimeData": true,
+  "bot": { "id": "terran-safe-marine", "name": "Terran Safe Marine", "race": "Terran" },
+  "phases": [
+    { "id": "opening", "name": "Opening", "objective": "Protect the economy and establish production." },
+    { "id": "pressure", "name": "Pressure", "objective": "Apply controlled pressure while preserving a retreat path." }
+  ],
+  "groups": [
+    { "id": "economy", "name": "Economy Group", "membership": "SCV units", "objective": "Gather resources and construct authored production." },
+    { "id": "marine-squad", "name": "Marine Squad", "membership": "Marine units", "objective": "Defend and apply coordinated pressure." }
+  ],
+  "unitProfiles": [
+    { "id": "scv-worker", "unit": "SCV", "role": "Worker", "behaviors": ["gather", "build"] },
+    { "id": "marine-infantry", "unit": "Marine", "role": "Infantry", "behaviors": ["defend", "pressure", "retreat"], "overrides": { "retreatHealthRatio": 0.35 } }
+  ],
+  "behaviors": [
+    { "id": "gather", "name": "Gather", "kind": "worker.gather" },
+    { "id": "build", "name": "Build", "kind": "worker.build" },
+    { "id": "defend", "name": "Defend", "kind": "group.defend" },
+    { "id": "pressure", "name": "Pressure", "kind": "combat.pressure" },
+    { "id": "retreat", "name": "Retreat", "kind": "combat.retreat" }
+  ],
+  "rules": [
+    { "id": "marine-retreat-on-low-health", "when": { "fact": "unit.healthRatio", "operator": "lessThan", "value": 0.35 }, "candidateIntent": "unit.retreat", "note": "Synthetic example; runtime fact and intent catalogs must confirm these identifiers." }
+  ]
+}

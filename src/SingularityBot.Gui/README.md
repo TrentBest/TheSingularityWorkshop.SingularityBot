@@ -1,24 +1,34 @@
 # SingularityBot Forge
 
-Forge is the authoring and inspection experience for SingularityBot. It is intentionally separate from the headless bot runtime.
+Forge is the beginner-facing authoring workspace for SingularityBot. It is a separate WPF desktop project and does not add a GUI dependency to the headless runtime.
 
-## First slice
-- WPF desktop host using the Workshop GUI.WPF package family.
-- Beginner-first hierarchy: bot, strategy phases, groups, unit profiles, reusable behaviors and rules.
-- Clearly labeled synthetic sample content while authoritative map and runtime contracts are being implemented.
-- Runtime connection, map presentation and live diagnostics remain behind versioned contracts; this project does not parse SC2 protocol data or execute strategy.
+## Current authoring slice
 
-## Ownership boundary
-Forge edits declarative intent and presents authoritative validation/snapshots. It does not own a strategy engine, action legality, FSM execution, or SC2 protocol integration. A group owns a shared objective and coordination policy; member units retain their own profiles.
+- Edit bot identity and race.
+- Add and edit strategy phases, objectives and priorities.
+- Add and edit groups/squads, membership selectors, shared objectives and coordination policies.
+- Inspect and edit unit profiles, catalog references and a typed Marine retreat-threshold override.
+- Add and edit reusable behavior references.
+- Add and edit behavior rules: fact identifier, comparison operator, threshold/value and candidate intent identifier.
+- Save and reopen local JSON drafts.
 
-LLM-produced changes must be presented as proposals with a scoped diff and require explicit user approval before saving or applying.
+The sample is synthetic. Catalog identifiers, facts, intents and parameter ranges remain provisional until confirmed by the runtime owner. Local save does not validate against the runtime catalog or apply the definition to a running bot.
+
+## Architecture boundary
+
+Forge edits declarative intent and presents runtime-owned validation/snapshots when those contracts are available. It does not own a strategy engine, action legality, FSM execution, or SC2 protocol integration. A group owns a shared objective and coordination policy; member units retain their own profiles.
+
+LLM-generated changes must be presented as proposals with a base hash, rationale and scoped diff. Explicit user approval is required before a proposal can be saved or applied. Runtime validation remains authoritative.
 
 ## Build
-Requires the .NET 8 Windows Desktop SDK and access to the Workshop package feed configured for TheSingularityWorkshop.GUI.WPF 0.1.0-alpha.6.
+
+Requires the .NET 8 Windows Desktop SDK and access to the Workshop package feed configured for `TheSingularityWorkshop.GUI.WPF` 0.1.0-alpha.6.
 
 ```powershell
 dotnet build src/SingularityBot.Gui/SingularityBot.Gui.csproj
 dotnet run --project src/SingularityBot.Gui/SingularityBot.Gui.csproj
 ```
 
-This is an initial navigable shell, not a claim that live map, runner controls, runtime snapshots, or authoritative validation are connected yet.
+## Not connected yet
+
+The current slice does not include authoritative catalog resolution, runtime schema/semantic validation, proposal diff/approval UI, live map capture/replay, match snapshots, runner commands, or AnyApp hosting. It does not parse SC2 protocol data or map archives. These are follow-on integrations behind versioned runtime-owned contracts.

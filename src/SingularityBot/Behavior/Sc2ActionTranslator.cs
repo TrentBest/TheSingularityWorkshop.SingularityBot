@@ -118,6 +118,13 @@ public static class Sc2ActionTranslator
         unitKind.Equals("Probe", StringComparison.OrdinalIgnoreCase) ||
         unitKind.Equals("Drone", StringComparison.OrdinalIgnoreCase);
 
+    private static double DistanceSquared(UnitObservationFacts left, UnitObservationFacts right)
+    {
+        var dx = left.PositionX - right.PositionX;
+        var dy = left.PositionY - right.PositionY;
+        return (double)dx * dx + (double)dy * dy;
+    }
+
     private static bool IsTownHall(string unitKind) =>
         unitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
         unitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||

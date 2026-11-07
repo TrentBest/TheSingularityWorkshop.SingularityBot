@@ -20,7 +20,8 @@ public sealed class ObservationReconciliationTests
             DisplayType = DisplayType.Visible,
             Health = 45,
             HealthMax = 45,
-            BuffIds = { 11 }
+            BuffIds = { 11 },
+            Orders = { new UnitOrder { AbilityId = 3666, TargetUnitTag = 1234 } }
         });
         raw.Units.Add(new Unit
         {
@@ -59,6 +60,9 @@ public sealed class ObservationReconciliationTests
             new Dictionary<uint, string> { [11] = "CarryingMinerals" });
         Assert.Equal(normalized.Units, replay.Units);
         Assert.True(normalized.Units[1].HasCargo);
+        Assert.Single(normalized.Units[1].Orders);
+        Assert.Equal((uint)3666, normalized.Units[1].Orders[0].AbilityId);
+        Assert.Equal((ulong)1234, normalized.Units[1].Orders[0].TargetUnitTag);
         Assert.Contains((ulong)77, normalized.DeadUnitTags);
     }
 

@@ -13,6 +13,7 @@ namespace SingularityBot;
 public sealed class SingularityBot : SC2API_CSharp.Bot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
+    private readonly WorkerResourceAssignmentPlanner _workerAssignments = new();
     private Sc2GameDataCatalog _gameData;
     private uint _playerId;
     private bool _behaviorCatalogRegistered;
@@ -68,6 +69,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             _gameData.UnitNames,
             _gameData.BuffNames);
 
+        var assignments = _workerAssignments.Reconcile(normalized);
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
         _unitBehaviors.Update();
@@ -76,7 +78,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             intents.Drain(),
             normalized,
             _gameData.HarvestGatherAbilityId,
-            _gameData.HarvestReturnAbilityId);
+            _gameData.HarvestReturnAbilityId,
+            assignments);
     }
 
     private void UpdateSpatialIntelligence(ResponseObservation response)
@@ -137,5 +140,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     public void OnEnd(ResponseObservation observation, Result result)
     {
         _unitBehaviors.RemoveAll();
+        _workerAssignments.Clear();
     }
 }

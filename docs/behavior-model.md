@@ -62,9 +62,11 @@ a farther resource node can be productive when its service window opens as the
 worker arrives, hiding travel behind another worker's resource interaction.
 Availability is an estimate, not an assumed exclusive mineral-patch lock.
 
-The economy controller owns global worker assignments and reservations. Unit
-FSMs execute those assignments and report observed facts; they must not make
-conflicting independent node selections. Race-specific supply and construction
+The economy controller owns global worker assignments and reservations. Each worker's mining-route FSM retains its route context (worker/node/town-hall identities, cached outbound/return geometry, phase-entry game loop and predicted remaining phase time). It updates that geometry only when relevant positions or route basis change; elapsed phase time is a cheap game-loop delta, reconciled against observed orders, cargo, positions and resource changes. The resource-line controller coordinates service windows and saturation across route FSMs. Unit FSMs execute assignments and report facts; they must not make conflicting independent node selections.
+
+Mining is not interrupted for routine optimization. A higher-priority safety supervisor compares estimated enemy attack deadlines with the worker's remaining safe harvest/return time and may issue an evasion intent only when the threat warrants it. A returning worker's next town-hall/mineral assignment can be replanned without casually discarding its current return leg. For the first Depot, the builder is the closest eligible SCV to the placement from the non-mining pool; active miners are not pulled for ordinary construction.
+
+Opening command order is explicit: first issue the Command Center SCV train command; on the next scheduling pass assign the existing SCVs to mineral routes; then select the first Depot builder from the closest eligible non-mining SCV. All actions remain subject to current-frame legality validation. Race-specific supply and construction
 opportunity costs remain in ontology/capability data (including the distinct
 Drone, SCV and Probe construction semantics).
 

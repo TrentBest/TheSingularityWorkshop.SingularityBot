@@ -43,7 +43,8 @@ public sealed class WorkerRouteContextTests
         {
             Orders = new[] { new UnitOrderObservationFacts(3666, 20, null, null) }
         });
-        context.ApplyWorkerAssignment(assignment, 101);
+        context.ApplyWorkerAssignment(assignment, 101); // New reservation starts in Assigned.
+        context.ApplyWorkerAssignment(assignment, 102); // The next observation can advance from its observed order.
         Assert.Equal(WorkerRoutePhase.Outbound, context.WorkerRoutePhase);
 
         context.Apply(Facts(hasOrders: true, hasCargo: true, loop: 120) with

@@ -93,28 +93,28 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
                 Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
         }
 
-        var intents = new BehaviorIntentBuffer();
-        _unitBehaviors.Reconcile(normalized, intents.Add);
-        _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
-        _unitBehaviors.Update();
-
-        var actions = new List<SC2APIProtocol.Action>();
+        // The opening's first protocol action is isolated: train one SCV before
+        // issuing worker-route commands. The next observation must show the order.
         var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);
         _openingProductionActionSubmitted = productionAction is not null;
         if (productionAction is not null)
         {
             var command = productionAction.ActionRaw.UnitCommand;
             Console.WriteLine($"[Opening] Requesting first SCV: Command Center={command.UnitTags[0]}, ability={command.AbilityId}, minerals={normalized.Minerals}, supply={normalized.FoodUsed}/{normalized.FoodCap}.");
-            actions.Add(productionAction);
+            return new[] { productionAction };
         }
 
-        actions.AddRange(Sc2ActionTranslator.Translate(
+        var intents = new BehaviorIntentBuffer();
+        _unitBehaviors.Reconcile(normalized, intents.Add);
+        _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
+        _unitBehaviors.Update();
+
+        return Sc2ActionTranslator.Translate(
             intents.Drain(),
             normalized,
             _gameData.HarvestGatherAbilityId,
             _gameData.HarvestReturnAbilityId,
-            assignments));
-        return actions;
+            assignments);
     }
 
     public void OnActionResult(IReadOnlyList<SC2APIProtocol.Action> submittedActions, ResponseAction response)

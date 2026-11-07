@@ -26,8 +26,9 @@ The first concrete strategy is a **four-Barracks, pure-Marine Terran opening**. 
 
 ### Event-driven opening
 
-1. Queue the next SCV as soon as the opening begins and continue SCV production as resources and supply permit.
-2. Dispatch an SCV to build the first Supply Depot at the strategy's selected legal placement. Continue producing SCVs while the Depot is under construction whenever affordable and not supply-blocked.
+1. **First command: queue an SCV at the Command Center.** This is the first strategic action issued after the opening observation confirms the Command Center, affordability, and supply. Do not let worker assignment or construction scheduling precede this initial production command.
+2. On the next scheduling pass, assign the starting SCVs to mineral routes. Then select the SCV for the first Supply Depot: among eligible SCVs that are not actively mining, choose the one with the shortest predicted travel time to the selected legal Depot placement. Never steal a worker from an active mining route for ordinary construction; only the safety supervisor may interrupt mining to evade a credible threat.
+3. Continue queuing SCVs as resources and supply permit while the Depot is under construction.
 3. Forecast the Depot completion and reserve **150 minerals** so Barracks #1 can begin immediately when the Depot completes. The reserve is a spending constraint, not a reason to stop SCV production if the mineral bank can support both.
 4. Start Barracks #1 at the first observation where the Depot is complete, 150 minerals are available, a builder is available and the placement/action validator accepts the command.
 5. Continue SCV production and mineral saturation. When another 150 minerals are available without violating the active SCV/supply commitments, dispatch a different available SCV to start Barracks #2.

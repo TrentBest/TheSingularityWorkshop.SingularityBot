@@ -7,17 +7,20 @@ namespace SingularityBot.Tests;
 public sealed class Sc2ActionTranslatorTests
 {
     [Fact]
-    public void GatherIntentTargetsNearestVisibleMineralField()
+    public void GatherIntentUsesThePersistentMineralReservation()
     {
         var observation = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
             Fact(10, "SCV", UnitAlliance.Self, 2, 2),
             Fact(20, "MineralField750", UnitAlliance.Neutral, 8, 2),
             Fact(21, "MineralField750", UnitAlliance.Neutral, 3, 2));
+        var assignments = new WorkerResourceAssignmentPlanner().Reconcile(observation);
 
         var actions = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.AssignWorkerToMinerals) },
             observation,
-            3666);
+            3666,
+            workerAssignments: assignments);
 
         var command = Assert.Single(actions).ActionRaw.UnitCommand;
         Assert.Equal(21UL, command.TargetUnitTag);

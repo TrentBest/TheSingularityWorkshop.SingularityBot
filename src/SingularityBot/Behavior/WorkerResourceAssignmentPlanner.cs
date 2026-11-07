@@ -1,6 +1,6 @@
-namespace SingularityBot.Behavior;
-
 using SingularityBot.Observation;
+
+namespace SingularityBot.Behavior;
 
 /// <summary>
 /// Stable worker-to-resource reservations for one match. Assignments survive

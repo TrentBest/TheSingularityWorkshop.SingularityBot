@@ -52,4 +52,5 @@ jobs:
       - name: Build
         run: dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj --configuration Release --no-restore
       - name: Test
+        if: hashFiles('tests/SingularityBot.Tests/SingularityBot.Tests.csproj') != ''
         run: dotnet test tests/SingularityBot.Tests/SingularityBot.Tests.csproj --configuration Release

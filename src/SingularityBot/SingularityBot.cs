@@ -14,7 +14,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly Dictionary<uint, string> _unitNames = new();
     private readonly Dictionary<uint, string> _buffNames = new();
-    private readonly Dictionary<uint, string> _abilityNames = new();
     private uint _playerId;
     private uint? _harvestGatherAbilityId;
     private bool _behaviorCatalogRegistered;
@@ -30,7 +29,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         _playerId = playerId;
         _unitNames.Clear();
         _buffNames.Clear();
-        _abilityNames.Clear();
         _harvestGatherAbilityId = null;
 
         if (data is not null)
@@ -41,7 +39,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
                 _buffNames[buff.BuffId] = buff.Name;
             foreach (var ability in data.Abilities.OrderBy(ability => ability.AbilityId))
             {
-                _abilityNames[ability.AbilityId] = ability.LinkName;
                 if (string.Equals(ability.LinkName, "Harvest_Gather", StringComparison.OrdinalIgnoreCase))
                     _harvestGatherAbilityId = ability.AbilityId;
             }

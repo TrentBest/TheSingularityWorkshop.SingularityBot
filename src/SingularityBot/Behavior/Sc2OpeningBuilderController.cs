@@ -66,6 +66,23 @@ public sealed class Sc2OpeningBuilderController
             gameData.MoveAbilityId is not > 0)
             return null;
 
+        if (_builderTag is ulong selectedTag &&
+            (observation.DeadUnitTags.Contains(selectedTag) ||
+             observation.Units.Any(unit => unit.Tag == selectedTag &&
+                 unit.IsLiveVisible &&
+                 !unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase))))
+        {
+            assignments.Unreserve(selectedTag);
+            _builderTag = null;
+            _placement = null;
+            _candidatePoints = Array.Empty<MapPoint>();
+            _placementQueryPending = false;
+            _moveSubmitted = false;
+            _buildSubmitted = false;
+            _pendingAction = PendingAction.None;
+            Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
+        }
+
         if (_builderTag is null)
         {
             var returner = FindReturningScv(observation);
@@ -73,6 +90,7 @@ public sealed class Sc2OpeningBuilderController
                 return null;
 
             _builderTag = returner.Tag;
+            Console.WriteLine($"[Opening] 10-mineral threshold reached; pulling returning SCV {returner.Tag} from Command Center return route.");
             _returnTownHallTag = returner.Orders[0].TargetUnitTag;
             assignments.Reserve(returner.Tag);
             var townHall = observation.Units.FirstOrDefault(unit => unit.Tag == _returnTownHallTag.Value && unit.IsLiveVisible);

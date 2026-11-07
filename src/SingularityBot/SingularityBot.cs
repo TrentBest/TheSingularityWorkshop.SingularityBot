@@ -19,6 +19,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private bool _behaviorCatalogRegistered;
     private bool _spatialDiagnosticsReported;
     private readonly Sc2OpeningProductionController _openingProduction = new();
+    private bool _openingProductionActionSubmitted;
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public SpatialMap SpatialMap { get; private set; }
@@ -81,6 +82,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
 
         var actions = new List<SC2APIProtocol.Action>();
         var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);
+        _openingProductionActionSubmitted = productionAction is not null;
         if (productionAction is not null)
         {
             var command = productionAction.ActionRaw.UnitCommand;
@@ -103,13 +105,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         if (response.Result.Count == 0)
         {
             Console.WriteLine("[SC2 API] Action request returned no per-action result.");
-            _openingProduction.OnActionResult(null);
+            if (_openingProductionActionSubmitted)
+                _openingProduction.OnActionResult(null);
+            _openingProductionActionSubmitted = false;
             return;
         }
 
         foreach (var result in response.Result)
             Console.WriteLine($"[SC2 API] Action result: {result}.");
-        _openingProduction.OnActionResult(response.Result[0]);
+        if (_openingProductionActionSubmitted)
+            _openingProduction.OnActionResult(response.Result[0]);
+        _openingProductionActionSubmitted = false;
     }
 
     private void UpdateSpatialIntelligence(ResponseObservation response)

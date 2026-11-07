@@ -88,16 +88,16 @@ public sealed class Sc2OpeningProductionControllerTests
         uint minerals,
         uint foodUsed,
         uint foodCap,
-        params UnitObservationFacts[] units) =>
-        Snapshot(minerals, foodUsed, foodCap, units, 100);
+        UnitObservationFacts unit) =>
+        Snapshot(minerals, foodUsed, foodCap, unit, 100);
 
     private static NormalizedObservation Snapshot(
         uint minerals,
         uint foodUsed,
         uint foodCap,
-        UnitObservationFacts[] units,
+        UnitObservationFacts unit,
         uint gameLoop) =>
-        new(gameLoop, 1, units, new HashSet<ulong>())
+        new(gameLoop, 1, new[] { unit }, new HashSet<ulong>())
         {
             Minerals = minerals,
             FoodUsed = foodUsed,

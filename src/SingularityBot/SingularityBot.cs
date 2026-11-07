@@ -20,6 +20,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private bool _spatialDiagnosticsReported;
     private readonly Sc2OpeningProductionController _openingProduction = new();
     private bool _openingProductionActionSubmitted;
+    private bool _scvTrainingOrderObserved;
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public SpatialMap SpatialMap { get; private set; }
@@ -73,6 +74,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
 
         foreach (var actionError in observation.ActionErrors)
             Console.WriteLine($"[SC2 API] Action error: unit={actionError.UnitTag}, ability={actionError.AbilityId}, result={actionError.Result}.");
+
+        var scvTrainingOrderObserved = _gameData.ScvTrainAbilityId is > 0 && normalized.Units.Any(unit =>
+            unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible &&
+            (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase)) &&
+            unit.Orders.Any(order => order.AbilityId == _gameData.ScvTrainAbilityId.Value));
+        if (scvTrainingOrderObserved && !_scvTrainingOrderObserved)
+            Console.WriteLine("[Opening] OBSERVED: Command Center has an SCV training order.");
+        _scvTrainingOrderObserved = scvTrainingOrderObserved;
 
         var assignments = _workerAssignments.Reconcile(normalized);
         var intents = new BehaviorIntentBuffer();

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SC2APIProtocol;
 using SingularityBot.Behavior;
+using SingularityBot.Spatial;
 
 namespace SingularityBot;
 
@@ -13,6 +14,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private bool _behaviorCatalogRegistered;
 
+    /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
+    public SpatialMap SpatialMap { get; private set; }
+
     public void OnStart(
         ResponseGameInfo gameInfo,
         ResponseData data,
@@ -21,6 +25,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         uint playerId,
         string opponentId)
     {
+        if (SpatialMapFactory.TryCreate(gameInfo, observation, out var spatialMap))
+            SpatialMap = spatialMap;
+
         if (_behaviorCatalogRegistered)
             return;
 

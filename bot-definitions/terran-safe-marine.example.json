@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "1.0",
+  "metadata": {
+    "id": "bot.terran.safe-marine",
+    "name": "Safe Marine Pressure",
+    "version": "1.0.0",
+    "description": "Establish a stable opening, build Marines, scout, and avoid unfavorable engagements."
+  },
+  "game": {
+    "id": "starcraft-ii",
+    "adapter": "sc2",
+    "race": "Terran"
+  },
+  "strategy": {
+    "schemaVersion": "1.0",
+    "opening": {
+      "buildIntents": [
+        {
+          "id": "opening.supply-depot",
+          "target": "Terran_SupplyDepot",
+          "count": 1,
+          "earliestGameLoop": 0,
+          "latestGameLoop": 1200,
+          "priority": 100
+        },
+        {
+          "id": "opening.barracks",
+          "target": "Terran_Barracks",
+          "count": 1,
+          "earliestGameLoop": 0,
+          "latestGameLoop": 2400,
+          "priority": 90
+        }
+      ]
+    },
+    "goals": [
+      { "id": "economy.establish", "kind": "Economy", "priority": 80 },
+      { "id": "army.marine-pressure", "kind": "ArmyPressure", "priority": 60 },
+      { "id": "survival.maintain", "kind": "Survival", "priority": 100 }
+    ],
+    "constraints": [
+      { "id": "commands.valid-only", "kind": "CommandValidity", "severity": "Hard" }
+    ],
+    "tactics": [],
+    "scouting": [],
+    "composition": {
+      "desiredUnits": [
+        { "unitId": "terran.marine", "minimumCount": 1 }
+      ]
+    },
+    "evaluation": {
+      "tags": ["authoring-preview", "terran", "marine"],
+      "metrics": ["worker-idle-time", "invalid-action-count", "marine-survival"]
+    }
+  },
+  "unitProfiles": [
+    {
+      "unitId": "terran.marine",
+      "role": "main-army",
+      "profileId": "terran.marine.default",
+      "catalogVersion": "1.0.0",
+      "overrides": {
+        "retreatWhenOutmatched": true
+      }
+    }
+  ]
+}

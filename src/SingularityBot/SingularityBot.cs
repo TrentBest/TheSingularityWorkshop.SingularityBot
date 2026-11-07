@@ -21,6 +21,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private readonly Sc2OpeningProductionController _openingProduction = new();
     private bool _openingProductionActionSubmitted;
     private bool _scvTrainingOrderObserved;
+    private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public SpatialMap SpatialMap { get; private set; }
@@ -86,6 +87,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         _scvTrainingOrderObserved = scvTrainingOrderObserved;
 
         var assignments = _workerAssignments.Reconcile(normalized);
+        foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
+        {
+            if (_loggedWorkerAssignments.Add((assignment.WorkerTag, assignment.Generation)))
+                Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
+        }
+
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
@@ -110,7 +117,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         return actions;
     }
 
-    public void OnActionResult(ResponseAction response)
+    public void OnActionResult(IReadOnlyList<SC2APIProtocol.Action> submittedActions, ResponseAction response)
     {
         if (response is null) return;
         if (response.Result.Count == 0)
@@ -122,8 +129,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             return;
         }
 
-        foreach (var result in response.Result)
-            Console.WriteLine($"[SC2 API] Action result: {result}.");
+        for (var index = 0; index < response.Result.Count; index++)
+        {
+            var result = response.Result[index];
+            var command = index < submittedActions.Count ? submittedActions[index].ActionRaw?.UnitCommand : null;
+            var unitTags = command is null ? string.Empty : string.Join(",", command.UnitTags);
+            Console.WriteLine($"[SC2 API] Action {index}: ability={command?.AbilityId.ToString() ?? "unknown"}, units=[{unitTags}], result={result}.");
+        }
         if (_openingProductionActionSubmitted)
             _openingProduction.OnActionResult(response.Result[0]);
         _openingProductionActionSubmitted = false;
@@ -188,5 +200,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     {
         _unitBehaviors.RemoveAll();
         _workerAssignments.Clear();
+        _loggedWorkerAssignments.Clear();
     }
 }

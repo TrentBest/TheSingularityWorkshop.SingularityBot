@@ -53,7 +53,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5, true, true,
                 new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
             Fact(1, "CommandCenter", 10, 10),
-            Fact(20, "MineralField750", 4, 5));
+            Fact(20, "MineralField750", 4, 5) with { Alliance = UnitAlliance.Neutral, OwnerId = 0 });
         assignments.Reconcile(first);
         controller.TryCreateAction(first, map, gameData, true, assignments);
 

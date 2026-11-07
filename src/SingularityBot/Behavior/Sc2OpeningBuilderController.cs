@@ -261,6 +261,7 @@ public sealed class Sc2OpeningBuilderController
                                     unit.IsLiveVisible &&
                                     unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) &&
                                     unit.HasCargo &&
+                                    !assignments.IsReserved(unit.Tag) &&
                                     unit.Orders.Count > 0 &&
                                     !observation.DeadUnitTags.Contains(unit.Tag))
                      .OrderBy(unit => unit.Tag))

@@ -53,7 +53,12 @@ public sealed class UnitBehaviorRuntime
         ArgumentNullException.ThrowIfNull(emit);
 
         foreach (var context in _contexts.Values)
+        {
+            // Retain the context and handle through fog/absence, but suspend
+            // FSM processing until fresh visible facts reactivate the context.
             context.IsCurrentlyVisible = false;
+            context.IsValid = false;
+        }
 
         foreach (var deadTag in observation.DeadUnitTags.OrderBy(tag => tag))
             Remove(deadTag);

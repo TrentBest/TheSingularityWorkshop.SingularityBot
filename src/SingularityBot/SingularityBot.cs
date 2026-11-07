@@ -31,14 +31,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         {
             SpatialMap = spatialMap;
             SpatialIntelligence = new SpatialIntelligence(spatialMap);
-            Console.WriteLine($"[Spatial] ${gameInfo.MapName}: bounds=({spatialMap.Bounds.MinX},{spatialMap.Bounds.MinY})-({spatialMap.Bounds.MaxX},{spatialMap.Bounds.MaxY}), center=({spatialMap.Center.X:F1},{spatialMap.Center.Y:F1}), sectors={spatialMap.Sectors.Count}.");
+            Console.WriteLine($"[Spatial] {gameInfo.MapName}: bounds=({spatialMap.Bounds.MinX},{spatialMap.Bounds.MinY})-({spatialMap.Bounds.MaxX},{spatialMap.Bounds.MaxY}), center=({spatialMap.Center.X:F1},{spatialMap.Center.Y:F1}), sectors={spatialMap.Sectors.Count}.");
             Console.WriteLine($"[Spatial] Friendly start=({spatialMap.Side.FriendlyStart.X:F1},{spatialMap.Side.FriendlyStart.Y:F1}); enemy start=({spatialMap.Side.EnemyStart.X:F1},{spatialMap.Side.EnemyStart.Y:F1}).");
         }
         else
         {
             SpatialMap = null;
             SpatialIntelligence = null;
-            Console.WriteLine($"[Spatial] Map geometry unresolved for ${gameInfo?.MapName ?? "unknown map"}; the bot needs playable bounds, own starting units, and exactly two start locations.");
+            Console.WriteLine($"[Spatial] Map geometry unresolved for {gameInfo?.MapName ?? "unknown map"}; the bot needs playable bounds, own starting units, and exactly two start locations.");
         }
 
         if (_behaviorCatalogRegistered)

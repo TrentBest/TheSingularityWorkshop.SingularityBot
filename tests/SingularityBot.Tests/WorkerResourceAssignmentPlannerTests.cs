@@ -68,6 +68,25 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void ReservedBuilderIsExcludedUntilExplicitlyUnreserved()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0));
+
+        Assert.Contains(10UL, planner.Reconcile(observation).Keys);
+        planner.Reserve(10);
+
+        Assert.Empty(planner.Reconcile(observation));
+        Assert.True(planner.IsReserved(10));
+
+        planner.Unreserve(10);
+        Assert.Contains(10UL, planner.Reconcile(observation).Keys);
+    }
+
+    [Fact]
     public void KeepsReservationAndGenerationWhenWorkerTemporarilyDisappears()
     {
         var planner = new WorkerResourceAssignmentPlanner();

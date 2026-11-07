@@ -25,7 +25,7 @@ Prove a deterministic, measurable Terran economy and production loop:
 6. Preserve mining throughput while builders and production consume resources.
 7. Replay the same observations and reproduce the same decisions.
 
-This is an implementation target, not a claim that the full opening is already complete. The `development` branch now contains the observation normalizer, persistent unit-context reconciliation, profile-aware morph replacement, intent buffering, and initial gather/return action translation for SCV/Probe/Drone workers. Automated regression tests are wired into the build workflow. Persistent worker-to-mineral assignments, route scheduling/cache, available-ability validation, construction, production orchestration, replay evidence and live-match validation remain open gates.
+This is an implementation target, not a claim that the full opening is already complete. The `development` branch now connects the observation normalizer, persistent unit-context reconciliation, profile-aware morph replacement, intent buffering, SC2 game-data lookup, and the first end-to-end gather/return action path for SCV/Probe/Drone workers. Each frame is normalized once, reconciled, evaluated by the FSM runtime, and translated against that same frame before the runner submits actions. The translator rejects stale/invisible targets and missing ability metadata. This is still a deliberately narrow action path: it does not yet query each unit's available abilities or consume action-result feedback. Persistent worker-to-mineral assignments, route scheduling/cache, construction, production orchestration, replay evidence and live-match validation remain open gates. The current CI suite passes 15 tests.
 
 ## Architecture at a glance
 

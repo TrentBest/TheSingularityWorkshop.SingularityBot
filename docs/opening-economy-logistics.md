@@ -55,6 +55,31 @@ Reservations are priorities and forecasts, not fictitious deductions from the ob
 
 Record game-loop timestamps for each SCV queue/completion, Depot start/completion, each Barracks start/completion, each Marine queue/completion, supply-block intervals, worker assignments and mineral bank. Report time to first Marine, time to four completed Barracks, Marine production uptime, SCV count, mineral income, idle/constructing worker-minutes and unused gas (expected to remain zero). Compare repeated runs on the same map and game version before changing the policy.
 
+## Mining as persistent route FSMs
+
+A mineral line is not a fresh nearest-patch calculation every frame. Each active worker assignment is a persistent route FSM whose context owns:
+- worker, mineral node and servicing town-hall identities;
+- cached outbound and return route geometry/endpoints, including direction/tangent data when available;
+- phase (outbound, waiting/service, harvesting, returning, unloading, reassignment or threat-evasion);
+- phase-entry game loop and elapsed duration derived from the current game loop;
+- predicted remaining service/gather/return time, confidence and the evidence used to update it.
+
+Update cached geometry only when the worker, node, town hall, pathing basis or observed position meaningfully changes. Elapsed phase time is the inexpensive delta between the current game loop and phase-entry loop; no wall-clock timer or per-frame timer allocation is needed. Timers are estimates, not proof that an action completed: reconcile phases against observed orders, cargo, positions and resource changes.
+
+The resource-line controller coordinates per-worker route FSMs, node service windows, reservations and saturation. A returning worker's next town-hall/mineral assignment may be replanned, but do not casually discard its current return leg. Evaluate the next town hall and next mineral node as a coupled assignment rather than blindly returning every worker to the nearest town hall.
+
+## Safety interruption and threat timing
+
+Routine economic optimization never interrupts an active mining or planned return route. Threat evasion is the explicit higher-priority exception. When an enemy is observed, estimate its earliest credible attack time against each affected worker using position, movement/weapon range, cooldown and game data. Compare that deadline with the worker's predicted remaining safe interaction/harvest/return time. Preserve the route if the worker can finish and exit before the threat deadline; otherwise emit an evasion intent for current-frame adapter validation. Incomplete information must retain uncertainty and bias toward safety, not be treated as proof of safety. Record forecasts and outcomes for calibration.
+
+## Construction worker selection
+
+For the first Supply Depot, select the closest SCV to the chosen placement **from the eligible non-mining pool**. Eligible means observed idle/available or otherwise not committed to a mineral route; it does not mean a miner whose gather order is momentarily between animations. Exclude workers already building, committed to another task, scouting, dead, hidden or unavailable. Rank by predicted travel time (distance as fallback), then stable unit tag. If none is eligible, wait and re-evaluate rather than interrupt a miner. Apply the same rule to later Barracks builders unless an explicit, measured policy authorizes a different trade-off.
+
+## Initial action ordering
+
+The first opening command is the Command Center's SCV train command. After that command is accepted, the next scheduling pass assigns the existing SCVs to their mineral routes; then it selects the first Depot builder from the closest eligible non-mining SCV. Worker assignment and construction scheduling must not precede the initial SCV production action. Every command remains subject to current-frame affordability, supply, prerequisites, freshness and per-unit available-ability validation.
+
 ## Worker scouting decision
 
 Worker scouting is a configurable information-versus-income decision, not an

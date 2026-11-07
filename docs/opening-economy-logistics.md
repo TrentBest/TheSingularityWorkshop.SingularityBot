@@ -12,6 +12,48 @@ The first bot milestone is not combat or ladder performance. It is a complete, m
 
 The opening controller must respect actual game data, prerequisites, costs, supply, build times, worker availability and legal action requirements. The table is a milestone outline, not a hard-coded build order or timing claim.
 
+## Initial Terran strategy: four-Barracks pure Marine
+
+The first concrete strategy is a **four-Barracks, pure-Marine Terran opening**. It is the initial strategy to implement and measure, not a claim of ladder-optimality.
+
+### Strategy constraints
+
+- No gas collection or Refinery construction in this strategy.
+- No worker scout in the baseline opening. Scouting is a later, separately measured strategy option and must not silently take an SCV away from this build.
+- Maintain SCV production whenever the Command Center can legally and affordably train one, subject to supply and the mineral reservations below.
+- Mineral income is the only planned resource income; preserve enough workers on minerals to sustain construction and Marine production.
+- Do not issue a build or train command unless the structure/unit prerequisites, affordability, supply, placement and command validation all pass.
+
+### Event-driven opening
+
+1. Queue the next SCV as soon as the opening begins and continue SCV production as resources and supply permit.
+2. Dispatch an SCV to build the first Supply Depot at the strategy's selected legal placement. Continue producing SCVs while the Depot is under construction whenever affordable and not supply-blocked.
+3. Forecast the Depot completion and reserve **150 minerals** so Barracks #1 can begin immediately when the Depot completes. The reserve is a spending constraint, not a reason to stop SCV production if the mineral bank can support both.
+4. Start Barracks #1 at the first observation where the Depot is complete, 150 minerals are available, a builder is available and the placement/action validator accepts the command.
+5. Continue SCV production and mineral saturation. When another 150 minerals are available without violating the active SCV/supply commitments, dispatch a different available SCV to start Barracks #2.
+6. Repeat the same affordability-and-builder gate for Barracks #3 and #4. Do not pull a worker from an active construction job; choose the lowest-opportunity-cost eligible mineral worker.
+7. Keep supply ahead of demand. Add the next Supply Depot before the current supply headroom blocks SCV or Marine production; its cost and builder time must be included in the forecast.
+8. Once each Barracks completes, queue Marines whenever minerals and supply permit. The production scheduler should use all completed Barracks and avoid leaving one idle while another is repeatedly queued.
+9. Continue mineral saturation and SCV production while funding Marine production and required supply. Gas remains intentionally unused.
+
+The exact SCV count at each transition, Depot placement, and build-loop timing are **measured outcomes**, not hard-coded assumptions. The controller should evaluate the event conditions from each normalized observation and game data. In particular, “150 minerals at Depot completion” is an explicit opening objective; the planner should forecast whether the objective is reachable and prioritize spending accordingly.
+
+### Opening state and reservations
+
+Represent the opening as explicit states: `EstablishingWorkers`, `DepotUnderConstruction`, `AwaitingFirstBarracksWindow`, `BarracksOneUnderConstruction`, `ExpandingBarracks`, and `FourBarracksProduction`. State transitions are driven by observed structure completion, resource bank, supply headroom, worker availability and validated action results—not by assumed elapsed time.
+
+Maintain separate mineral reservations for:
+- next SCV production;
+- first/next Barracks construction;
+- the next required Supply Depot;
+- Marine production.
+
+Reservations are priorities and forecasts, not fictitious deductions from the observed resource bank. The scheduler must resolve conflicts deterministically and record which commitment delayed another. If a supply block or unexpected income shortfall makes the planned first-Barracks window impossible, preserve the actual game state and re-plan; never emit an unaffordable action.
+
+### Success metrics
+
+Record game-loop timestamps for each SCV queue/completion, Depot start/completion, each Barracks start/completion, each Marine queue/completion, supply-block intervals, worker assignments and mineral bank. Report time to first Marine, time to four completed Barracks, Marine production uptime, SCV count, mineral income, idle/constructing worker-minutes and unused gas (expected to remain zero). Compare repeated runs on the same map and game version before changing the policy.
+
 ## Worker scouting decision
 
 Worker scouting is a configurable information-versus-income decision, not an

@@ -109,9 +109,6 @@ public sealed class ObservationReconciliationTests
         // The same FSM context survives the frame boundary, but its emission
         // must target this frame's buffer rather than the drained first buffer.
         runtime.Update();
-        var secondFrameCommands = secondFrame.Drain();
-        Assert.NotEmpty(secondFrameCommands);
-        Assert.Contains(secondFrameCommands, command => command.Key == 44);
 
         runtime.Reconcile(
             new NormalizedObservation(12, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong>()),

@@ -86,8 +86,11 @@ public sealed class SpatialIntelligence
     private IReadOnlyDictionary<MapSide, IReadOnlyList<LocatedContact>> _sides =
         new Dictionary<MapSide, IReadOnlyList<LocatedContact>>();
 
-    public SpatialIntelligence(SpatialMap map) =>
+    public SpatialIntelligence(SpatialMap map)
+    {
         _map = map ?? throw new ArgumentNullException(nameof(map));
+        RebuildIndexes();
+    }
 
     public int KnownContactCount => _known.Count;
     public IReadOnlyDictionary<SectorId, SectorIntelligence> Sectors => _sectors;

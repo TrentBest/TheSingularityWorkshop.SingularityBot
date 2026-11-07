@@ -39,7 +39,7 @@ Cache route geometry and stable positions. Recompute only when the worker route,
 
 ## Scheduling and measurement
 
-The first implementation should favor correctness and deterministic behavior over sophisticated optimization. Start with a clear baseline (eligible worker, available mineral node, deterministic tie-break), then measure before introducing saturation or arrival-window heuristics.
+The current baseline uses deterministic, saturation-aware assignment (two workers per mineral field by default), nearest-route tie-breaking, stable assignment generations, and explicit invalidation when a worker dies or its mineral target is confirmed dead/disappears. Worker absence alone does not discard a reservation. Arrival-window scheduling and cached path geometry remain later steps; measure the baseline before adding those heuristics.
 
 Record:
 - minerals delivered per game loop/minute;

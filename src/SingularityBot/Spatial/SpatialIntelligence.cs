@@ -93,6 +93,10 @@ public sealed class SpatialIntelligence
     }
 
     public int KnownContactCount => _known.Count;
+    public int VisibleFriendlyCount => Count(SpatialAlliance.Friendly, ContactVisibility.Visible);
+    public int RememberedFriendlyCount => Count(SpatialAlliance.Friendly, ContactVisibility.Remembered);
+    public int VisibleEnemyCount => Count(SpatialAlliance.Enemy, ContactVisibility.Visible);
+    public int RememberedEnemyCount => Count(SpatialAlliance.Enemy, ContactVisibility.Remembered);
     public IReadOnlyDictionary<SectorId, SectorIntelligence> Sectors => _sectors;
 
     /// <summary>
@@ -170,6 +174,10 @@ public sealed class SpatialIntelligence
 
         return result.AsReadOnly();
     }
+
+    private int Count(SpatialAlliance alliance, ContactVisibility visibility) =>
+        _known.Values.Count(contact =>
+            contact.Alliance == alliance && contact.Visibility == visibility);
 
     private void RebuildIndexes()
     {

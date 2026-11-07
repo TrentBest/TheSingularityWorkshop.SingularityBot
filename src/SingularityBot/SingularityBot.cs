@@ -16,6 +16,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
     private readonly Dictionary<uint, string> _buffNames = new();
     private uint _playerId;
     private uint? _harvestGatherAbilityId;
+    private uint? _harvestReturnAbilityId;
     private bool _behaviorCatalogRegistered;
 
     public void OnStart(
@@ -30,6 +31,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         _unitNames.Clear();
         _buffNames.Clear();
         _harvestGatherAbilityId = null;
+        _harvestReturnAbilityId = null;
 
         if (data is not null)
         {
@@ -41,6 +43,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
             {
                 if (string.Equals(ability.LinkName, "Harvest_Gather", StringComparison.OrdinalIgnoreCase))
                     _harvestGatherAbilityId = ability.AbilityId;
+                else if (string.Equals(ability.LinkName, "Harvest_Return", StringComparison.OrdinalIgnoreCase))
+                    _harvestReturnAbilityId = ability.AbilityId;
             }
         }
 
@@ -62,7 +66,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot
         return Sc2ActionTranslator.Translate(
             intents.Drain(),
             normalized,
-            _harvestGatherAbilityId);
+            _harvestGatherAbilityId,
+            _harvestReturnAbilityId);
     }
 
     public void OnEnd(ResponseObservation observation, Result result)

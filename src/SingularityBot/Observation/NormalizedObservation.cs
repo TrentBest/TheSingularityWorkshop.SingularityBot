@@ -42,8 +42,17 @@ public sealed record UnitObservationFacts(
     bool IsHallucination,
     uint GameLoop)
 {
+    public IReadOnlyList<UnitOrderObservationFacts> Orders { get; init; } = Array.Empty<UnitOrderObservationFacts>();
+
     public bool IsLiveVisible => Visibility == UnitVisibility.Visible;
 }
+
+/// <summary>Protocol-independent target data for one observed SC2 order.</summary>
+public sealed record UnitOrderObservationFacts(
+    uint AbilityId,
+    ulong? TargetUnitTag,
+    float? TargetPositionX,
+    float? TargetPositionY);
 
 /// <summary>Immutable normalized view of one SC2 observation.</summary>
 public sealed class NormalizedObservation

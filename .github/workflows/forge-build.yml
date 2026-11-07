@@ -1,0 +1,32 @@
+name: Forge GUI Build
+
+on:
+  push:
+    branches: [development, master, 'feature/**']
+    paths:
+      - 'src/SingularityBot.Gui/**'
+      - 'TheSingularityWorkshop.SingularityBot.sln'
+      - '.github/workflows/forge-build.yml'
+  pull_request:
+    paths:
+      - 'src/SingularityBot.Gui/**'
+      - 'TheSingularityWorkshop.SingularityBot.sln'
+      - '.github/workflows/forge-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-forge:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore src/SingularityBot.Gui/SingularityBot.Gui.csproj
+      - name: Build
+        run: dotnet build src/SingularityBot.Gui/SingularityBot.Gui.csproj --configuration Release --no-restore

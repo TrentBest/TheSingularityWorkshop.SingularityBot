@@ -135,7 +135,7 @@ static string BuildSvg(string name, SpatialMap map, IReadOnlyList<LocatedContact
     builder.AppendLine("<g clip-path=\"url(#map-clip)\" fill=\"none\">");
 
     // Quadrant boundaries.
-    builder.AppendLine($"<path d=\"M {N(X(map.Center is var c ? new MapPoint(c.X, map.Bounds.MinY) : default))} 0 V {N(height)} M 0 {N(Y(new MapPoint(map.Bounds.MinX, map.Center.Y)))} H {N(width)}\" stroke=\"#94a3b8\" stroke-width=\"0.2\" stroke-dasharray=\"1 0.6\" />");
+    builder.AppendLine($"<path d=\"M {N(X(new MapPoint(map.Center.X, map.Bounds.MinY)))} 0 V {N(height)} M 0 {N(Y(new MapPoint(map.Bounds.MinX, map.Center.Y)))} H {N(width)}\" stroke=\"#94a3b8\" stroke-width=\"0.2\" stroke-dasharray=\"1 0.6\" />");
 
     // 3x3 tactical grid.
     for (var i = 1; i <= 2; i++)

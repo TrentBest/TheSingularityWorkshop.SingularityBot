@@ -61,7 +61,7 @@ Implemented and present in the integration branch:
 - FSM emissions are collected per observation rather than routed to a stale frame buffer.
 - Initial gather and return-cargo intents translate to SC2 unit commands for SCV/Probe/Drone workers. Gather resolves `Harvest_Gather`; return resolves `Harvest_Return` from game data and selects a visible friendly town hall deterministically.
 - Worker mineral reservations are deterministic and saturation-aware (two workers per mineral by default), with stable generations and retention through temporary worker/target occlusion. Explicit dead-unit events invalidate the affected reservation.
-- Reservation tags, generation and observation-derived route phase are synchronized into each visible worker FSM context; phase-entry game-loop timestamps are retained.
+- Reservation tags, generation and observation-derived route phase are synchronized into each visible worker FSM context; phase-entry game-loop timestamps are retained. The worker FSM only enters its mining state when a live reservation exists, and returns to assessment when a reservation is invalidated or replaced.
 - Regression tests cover normalization, reconciliation, fog/death/morph behavior, assignment planning, route-context phases and initial gather/return translation. The build workflow invokes the test project.
 
 Not yet proven or implemented as a complete economy:

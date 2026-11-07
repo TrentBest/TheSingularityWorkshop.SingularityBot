@@ -236,9 +236,11 @@ namespace SC2API_CSharp
                 actionRequest.Action.Actions.AddRange(actions);
                 if (actionRequest.Action.Actions.Count > 0)
                 {
+                    var submittedActions = new List<SC2APIProtocol.Action>(actionRequest.Action.Actions);
+                    Console.WriteLine($"[SC2 API] Submitting {submittedActions.Count} raw action(s).");
                     Response actionResponse = await proxy.SendRequest(actionRequest);
                     if (actionResponse?.Action != null)
-                        bot.OnActionResult(actionResponse.Action);
+                        bot.OnActionResult(submittedActions, actionResponse.Action);
                 }
 
                 if (!realtime)

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers><UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <AssemblyName>TheSingularityWorkshop.SingularityBot.Gui</AssemblyName>
+    <RootNamespace>TheSingularityWorkshop.SingularityBot.Gui</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup><PackageReference Include="TheSingularityWorkshop.GUI.WPF" Version="0.1.0-alpha.6" /></ItemGroup>
+  <ItemGroup>
+    <None Update="Examples/**/*.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+    <None Update="Schemas/**/*.json"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+  </ItemGroup>
+</Project>

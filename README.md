@@ -9,53 +9,59 @@
 
 [![Sith Policy](https://raw.githubusercontent.com/TrentBest/TheSingularityWorkshop.SingularityBot/master/assets/sith-policy.svg)](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/workflows/sith-policy.yml)
 
-**A StarCraft II strategy system built on the Singularity Workshop.**
+**An FSM-driven StarCraft II bot, built on The Singularity Workshop.**
 
-SingularityBot separates the StarCraft II client protocol from game ontology, FSM-driven execution, strategy authoring, spatial reasoning, memory and evaluation. Strategies are intended to be declarative data compiled into runtime state machines—not hard-coded bot personalities.
+SingularityBot observes the game, maintains persistent entity contexts, evaluates hierarchical finite-state machines, arbitrates intents, validates commands, and submits actions through the SC2 protocol adapter. The first objective is a bot that actually plays a disciplined Terran opening—not a generalized strategy editor, a neural-policy experiment, or a ladder framework.
 
-> **Status:** playable foundation under construction. The repository contains the SC2 protocol adapter, .NET 8 runner, FSM-based unit behavior foundation, strategy format and opening-economy specification. Observation reconciliation and intent-to-action translation are not complete, so it is not yet a functioning or ladder-ready autonomous bot.
+## Current objective
 
-## Start here
+Prove a deterministic, measurable Terran economy and production loop:
 
-- [Documentation site](https://trentbest.github.io/TheSingularityWorkshop.SingularityBot/)
+1. Reconcile each observation into stable player, worker, resource, structure, order, and game-loop facts.
+2. Assign starting SCVs to persistent mineral routes.
+3. Select the closest suitable SCV for the first Supply Depot.
+4. Complete the Depot and first Barracks through validated construction actions.
+5. Establish four Barracks and sustain a pure-Marine production plan without gas.
+6. Preserve mining throughput while builders and production consume resources.
+7. Replay the same observations and reproduce the same decisions.
+
+This is an implementation target, not a claim that the full opening is already complete. The repository currently has an FSM foundation, observation normalization/reconciliation and an initial gather/return action path on active development work. Construction, production orchestration, persistent mineral-route scheduling and live-match validation remain gates.
+
+## Architecture at a glance
+
+| Responsibility | Owner |
+|---|---|
+| Protocol connection, observations, game data and action submission | SC2 adapter |
+| Unit/ability/race vocabulary and capability facts | Bot game ontology |
+| Persistent contexts and hierarchical execution | FSM_API |
+| Shared executor / processing cadence | FSM_Foundry |
+| Distances, routes and spatial queries | Physics |
+| Authoring, inspection and map presentation | GUI / Renderer / Visualize |
+| Match history and durable experience | DataWarehouse |
+| Build, tests, replay evaluation and automation | CiAi / HeadlessAi |
+
+The runtime is authoritative. GUI is an authoring and inspection client; it does not contain a second bot engine. SC2 protocol types stay at the adapter boundary. FSM_API remains game-independent.
+
+## Documentation
+
 - [Architecture](docs/architecture.md)
+- [Behavior and FSM model](docs/behavior-model.md)
+- [Terran opening and worker logistics](docs/opening-economy-logistics.md)
 - [Strategy format](docs/strategy-format.md)
-- [FSM-native behavior model and first unit expertise set](docs/behavior-model.md)
-- [Opening economy and resource logistics](docs/opening-economy-logistics.md)
-- [Strategy JSON Schema](schemas/strategy.schema.json)
-- [Example strategy](strategies/terran-opening.example.json)
+- [Roadmap and acceptance gates](docs/roadmap.md)
+- [Windows development and local testing](docs/windows-development-setup.md)
+- [Local game sessions](docs/local-game-sessions.md)
 - [Lineage and licensing](docs/lineage.md)
 - [Source migration audit](docs/migration-audit.md)
-- [GitHub Pages publishing](docs/pages.md)
-- [Roadmap](docs/roadmap.md)
-- [Windows development setup and local Terran testing](docs/windows-development-setup.md)
-- [Local game sessions and human-vs-bot architecture](docs/local-game-sessions.md)
 
-## Workshop composition
+## Development rules
 
-| Concern | Workshop system |
-|---|---|
-| Match, player and unit lifecycles | FSM_API |
-| Hierarchical worker, squad and unit behavior | FSM_API behavior definitions + per-entity contexts |
-| Game vocabulary and protocol concepts | GrammarAi / ProtocolAi |
-| Goals and command decomposition | CommandAi |
-| Spatial reasoning | Physics |
-| Durable match memory | DataWarehouse |
-| Strategy authoring and visualization | GUI / Renderer / Visualize |
-| Build, replay regression and evaluation | CiAi / HeadlessAi |
-
-The SC2 adapter remains a replaceable boundary. FSM_API must remain independent of SC2-specific types, and the headless runtime must not require the editor or visualization stack.
-
-## Lineage
-
-The historical upstream starting point is [SimonPrins/ExampleBot](https://github.com/SimonPrins/ExampleBot) by **Simon Prins**. The user's reference snapshot is [ExampleBotFromSimon](https://github.com/TrentBest/ExampleBotFromSimon). The Workshop's later [FSM_Bot](https://github.com/TrentBest/FSM_Bot) contains an FSM-oriented evolution, but its Git history does not preserve ExampleBot's original ancestry. See [lineage and licensing](docs/lineage.md) and the [source migration audit](docs/migration-audit.md) before importing or redistributing upstream-derived files.
-
-## Development
-
-- `development` is the active integration branch.
-- `master` is the stable/released state.
-- The repository is governed by the Workshop's Sith policy: exactly these two branches.
-- No NuGet publication, ladder deployment or other external release occurs without explicit authorization.
+- Exactly two long-lived branches: `master` and `development`.
+- `development` is the sole integration branch; short-lived feature branches are not part of the workflow.
+- Keep changes small, tested, and continuously integrated into `development`.
+- Fail closed when observations, abilities, targets, prerequisites, or action legality are uncertain.
+- Do not claim a behavior works until automated tests and a local SC2 match/replay demonstrate it.
+- NuGet publication and external release remain separately authorized actions.
 
 ---
 

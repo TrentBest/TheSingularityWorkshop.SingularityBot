@@ -34,7 +34,9 @@ public static class WorkerScoutPolicy
     {
         ArgumentNullException.ThrowIfNull(assessment);
 
-        if (assessment.ScoutAlreadyAssigned ||
+        if (assessment.AvailableUnassignedWorkers < 0 ||
+            assessment.MinimumMiningWorkersToPreserve < 0 ||
+            assessment.ScoutAlreadyAssigned ||
             assessment.AvailableUnassignedWorkers <= assessment.MinimumMiningWorkersToPreserve)
             return WorkerScoutDecision.DoNotScout;
 

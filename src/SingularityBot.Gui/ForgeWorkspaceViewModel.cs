@@ -10,7 +10,7 @@ namespace TheSingularityWorkshop.SingularityBot.Gui;
 public sealed class ForgeWorkspaceViewModel : INotifyPropertyChanged
 {
     private GroupDraft? _selectedGroup; private UnitProfileDraft? _selectedProfile;
-    private StrategyPhaseDraft? _selectedPhase; private BehaviorRuleDraft? _selectedRule;
+    private StrategyPhaseDraft? _selectedPhase; private BehaviorRuleDraft? _selectedRule; private BehaviorDraft? _selectedBehavior;
     private string _status = "Synthetic example loaded · not connected to a runtime";
     public event PropertyChangedEventHandler? PropertyChanged;
     public BotDefinitionDraft Definition { get; private set; }
@@ -18,10 +18,12 @@ public sealed class ForgeWorkspaceViewModel : INotifyPropertyChanged
     public ObservableCollection<UnitProfileDraft> Profiles => Definition.UnitProfiles;
     public ObservableCollection<StrategyPhaseDraft> Phases => Definition.Phases;
     public ObservableCollection<BehaviorRuleDraft> Rules => Definition.Rules;
+    public ObservableCollection<BehaviorDraft> Behaviors => Definition.Behaviors;
     public GroupDraft? SelectedGroup { get => _selectedGroup; set { _selectedGroup=value; OnPropertyChanged(); } }
     public UnitProfileDraft? SelectedProfile { get => _selectedProfile; set { _selectedProfile=value; OnPropertyChanged(); } }
     public StrategyPhaseDraft? SelectedPhase { get => _selectedPhase; set { _selectedPhase=value; OnPropertyChanged(); } }
     public BehaviorRuleDraft? SelectedRule { get => _selectedRule; set { _selectedRule=value; OnPropertyChanged(); } }
+    public BehaviorDraft? SelectedBehavior { get => _selectedBehavior; set { _selectedBehavior=value; OnPropertyChanged(); } }
     public string Status { get => _status; private set { _status=value; OnPropertyChanged(); } }
     public string BotName { get => Definition.Bot.Name; set { Definition.Bot.Name=value; OnPropertyChanged(); } }
     public string Race { get => Definition.Bot.Race; set { Definition.Bot.Race=value; OnPropertyChanged(); } }
@@ -30,10 +32,11 @@ public sealed class ForgeWorkspaceViewModel : INotifyPropertyChanged
     {
         Definition=CreateSyntheticExample();
         SelectedGroup=Groups.FirstOrDefault(); SelectedProfile=Profiles.FirstOrDefault();
-        SelectedPhase=Phases.FirstOrDefault(); SelectedRule=Rules.FirstOrDefault();
+        SelectedPhase=Phases.FirstOrDefault(); SelectedRule=Rules.FirstOrDefault(); SelectedBehavior=Behaviors.FirstOrDefault(); SelectedBehavior=Behaviors.FirstOrDefault();
     }
     public void AddGroup() { var n=Groups.Count+1; var x=new GroupDraft($"group-{n}",$"New Group {n}","Choose a unit membership selector","Describe the group's shared objective","Describe coordination policy"); Groups.Add(x); SelectedGroup=x; Status="New group added"; }
     public void AddPhase() { var n=Phases.Count+1; var x=new StrategyPhaseDraft($"phase-{n}",$"New Phase {n}","Describe the phase objective",n); Phases.Add(x); SelectedPhase=x; Status="New phase added"; }
+    public void AddBehavior() { var n=Behaviors.Count+1; var x=new BehaviorDraft($"behavior-{n}","combat.behavior","provisional"); Behaviors.Add(x); SelectedBehavior=x; Status="Reusable behavior added · catalog binding is provisional"; }
     public void AddRule() { var n=Rules.Count+1; var x=new BehaviorRuleDraft($"rule-{n}","retreat","unit.healthRatio","lessThan",0.35,"unit.retreat"); Rules.Add(x); SelectedRule=x; Status="Rule added · fact and intent identifiers are provisional pending runtime catalog confirmation"; }
     public void Save()
     {
@@ -49,7 +52,7 @@ public sealed class ForgeWorkspaceViewModel : INotifyPropertyChanged
         try {
             var loaded=JsonSerializer.Deserialize<BotDefinitionDraft>(File.ReadAllText(dialog.FileName));
             if(loaded is null)throw new InvalidDataException("The file did not contain a Forge definition.");
-            Definition=loaded; OnPropertyChanged(nameof(Definition)); OnPropertyChanged(nameof(Groups)); OnPropertyChanged(nameof(Profiles)); OnPropertyChanged(nameof(Phases)); OnPropertyChanged(nameof(Rules));
+            Definition=loaded; OnPropertyChanged(nameof(Definition)); OnPropertyChanged(nameof(Groups)); OnPropertyChanged(nameof(Profiles)); OnPropertyChanged(nameof(Phases)); OnPropertyChanged(nameof(Rules)); OnPropertyChanged(nameof(Behaviors));
             SelectedGroup=Groups.FirstOrDefault(); SelectedProfile=Profiles.FirstOrDefault(); SelectedPhase=Phases.FirstOrDefault(); SelectedRule=Rules.FirstOrDefault();
             Status=$"Draft loaded · {Path.GetFileName(dialog.FileName)} · runtime validation not performed";
         } catch(Exception ex){Status=$"Could not load draft: {ex.Message}";}

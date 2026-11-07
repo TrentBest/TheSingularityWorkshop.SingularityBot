@@ -12,6 +12,44 @@ The first bot milestone is not combat or ladder performance. It is a complete, m
 
 The opening controller must respect actual game data, prerequisites, costs, supply, build times, worker availability and legal action requirements. The table is a milestone outline, not a hard-coded build order or timing claim.
 
+## Worker scouting decision
+
+Worker scouting is a configurable information-versus-income decision, not an
+unconditional opening rule. The default baseline for economy experiments is
+**no worker scout** so mining and first-unit timing have a clean control. The
+adaptive policy may assign one only when all of these are true:
+
+- the opponent start location is not yet known;
+- the map or current threat assessment makes that information useful;
+- no scout is already assigned; and
+- assigning it leaves the configured minimum number of workers available for
+  mining.
+
+An explicit `AlwaysWhenAffordable` mode is available for experiments, but it
+still respects the minimum mining-worker floor. `Never` is the control. The
+adaptive mode does not scout merely because an enemy is not currently visible:
+if the start location is already known, or there is no useful uncertainty to
+resolve, the worker stays productive.
+
+The first scout should be selected by the economy controller, not by an
+individual worker FSM. The controller must record the worker's prior task,
+dispatch game loop, route/waypoints, expected information objective, mining
+opportunity cost and return/reassignment decision. The scout FSM reports
+observations; the strategy layer decides when its information value no longer
+justifies the lost mining time. If a threat is detected, the safety supervisor
+may recall it. Scouting must never override a hard worker-safety or opening
+construction constraint.
+
+This policy is currently a deterministic decision component with unit tests;
+it is **not yet connected to map spawn-location knowledge, a scout route, or a
+SC2 move/attack action**. It does not make the bot scout in a live match. Those
+are separate implementation gates. Evaluate scouting against the no-scout
+baseline using identical maps/seeds and report both information gained (time
+to identify opponent start/race/early tech or threat) and economy cost (worker
+idle/travel time, lost mineral income, first-unit timing and any opening
+failure). Keep the mode and mining-worker floor versioned in the GUI strategy
+definition.
+
 ## Logistics objective
 
 Optimize the whole mining operation, not just an individual worker's gather command. A worker cycle includes dispatch, travel, waiting for a usable resource interaction, gathering, returning cargo, unloading and reassignment. Travel and waiting are separate costs.

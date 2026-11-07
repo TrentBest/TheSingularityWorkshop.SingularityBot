@@ -16,6 +16,7 @@ namespace SC2API_CSharp
 
         string starcraftExe;
         string starcraftDir;
+        bool realtime;
 
         public GameConnection()
         { }
@@ -47,8 +48,9 @@ namespace SC2API_CSharp
         public async Task CreateGame(String mapName, Race opponentRace, Difficulty opponentDifficulty)
         {
             RequestCreateGame createGame = new RequestCreateGame();
-            // Keep local sessions observable at normal game speed. Set false only for deliberate accelerated simulations.
-            createGame.Realtime = true;
+            // Keep local sessions observable at normal game speed. Ladder sessions retain stepped simulation.
+            realtime = true;
+            createGame.Realtime = realtime;
 
             string mapsDirectory = Path.Combine(starcraftDir, "Maps");
             string mapPath = Path.Combine(mapsDirectory, mapName);
@@ -239,10 +241,13 @@ namespace SC2API_CSharp
                         bot.OnActionResult(actionResponse.Action);
                 }
 
-                Request stepRequest = new Request();
-                stepRequest.Step = new RequestStep();
-                stepRequest.Step.Count = 1;
-                await proxy.SendRequest(stepRequest);
+                if (!realtime)
+                {
+                    Request stepRequest = new Request();
+                    stepRequest.Step = new RequestStep();
+                    stepRequest.Step.Count = 1;
+                    await proxy.SendRequest(stepRequest);
+                }
             }
         }
 

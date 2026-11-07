@@ -175,15 +175,24 @@ public sealed class ObservationReconciliationTests
         Assert.True(reactivated.IsCurrentlyVisible);
         Assert.True(runtime.TryGetHandle(44, out var reactivatedHandle));
         Assert.Same(originalHandle, reactivatedHandle);
-        runtime.Update(); // Returning -> Assess after fresh facts clear cargo.
-        runtime.Update(); // Assess runs again on the reactivated handle.
-        var reactivatedCommands = reactivatedFrame.Drain();
-        Assert.NotEmpty(reactivatedCommands);
-        Assert.Contains(reactivatedCommands, command => command.Key == 44);
+        runtime.Update(); // Returning -> Assess; one FSM update belongs to one observation.
+        Assert.Empty(reactivatedFrame.Drain());
+
+        // The next observation runs Assess with the freshly reconciled facts.
+        // Its command must go to this frame's buffer, not the previous frame's.
+        var nextFrame = new BehaviorIntentBuffer();
+        var nextVisible = visibleAgain with { GameLoop = 14 };
+        runtime.Reconcile(
+            new NormalizedObservation(14, 1, new[] { nextVisible }, new HashSet<ulong>()),
+            nextFrame.Add);
+        runtime.Update();
+        var nextFrameCommands = nextFrame.Drain();
+        Assert.NotEmpty(nextFrameCommands);
+        Assert.Contains(nextFrameCommands, command => command.Key == 44);
         Assert.Empty(emitted); // Current-frame routing takes precedence over the attach fallback.
 
         runtime.Reconcile(
-            new NormalizedObservation(14, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
+            new NormalizedObservation(15, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
             static (_, _) => { });
 
         Assert.False(runtime.TryGetContext(44, out _));

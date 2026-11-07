@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SingularityBot · Marine Authoring Preview</title>
+<style>
+:root{color-scheme:dark;font:15px/1.5 system-ui,sans-serif;background:#10151d;color:#e8edf5}
+*{box-sizing:border-box}body{margin:0}header{padding:28px max(24px,calc((100vw - 1120px)/2));background:#182230;border-bottom:1px solid #344255}
+main{max-width:1120px;margin:28px auto;padding:0 24px;display:grid;grid-template-columns:1.1fr .9fr;gap:20px}
+h1{font-size:24px;margin:0 0 6px}h2{font-size:17px;margin:0 0 16px}p{color:#aebbd0;margin:4px 0}
+.panel{background:#182230;border:1px solid #344255;border-radius:12px;padding:20px;min-width:0}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#91a9c8;font-weight:700}
+.plan{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #344255}
+.step{width:30px;height:30px;border-radius:8px;background:#263b54;display:grid;place-items:center;font-weight:700}
+.plan strong{display:block}.muted{font-size:13px;color:#aebbd0}
+.pill{display:inline-block;padding:3px 8px;border-radius:99px;background:#263b54;color:#c6dcf7;font-size:12px}
+label{display:flex;align-items:center;gap:10px;margin:14px 0;cursor:pointer}
+input{width:18px;height:18px;accent-color:#79b7ff}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0d1219;padding:14px;border-radius:8px;color:#cde0f8;font:12px/1.55 ui-monospace,monospace;max-height:430px;overflow:auto}
+.notice{border-left:3px solid #d2a85e;padding:10px 12px;background:#25251f;color:#e8d7b4;font-size:13px;margin-top:16px}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SingularityBot · tooling concept</div>
+  <h1>Build a bot in StarCraft language</h1>
+  <p>Safe Marine Pressure · Terran · Definition 1.0</p>
+</header>
+<main>
+  <section class="panel">
+    <div class="eyebrow">Your strategy</div>
+    <h2>Safe economy, steady Marines, smart pressure</h2>
+    <p>Start with a stable opening, establish production, then build map awareness before taking risks.</p>
+    <div class="plan"><div class="step">1</div><div><strong>Establish the opening</strong><div class="muted">1 Supply Depot → 1 Barracks · opening priorities 100 / 90</div></div></div>
+    <div class="plan"><div class="step">2</div><div><strong>Build the army</strong><div class="muted">Marine is the first desired combat unit</div></div></div>
+    <div class="plan"><div class="step">3</div><div><strong>Stay alive</strong><div class="muted">Survival priority 100 · army pressure priority 60</div></div></div>
+    <div style="margin-top:22px" class="eyebrow">Marine behavior</div>
+    <h2 style="margin-top:6px">Main army · Default profile</h2>
+    <p>Recommended defaults come from the selected profile catalog. Only changes you choose are saved as overrides.</p>
+    <label><input id="retreat" type="checkbox" checked> <span><strong>Retreat when outmatched</strong><br><span class="muted">Explicit override: enabled</span></span></label>
+    <span class="pill">terran.marine.default · catalog 1.0.0</span>
+    <div class="notice">Concept preview only. No game is running, and this page does not issue commands to StarCraft II.</div>
+  </section>
+  <section class="panel">
+    <div class="eyebrow">Saved definition preview</div>
+    <h2>Inspectable configuration</h2>
+    <p>The JSON is the saved artifact—not the screen layout.</p>
+    <pre id="json"></pre>
+    <div class="eyebrow" style="margin-top:18px">Change review</div>
+    <pre id="diff"></pre>
+  </section>
+</main>
+<script>
+const definition = {
+  schemaVersion:"1.0",
+  metadata:{id:"bot.terran.safe-marine",name:"Safe Marine Pressure",version:"1.0.0",description:"Establish a stable opening, build Marines, scout, and avoid unfavorable engagements."},
+  game:{id:"starcraft-ii",adapter:"sc2",race:"Terran"},
+  strategy:{
+    schemaVersion:"1.0",
+    opening:{buildIntents:[
+      {id:"opening.supply-depot",target:"Terran_SupplyDepot",count:1,earliestGameLoop:0,latestGameLoop:1200,priority:100},
+      {id:"opening.barracks",target:"Terran_Barracks",count:1,earliestGameLoop:0,latestGameLoop:2400,priority:90}
+    ]},
+    goals:[
+      {id:"economy.establish",kind:"Economy",priority:80},
+      {id:"army.marine-pressure",kind:"ArmyPressure",priority:60},
+      {id:"survival.maintain",kind:"Survival",priority:100}
+    ],
+    constraints:[{id:"commands.valid-only",kind:"CommandValidity",severity:"Hard"}],
+    tactics:[],scouting:[],
+    composition:{desiredUnits:[{unitId:"terran.marine",minimumCount:1}]},
+    evaluation:{tags:["authoring-preview","terran","marine"],metrics:["worker-idle-time","invalid-action-count","marine-survival"]}
+  },
+  unitProfiles:[{
+    unitId:"terran.marine",role:"main-army",profileId:"terran.marine.default",catalogVersion:"1.0.0",
+    overrides:{retreatWhenOutmatched:true}
+  }]
+};
+const retreat = document.getElementById("retreat");
+function render(){
+  const saved = structuredClone(definition);
+  saved.unitProfiles[0].overrides = retreat.checked ? {retreatWhenOutmatched:true} : {};
+  document.getElementById("json").textContent = JSON.stringify(saved,null,2);
+  document.getElementById("diff").textContent = retreat.checked
+    ? '+ unitProfiles[terran.marine].overrides.retreatWhenOutmatched = true\nStatus: explicit user override'
+    : '- unitProfiles[terran.marine].overrides.retreatWhenOutmatched\nStatus: inherit the versioned profile default';
+}
+retreat.addEventListener("change",render);
+render();
+</script>
+</body>
+</html>

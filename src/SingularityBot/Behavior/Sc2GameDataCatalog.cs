@@ -15,7 +15,10 @@ public sealed class Sc2GameDataCatalog
         uint? harvestReturnAbilityId,
         uint? scvTrainAbilityId,
         uint scvMineralCost,
-        float scvFoodRequired)
+        float scvFoodRequired,
+        uint? moveAbilityId,
+        uint? supplyDepotBuildAbilityId,
+        uint supplyDepotMineralCost)
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
@@ -24,6 +27,9 @@ public sealed class Sc2GameDataCatalog
         ScvTrainAbilityId = scvTrainAbilityId;
         ScvMineralCost = scvMineralCost;
         ScvFoodRequired = scvFoodRequired;
+        MoveAbilityId = moveAbilityId;
+        SupplyDepotBuildAbilityId = supplyDepotBuildAbilityId;
+        SupplyDepotMineralCost = supplyDepotMineralCost;
     }
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
@@ -33,6 +39,9 @@ public sealed class Sc2GameDataCatalog
     public uint? ScvTrainAbilityId { get; }
     public uint ScvMineralCost { get; }
     public float ScvFoodRequired { get; }
+    public uint? MoveAbilityId { get; }
+    public uint? SupplyDepotBuildAbilityId { get; }
+    public uint SupplyDepotMineralCost { get; }
 
     public static Sc2GameDataCatalog Create(ResponseData data)
     {
@@ -50,6 +59,8 @@ public sealed class Sc2GameDataCatalog
 
         var scv = data.Units.FirstOrDefault(unit =>
             string.Equals(unit.Name, "SCV", StringComparison.OrdinalIgnoreCase));
+        var supplyDepot = data.Units.FirstOrDefault(unit =>
+            string.Equals(unit.Name, "SupplyDepot", StringComparison.OrdinalIgnoreCase));
 
         return new Sc2GameDataCatalog(
             unitNames,
@@ -58,7 +69,10 @@ public sealed class Sc2GameDataCatalog
             ResolveAbility(data.Abilities, "Harvest_Return"),
             scv?.AbilityId is > 0 ? scv.AbilityId : null,
             scv?.MineralCost ?? 0,
-            scv?.FoodRequired ?? 0);
+            scv?.FoodRequired ?? 0,
+            ResolveAbility(data.Abilities, "Move") ?? ResolveAbility(data.Abilities, "Move_Move"),
+            supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
+            supplyDepot?.MineralCost ?? 0);
     }
 
     private static uint? ResolveAbility(

@@ -7,6 +7,8 @@ on:
       - "src/**"
       - "schemas/**"
       - "strategies/**"
+      - "tools/**"
+      - "docs/spatial-diagnostics.md"
       - ".github/workflows/build.yml"
   pull_request:
     branches: [master, development]
@@ -50,3 +52,8 @@ jobs:
         run: dotnet restore src/SingularityBot.Runner/SingularityBot.Runner.csproj
       - name: Build
         run: dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj --configuration Release --no-restore
+      - name: Verify spatial diagnostics and deterministic artifacts
+        run: >-
+          dotnet run --project tools/SingularityBot.SpatialDiagnostics --configuration Release --
+          tools/SingularityBot.SpatialDiagnostics/Fixtures/translated-nonsquare.json
+          "$RUNNER_TEMP/spatial-diagnostics"

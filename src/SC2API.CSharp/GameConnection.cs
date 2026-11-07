@@ -243,6 +243,18 @@ namespace SC2API_CSharp
                         bot.OnActionResult(submittedActions, actionResponse.Action);
                 }
 
+                if (bot is QueryAwareBot queryBot)
+                {
+                    RequestQuery query = queryBot.TakeQueryRequest();
+                    if (query != null)
+                    {
+                        Request queryRequest = new Request();
+                        queryRequest.Query = query;
+                        Response queryResponse = await proxy.SendRequest(queryRequest);
+                        queryBot.OnQueryResult(queryResponse?.Query);
+                    }
+                }
+
                 if (!realtime)
                 {
                     Request stepRequest = new Request();

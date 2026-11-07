@@ -7,12 +7,14 @@
   ],
   "actual_branches": [
     "development",
+    "feature/bot-definition-authoring-issue-4",
     "feature/observation-reconciliation-issue-1",
+    "feature/spatial-diagnostics-issue-2",
     "master"
   ],
-  "branch_count": 3,
+  "branch_count": 5,
   "status": "NON-COMPLIANT",
-  "evaluated_at": "2026-11-06T12:04:42Z",
-  "workflow_run": "https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42214894813",
-  "triggering_commit": "432a26acab2bd8831e48073b6353d4ac791583e1"
+  "evaluated_at": "2026-11-07T11:02:08Z",
+  "workflow_run": "https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42366435620",
+  "triggering_commit": "da02e8b1673ee1372e75a45de31dc9b2ca052bdc"
 }

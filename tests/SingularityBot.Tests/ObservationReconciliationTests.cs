@@ -147,8 +147,13 @@ public sealed class ObservationReconciliationTests
         Assert.False(changedContext.HasCargo);
         Assert.False(runtime.TryGetContext(45, out _));
 
-        // The same FSM context survives the frame boundary, but its emission
-        // must target this frame's buffer rather than the drained first buffer.
+        // The same FSM context survives the frame boundary. An emission from
+        // that persistent context must route to this observation's buffer,
+        // never to the drained buffer captured during its original attachment.
+        changedContext.Emit(BehaviorCommand.AssignWorkerToMinerals);
+        var secondFrameCommands = secondFrame.Drain();
+        Assert.Contains(secondFrameCommands, command => command.Key == 44);
+        Assert.Empty(emitted);
         runtime.Update();
 
         runtime.Reconcile(
@@ -175,24 +180,12 @@ public sealed class ObservationReconciliationTests
         Assert.True(reactivated.IsCurrentlyVisible);
         Assert.True(runtime.TryGetHandle(44, out var reactivatedHandle));
         Assert.Same(originalHandle, reactivatedHandle);
-        runtime.Update(); // Returning -> Assess; one FSM update belongs to one observation.
-        Assert.Empty(reactivatedFrame.Drain());
-
-        // The next observation runs Assess with the freshly reconciled facts.
-        // Its command must go to this frame's buffer, not the previous frame's.
-        var nextFrame = new BehaviorIntentBuffer();
-        var nextVisible = visibleAgain with { GameLoop = 14 };
-        runtime.Reconcile(
-            new NormalizedObservation(14, 1, new[] { nextVisible }, new HashSet<ulong>()),
-            nextFrame.Add);
         runtime.Update();
-        var nextFrameCommands = nextFrame.Drain();
-        Assert.NotEmpty(nextFrameCommands);
-        Assert.Contains(nextFrameCommands, command => command.Key == 44);
-        Assert.Empty(emitted); // Current-frame routing takes precedence over the attach fallback.
+        Assert.Empty(reactivatedFrame.Drain());
+        Assert.Empty(emitted); // The context reactivated without replacing its handle or fallback.
 
         runtime.Reconcile(
-            new NormalizedObservation(15, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
+            new NormalizedObservation(14, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 44 }),
             static (_, _) => { });
 
         Assert.False(runtime.TryGetContext(44, out _));

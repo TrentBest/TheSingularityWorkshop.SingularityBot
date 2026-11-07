@@ -55,6 +55,14 @@ public sealed class UnitBehaviorContext : IStateContext
     // unset until their owning economy/army layer supplies them.
     public bool HasCargo { get; private set; }
     public bool HasAssignedWork { get; private set; }
+
+    // The economy planner owns reservation identity; the worker FSM context
+    // owns the observed execution phase for that reservation.
+    public ulong? AssignedMineralTag { get; private set; }
+    public ulong? AssignedTownHallTag { get; private set; }
+    public uint WorkerAssignmentGeneration { get; private set; }
+    public WorkerRoutePhase WorkerRoutePhase { get; private set; }
+    public uint WorkerRoutePhaseChangedAtGameLoop { get; private set; }
     public bool HasVisibleThreat { get; set; }
     public bool ShouldRetreat { get; set; }
     public bool HasObjective { get; set; }
@@ -89,9 +97,57 @@ public sealed class UnitBehaviorContext : IStateContext
         IsValid = true;
     }
 
+    public void ApplyWorkerAssignment(WorkerResourceAssignment? assignment, uint gameLoop)
+    {
+        if (assignment is null)
+        {
+            AssignedMineralTag = null;
+            AssignedTownHallTag = null;
+            WorkerAssignmentGeneration = 0;
+            SetRoutePhase(WorkerRoutePhase.Unassigned, gameLoop);
+            return;
+        }
+
+        var changed = WorkerAssignmentGeneration != assignment.Generation ||
+                      AssignedMineralTag != assignment.MineralTag ||
+                      AssignedTownHallTag != assignment.TownHallTag;
+
+        AssignedMineralTag = assignment.MineralTag;
+        AssignedTownHallTag = assignment.TownHallTag;
+        WorkerAssignmentGeneration = assignment.Generation;
+
+        // Phase is observation-derived, never inferred from an issued command.
+        var observedPhase = HasCargo
+            ? WorkerRoutePhase.CarryingResources
+            : HasAssignedWork
+                ? WorkerRoutePhase.ExecutingOrder
+                : WorkerRoutePhase.Assigned;
+
+        SetRoutePhase(changed ? WorkerRoutePhase.Assigned : observedPhase, gameLoop);
+    }
+
+    private void SetRoutePhase(WorkerRoutePhase phase, uint gameLoop)
+    {
+        if (WorkerRoutePhase == phase)
+            return;
+
+        WorkerRoutePhase = phase;
+        WorkerRoutePhaseChangedAtGameLoop = gameLoop;
+    }
+
     public void Emit(BehaviorCommand command)
     {
         if (command != BehaviorCommand.None)
             _emit(command);
     }
+}
+
+
+/// <summary>Observed lifecycle phase of a worker's persistent resource route.</summary>
+public enum WorkerRoutePhase
+{
+    Unassigned,
+    Assigned,
+    ExecutingOrder,
+    CarryingResources
 }

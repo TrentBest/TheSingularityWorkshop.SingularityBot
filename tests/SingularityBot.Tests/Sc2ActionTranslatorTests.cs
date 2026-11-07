@@ -21,7 +21,7 @@ public sealed class Sc2ActionTranslatorTests
 
         var command = Assert.Single(actions).ActionRaw.UnitCommand;
         Assert.Equal(21UL, command.TargetUnitTag);
-        Assert.Equal(3666U, command.AbilityId);
+        Assert.Equal(3666, command.AbilityId);
         Assert.Equal(new[] { 10UL }, command.UnitTags);
     }
 
@@ -41,7 +41,7 @@ public sealed class Sc2ActionTranslatorTests
 
         var command = Assert.Single(actions).ActionRaw.UnitCommand;
         Assert.Equal(21UL, command.TargetUnitTag);
-        Assert.Equal(3667U, command.AbilityId);
+        Assert.Equal(3667, command.AbilityId);
         Assert.Equal(new[] { 10UL }, command.UnitTags);
     }
 

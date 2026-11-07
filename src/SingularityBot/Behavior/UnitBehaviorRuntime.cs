@@ -11,6 +11,7 @@ public sealed class UnitBehaviorRuntime
 {
     private readonly Dictionary<ulong, UnitBehaviorContext> _contexts = new();
     private readonly Dictionary<ulong, FSMHandle> _handles = new();
+    private Action<ulong, BehaviorCommand>? _activeEmit;
 
     public int Count => _contexts.Count;
 
@@ -20,16 +21,20 @@ public sealed class UnitBehaviorRuntime
         Action<BehaviorCommand> emit)
     {
         ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(emit);
 
         if (_contexts.TryGetValue(unitTag, out var existing))
             return existing;
 
+        // Keep the callback stored by the persistent FSM context stable. During
+        // reconciliation/update it routes to the current observation's sink,
+        // rather than capturing a buffer that OnFrame will discard next frame.
         var context = new UnitBehaviorContext(
             unitTag,
             $"{profile.UnitKind}:{unitTag}",
             profile.UnitKind,
             profile.IsWorker,
-            emit);
+            command => (_activeEmit ?? ((_, value) => emit(value)))(unitTag, command));
 
         var handle = FSM_API.Create.CreateInstance(
             profile.BehaviorFsm,
@@ -52,6 +57,8 @@ public sealed class UnitBehaviorRuntime
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(emit);
 
+        _activeEmit = emit;
+
         foreach (var context in _contexts.Values)
         {
             // Retain the context and handle through fog/absence, but suspend
@@ -73,7 +80,7 @@ public sealed class UnitBehaviorRuntime
 
             if (!_contexts.TryGetValue(facts.Tag, out var context))
             {
-                context = Attach(facts.Tag, profile, command => emit(facts.Tag, command));
+                context = Attach(facts.Tag, profile, static _ => { });
             }
 
             context.Apply(facts);
@@ -113,8 +120,20 @@ public sealed class UnitBehaviorRuntime
 
         _contexts.Clear();
         _handles.Clear();
+        _activeEmit = null;
     }
 
-    public void Update() =>
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProcessingGroup);
+    public void Update()
+    {
+        try
+        {
+            FSM_API.Interaction.Update(UnitBehaviorCatalog.ProcessingGroup);
+        }
+        finally
+        {
+            // An update is scoped to exactly one observation. Never let an
+            // out-of-band update append to a previously drained frame buffer.
+            _activeEmit = null;
+        }
+    }
 }

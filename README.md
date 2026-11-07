@@ -25,7 +25,7 @@ Prove a deterministic, measurable Terran economy and production loop:
 6. Preserve mining throughput while builders and production consume resources.
 7. Replay the same observations and reproduce the same decisions.
 
-This is an implementation target, not a claim that the full opening is already complete. The repository currently has an FSM foundation, observation normalization/reconciliation and an initial gather/return action path on active development work. Construction, production orchestration, persistent mineral-route scheduling and live-match validation remain gates.
+This is an implementation target, not a claim that the full opening is already complete. The `development` branch now contains the observation normalizer, persistent unit-context reconciliation, profile-aware morph replacement, intent buffering, and initial gather/return action translation for SCV/Probe/Drone workers. Automated regression tests are wired into the build workflow. Persistent worker-to-mineral assignments, route scheduling/cache, available-ability validation, construction, production orchestration, replay evidence and live-match validation remain open gates.
 
 ## Architecture at a glance
 

@@ -57,26 +57,28 @@ public static class Sc2ActionTranslator
             {
                 case BehaviorCommand.AssignWorkerToMinerals:
                 {
-                    if (harvestGatherAbilityId is null or 0 || worker.HasCargo || mineralFields.Length == 0)
+                    if (!TryGetAbilityId(harvestGatherAbilityId, out var gatherAbilityId) ||
+                        worker.HasCargo || mineralFields.Length == 0)
                         continue;
 
                     var mineral = mineralFields
                         .OrderBy(field => DistanceSquared(worker, field))
                         .ThenBy(field => field.Tag)
                         .First();
-                    actions.Add(CreateUnitCommand(worker.Tag, harvestGatherAbilityId.Value, mineral.Tag));
+                    actions.Add(CreateUnitCommand(worker.Tag, gatherAbilityId, mineral.Tag));
                     break;
                 }
                 case BehaviorCommand.ReturnCarriedResources:
                 {
-                    if (harvestReturnAbilityId is null or 0 || !worker.HasCargo || townHalls.Length == 0)
+                    if (!TryGetAbilityId(harvestReturnAbilityId, out var returnAbilityId) ||
+                        !worker.HasCargo || townHalls.Length == 0)
                         continue;
 
                     var townHall = townHalls
                         .OrderBy(field => DistanceSquared(worker, field))
                         .ThenBy(field => field.Tag)
                         .First();
-                    actions.Add(CreateUnitCommand(worker.Tag, harvestReturnAbilityId.Value, townHall.Tag));
+                    actions.Add(CreateUnitCommand(worker.Tag, returnAbilityId, townHall.Tag));
                     break;
                 }
             }
@@ -85,7 +87,19 @@ public static class Sc2ActionTranslator
         return actions;
     }
 
-    private static SC2APIProtocol.Action CreateUnitCommand(ulong workerTag, uint abilityId, ulong targetTag) =>
+    private static bool TryGetAbilityId(uint? value, out int abilityId)
+    {
+        if (value is > 0 and <= int.MaxValue)
+        {
+            abilityId = (int)value.Value;
+            return true;
+        }
+
+        abilityId = 0;
+        return false;
+    }
+
+    private static SC2APIProtocol.Action CreateUnitCommand(ulong workerTag, int abilityId, ulong targetTag) =>
         new()
         {
             ActionRaw = new ActionRaw

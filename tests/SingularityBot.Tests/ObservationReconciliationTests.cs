@@ -63,6 +63,47 @@ public sealed class ObservationReconciliationTests
     }
 
     [Fact]
+    public void Runtime_ReplacesExpertiseContextWhenUnitMorphsToDifferentProfile()
+    {
+        UnitBehaviorCatalog.Register();
+        var runtime = new UnitBehaviorRuntime();
+        var scv = new UnitObservationFacts(
+            88, 7, "SCV", 1, UnitAlliance.Self, UnitVisibility.Visible,
+            45, 45, 0, 0, 1, 10, 20, true, false, false,
+            false, false, false, 20);
+        var marine = scv with
+        {
+            UnitTypeId = 8,
+            UnitKind = "Marine",
+            Health = 45,
+            HealthMax = 45,
+            GameLoop = 21
+        };
+
+        runtime.Reconcile(
+            new NormalizedObservation(20, 1, new[] { scv }, new HashSet<ulong>()),
+            static (_, _) => { });
+        Assert.True(runtime.TryGetContext(88, out var workerContext));
+        Assert.True(workerContext.IsWorker);
+        Assert.True(runtime.TryGetHandle(88, out var workerHandle));
+
+        runtime.Reconcile(
+            new NormalizedObservation(21, 1, new[] { marine }, new HashSet<ulong>()),
+            static (_, _) => { });
+
+        Assert.True(runtime.TryGetContext(88, out var combatContext));
+        Assert.NotSame(workerContext, combatContext);
+        Assert.False(combatContext.IsWorker);
+        Assert.Equal("Marine", combatContext.UnitKind);
+        Assert.True(combatContext.IsValid);
+        Assert.True(runtime.TryGetHandle(88, out var combatHandle));
+        Assert.NotEqual(workerHandle, combatHandle);
+        Assert.False(workerContext.IsValid);
+
+        runtime.RemoveAll();
+    }
+
+    [Fact]
     public void Runtime_UpdatesStableContextAndDoesNotRetireOnAbsenceButDoesOnDeath()
     {
         UnitBehaviorCatalog.Register();

@@ -7,7 +7,7 @@ The first playable target is a disciplined Terran economy that establishes four 
 ## Opening responsibilities
 
 The opening controller coordinates:
-- SCV production from the Command Center;
+- SCV production from the Command Center as the first action in the opening;
 - deterministic assignment of starting SCVs to mineral routes;
 - first Supply Depot builder selection;
 - Depot and Barracks construction;
@@ -88,3 +88,7 @@ Once the baseline works, compare one scheduling change at a time:
 - cached route geometry versus recomputation.
 
 Use paired local matches or equivalent replay fixtures. Retain raw traces and report full worker-cycle and production metrics. Do not add speculative route tricks or special-case map mechanics to the production policy without repeatable evidence.
+
+## First Command Center control gate
+
+The first production request is deliberately observable and comes before worker-route actions in the submitted action batch. The adapter reads SCV `AbilityId`, `MineralCost`, and `FoodRequired` from the authoritative game-data response and reads minerals, food used, and food cap from `PlayerCommon`. It submits an unqueued raw unit command against an idle owned Command Center. It does not invent an ability ID or assume the bank is sufficient. The API `ResponseAction.Result` is delivered back to the bot; subsequent observations provide the Command Center's actual order and any `ActionErrors`. A request is not considered proven merely because it was constructed or sent. The local runner uses realtime mode for human-readable playback; ladder sessions remain stepped. Automated tests cover eligibility, duplicate suppression, pending-request behavior, and rejection retry. A local match is still required to prove the game accepts the request and visibly begins SCV production.

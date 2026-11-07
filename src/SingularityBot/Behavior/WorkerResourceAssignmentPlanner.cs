@@ -189,6 +189,14 @@ public sealed class WorkerResourceAssignmentPlanner
 
     public bool Unreserve(ulong workerTag) => _reservedWorkers.Remove(workerTag);
 
+    /// <summary>Restore a previously reserved worker to its exact mineral route.</summary>
+    public void Restore(WorkerResourceAssignment assignment)
+    {
+        ArgumentNullException.ThrowIfNull(assignment);
+        _reservedWorkers.Remove(assignment.WorkerTag);
+        _assignments[assignment.WorkerTag] = assignment;
+    }
+
     public void Clear()
     {
         _assignments.Clear();

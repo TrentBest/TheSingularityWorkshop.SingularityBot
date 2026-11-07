@@ -123,12 +123,12 @@ public sealed class UnitBehaviorContext : IStateContext
                 ? WorkerRoutePhase.ExecutingOrder
                 : WorkerRoutePhase.Assigned;
 
-        SetRoutePhase(changed ? WorkerRoutePhase.Assigned : observedPhase, gameLoop);
+        SetRoutePhase(changed ? WorkerRoutePhase.Assigned : observedPhase, gameLoop, forceTimestamp: changed);
     }
 
-    private void SetRoutePhase(WorkerRoutePhase phase, uint gameLoop)
+    private void SetRoutePhase(WorkerRoutePhase phase, uint gameLoop, bool forceTimestamp = false)
     {
-        if (WorkerRoutePhase == phase)
+        if (WorkerRoutePhase == phase && !forceTimestamp)
             return;
 
         WorkerRoutePhase = phase;

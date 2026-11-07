@@ -55,6 +55,8 @@ public sealed class UnitBehaviorContext : IStateContext
     // unset until their owning economy/army layer supplies them.
     public bool HasCargo { get; private set; }
     public bool HasAssignedWork { get; private set; }
+    public IReadOnlyList<UnitOrderObservationFacts> ObservedOrders { get; private set; } = Array.Empty<UnitOrderObservationFacts>();
+    public UnitOrderObservationFacts? CurrentOrder => ObservedOrders.Count == 0 ? null : ObservedOrders[0];
 
     // The economy planner owns reservation identity; the worker FSM context
     // owns the observed execution phase for that reservation.
@@ -91,6 +93,7 @@ public sealed class UnitBehaviorContext : IStateContext
         HasPosition = facts.HasPosition;
         HasCargo = facts.HasCargo;
         HasAssignedWork = facts.HasOrders;
+        ObservedOrders = facts.Orders;
         IsFlying = facts.IsFlying;
         IsBurrowed = facts.IsBurrowed;
         IsHallucination = facts.IsHallucination;
@@ -117,11 +120,12 @@ public sealed class UnitBehaviorContext : IStateContext
         WorkerAssignmentGeneration = assignment.Generation;
 
         // Phase is observation-derived, never inferred from an issued command.
+        var orderTarget = CurrentOrder?.TargetUnitTag;
         var observedPhase = HasCargo
-            ? WorkerRoutePhase.CarryingResources
-            : HasAssignedWork
-                ? WorkerRoutePhase.ExecutingOrder
-                : WorkerRoutePhase.Assigned;
+            ? orderTarget == AssignedTownHallTag ? WorkerRoutePhase.Returning : WorkerRoutePhase.CarryingResources
+            : orderTarget == AssignedMineralTag ? WorkerRoutePhase.Outbound
+            : HasAssignedWork ? WorkerRoutePhase.ExecutingOrder
+            : WorkerRoutePhase.Assigned;
 
         SetRoutePhase(changed ? WorkerRoutePhase.Assigned : observedPhase, gameLoop, forceTimestamp: changed);
     }
@@ -149,5 +153,7 @@ public enum WorkerRoutePhase
     Unassigned,
     Assigned,
     ExecutingOrder,
-    CarryingResources
+    CarryingResources,
+    Outbound,
+    Returning
 }

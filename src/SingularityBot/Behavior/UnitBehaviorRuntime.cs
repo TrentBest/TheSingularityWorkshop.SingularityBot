@@ -95,6 +95,26 @@ public sealed class UnitBehaviorRuntime
         }
     }
 
+    /// <summary>
+    /// Copies the economy planner's reservation identity into each currently
+    /// visible worker context. Hidden contexts retain their last known route.
+    /// </summary>
+    public void ApplyWorkerAssignments(
+        IReadOnlyDictionary<ulong, WorkerResourceAssignment> assignments,
+        uint gameLoop)
+    {
+        ArgumentNullException.ThrowIfNull(assignments);
+
+        foreach (var context in _contexts.Values)
+        {
+            if (!context.IsWorker || !context.IsCurrentlyVisible)
+                continue;
+
+            assignments.TryGetValue(context.UnitTag, out var assignment);
+            context.ApplyWorkerAssignment(assignment, gameLoop);
+        }
+    }
+
     private void Emit(ulong unitTag, Action<BehaviorCommand> fallback, BehaviorCommand command)
     {
         if (_activeEmit is { } activeEmit)

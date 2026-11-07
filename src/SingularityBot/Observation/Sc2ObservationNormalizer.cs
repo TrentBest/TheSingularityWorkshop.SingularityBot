@@ -66,7 +66,12 @@ public static class Sc2ObservationNormalizer
             .Where(tag => tag != 0)
             .ToHashSet() ?? new HashSet<ulong>();
 
-        return new NormalizedObservation(observation.GameLoop, playerId, units, deadTags);
+        return new NormalizedObservation(observation.GameLoop, playerId, units, deadTags)
+        {
+            Minerals = observation.PlayerCommon?.Minerals ?? 0,
+            FoodUsed = observation.PlayerCommon?.FoodUsed ?? 0,
+            FoodCap = observation.PlayerCommon?.FoodCap ?? 0
+        };
     }
 
     private static bool HasResourceCargo(Unit unit, IReadOnlyDictionary<uint, string> buffNames) =>

@@ -47,7 +47,8 @@ namespace SC2API_CSharp
         public async Task CreateGame(String mapName, Race opponentRace, Difficulty opponentDifficulty)
         {
             RequestCreateGame createGame = new RequestCreateGame();
-            createGame.Realtime = false;
+            // Keep local sessions observable at normal game speed. Set false only for deliberate accelerated simulations.
+            createGame.Realtime = true;
 
             string mapsDirectory = Path.Combine(starcraftDir, "Maps");
             string mapPath = Path.Combine(mapsDirectory, mapName);
@@ -232,7 +233,11 @@ namespace SC2API_CSharp
                 actionRequest.Action = new RequestAction();
                 actionRequest.Action.Actions.AddRange(actions);
                 if (actionRequest.Action.Actions.Count > 0)
-                    await proxy.SendRequest(actionRequest);
+                {
+                    Response actionResponse = await proxy.SendRequest(actionRequest);
+                    if (actionResponse?.Action != null)
+                        bot.OnActionResult(actionResponse.Action);
+                }
 
                 Request stepRequest = new Request();
                 stepRequest.Step = new RequestStep();

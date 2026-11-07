@@ -7,6 +7,8 @@ on:
       - "src/**"
       - "schemas/**"
       - "strategies/**"
+      - "bot-definitions/**"
+      - "tools/**"
       - ".github/workflows/build.yml"
   pull_request:
     branches: [master, development]
@@ -23,28 +25,48 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Validate strategy documents
+      - name: Validate strategy and bot definition documents
         run: |
           python -m pip install --disable-pip-version-check jsonschema
           python - <<'PY'
           import json
           from pathlib import Path
-          from jsonschema import Draft202012Validator
+          from jsonschema import Draft202012Validator, RefResolver
 
-          schema = json.loads(Path("schemas/strategy.schema.json").read_text(encoding="utf-8"))
-          validator = Draft202012Validator(schema)
-          files = sorted(Path("strategies").glob("*.json"))
-          if not files:
-              raise SystemExit("No strategy JSON files found.")
-          for path in files:
-              document = json.loads(path.read_text(encoding="utf-8"))
-              errors = sorted(validator.iter_errors(document), key=lambda error: list(map(str, error.absolute_path)))
-              if errors:
-                  for error in errors:
-                      location = "/".join(map(str, error.absolute_path)) or "$"
-                      print(f"{path}:{location}: {error.message}")
-                  raise SystemExit(f"Strategy validation failed: {path}")
-              print(f"Validated {path}")
+          def load(path):
+              return json.loads(Path(path).read_text(encoding="utf-8"))
+
+          def validate_documents(paths, validator, label):
+              files = sorted(paths)
+              if not files:
+                  raise SystemExit(f"No {label} JSON files found.")
+              for path in files:
+                  document = load(path)
+                  errors = sorted(
+                      validator.iter_errors(document),
+                      key=lambda error: list(map(str, error.absolute_path))
+                  )
+                  if errors:
+                      for error in errors:
+                          location = "/".join(map(str, error.absolute_path)) or "$"
+                          print(f"{path}:{location}: {error.message}")
+                      raise SystemExit(f"{label} validation failed: {path}")
+                  print(f"Validated {path}")
+
+          legacy_schema = load("schemas/strategy.schema.json")
+          legacy_validator = Draft202012Validator(legacy_schema)
+          validate_documents(Path("strategies").glob("*.json"), legacy_validator, "Legacy strategy")
+
+          payload_schema = load("schemas/strategy-payload.schema.json")
+          bot_schema = load("schemas/bot-definition.schema.json")
+          Draft202012Validator.check_schema(payload_schema)
+          Draft202012Validator.check_schema(bot_schema)
+          resolver = RefResolver.from_schema(
+              bot_schema,
+              store={payload_schema["$id"]: payload_schema}
+          )
+          bot_validator = Draft202012Validator(bot_schema, resolver=resolver)
+          validate_documents(Path("bot-definitions").glob("*.json"), bot_validator, "BotDefinition")
           PY
       - name: Restore
         run: dotnet restore src/SingularityBot.Runner/SingularityBot.Runner.csproj

@@ -107,12 +107,16 @@ public sealed class WorkerResourceAssignmentPlannerTests
             Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
             Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0)))[10];
 
-        var afterDeath = Snapshot(
-            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0, loop: 120),
-            Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true, loop: 120,
-                orders: new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
-            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0, loop: 120))
-            with { DeadUnitTags = new HashSet<ulong> { 20 } };
+        var afterDeath = new NormalizedObservation(
+            120, 1,
+            new[]
+            {
+                Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0, loop: 120),
+                Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true, loop: 120,
+                    orders: new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
+                Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0, loop: 120)
+            },
+            new HashSet<ulong> { 20 });
 
         var reassigned = planner.Reconcile(afterDeath)[10];
 
@@ -130,12 +134,16 @@ public sealed class WorkerResourceAssignmentPlannerTests
             Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
             Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0)));
 
-        var afterDeath = Snapshot(
-            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0, loop: 120),
-            Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true, loop: 120,
-                orders: new[] { new UnitOrderObservationFacts(9999, 500, null, null) }),
-            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0, loop: 120))
-            with { DeadUnitTags = new HashSet<ulong> { 20 } };
+        var afterDeath = new NormalizedObservation(
+            120, 1,
+            new[]
+            {
+                Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0, loop: 120),
+                Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true, loop: 120,
+                    orders: new[] { new UnitOrderObservationFacts(9999, 500, null, null) }),
+                Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0, loop: 120)
+            },
+            new HashSet<ulong> { 20 });
 
         Assert.Empty(planner.Reconcile(afterDeath));
     }

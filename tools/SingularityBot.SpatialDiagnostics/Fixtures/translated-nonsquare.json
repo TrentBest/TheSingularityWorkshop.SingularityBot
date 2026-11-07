@@ -1,0 +1,26 @@
+{
+  "name": "translated-nonsquare",
+  "bounds": { "minX": 12, "minY": 8, "maxX": 108, "maxY": 56 },
+  "friendlyStart": { "x": 20, "y": 32 },
+  "enemyStart": { "x": 100, "y": 32 },
+  "frames": [
+    {
+      "gameLoop": 100,
+      "contacts": [
+        { "unitTag": 101, "unitType": 48, "alliance": "Friendly", "x": 22, "y": 31 },
+        { "unitTag": 202, "unitType": 48, "alliance": "Enemy", "x": 94, "y": 34 },
+        { "unitTag": 303, "unitType": 341, "alliance": "Neutral", "x": 60, "y": 32 },
+        { "unitTag": 404, "unitType": 341, "alliance": "Neutral", "x": 44, "y": 16 }
+      ],
+      "destroyedTags": []
+    },
+    {
+      "gameLoop": 180,
+      "contacts": [
+        { "unitTag": 101, "unitType": 48, "alliance": "Friendly", "x": 24, "y": 31 },
+        { "unitTag": 303, "unitType": 341, "alliance": "Neutral", "x": 60, "y": 32 }
+      ],
+      "destroyedTags": []
+    }
+  ]
+}

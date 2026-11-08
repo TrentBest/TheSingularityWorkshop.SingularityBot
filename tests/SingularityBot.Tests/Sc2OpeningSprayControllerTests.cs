@@ -56,8 +56,6 @@ public sealed class Sc2OpeningSprayControllerTests
         var planner = new WorkerResourceAssignmentPlanner();
         var data = new ResponseData();
         data.Abilities.Add(new AbilityData { AbilityId = 1, ButtonName = "Smart" });
-        data.Abilities.Add(new AbilityData { AbilityId = 1, ButtonName = "Smart" });
-        data.Abilities.Add(new AbilityData { AbilityId = 3666, LinkName = "Harvest_Gather" });
         var catalog = Sc2GameDataCatalog.Create(data);
         var observation = Snapshot(
             Fact(10, "SCV", 5, 5),
@@ -77,6 +75,7 @@ public sealed class Sc2OpeningSprayControllerTests
         data.Units.Add(new UnitTypeData { UnitId = 19, Name = "SupplyDepot", AbilityId = 319, MineralCost = 100 });
         data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "Move" });
         data.Abilities.Add(new AbilityData { AbilityId = 2117, LinkName = "Spray" });
+        data.Abilities.Add(new AbilityData { AbilityId = 1, ButtonName = "Smart" });
         data.Abilities.Add(new AbilityData { AbilityId = 3666, LinkName = "Harvest_Gather" });
         return Sc2GameDataCatalog.Create(data);
     }

@@ -9,143 +9,122 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OpeningBuilderControllerTests
 {
     [Fact]
-    public void PullsTheReturningScvWhenMineralBankCrossesEightyAndQueriesDepotPlacement()
+    public void WaitsForSecondNewScvAndReservesOnlyThatWorker()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
-        var map = new SpatialMap(new MapBounds(0, 0, 64, 64), new MapPoint(10, 10), new MapPoint(54, 54));
+        var map = Map();
         var gameData = GameData();
 
-        Assert.Null(controller.TryCreateAction(
-            Snapshot(0, 10, 10, Fact(10, "SCV", 5, 5, true, true,
-                new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
-                Fact(1, "CommandCenter", 10, 10)),
+        Assert.Null(controller.TryCreateAction(Snapshot(50, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments));
 
-        Assert.Null(controller.TryCreateAction(
-            Snapshot(80, 10, 10, Fact(10, "SCV", 5, 5, true, true,
-                new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
-                Fact(1, "CommandCenter", 10, 10)),
+        Assert.Null(controller.TryCreateAction(Snapshot(50, 13, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)),
+            map, gameData, true, assignments));
+        Assert.Null(controller.BuilderTag);
+
+        Assert.Null(controller.TryCreateAction(Snapshot(50, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
+            Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments));
 
-        Assert.Equal(10UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(10));
-
-        var query = controller.TakePlacementQuery(gameData);
-        Assert.NotNull(query);
-        Assert.NotEmpty(query.Placements);
-        Assert.All(query.Placements, placement =>
-        {
-            Assert.Equal(319, placement.AbilityId);
-            Assert.Equal(10UL, placement.PlacingUnitTag);
-        });
-    }
-
-    [Fact]
-    public void RecognizesCargoBearingMinerWhenSc2KeepsMineralTargetOnGatherOrder()
-    {
-        var controller = new Sc2OpeningBuilderController();
-        var assignments = new WorkerResourceAssignmentPlanner();
-        var map = new SpatialMap(new MapBounds(0, 0, 64, 64), new MapPoint(10, 10), new MapPoint(54, 54));
-        var gameData = GameData();
-
-        var first = Snapshot(0, 10, 10,
-            Fact(10, "SCV", 5, 5, true, true,
-                new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
-            Fact(1, "CommandCenter", 10, 10),
-            Fact(20, "MineralField750", 4, 5) with { Alliance = UnitAlliance.Neutral, OwnerId = 0 });
-        assignments.Reconcile(first);
-        controller.TryCreateAction(first, map, gameData, true, assignments);
-
-        var crossed = Snapshot(80, 10, 11,
-            Fact(10, "SCV", 5, 5, true, true,
-                new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
-            Fact(1, "CommandCenter", 10, 10),
-            Fact(20, "MineralField750", 4, 5) with { Alliance = UnitAlliance.Neutral, OwnerId = 0 });
-        assignments.Reconcile(crossed);
-        controller.TryCreateAction(crossed, map, gameData, true, assignments);
-
-        Assert.Equal(10UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(10));
+        Assert.Equal(12UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(12));
+        Assert.False(assignments.IsReserved(10));
+        Assert.False(assignments.IsReserved(11));
         Assert.NotNull(controller.TakePlacementQuery(gameData));
     }
 
     [Fact]
-    public void MovesSelectedBuilderThenBuildsOnlyAtQueriedSiteWithSufficientMinerals()
+    public void StagesDedicatedBuilderImmediatelyAndWaitsUntilDepotIsAffordable()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
-        var map = new SpatialMap(new MapBounds(0, 0, 64, 64), new MapPoint(10, 10), new MapPoint(54, 54));
+        var map = Map();
         var gameData = GameData();
+        SelectSecondScv(controller, assignments, map, gameData);
 
-        controller.TryCreateAction(Snapshot(0, 10, 10,
-            Fact(10, "SCV", 5, 5, true, true, new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
-        controller.TryCreateAction(Snapshot(10, 10, 11,
-            Fact(10, "SCV", 5, 5, true, true, new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
-
-        var query = controller.TakePlacementQuery(gameData);
-        var response = new ResponseQuery();
-        response.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
-        controller.OnPlacementQueryResult(response);
+        var queryResult = new ResponseQuery();
+        queryResult.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(queryResult);
         var site = controller.Placement.Value;
 
-        Assert.Null(controller.TryCreateAction(Snapshot(10, 10, 12,
-            Fact(10, "SCV", 5, 5, true, true, new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments));
-
-        var move = controller.TryCreateAction(Snapshot(10, 10, 13,
-            Fact(10, "SCV", 5, 5, false, true, Array.Empty<UnitOrderObservationFacts>()),
+        var move = controller.TryCreateAction(Snapshot(50, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(12UL, move.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.Equal(site.X, move.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
         controller.OnActionResult(ActionResult.Success);
 
-        var build = controller.TryCreateAction(Snapshot(100, 10, 14,
-            Fact(10, "SCV", site.X, site.Y),
+        Assert.Null(controller.TryCreateAction(Snapshot(99, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments));
+
+        var build = controller.TryCreateAction(Snapshot(100, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", site.X, site.Y),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.Equal(319, build.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(site.X, build.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
-        Assert.Equal(site.Y, build.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
+        Assert.Equal(12UL, build.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]
-    public void ReleasesBuilderReservationWhenDepotCompletes()
+    public void ReleasesDedicatedBuilderAfterDepotCompletes()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
-        var map = new SpatialMap(new MapBounds(0, 0, 64, 64), new MapPoint(10, 10), new MapPoint(54, 54));
+        var map = Map();
         var gameData = GameData();
+        SelectSecondScv(controller, assignments, map, gameData);
 
-        controller.TryCreateAction(Snapshot(0, 10, 10,
-            Fact(10, "SCV", 5, 5, true, true, new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
-        controller.TryCreateAction(Snapshot(10, 10, 11,
-            Fact(10, "SCV", 5, 5, true, true, new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
-        var response = new ResponseQuery();
-        response.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
-        controller.OnPlacementQueryResult(response);
+        var queryResult = new ResponseQuery();
+        queryResult.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(queryResult);
         var site = controller.Placement.Value;
 
-        controller.TryCreateAction(Snapshot(10, 10, 12,
-            Fact(10, "SCV", 5, 5, false, true, Array.Empty<UnitOrderObservationFacts>()),
+        controller.TryCreateAction(Snapshot(50, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         controller.OnActionResult(ActionResult.Success);
-        controller.TryCreateAction(Snapshot(100, 10, 13,
-            Fact(10, "SCV", site.X, site.Y),
+        controller.TryCreateAction(Snapshot(100, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", site.X, site.Y),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         controller.OnActionResult(ActionResult.Success);
 
-        controller.TryCreateAction(Snapshot(0, 10, 20,
-            Fact(10, "SCV", site.X, site.Y, false, true, Array.Empty<UnitOrderObservationFacts>()),
+        controller.TryCreateAction(Snapshot(0, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", site.X, site.Y),
             Fact(1, "CommandCenter", 10, 10),
-            Fact(200, "SupplyDepot", site.X, site.Y, buildProgress: 1)), map, gameData, true, assignments);
+            Fact(200, "SupplyDepot", site.X, site.Y, buildProgress: 1)),
+            map, gameData, true, assignments);
 
         Assert.True(controller.IsCompleted);
-        Assert.False(assignments.IsReserved(10));
+        Assert.False(assignments.IsReserved(12));
     }
+
+    private static void SelectSecondScv(
+        Sc2OpeningBuilderController controller,
+        WorkerResourceAssignmentPlanner assignments,
+        SpatialMap map,
+        Sc2GameDataCatalog gameData)
+    {
+        controller.TryCreateAction(Snapshot(50, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(1, "CommandCenter", 10, 10)),
+            map, gameData, true, assignments);
+        controller.TryCreateAction(Snapshot(50, 13, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)),
+            map, gameData, true, assignments);
+        controller.TryCreateAction(Snapshot(50, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
+            Fact(1, "CommandCenter", 10, 10)),
+            map, gameData, true, assignments);
+    }
+
+    private static SpatialMap Map() =>
+        new(new MapBounds(0, 0, 64, 64), new MapPoint(10, 10), new MapPoint(54, 54));
 
     private static Sc2GameDataCatalog GameData()
     {
@@ -160,12 +139,8 @@ public sealed class Sc2OpeningBuilderControllerTests
         new(100, 1, units, new HashSet<ulong>()) { Minerals = minerals, FoodUsed = used, FoodCap = cap };
 
     private static UnitObservationFacts Fact(
-        ulong tag, string kind, float x, float y, bool cargo = false, bool orders = false,
-        IReadOnlyList<UnitOrderObservationFacts> observedOrders = null, float buildProgress = 1) =>
+        ulong tag, string kind, float x, float y, float buildProgress = 1) =>
         new(tag, 1, kind, 1, UnitAlliance.Self, UnitVisibility.Visible,
             45, 45, 0, 0, buildProgress, x, y, true,
-            cargo, orders, false, false, false, 100)
-        {
-            Orders = observedOrders ?? Array.Empty<UnitOrderObservationFacts>()
-        };
+            false, false, false, false, false, 100);
 }

@@ -94,8 +94,7 @@ public sealed class Sc2OpeningBuilderController
                 _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
                 _placementQueryPending = _candidatePoints.Count > 0;
             }
-            Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} reserved for the Supply Depot; the Command Center rally has already staged its route.");
-            return null;
+            Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} reserved for the Supply Depot; issuing an immediate replacement Move to the staging point while placement is queried.");
         }
 
         if (_candidatePoints.Count == 0 && spatialMap is not null)
@@ -109,7 +108,7 @@ public sealed class Sc2OpeningBuilderController
             }
         }
 
-        if (_placement is null)
+        if (_candidatePoints.Count == 0)
             return null;
 
         var builder = observation.Units.FirstOrDefault(unit =>
@@ -120,30 +119,38 @@ public sealed class Sc2OpeningBuilderController
         if (builder is null || builder.HasCargo)
             return null;
 
-        var depot = observation.Units
-            .Where(unit => unit.Alliance == UnitAlliance.Self &&
-                           unit.IsLiveVisible &&
-                           (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
-                            unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
-                           unit.HasPosition)
-            .OrderBy(unit => DistanceSquared(unit.PositionX, unit.PositionY, _placement.Value.X, _placement.Value.Y))
-            .FirstOrDefault();
+        // Do not leave the newly completed SCV's first command to rally inheritance
+        // or a later placement-query response. Immediately replace its current order
+        // with a direct, non-queued Move to the opening's staging point.
+        var movementTarget = _placement ?? _candidatePoints[0];
 
-        if (depot is not null &&
-            DistanceSquared(depot.PositionX, depot.PositionY, _placement.Value.X, _placement.Value.Y) <= 9)
+        if (_placement is not null)
         {
-            _buildSubmitted = true;
-            if (depot.BuildProgress >= 1f)
+            var depot = observation.Units
+                .Where(unit => unit.Alliance == UnitAlliance.Self &&
+                               unit.IsLiveVisible &&
+                               (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                                unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+                               unit.HasPosition)
+                .OrderBy(unit => DistanceSquared(unit.PositionX, unit.PositionY, _placement.Value.X, _placement.Value.Y))
+                .FirstOrDefault();
+
+            if (depot is not null &&
+                DistanceSquared(depot.PositionX, depot.PositionY, _placement.Value.X, _placement.Value.Y) <= 9)
             {
-                assignments.Unreserve(_builderTag.Value);
-                _completed = true;
-                Console.WriteLine($"[Opening] Supply Depot {depot.Tag} completed; SCV {_builderTag.Value} released to the economy.");
+                _buildSubmitted = true;
+                if (depot.BuildProgress >= 1f)
+                {
+                    assignments.Unreserve(_builderTag.Value);
+                    _completed = true;
+                    Console.WriteLine($"[Opening] Supply Depot {depot.Tag} completed; SCV {_builderTag.Value} released to the economy.");
+                }
+                return null;
             }
-            return null;
         }
 
         var distanceSquared = DistanceSquared(
-            builder.PositionX, builder.PositionY, _placement.Value.X, _placement.Value.Y);
+            builder.PositionX, builder.PositionY, movementTarget.X, movementTarget.Y);
 
         if (distanceSquared > 2.25f)
         {
@@ -161,8 +168,13 @@ public sealed class Sc2OpeningBuilderController
             return CreatePositionCommand(
                 _builderTag.Value,
                 checked((int)gameData.MoveAbilityId.Value),
-                _placement.Value);
+                movementTarget);
         }
+
+        // The placement query can complete after the staging Move. If the accepted
+        // build site differs from staging, the next pass issues a replacement Move.
+        if (_placement is null)
+            return null;
 
         if (observation.Minerals < gameData.SupplyDepotMineralCost)
             return null;

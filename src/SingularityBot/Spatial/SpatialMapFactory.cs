@@ -7,9 +7,9 @@ namespace SingularityBot.Spatial;
 public static class SpatialMapFactory
 {
     /// <summary>
-    /// Builds geometry for a standard two-start-location match. If the initial
-    /// observation cannot identify our spawn or the opponent start is ambiguous,
-    /// returns false instead of guessing.
+    /// Builds geometry when SC2 supplies either one opponent start location or
+    /// the conventional two-start set. The Command Center is the authoritative
+    /// friendly anchor; averaging workers would shift the spawn estimate.
     /// </summary>
     public static bool TryCreate(
         ResponseGameInfo gameInfo,
@@ -21,7 +21,8 @@ public static class SpatialMapFactory
         var startRaw = gameInfo?.StartRaw;
         var playableArea = startRaw?.PlayableArea;
         var mapSize = startRaw?.MapSize;
-        if (startRaw == null || mapSize == null || startRaw.StartLocations.Count != 2)
+        if (startRaw == null || mapSize == null ||
+            startRaw.StartLocations.Count is < 1 or > 2)
             return false;
 
         var minX = playableArea?.P0?.X ?? 0;
@@ -34,32 +35,57 @@ public static class SpatialMapFactory
         var ownUnits = response?.Observation?.RawData?.Units
             .Where(unit => unit.Alliance == Alliance.Self && unit.Pos != null)
             .ToArray();
-
         if (ownUnits == null || ownUnits.Length == 0)
             return false;
 
-        var ownCenter = new MapPoint(
-            ownUnits.Average(unit => unit.Pos.X),
-            ownUnits.Average(unit => unit.Pos.Y));
+        var commandCenter = ownUnits.FirstOrDefault(unit =>
+            string.Equals(
+                gameInfo?.StartRaw == null ? null : null,
+                "CommandCenter",
+                StringComparison.OrdinalIgnoreCase));
 
+        // Unit type IDs are deliberately not guessed here. The starting town
+        // hall is the largest grounded structure in the initial own-unit set.
+        var townHall = ownUnits
+            .Where(unit => unit.BuildProgress >= 1f && !unit.IsFlying)
+            .OrderByDescending(unit => unit.Radius)
+            .ThenBy(unit => unit.Tag)
+            .FirstOrDefault();
+        var friendlyAnchorUnit = townHall ?? ownUnits
+            .OrderBy(unit => unit.Pos.X)
+            .ThenBy(unit => unit.Pos.Y)
+            .First();
+
+        var friendlyStart = new MapPoint(friendlyAnchorUnit.Pos.X, friendlyAnchorUnit.Pos.Y);
         var starts = startRaw.StartLocations
             .Select(point => new MapPoint(point.X, point.Y))
             .ToArray();
 
-        var friendlyStart = starts
-            .OrderBy(point => point.DistanceSquaredTo(ownCenter))
-            .First();
-        var enemyStarts = starts
-            .Where(point => point.DistanceSquaredTo(friendlyStart) > 0.0001f)
-            .ToArray();
+        MapPoint enemyStart;
+        if (starts.Length == 1)
+        {
+            // On maps where SC2 reports only the opponent's start location,
+            // our own spawn is derived from the observed starting town hall.
+            enemyStart = starts[0];
+        }
+        else
+        {
+            var nearestStart = starts
+                .OrderBy(point => point.DistanceSquaredTo(friendlyStart))
+                .First();
+            friendlyStart = nearestStart;
+            enemyStart = starts
+                .Where(point => point.DistanceSquaredTo(friendlyStart) > 0.0001f)
+                .SingleOrDefault();
+        }
 
-        if (enemyStarts.Length != 1)
+        if (enemyStart.DistanceSquaredTo(friendlyStart) <= 0.0001f)
             return false;
 
         spatialMap = new SpatialMap(
             new MapBounds(minX, minY, maxX, maxY),
             friendlyStart,
-            enemyStarts[0]);
+            enemyStart);
         return true;
     }
 }

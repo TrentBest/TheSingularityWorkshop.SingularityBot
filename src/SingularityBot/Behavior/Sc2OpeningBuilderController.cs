@@ -28,6 +28,7 @@ public sealed class Sc2OpeningBuilderController
     private bool _moveSubmitted;
     private bool _dispatched;
     private uint _moveRequestGameLoop;
+    private MapPoint? _moveTarget;
     private int _placementQueryAttempts;
     private bool _buildSubmitted;
     private uint _buildRequestGameLoop;
@@ -72,6 +73,7 @@ public sealed class Sc2OpeningBuilderController
             _candidatePoints = Array.Empty<MapPoint>();
             _placementQueryPending = false;
             _moveSubmitted = false;
+            _moveTarget = null;
             _dispatched = false;
             _buildSubmitted = false;
             _pendingAction = PendingAction.None;
@@ -123,6 +125,12 @@ public sealed class Sc2OpeningBuilderController
         // or a later placement-query response. Immediately replace its current order
         // with a direct, non-queued Move to the opening's staging point.
         var movementTarget = _placement ?? _candidatePoints[0];
+        if (_moveTarget is null ||
+            DistanceSquared(_moveTarget.Value.X, _moveTarget.Value.Y, movementTarget.X, movementTarget.Y) > 0.01f)
+        {
+            _moveSubmitted = false;
+            _moveTarget = movementTarget;
+        }
 
         if (_placement is not null)
         {
@@ -163,6 +171,7 @@ public sealed class Sc2OpeningBuilderController
                 Console.WriteLine($"[Opening] Builder SCV {_builderTag} has not reached the Depot site; retrying Move (distance²={distanceSquared:F2}).");
 
             _moveSubmitted = true;
+            _moveTarget = movementTarget;
             _moveRequestGameLoop = observation.GameLoop;
             _pendingAction = PendingAction.Move;
             return CreatePositionCommand(

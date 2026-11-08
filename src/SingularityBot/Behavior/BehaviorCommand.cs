@@ -11,6 +11,7 @@ public enum BehaviorCommand
     AssignWorkerToMinerals,
     ReturnCarriedResources,
     BuildRequestedStructure,
+    RepairAssignedTarget,
     DefendWorkerLine,
     AdvanceToObjective,
     AttackVisibleThreat,

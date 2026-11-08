@@ -26,6 +26,8 @@ public sealed class Sc2OpeningBuilderController
     private bool _placementQueryPending;
     private MapPoint? _placement;
     private bool _moveSubmitted;
+    private uint _moveRequestGameLoop;
+    private int _placementQueryAttempts;
     private bool _buildSubmitted;
     private uint _buildRequestGameLoop;
     private PendingAction _pendingAction;
@@ -144,10 +146,16 @@ public sealed class Sc2OpeningBuilderController
 
         if (distanceSquared > 2.25f)
         {
-            if (_moveSubmitted)
+            // An accepted Move is not proof that the SCV reached the site.
+            // Retry after a bounded travel window so pathing interruptions cannot stall the opening.
+            if (_moveSubmitted && observation.GameLoop <= _moveRequestGameLoop + 22)
                 return null;
 
+            if (_moveSubmitted)
+                Console.WriteLine($"[Opening] Builder SCV {_builderTag} has not reached the Depot site; retrying Move (distance²={distanceSquared:F2}).");
+
             _moveSubmitted = true;
+            _moveRequestGameLoop = observation.GameLoop;
             _pendingAction = PendingAction.Move;
             return CreatePositionCommand(
                 _builderTag.Value,
@@ -184,6 +192,8 @@ public sealed class Sc2OpeningBuilderController
             return null;
 
         _placementQueryPending = false;
+        _placementQueryAttempts++;
+        Console.WriteLine($"[Opening] Querying SC2 for Supply Depot placement (attempt {_placementQueryAttempts}, candidates={_candidatePoints.Count}, builder={_builderTag}).");
         var query = new RequestQuery { IgnoreResourceRequirements = true };
         foreach (var point in _candidatePoints)
         {
@@ -199,8 +209,15 @@ public sealed class Sc2OpeningBuilderController
 
     public void OnPlacementQueryResult(ResponseQuery response)
     {
-        if (response is null || _builderTag is null || _candidatePoints.Count == 0 || response.Placements.Count == 0)
+        if (_builderTag is null || _candidatePoints.Count == 0 || _placement is not null)
             return;
+
+        if (response is null || response.Placements.Count == 0)
+        {
+            _placementQueryPending = true;
+            Console.WriteLine($"[Opening] Supply Depot placement query returned no results; retrying for builder {_builderTag}.");
+            return;
+        }
 
         var count = Math.Min(response.Placements.Count, _candidatePoints.Count);
         for (var index = 0; index < count; index++)
@@ -213,7 +230,8 @@ public sealed class Sc2OpeningBuilderController
             return;
         }
 
-        Console.WriteLine($"[Opening] SC2 rejected all {_candidatePoints.Count} candidate Supply Depot sites; builder {_builderTag} remains reserved.");
+        _placementQueryPending = true;
+        Console.WriteLine($"[Opening] SC2 rejected all {_candidatePoints.Count} candidate Supply Depot sites (attempt {_placementQueryAttempts}); retrying placement query for builder {_builderTag}.");
     }
 
     public void OnActionResult(ActionResult? result)

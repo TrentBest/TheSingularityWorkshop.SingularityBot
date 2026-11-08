@@ -51,8 +51,9 @@ public sealed class Sc2OpeningBuilderController
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
 
+        ObserveWorkers(observation);
+
         if (_completed || !initialScvProductionObserved ||
-            spatialMap is null ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
             gameData.SupplyDepotMineralCost == 0 ||
             gameData.MoveAbilityId is not > 0 ||
@@ -76,20 +77,6 @@ public sealed class Sc2OpeningBuilderController
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
-        if (!_initialScvPopulationCaptured)
-        {
-            foreach (var worker in observation.Units.Where(IsLiveScv))
-                _initialScvTags.Add(worker.Tag);
-            _initialScvPopulationCaptured = true;
-            Console.WriteLine($"[Opening] Captured {_initialScvTags.Count} starting SCVs; the first newly produced SCV will build the first Depot.");
-        }
-
-        foreach (var worker in observation.Units.Where(IsLiveScv))
-        {
-            if (!_initialScvTags.Contains(worker.Tag))
-                _producedScvTags.Add(worker.Tag);
-        }
-
         if (_builderTag is null)
         {
             if (_producedScvTags.Count < 1)
@@ -101,16 +88,27 @@ public sealed class Sc2OpeningBuilderController
             assignments.Reserve(_builderTag.Value);
             var townHall = observation.Units.FirstOrDefault(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && IsTownHall(unit.UnitKind));
-            if (townHall is null)
-                return null;
-
-            _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
-            _placementQueryPending = _candidatePoints.Count > 0;
+            if (townHall is not null && spatialMap is not null)
+            {
+                _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
+                _placementQueryPending = _candidatePoints.Count > 0;
+            }
             Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} reserved; issuing Stop to interrupt its existing mining order.");
             _pendingAction = PendingAction.Stop;
             return CreateUnitCommand(
                 _builderTag.Value,
                 checked((int)gameData.StopAbilityId.Value));
+        }
+
+        if (_candidatePoints.Count == 0 && spatialMap is not null)
+        {
+            var townHall = observation.Units.FirstOrDefault(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && IsTownHall(unit.UnitKind));
+            if (townHall is not null)
+            {
+                _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
+                _placementQueryPending = _candidatePoints.Count > 0;
+            }
         }
 
         if (_placement is null)
@@ -186,6 +184,29 @@ public sealed class Sc2OpeningBuilderController
             _builderTag.Value,
             checked((int)gameData.SupplyDepotBuildAbilityId.Value),
             _placement.Value);
+    }
+
+    /// <summary>
+    /// Captures the starting worker population before opening production can
+    /// return early, then remembers every SCV that appears after that baseline.
+    /// </summary>
+    public void ObserveWorkers(NormalizedObservation observation)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+
+        if (!_initialScvPopulationCaptured)
+        {
+            foreach (var worker in observation.Units.Where(IsLiveScv))
+                _initialScvTags.Add(worker.Tag);
+            _initialScvPopulationCaptured = true;
+            Console.WriteLine($"[Opening] Captured {_initialScvTags.Count} starting SCVs; the first newly produced SCV will build the first Depot.");
+        }
+
+        foreach (var worker in observation.Units.Where(IsLiveScv))
+        {
+            if (!_initialScvTags.Contains(worker.Tag))
+                _producedScvTags.Add(worker.Tag);
+        }
     }
 
     /// <summary>Returns the one-shot placement query prepared after builder selection.</summary>

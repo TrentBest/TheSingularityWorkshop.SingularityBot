@@ -28,20 +28,41 @@ The shortest path to a bot that actually plays a local StarCraft II match is the
 
 - [ ] Queue Command Center SCV production and assign starting workers in the intended order.
 - [ ] Validate placement, prerequisites, affordability and builder selection for the first Supply Depot.
-- [ ] Build the first Barracks and enforce supply/resource gates.
-- [ ] Establish four Barracks.
-- [ ] Train pure Marines without a gas dependency.
-- [ ] Preserve worker mining and production continuity.
-- [ ] Prove the opening repeatedly in local matches from controlled starting conditions.
+- [ ] Replace the single-Depot builder with a persistent construction sequence: 80-mineral return-event trigger, raised Depot, then Barracks using the same SCV.
+- [ ] Detect the actual ramp and evaluate legal Depot/Barracks placement pairs as a wall; validate ground-unit passage in a live match.
+- [ ] Keep Command Center SCV production running while construction is scheduled against a resource budget.
+- [ ] Establish four Barracks with supply-depot forecasting and no avoidable supply blocks.
+- [ ] Train pure Marines from every completed Barracks while protecting SCV production and expansion reserves.
+- [ ] Prove the opening repeatedly in local matches from controlled starting conditions and retain game-loop telemetry.
 
-## 4. Make behavior measurable and reproducible
+## 4. Expand and sustain the Terran economy
+
+- [ ] Derive candidate expansion landing sites from map pathing/buildability grids and mineral/geyser clusters, not fixed offsets from the main Command Center.
+- [ ] Score sites for resource value, worker travel, approach connectivity, landing clearance, and enemy exposure; query SC2 for final placement legality.
+- [ ] Build Command Centers in the protected main, load a configurable SCV crew, lift, fly, land, unload, and verify the landed structure before transferring workers.
+- [ ] Keep a minimum home defense and production reserve while assigning the expansion crew; recover safely if a landing query or action is rejected.
+- [ ] Add expansion saturation, transfer, and return-trip telemetry; compare candidate-site scores with actual mining throughput.
+
+## 5. Marine force control and combat micro
+
+- [ ] Normalize enemy weapon/range/cooldown, unit movement, health, shields, weapon target filters, and friendly reinforcement facts from game data and observations.
+- [ ] Build local threat fields from visible enemies and conservative remembered contacts; distinguish armed threats from harmless blockers and structures.
+- [ ] Advance Marines toward a shared attack axis while preserving a reinforcement corridor and avoiding unsupported solo advances.
+- [ ] Implement focus fire with overkill control, target priority, range checks, and cooldown-aware attack/move decisions.
+- [ ] Implement stutter-step kiting: fire when weapon cooldown permits, move during cooldown, and choose retreat vectors that increase distance from danger while reducing distance to friendly reinforcements.
+- [ ] Use hysteresis and health/force-balance thresholds to avoid oscillation; regroup before re-engaging when local friendly strength improves.
+- [ ] Evaluate micro against baseline policies using damage dealt/received, Marine survival, retreat path quality, reinforcement convergence, and objective progress.
+
+## 6. Make behavior measurable and reproducible
+
+## 7. Make behavior measurable and reproducible
 
 - [ ] Record normalized observations, assignments, intents, arbitration, validation, submissions and outcomes by game loop.
 - [ ] Replay the same observation sequence deterministically.
 - [ ] Report invalid actions, idle time, delivered resources, structure timing, production uptime and Marine output.
 - [ ] Add a regression fixture for every discovered failure.
 
-## 5. Add supporting surfaces after the runtime works
+## 8. Add supporting surfaces after the runtime works
 
 - [ ] Expose the same versioned runtime contracts to GUI for authoring and inspection.
 - [ ] Add spatial overlays and route timelines where they help diagnose measured behavior.

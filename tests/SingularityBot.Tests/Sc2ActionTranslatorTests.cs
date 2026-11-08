@@ -19,12 +19,12 @@ public sealed class Sc2ActionTranslatorTests
         var actions = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.AssignWorkerToMinerals) },
             observation,
-            3666,
+            1,
             workerAssignments: assignments);
 
         var command = Assert.Single(actions).ActionRaw.UnitCommand;
         Assert.Equal(21UL, command.TargetUnitTag);
-        Assert.Equal(3666, command.AbilityId);
+        Assert.Equal(1, command.AbilityId);
         Assert.Equal(new[] { 10UL }, command.UnitTags);
     }
 
@@ -39,12 +39,11 @@ public sealed class Sc2ActionTranslatorTests
         var actions = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.ReturnCarriedResources) },
             observation,
-            3666,
-            3667);
+            1);
 
         var command = Assert.Single(actions).ActionRaw.UnitCommand;
         Assert.Equal(21UL, command.TargetUnitTag);
-        Assert.Equal(3667, command.AbilityId);
+        Assert.Equal(1, command.AbilityId);
         Assert.Equal(new[] { 10UL }, command.UnitTags);
     }
 
@@ -55,7 +54,7 @@ public sealed class Sc2ActionTranslatorTests
         var noAbility = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.ReturnCarriedResources) },
             loadedWorker,
-            3666);
+            1);
         Assert.Empty(noAbility);
 
         var noTownHall = Snapshot(Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true));

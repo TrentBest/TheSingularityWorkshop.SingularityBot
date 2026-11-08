@@ -110,7 +110,8 @@ public sealed class Sc2OpeningBuilderControllerTests
         var retryMove = controller.TryCreateAction(SnapshotAt(123, 150, 14, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
-        Assert.Null(retryMove);
+        Assert.NotNull(retryMove);
+        Assert.Equal(firstMove.ActionRaw.UnitCommand.AbilityId, retryMove.ActionRaw.UnitCommand.AbilityId);
     }
 
     [Fact]

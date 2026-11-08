@@ -99,7 +99,9 @@ public sealed class WorkerResourceAssignmentPlanner
                      .OrderBy(unit => unit.Tag))
         {
             var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
-            if (targetTag is not ulong mineralTag || !minerals.TryGetValue(mineralTag, out var mineral))
+            if (targetTag is not ulong mineralTag ||
+                !minerals.TryGetValue(mineralTag, out var mineral) ||
+                occupancy.GetValueOrDefault(mineralTag) >= mineralSaturation)
                 continue;
 
             var townHall = townHalls
@@ -127,7 +129,10 @@ public sealed class WorkerResourceAssignmentPlanner
         foreach (var worker in liveSelf.Values
                      .Where(unit => IsWorker(unit.UnitKind) &&
                                     !_reservedWorkers.Contains(unit.Tag) &&
-                                    (!unit.HasOrders || workersWithStaleMineralOrders.Contains(unit.Tag)))
+                                    (!unit.HasOrders ||
+                                     workersWithStaleMineralOrders.Contains(unit.Tag) ||
+                                     (unit.Orders[0].TargetUnitTag is ulong targetTag &&
+                                      minerals.ContainsKey(targetTag))))
                      .OrderBy(unit => unit.Tag))
         {
             if (_assignments.ContainsKey(worker.Tag))

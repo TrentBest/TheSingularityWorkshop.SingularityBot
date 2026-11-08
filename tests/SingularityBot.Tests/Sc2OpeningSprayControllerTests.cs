@@ -56,6 +56,7 @@ public sealed class Sc2OpeningSprayControllerTests
         var planner = new WorkerResourceAssignmentPlanner();
         var data = new ResponseData();
         data.Abilities.Add(new AbilityData { AbilityId = 1, ButtonName = "Smart" });
+        data.Abilities.Add(new AbilityData { AbilityId = 1, ButtonName = "Smart" });
         data.Abilities.Add(new AbilityData { AbilityId = 3666, LinkName = "Harvest_Gather" });
         var catalog = Sc2GameDataCatalog.Create(data);
         var observation = Snapshot(

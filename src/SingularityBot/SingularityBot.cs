@@ -182,7 +182,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var actions = new List<SC2APIProtocol.Action>();
         SC2APIProtocol.Action sprayAction = null;
         SC2APIProtocol.Action builderAction = null;
-        AbilityQuery sprayQuery = null;
+        RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
 
         // Existing opening controllers are being migrated into FSM capabilities.

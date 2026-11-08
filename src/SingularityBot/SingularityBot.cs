@@ -55,7 +55,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     {
         if (_writeDiagnostics)
             WriteOnStartSnapshot(gameInfo, data, pingResponse, observation, playerId, opponentId);
-        if (_passiveBaseline)
+        if (_passiveBaseline || _writeDiagnostics)
             _baselineRecorder.Start();
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
@@ -154,6 +154,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _playerId,
             _gameData.UnitNames,
             _gameData.BuffNames);
+
+        // Local active-run telemetry is observational only: it records the same
+        // normalized frame without changing assignments, FSM state, or actions.
+        if (_writeDiagnostics)
+            _baselineRecorder.Record(normalized);
 
         foreach (var actionError in observation.ActionErrors)
             Console.WriteLine($"[SC2 API] Action error: unit={actionError.UnitTag}, ability={actionError.AbilityId}, result={actionError.Result}.");
@@ -362,8 +367,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnEnd(ResponseObservation observation, Result result)
     {
-        if (_passiveBaseline)
-            _baselineRecorder.Write(Sc2Diagnostics.OutputDirectory);
+        if (_writeDiagnostics)
+            _baselineRecorder.Write(
+                Sc2Diagnostics.OutputDirectory,
+                _passiveBaseline ? "passive-baseline" : "active-run");
         _unitBehaviors.RemoveAll();
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();

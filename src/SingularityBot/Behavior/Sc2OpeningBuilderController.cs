@@ -5,7 +5,7 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Reserves the second SCV produced after the opening begins, stages it at a
+/// Reserves the first SCV produced after the opening begins, stages it at a
 /// queried Supply Depot site, and constructs when the Depot is affordable.
 /// </summary>
 public sealed class Sc2OpeningBuilderController
@@ -79,7 +79,7 @@ public sealed class Sc2OpeningBuilderController
             foreach (var worker in observation.Units.Where(IsLiveScv))
                 _initialScvTags.Add(worker.Tag);
             _initialScvPopulationCaptured = true;
-            Console.WriteLine($"[Opening] Captured {_initialScvTags.Count} starting SCVs; the second newly produced SCV will build the first Depot.");
+            Console.WriteLine($"[Opening] Captured {_initialScvTags.Count} starting SCVs; the first newly produced SCV will build the first Depot.");
         }
 
         foreach (var worker in observation.Units.Where(IsLiveScv))
@@ -90,12 +90,12 @@ public sealed class Sc2OpeningBuilderController
 
         if (_builderTag is null)
         {
-            if (_producedScvTags.Count < 2)
+            if (_producedScvTags.Count < 1)
                 return null;
 
-            // SC2 unit tags increase with creation order; retain the second new SCV
-            // as the dedicated builder rather than interrupting a starting miner.
-            _builderTag = _producedScvTags.ElementAt(1);
+            // SC2 unit tags increase with creation order. Reserve the first completed
+            // SCV produced after opening production begins, before it joins mining.
+            _builderTag = _producedScvTags.Min;
             assignments.Reserve(_builderTag.Value);
             var townHall = observation.Units.FirstOrDefault(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && IsTownHall(unit.UnitKind));
@@ -104,7 +104,7 @@ public sealed class Sc2OpeningBuilderController
 
             _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
             _placementQueryPending = _candidatePoints.Count > 0;
-            Console.WriteLine($"[Opening] Second produced SCV {_builderTag.Value} assigned as dedicated Depot builder; staging toward the ramp.");
+            Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} assigned as dedicated Depot builder; staging toward the ramp.");
             return null;
         }
 

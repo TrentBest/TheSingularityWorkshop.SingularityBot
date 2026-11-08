@@ -13,31 +13,25 @@ public sealed class Sc2GameDataCatalogTests
         data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV" });
         data.Units.Add(new UnitTypeData { UnitId = 341, Name = "MineralField750" });
         data.Buffs.Add(new BuffData { BuffId = 271, Name = "CarryingMinerals" });
-        data.Abilities.Add(new AbilityData { AbilityId = 3666, LinkName = "Harvest_Gather" });
-        data.Abilities.Add(new AbilityData { AbilityId = 3667, LinkName = "Harvest_Return" });
+        data.Abilities.Add(new AbilityData { AbilityId = 1, LinkName = "Smart" });
 
         var catalog = Sc2GameDataCatalog.Create(data);
 
         Assert.Equal("SCV", catalog.UnitNames[45]);
         Assert.Equal("MineralField750", catalog.UnitNames[341]);
         Assert.Equal("CarryingMinerals", catalog.BuffNames[271]);
-        Assert.Equal((uint)3666, catalog.HarvestGatherAbilityId);
-        Assert.Equal((uint)3667, catalog.HarvestReturnAbilityId);
+        Assert.Equal((uint)1, catalog.SmartAbilityId);
     }
 
     [Fact]
-    public void Create_ResolvesCurrentSc2HarvestLinkNames()
+    public void Create_ResolvesSmartCommandFromAuthoritativeGameData()
     {
         var data = new ResponseData();
-        data.Abilities.Add(new AbilityData { AbilityId = 295, LinkName = "SCVHarvest" });
-        data.Abilities.Add(new AbilityData { AbilityId = 296, LinkName = "SCVHarvest" });
-        data.Abilities.Add(new AbilityData { AbilityId = 3666, LinkName = "HarvestGather" });
-        data.Abilities.Add(new AbilityData { AbilityId = 3667, LinkName = "HarvestReturn" });
+        data.Abilities.Add(new AbilityData { AbilityId = 1, LinkName = "Smart" });
 
         var catalog = Sc2GameDataCatalog.Create(data);
 
-        Assert.Equal((uint)3666, catalog.HarvestGatherAbilityId);
-        Assert.Equal((uint)3667, catalog.HarvestReturnAbilityId);
+        Assert.Equal((uint)1, catalog.SmartAbilityId);
     }
 
     [Fact]
@@ -47,7 +41,6 @@ public sealed class Sc2GameDataCatalogTests
 
         Assert.Empty(catalog.UnitNames);
         Assert.Empty(catalog.BuffNames);
-        Assert.Null(catalog.HarvestGatherAbilityId);
-        Assert.Null(catalog.HarvestReturnAbilityId);
+        Assert.Null(catalog.SmartAbilityId);
     }
 }

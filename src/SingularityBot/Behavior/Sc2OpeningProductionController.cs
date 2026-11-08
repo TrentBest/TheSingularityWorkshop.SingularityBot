@@ -10,6 +10,7 @@ namespace SingularityBot.Behavior;
 public sealed class Sc2OpeningProductionController
 {
     private bool _awaitingObservedOrder;
+    private bool _initialScvProductionObserved;
     private uint _requestGameLoop;
 
     public SC2APIProtocol.Action TryCreateScvTrainingAction(
@@ -19,7 +20,8 @@ public sealed class Sc2OpeningProductionController
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
 
-        if (gameData.ScvTrainAbilityId is not > 0 ||
+        if (_initialScvProductionObserved ||
+            gameData.ScvTrainAbilityId is not > 0 ||
             gameData.ScvMineralCost == 0)
             return null;
 
@@ -41,6 +43,7 @@ public sealed class Sc2OpeningProductionController
                 order.AbilityId == gameData.ScvTrainAbilityId.Value)))
         {
             _awaitingObservedOrder = false;
+            _initialScvProductionObserved = true;
             return null;
         }
 

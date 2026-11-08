@@ -23,7 +23,12 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
 
-        Assert.Null(selection); // Rally already directs the new SCV; no Stop command is issued.
+        Assert.NotNull(selection); // The new SCV is controlled immediately, not left to rally inheritance.
+        Assert.Equal(16, selection.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, selection.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.False(selection.ActionRaw.UnitCommand.QueueCommand);
+        Assert.Equal(controller.Placement?.X ?? selection.ActionRaw.UnitCommand.TargetWorldSpacePos.X,
+            selection.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
         Assert.False(assignments.IsReserved(10));
@@ -48,7 +53,10 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
 
-        Assert.Null(selection);
+        Assert.NotNull(selection);
+        Assert.Equal(16, selection.ActionRaw.UnitCommand.AbilityId);
+        Assert.False(selection.ActionRaw.UnitCommand.QueueCommand);
+        Assert.Equal(11UL, selection.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
     }
@@ -69,6 +77,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.NotNull(move);
         Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.False(move.ActionRaw.UnitCommand.QueueCommand);
         var site = controller.Placement.Value;
         Assert.Equal(site.X, move.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
         controller.OnActionResult(ActionResult.Success);

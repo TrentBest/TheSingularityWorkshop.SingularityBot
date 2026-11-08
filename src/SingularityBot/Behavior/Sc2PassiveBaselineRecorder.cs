@@ -137,6 +137,6 @@ public sealed class Sc2PassiveBaselineRecorder
         var reached = _timeToTargetSeconds is null
             ? "not reached"
             : $"{_timeToTargetSeconds.Value:F3}s at game loop {_targetReachedAtLoop}";
-        Console.WriteLine($"[Baseline] Zero-intervention run: start minerals={_startingMinerals?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}, time to 300 minerals={reached}, samples={_rows.Count - 1}, trace={path}, worker-frame-rows={_workerRows.Count - 1}, worker-trace={workerPath}, resource-frame-rows={_resourceRows.Count - 1}, resource-trace={resourcePath}.");
+        Console.WriteLine($"[Diagnostics] SC2 run: start minerals={_startingMinerals?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}, time to 300 minerals={reached}, samples={_rows.Count - 1}, trace={path}, worker-frame-rows={_workerRows.Count - 1}, worker-trace={workerPath}, resource-frame-rows={_resourceRows.Count - 1}, resource-trace={resourcePath}.");
     }
 }

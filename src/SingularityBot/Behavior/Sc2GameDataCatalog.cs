@@ -68,8 +68,8 @@ public sealed class Sc2GameDataCatalog
         return new Sc2GameDataCatalog(
             unitNames,
             buffNames,
-            ResolveAbility(data.Abilities, "Harvest_Gather"),
-            ResolveAbility(data.Abilities, "Harvest_Return"),
+            ResolveAbility(data.Abilities, "HarvestGather", "Harvest_Gather"),
+            ResolveAbility(data.Abilities, "HarvestReturn", "Harvest_Return"),
             scv?.AbilityId is > 0 ? scv.AbilityId : null,
             scv?.MineralCost ?? 0,
             scv?.FoodRequired ?? 0,
@@ -95,14 +95,15 @@ public sealed class Sc2GameDataCatalog
 
     private static uint? ResolveAbility(
         IEnumerable<AbilityData> abilities,
-        string linkName)
+        params string[] linkNames)
     {
-        var match = abilities
-            .Where(ability => ability.AbilityId != 0 &&
-                              string.Equals(ability.LinkName, linkName, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(ability => ability.AbilityId)
-            .FirstOrDefault();
+        var names = new HashSet<string>(linkNames, StringComparer.OrdinalIgnoreCase);
+        var candidates = abilities
+            .Where(ability => ability.AbilityId != 0 && names.Contains(ability.LinkName))
+            .Select(ability => ability.AbilityId)
+            .Distinct()
+            .ToArray();
 
-        return match?.AbilityId;
+        return candidates.Length == 1 ? candidates[0] : null;
     }
 }

@@ -149,21 +149,19 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         UpdateSpatialIntelligence(observation);
 
-        // Normalize once and use the same authoritative frame for reconciliation,
-        // FSM evaluation, target selection, and action translation.
+        // DataSync starts immediately after normalization. Every later decision
+        // consumes the same persistent entity registry and frame facts.
         var normalized = Sc2ObservationNormalizer.Normalize(
             observation,
             _playerId,
             _gameData.UnitNames,
             _gameData.BuffNames);
+        var intents = new BehaviorIntentBuffer();
+        _unitBehaviors.Reconcile(normalized, intents.Add);
 
-        // Local active-run telemetry is observational only: it records the same
-        // normalized frame without changing assignments, FSM state, or actions.
         if (_writeDiagnostics)
             _baselineRecorder.Record(normalized);
 
-        // Capture the starting SCV population before opening production can
-        // return early and before the first newly trained worker enters mining.
         _openingBuilder.ObserveWorkers(normalized);
 
         foreach (var actionError in observation.ActionErrors)
@@ -181,9 +179,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _initialScvProductionObserved |= scvTrainingOrderObserved;
 
         var assignments = _workerAssignments.Reconcile(normalized);
+        var actions = new List<SC2APIProtocol.Action>();
+        SC2APIProtocol.Action sprayAction = null;
+        SC2APIProtocol.Action builderAction = null;
+        AbilityQuery sprayQuery = null;
+        var allowWorkerActions = true;
 
-        // The Command Center's temporary worker rally is a hard production gate.
-        // Restore is also isolated so it cannot compete with another CC command.
+        // Existing opening controllers are being migrated into FSM capabilities.
+        // Until that migration is complete, their gates suppress competing actions,
+        // but never suppress the frame's ordered FSM processing groups.
         var rallyAction = _openingRally.TryCreateAction(
             normalized,
             SpatialMap,
@@ -193,90 +197,112 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingRallyActionSubmitted = rallyAction is not null;
         if (rallyAction is not null)
         {
+            actions.Add(rallyAction);
+            allowWorkerActions = false;
             _pendingQuery = null;
-            return new[] { rallyAction };
         }
-        if (!_openingRally.IsTemporaryRallyAccepted)
+        else if (!_openingRally.IsTemporaryRallyAccepted)
         {
+            allowWorkerActions = false;
             _pendingQuery = null;
-            return Array.Empty<SC2APIProtocol.Action>();
         }
 
-        // Train only after SC2 has accepted the temporary rally command.
-        var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);
-        _openingProductionActionSubmitted = productionAction is not null;
-        if (productionAction is not null)
+        if (allowWorkerActions)
         {
-            var command = productionAction.ActionRaw.UnitCommand;
-            Console.WriteLine($"[Opening] Requesting first SCV: Command Center={command.UnitTags[0]}, ability={command.AbilityId}, minerals={normalized.Minerals}, supply={normalized.FoodUsed}/{normalized.FoodCap}.");
-            return new[] { productionAction };
+            var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);
+            _openingProductionActionSubmitted = productionAction is not null;
+            if (productionAction is not null)
+            {
+                var command = productionAction.ActionRaw.UnitCommand;
+                Console.WriteLine($"[Opening] Requesting first SCV: Command Center={command.UnitTags[0]}, ability={command.AbilityId}, minerals={normalized.Minerals}, supply={normalized.FoodUsed}/{normalized.FoodCap}.");
+                actions.Add(productionAction);
+                allowWorkerActions = false;
+            }
         }
-
-        var sprayQuery = _openingSpray.PrepareAbilityQuery(
-            normalized,
-            assignments,
-            _gameData,
-            _initialScvProductionObserved,
-            _workerAssignments);
-        var sprayAction = _openingSpray.TryCreateAction(normalized, _gameData, _workerAssignments);
-        _openingSprayActionSubmitted = sprayAction is not null;
-
-        var builderAction = _openingBuilder.TryCreateAction(
-            normalized,
-            SpatialMap,
-            _gameData,
-            _initialScvProductionObserved,
-            _workerAssignments);
-        _openingBuilderActionSubmitted = builderAction is not null;
-        if (builderAction is not null)
+        else
         {
-            var command = builderAction.ActionRaw.UnitCommand;
-            var target = command.TargetWorldSpacePos is null
-                ? "none"
-                : $"({command.TargetWorldSpacePos.X:F1},{command.TargetWorldSpacePos.Y:F1})";
-            Console.WriteLine($"[Opening] Builder SCV {_openingBuilder.BuilderTag}: ability={command.AbilityId}, target={target}.");
+            _openingProductionActionSubmitted = false;
         }
 
-        // Refresh after a builder reservation so the same frame cannot emit a stale gather intent.
-        assignments = _workerAssignments.Reconcile(normalized);
+        if (allowWorkerActions)
+        {
+            sprayQuery = _openingSpray.PrepareAbilityQuery(
+                normalized,
+                assignments,
+                _gameData,
+                _initialScvProductionObserved,
+                _workerAssignments);
+            sprayAction = _openingSpray.TryCreateAction(normalized, _gameData, _workerAssignments);
+            _openingSprayActionSubmitted = sprayAction is not null;
+
+            builderAction = _openingBuilder.TryCreateAction(
+                normalized,
+                SpatialMap,
+                _gameData,
+                _initialScvProductionObserved,
+                _workerAssignments);
+            _openingBuilderActionSubmitted = builderAction is not null;
+            if (builderAction is not null)
+            {
+                var command = builderAction.ActionRaw.UnitCommand;
+                var target = command.TargetWorldSpacePos is null
+                    ? "none"
+                    : $"({command.TargetWorldSpacePos.X:F1},{command.TargetWorldSpacePos.Y:F1})";
+                Console.WriteLine($"[Opening] Builder SCV {_openingBuilder.BuilderTag}: ability={command.AbilityId}, target={target}.");
+            }
+
+            // Refresh after a builder reservation so this frame cannot emit a
+            // stale gather intent for the worker now committed to construction.
+            assignments = _workerAssignments.Reconcile(normalized);
+            var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
+            if (sprayQuery is not null || placementQuery is not null)
+            {
+                _pendingQuery = new RequestQuery();
+                if (sprayQuery is not null)
+                    _pendingQuery.Abilities.Add(sprayQuery.Abilities);
+                if (placementQuery is not null)
+                    _pendingQuery.Placements.Add(placementQuery.Placements);
+            }
+            else
+            {
+                _pendingQuery = null;
+            }
+        }
+        else
+        {
+            _openingSprayActionSubmitted = false;
+            _openingBuilderActionSubmitted = false;
+        }
+
         foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
         {
             if (_loggedWorkerAssignments.Add((assignment.WorkerTag, assignment.Generation)))
                 Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
         }
 
-        var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
-        if (sprayQuery is not null || placementQuery is not null)
-        {
-            _pendingQuery = new RequestQuery();
-            if (sprayQuery is not null)
-                _pendingQuery.Abilities.Add(sprayQuery.Abilities);
-            if (placementQuery is not null)
-                _pendingQuery.Placements.Add(placementQuery.Placements);
-        }
-        else
-        {
-            _pendingQuery = null;
-        }
-
-        var intents = new BehaviorIntentBuffer();
-        _unitBehaviors.Reconcile(normalized, intents.Add);
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
+
+        // The scheduler advances every registered group in declared order even
+        // when an opening gate suppresses outgoing actions for this frame.
         _unitBehaviors.Update();
 
-        var actions = new List<SC2APIProtocol.Action>();
         if (sprayAction is not null)
             actions.Add(sprayAction);
         if (builderAction is not null)
             actions.Add(builderAction);
-        var workerIntents = intents.Drain()
-            .Where(intent => !_workerAssignments.IsReserved(intent.Key))
-            .ToArray();
-        actions.AddRange(Sc2ActionTranslator.Translate(
-            workerIntents,
-            normalized,
-            _gameData.SmartAbilityId,
-            assignments));
+
+        if (allowWorkerActions)
+        {
+            var workerIntents = intents.Drain()
+                .Where(intent => !_workerAssignments.IsReserved(intent.Key))
+                .ToArray();
+            actions.AddRange(Sc2ActionTranslator.Translate(
+                workerIntents,
+                normalized,
+                _gameData.SmartAbilityId,
+                assignments));
+        }
+
         return actions;
     }
 

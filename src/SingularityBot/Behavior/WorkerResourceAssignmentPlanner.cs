@@ -131,7 +131,7 @@ public sealed class WorkerResourceAssignmentPlanner
                                     !_reservedWorkers.Contains(unit.Tag) &&
                                     (!unit.HasOrders ||
                                      workersWithStaleMineralOrders.Contains(unit.Tag) ||
-                                     (unit.Orders[0].TargetUnitTag is ulong targetTag &&
+                                     (unit.Orders.FirstOrDefault()?.TargetUnitTag is ulong targetTag &&
                                       minerals.ContainsKey(targetTag))))
                      .OrderBy(unit => unit.Tag))
         {

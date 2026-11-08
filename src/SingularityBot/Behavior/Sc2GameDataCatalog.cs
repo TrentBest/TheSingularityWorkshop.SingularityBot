@@ -65,7 +65,7 @@ public sealed class Sc2GameDataCatalog
         return new Sc2GameDataCatalog(
             unitNames,
             buffNames,
-            ResolveAbility(data.Abilities, "Smart"),
+            ResolveSmartAbility(data.Abilities),
             scv?.AbilityId is > 0 ? scv.AbilityId : null,
             scv?.MineralCost ?? 0,
             scv?.FoodRequired ?? 0,
@@ -73,6 +73,21 @@ public sealed class Sc2GameDataCatalog
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
             supplyDepot?.MineralCost ?? 0,
             ResolveSprayAbility(data.Abilities));
+    }
+
+
+    private static uint? ResolveSmartAbility(IEnumerable<AbilityData> abilities)
+    {
+        var candidates = abilities
+            .Where(ability =>
+                string.Equals(ability.LinkName, "Smart", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ability.ButtonName, "Smart", StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+
+        return candidates.Length == 1 ? candidates[0] : null;
     }
 
     private static uint? ResolveSprayAbility(IEnumerable<AbilityData> abilities)

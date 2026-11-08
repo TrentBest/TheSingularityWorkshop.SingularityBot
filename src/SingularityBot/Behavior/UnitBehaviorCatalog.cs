@@ -6,10 +6,17 @@ namespace SingularityBot.Behavior;
 public static class UnitBehaviorCatalog
 {
     public const string DataSyncProcessingGroup = "SingularityBot.DataSync";
-    public const string MiningProcessingGroup = "SingularityBot.Mining";
-    public const string ConstructionProcessingGroup = "SingularityBot.Construction";
-    public const string RepairProcessingGroup = "SingularityBot.Repair";
-    public const string CombatProcessingGroup = "SingularityBot.Combat";
+    public const string StrategyProcessingGroup = "SingularityBot.Strategy";
+    public const string SubStrategyProcessingGroup = "SingularityBot.SubStrategy";
+    public const string HighDpsProcessingGroup = "SingularityBot.HighDPS";
+    public const string LowDpsProcessingGroup = "SingularityBot.LowDPS";
+    public const string ActionResolutionProcessingGroup = "SingularityBot.ActionResolution";
+
+    // Compatibility names map existing capabilities into the new scheduler.
+    public const string MiningProcessingGroup = LowDpsProcessingGroup;
+    public const string ConstructionProcessingGroup = LowDpsProcessingGroup;
+    public const string RepairProcessingGroup = HighDpsProcessingGroup;
+    public const string CombatProcessingGroup = HighDpsProcessingGroup;
 
     public const string EntityExistenceFsm = "SingularityBot.EntityExistence";
     public const string WorkerFsm = "SingularityBot.Worker";
@@ -17,19 +24,20 @@ public static class UnitBehaviorCatalog
     public const string RepairFsm = "SingularityBot.RepairCapability";
     public const string CombatFsm = "SingularityBot.CombatUnit";
 
-    // Ordered frame groups. Strategy and formation groups are introduced as
-    // their contexts and intent contracts are implemented.
+    // The frame owner advances these groups in exactly this order.
     public static IReadOnlyList<string> ProcessGroupsThisFrame { get; } =
     [
         DataSyncProcessingGroup,
-        MiningProcessingGroup,
-        ConstructionProcessingGroup,
-        CombatProcessingGroup
+        StrategyProcessingGroup,
+        SubStrategyProcessingGroup,
+        HighDpsProcessingGroup,
+        LowDpsProcessingGroup,
+        ActionResolutionProcessingGroup
     ];
 
     public static void Register()
     {
-        foreach (var group in ProcessGroupsThisFrame.Append(RepairProcessingGroup).Distinct())
+        foreach (var group in ProcessGroupsThisFrame.Distinct())
             FSM_API.Create.CreateProcessingGroup(group);
         RegisterEntityExistence();
         RegisterWorker();

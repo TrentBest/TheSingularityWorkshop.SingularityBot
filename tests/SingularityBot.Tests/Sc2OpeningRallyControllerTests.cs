@@ -89,6 +89,31 @@ public sealed class Sc2OpeningRallyControllerTests
         Assert.Null(controller.TryCreateAction(observation, Map(), gameData, assignments, true));
     }
 
+
+    [Fact]
+    public void RejectedRallyRestorationRetriesWithoutMarkingItComplete()
+    {
+        var controller = new Sc2OpeningRallyController();
+        var assignment = new WorkerResourceAssignment(
+            10, 200, 1, 1, 1, 8, 8, 6, 12, 10, 10);
+        var assignments = new Dictionary<ulong, WorkerResourceAssignment> { [10] = assignment };
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", 10, 10, UnitAlliance.Self),
+            Fact(200, "MineralField750", 6, 12, UnitAlliance.Neutral));
+        var gameData = GameData();
+
+        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData, assignments, false));
+        controller.OnActionResult(ActionResult.Success);
+
+        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData, assignments, true));
+        controller.OnActionResult((ActionResult)2);
+
+        Assert.False(controller.IsRestoreAccepted);
+        var retry = controller.TryCreateAction(observation, Map(), gameData, assignments, true);
+        Assert.NotNull(retry);
+        Assert.Equal(200UL, retry.ActionRaw.UnitCommand.TargetUnitTag);
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

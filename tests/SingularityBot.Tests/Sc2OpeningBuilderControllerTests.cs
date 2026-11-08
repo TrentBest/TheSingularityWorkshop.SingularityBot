@@ -19,10 +19,14 @@ public sealed class Sc2OpeningBuilderControllerTests
         controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments);
-        controller.TryCreateAction(Snapshot(50, 13, 15,
+        var stop = controller.TryCreateAction(Snapshot(50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
 
+        Assert.NotNull(stop);
+        Assert.Equal(4, stop.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, stop.ActionRaw.UnitCommand.UnitTags[0]);
+        controller.OnActionResult(ActionResult.Success);
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
         Assert.False(assignments.IsReserved(10));
@@ -141,9 +145,11 @@ public sealed class Sc2OpeningBuilderControllerTests
         controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments);
-        controller.TryCreateAction(Snapshot(50, 13, 15,
+        var stop = controller.TryCreateAction(Snapshot(50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
+        Assert.NotNull(stop);
+        controller.OnActionResult(ActionResult.Success);
     }
 
     private static void SetValidPlacement(Sc2OpeningBuilderController controller)
@@ -162,6 +168,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1 });
         data.Units.Add(new UnitTypeData { UnitId = 19, Name = "SupplyDepot", AbilityId = 319, MineralCost = 100 });
         data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "Move" });
+        data.Abilities.Add(new AbilityData { AbilityId = 4, LinkName = "Stop" });
         return Sc2GameDataCatalog.Create(data);
     }
 

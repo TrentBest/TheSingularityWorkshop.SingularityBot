@@ -48,21 +48,20 @@ public sealed class Sc2ActionTranslatorTests
     }
 
     [Fact]
-    public void ReturnCargoIntentFailsClosedWithoutReturnAbilityOrTownHall()
+    public void ReturnCargoIntentFailsClosedWithoutSmartAbilityOrTownHall()
     {
         var loadedWorker = Snapshot(Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true));
         var noAbility = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.ReturnCarriedResources) },
             loadedWorker,
-            1);
+            null);
         Assert.Empty(noAbility);
 
         var noTownHall = Snapshot(Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true));
         var noTarget = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.ReturnCarriedResources) },
             noTownHall,
-            3666,
-            3667);
+            1);
         Assert.Empty(noTarget);
     }
 
@@ -81,7 +80,7 @@ public sealed class Sc2ActionTranslatorTests
         var actions = Sc2ActionTranslator.Translate(
             new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.AssignWorkerToMinerals) },
             observation,
-            3666);
+            1);
 
         Assert.Empty(actions);
     }

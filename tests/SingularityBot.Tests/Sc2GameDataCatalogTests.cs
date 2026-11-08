@@ -26,6 +26,21 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ResolvesCurrentSc2HarvestLinkNames()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData { AbilityId = 295, LinkName = "SCVHarvest" });
+        data.Abilities.Add(new AbilityData { AbilityId = 296, LinkName = "SCVHarvest" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3666, LinkName = "HarvestGather" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3667, LinkName = "HarvestReturn" });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)3666, catalog.HarvestGatherAbilityId);
+        Assert.Equal((uint)3667, catalog.HarvestReturnAbilityId);
+    }
+
+    [Fact]
     public void Create_LeavesMissingAbilityMetadataUnavailable()
     {
         var catalog = Sc2GameDataCatalog.Create(new ResponseData());

@@ -71,7 +71,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             SpatialMap = null;
             SpatialIntelligence = null;
-            Console.WriteLine($"[Spatial] Map geometry unresolved for {gameInfo?.MapName ?? "unknown map"}; the bot needs playable bounds, own starting units, and exactly two start locations.");
+            Console.WriteLine($"[Spatial] Map geometry unresolved for {gameInfo?.MapName ?? "unknown map"}; the bot needs valid playable bounds, a visible starting town hall, and one or two start locations.");
         }
 
         if (_behaviorCatalogRegistered)

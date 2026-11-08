@@ -16,8 +16,8 @@ public sealed class Sc2OpeningSprayController
         AwaitingAbilityQuery,
         SprayReady,
         SpraySubmitted,
-        GatherReady,
-        GatherSubmitted,
+        SmartReady,
+        SmartSubmitted,
         Complete,
         Unavailable
     }
@@ -70,7 +70,7 @@ public sealed class Sc2OpeningSprayController
             _workerTag = worker.Tag;
             _assignment = assignment;
             _sprayAbilityId = gameData.SprayAbilityId;
-            _smartAbilityId = gameData.HarvestGatherAbilityId;
+            _smartAbilityId = gameData.SmartAbilityId;
             planner.Reserve(worker.Tag);
 
             var query = new RequestQuery();
@@ -148,7 +148,7 @@ public sealed class Sc2OpeningSprayController
             return new SC2APIProtocol.Action { ActionRaw = new ActionRaw { UnitCommand = command } };
         }
 
-        if (_gatherAbilityId is not > 0)
+        if (_smartAbilityId is not > 0)
         {
             Restore(planner);
             _stage = Stage.Unavailable;
@@ -176,7 +176,7 @@ public sealed class Sc2OpeningSprayController
             {
                 UnitCommand = new ActionRawUnitCommand
                 {
-                    AbilityId = checked((int)_gatherAbilityId.Value),
+                    AbilityId = checked((int)_smartAbilityId.Value),
                     UnitTags = { _workerTag.Value },
                     TargetUnitTag = _assignment.MineralTag,
                     QueueCommand = false
@@ -211,7 +211,7 @@ public sealed class Sc2OpeningSprayController
             {
                 Restore(planner);
                 _stage = Stage.Complete;
-                Console.WriteLine($"[Control proof] SC2 accepted the return-to-mining command for SCV {_workerTag} -> mineral {_assignment.MineralTag}.");
+                Console.WriteLine($"[Control proof] SC2 accepted the Smart return-to-mining command for SCV {_workerTag} -> mineral {_assignment.MineralTag}.");
             }
             else
             {

@@ -19,7 +19,8 @@ public sealed class Sc2GameDataCatalog
         uint? stopAbilityId,
         uint? supplyDepotBuildAbilityId,
         uint supplyDepotMineralCost,
-        uint? sprayAbilityId)
+        uint? sprayAbilityId,
+        uint? rallyWorkersAbilityId)
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
@@ -32,6 +33,7 @@ public sealed class Sc2GameDataCatalog
         SupplyDepotBuildAbilityId = supplyDepotBuildAbilityId;
         SupplyDepotMineralCost = supplyDepotMineralCost;
         SprayAbilityId = sprayAbilityId;
+        RallyWorkersAbilityId = rallyWorkersAbilityId;
     }
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
@@ -45,6 +47,7 @@ public sealed class Sc2GameDataCatalog
     public uint? SupplyDepotBuildAbilityId { get; }
     public uint SupplyDepotMineralCost { get; }
     public uint? SprayAbilityId { get; }
+    public uint? RallyWorkersAbilityId { get; }
 
     public static Sc2GameDataCatalog Create(ResponseData data)
     {
@@ -76,7 +79,8 @@ public sealed class Sc2GameDataCatalog
             ResolveStopAbility(data.Abilities),
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
             supplyDepot?.MineralCost ?? 0,
-            ResolveSprayAbility(data.Abilities));
+            ResolveSprayAbility(data.Abilities),
+            ResolveAbility(data.Abilities, "Rally_Workers"));
     }
 
 

@@ -14,7 +14,6 @@ public sealed class Sc2OpeningBuilderController
     private enum PendingAction
     {
         None,
-        Stop,
         Move,
         Build
     }
@@ -27,6 +26,7 @@ public sealed class Sc2OpeningBuilderController
     private bool _placementQueryPending;
     private MapPoint? _placement;
     private bool _moveSubmitted;
+    private bool _dispatched;
     private uint _moveRequestGameLoop;
     private int _placementQueryAttempts;
     private bool _buildSubmitted;
@@ -38,6 +38,7 @@ public sealed class Sc2OpeningBuilderController
 
     public ulong? BuilderTag => _builderTag;
     public bool IsCompleted => _completed;
+    public bool IsDispatched => _dispatched;
     public MapPoint? Placement => _placement;
 
     public SC2APIProtocol.Action TryCreateAction(
@@ -56,8 +57,7 @@ public sealed class Sc2OpeningBuilderController
         if (_completed || !initialScvProductionObserved ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
             gameData.SupplyDepotMineralCost == 0 ||
-            gameData.MoveAbilityId is not > 0 ||
-            gameData.StopAbilityId is not > 0)
+            gameData.MoveAbilityId is not > 0)
             return null;
 
         if (_builderTag is ulong selectedTag &&
@@ -72,6 +72,7 @@ public sealed class Sc2OpeningBuilderController
             _candidatePoints = Array.Empty<MapPoint>();
             _placementQueryPending = false;
             _moveSubmitted = false;
+            _dispatched = false;
             _buildSubmitted = false;
             _pendingAction = PendingAction.None;
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
@@ -93,11 +94,8 @@ public sealed class Sc2OpeningBuilderController
                 _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
                 _placementQueryPending = _candidatePoints.Count > 0;
             }
-            Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} reserved; issuing Stop to interrupt its existing mining order.");
-            _pendingAction = PendingAction.Stop;
-            return CreateUnitCommand(
-                _builderTag.Value,
-                checked((int)gameData.StopAbilityId.Value));
+            Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} reserved for the Supply Depot; the Command Center rally has already staged its route.");
+            return null;
         }
 
         if (_candidatePoints.Count == 0 && spatialMap is not null)
@@ -265,10 +263,16 @@ public sealed class Sc2OpeningBuilderController
         if (_pendingAction == PendingAction.None)
             return;
 
+        if (_pendingAction == PendingAction.Move && result == ActionResult.Success)
+            _dispatched = true;
+
         if (result is null || result != ActionResult.Success)
         {
             if (_pendingAction == PendingAction.Move)
+            {
                 _moveSubmitted = false;
+                _dispatched = false;
+            }
             else if (_pendingAction == PendingAction.Build)
                 _buildSubmitted = false;
         }
@@ -301,20 +305,6 @@ public sealed class Sc2OpeningBuilderController
             .Where(map.Bounds.Contains)
             .ToArray();
     }
-
-    private static SC2APIProtocol.Action CreateUnitCommand(ulong unitTag, int abilityId) =>
-        new()
-        {
-            ActionRaw = new ActionRaw
-            {
-                UnitCommand = new ActionRawUnitCommand
-                {
-                    AbilityId = abilityId,
-                    UnitTags = { unitTag },
-                    QueueCommand = false
-                }
-            }
-        };
 
     private static SC2APIProtocol.Action CreatePositionCommand(
         ulong unitTag,

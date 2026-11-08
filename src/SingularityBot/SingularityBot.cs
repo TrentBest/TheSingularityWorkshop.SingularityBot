@@ -80,7 +80,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         UnitBehaviorCatalog.Register();
         _behaviorCatalogRegistered = true;
 
-        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, gather={_gameData.HarvestGatherAbilityId?.ToString() ?? "unavailable"}, return={_gameData.HarvestReturnAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
+        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, smart={_gameData.SmartAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
     }
 
     /// <summary>
@@ -242,8 +242,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         actions.AddRange(Sc2ActionTranslator.Translate(
             workerIntents,
             normalized,
-            _gameData.HarvestGatherAbilityId,
-            _gameData.HarvestReturnAbilityId,
+            _gameData.SmartAbilityId,
             assignments));
         return actions;
     }

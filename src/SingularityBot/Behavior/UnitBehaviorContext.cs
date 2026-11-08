@@ -4,12 +4,13 @@ using TheSingularityWorkshop.FSM_API;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Mutable observation-derived context owned by one unit's behavior FSM.
-/// The context deliberately contains no SC2 protocol types.
+/// Persistent, protocol-independent facts for one game entity. The context owns
+/// all FSM handles attached to that entity and survives temporary observation loss.
 /// </summary>
 public sealed class UnitBehaviorContext : IStateContext
 {
     private readonly Action<BehaviorCommand> _emit;
+    private readonly Dictionary<string, FSMHandle> _ownedHandles = new(StringComparer.Ordinal);
 
     public UnitBehaviorContext(
         ulong unitTag,
@@ -37,8 +38,12 @@ public sealed class UnitBehaviorContext : IStateContext
     public bool IsValid { get; set; }
 
     public uint UnitTypeId { get; private set; }
+    public uint OwnerId { get; private set; }
+    public UnitAlliance Alliance { get; private set; }
+    public UnitVisibility CurrentVisibility { get; private set; } = UnitVisibility.Unknown;
     public uint LastObservedGameLoop { get; private set; }
-    public bool IsCurrentlyVisible { get; internal set; }
+    public uint LastSeenGameLoop { get; private set; }
+    public bool IsCurrentlyVisible => CurrentVisibility == UnitVisibility.Visible;
     public float Health { get; private set; }
     public float HealthMax { get; private set; }
     public float Shield { get; private set; }
@@ -50,16 +55,11 @@ public sealed class UnitBehaviorContext : IStateContext
     public bool IsFlying { get; private set; }
     public bool IsBurrowed { get; private set; }
     public bool IsHallucination { get; private set; }
-
-    // Strategic facts not yet derivable from the normalized observation remain
-    // unset until their owning economy/army layer supplies them.
     public bool HasCargo { get; private set; }
     public bool HasAssignedWork { get; private set; }
     public IReadOnlyList<UnitOrderObservationFacts> ObservedOrders { get; private set; } = Array.Empty<UnitOrderObservationFacts>();
     public UnitOrderObservationFacts? CurrentOrder => ObservedOrders.Count == 0 ? null : ObservedOrders[0];
 
-    // The economy planner owns reservation identity; the worker FSM context
-    // owns the observed execution phase for that reservation.
     public ulong? AssignedMineralTag { get; private set; }
     public ulong? AssignedTownHallTag { get; private set; }
     public uint WorkerAssignmentGeneration { get; private set; }
@@ -75,31 +75,86 @@ public sealed class UnitBehaviorContext : IStateContext
     public bool IsRepairAssignmentSafe { get; set; }
     public int RepairDistanceManhattan { get; set; }
 
+    public IReadOnlyCollection<string> Capabilities => _ownedHandles.Keys.ToArray();
+    internal bool HasCapability(string name) => _ownedHandles.ContainsKey(name);
+    internal void OwnHandle(string name, FSMHandle handle) => _ownedHandles.Add(name, handle);
+
+    internal bool TryGetFirstHandle(out FSMHandle handle)
+    {
+        handle = default;
+        if (_ownedHandles.Count == 0) return false;
+        handle = _ownedHandles.Values.First();
+        return true;
+    }
+
+    internal void DestroyOwnedHandles()
+    {
+        foreach (var handle in _ownedHandles.Values)
+            FSM_API.Interaction.DestroyInstance(handle);
+        _ownedHandles.Clear();
+    }
+
+    internal void Invalidate()
+    {
+        IsValid = false;
+        CurrentVisibility = UnitVisibility.Unknown;
+    }
+
+    internal void MarkNotObserved(uint gameLoop)
+    {
+        if (LastObservedGameLoop < gameLoop)
+            CurrentVisibility = UnitVisibility.Unknown;
+    }
+
     public void Apply(UnitObservationFacts facts)
     {
         ArgumentNullException.ThrowIfNull(facts);
         if (facts.Tag != UnitTag)
             throw new ArgumentException("Observation facts belong to a different unit tag.", nameof(facts));
-        if (!facts.IsLiveVisible)
-            throw new ArgumentException("Only current visible facts may refresh a live unit context.", nameof(facts));
 
-        UnitTypeId = facts.UnitTypeId;
+        UnitTypeId = facts.UnitTypeId == 0 ? UnitTypeId : facts.UnitTypeId;
+        OwnerId = facts.OwnerId;
+        Alliance = facts.Alliance;
+        CurrentVisibility = facts.Visibility;
         LastObservedGameLoop = facts.GameLoop;
-        IsCurrentlyVisible = true;
-        Health = facts.Health;
-        HealthMax = facts.HealthMax;
-        Shield = facts.Shield;
-        ShieldMax = facts.ShieldMax;
-        BuildProgress = facts.BuildProgress;
-        PositionX = facts.PositionX;
-        PositionY = facts.PositionY;
-        HasPosition = facts.HasPosition;
-        HasCargo = facts.HasCargo;
-        HasAssignedWork = facts.HasOrders;
-        ObservedOrders = facts.Orders;
-        IsFlying = facts.IsFlying;
-        IsBurrowed = facts.IsBurrowed;
-        IsHallucination = facts.IsHallucination;
+
+        // A visible observation is authoritative for the complete live record.
+        // Snapshot/hidden records refresh only fields actually represented.
+        if (facts.IsLiveVisible)
+        {
+            LastSeenGameLoop = facts.GameLoop;
+            Health = facts.Health;
+            HealthMax = facts.HealthMax;
+            Shield = facts.Shield;
+            ShieldMax = facts.ShieldMax;
+            BuildProgress = facts.BuildProgress;
+            PositionX = facts.PositionX;
+            PositionY = facts.PositionY;
+            HasPosition = facts.HasPosition;
+            HasCargo = facts.HasCargo;
+            HasAssignedWork = facts.HasOrders;
+            ObservedOrders = facts.Orders;
+            IsFlying = facts.IsFlying;
+            IsBurrowed = facts.IsBurrowed;
+            IsHallucination = facts.IsHallucination;
+        }
+        else
+        {
+            if (facts.HealthMax > 0)
+            {
+                Health = facts.Health;
+                HealthMax = facts.HealthMax;
+                Shield = facts.Shield;
+                ShieldMax = facts.ShieldMax;
+            }
+            if (facts.HasPosition)
+            {
+                PositionX = facts.PositionX;
+                PositionY = facts.PositionY;
+                HasPosition = true;
+            }
+        }
+
         IsValid = true;
     }
 
@@ -122,7 +177,6 @@ public sealed class UnitBehaviorContext : IStateContext
         AssignedTownHallTag = assignment.TownHallTag;
         WorkerAssignmentGeneration = assignment.Generation;
 
-        // Phase is observation-derived, never inferred from an issued command.
         var orderTarget = CurrentOrder?.TargetUnitTag;
         var observedPhase = HasCargo
             ? orderTarget == AssignedTownHallTag ? WorkerRoutePhase.Returning : WorkerRoutePhase.CarryingResources
@@ -135,9 +189,7 @@ public sealed class UnitBehaviorContext : IStateContext
 
     private void SetRoutePhase(WorkerRoutePhase phase, uint gameLoop, bool forceTimestamp = false)
     {
-        if (WorkerRoutePhase == phase && !forceTimestamp)
-            return;
-
+        if (WorkerRoutePhase == phase && !forceTimestamp) return;
         WorkerRoutePhase = phase;
         WorkerRoutePhaseChangedAtGameLoop = gameLoop;
     }
@@ -149,8 +201,6 @@ public sealed class UnitBehaviorContext : IStateContext
     }
 }
 
-
-/// <summary>Observed lifecycle phase of a worker's persistent resource route.</summary>
 public enum WorkerRoutePhase
 {
     Unassigned,

@@ -96,6 +96,33 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void ReplacesStagingMoveImmediatelyWhenPlacementQuerySelectsAnotherSite()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var gameData = GameData();
+        SelectFirstScv(controller, assignments, map, gameData);
+
+        var placement = new ResponseQuery();
+        placement.Placements.Add(new ResponseQueryBuildingPlacement { Result = (ActionResult)2 });
+        placement.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(placement);
+
+        var site = controller.Placement.Value;
+        var retarget = controller.TryCreateAction(SnapshotAt(101, 50, 13, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 13.18f, 13.18f),
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
+
+        Assert.NotNull(retarget);
+        Assert.Equal(16, retarget.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, retarget.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.False(retarget.ActionRaw.UnitCommand.QueueCommand);
+        Assert.Equal(site.X, retarget.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
+        Assert.Equal(site.Y, retarget.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
+    }
+
+    [Fact]
     public void RetriesPlacementQueryWhenSc2RejectsEveryCandidate()
     {
         var controller = new Sc2OpeningBuilderController();

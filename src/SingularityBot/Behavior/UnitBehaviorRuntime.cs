@@ -4,14 +4,12 @@ using TheSingularityWorkshop.FSM_API;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Owns one persistent observation context and any number of complementary FSM
-/// handles for each unit. Capabilities share the same context but run in distinct
-/// processing groups so event-driven capabilities need not be polled every frame.
+/// Reconciles persistent entity contexts and advances their FSM processing groups.
+/// Entity contexts own their FSM handles; fog-of-war is not a destruction event.
 /// </summary>
 public sealed class UnitBehaviorRuntime
 {
     private readonly Dictionary<ulong, UnitBehaviorContext> _contexts = new();
-    private readonly Dictionary<ulong, Dictionary<string, FSMHandle>> _handles = new();
     private Action<ulong, BehaviorCommand>? _activeEmit;
 
     public int Count => _contexts.Count;
@@ -29,32 +27,52 @@ public sealed class UnitBehaviorRuntime
         var context = new UnitBehaviorContext(
             unitTag, $"{profile.UnitKind}:{unitTag}", profile.UnitKind, profile.IsWorker,
             command => Emit(unitTag, emit, command));
-
         _contexts.Add(unitTag, context);
-        _handles.Add(unitTag, new Dictionary<string, FSMHandle>(StringComparer.Ordinal));
-        AttachHandle(unitTag, profile.BehaviorFsm,
-            profile.IsWorker ? UnitBehaviorCatalog.MiningProcessingGroup : UnitBehaviorCatalog.CombatProcessingGroup);
+        AttachHandle(context, UnitBehaviorCatalog.EntityExistenceFsm, UnitBehaviorCatalog.DataSyncProcessingGroup);
+        AttachProfileCapability(context, profile);
         return context;
     }
 
-    /// <summary>Adds a complementary capability FSM to an existing unit context.</summary>
+    private UnitBehaviorContext AttachEntity(UnitObservationFacts facts)
+    {
+        var kind = string.IsNullOrWhiteSpace(facts.UnitKind)
+            ? $"UnknownUnitType:{facts.UnitTypeId}"
+            : facts.UnitKind;
+        var context = new UnitBehaviorContext(
+            facts.Tag, $"{kind}:{facts.Tag}", kind, false,
+            command => Emit(facts.Tag, static _ => { }, command));
+        _contexts.Add(facts.Tag, context);
+        AttachHandle(context, UnitBehaviorCatalog.EntityExistenceFsm, UnitBehaviorCatalog.DataSyncProcessingGroup);
+        if (UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile))
+            AttachProfileCapability(context, profile);
+        return context;
+    }
+
+    private static void AttachProfileCapability(UnitBehaviorContext context, UnitExpertiseProfile profile)
+    {
+        if (profile.IsWorker)
+            AttachHandle(context, profile.BehaviorFsm, UnitBehaviorCatalog.MiningProcessingGroup);
+        else
+            AttachHandle(context, profile.BehaviorFsm, UnitBehaviorCatalog.CombatProcessingGroup);
+    }
+
+    private static void AttachHandle(UnitBehaviorContext context, string fsmName, string processingGroup)
+    {
+        if (context.HasCapability(fsmName)) return;
+        var handle = FSM_API.Create.CreateInstance(fsmName, context, processingGroup);
+        context.OwnHandle(fsmName, handle);
+    }
+
     public bool AttachCapability(ulong unitTag, string fsmName, string processingGroup)
     {
         if (!_contexts.TryGetValue(unitTag, out var context) || !context.IsValid)
             return false;
         if (string.IsNullOrWhiteSpace(fsmName) || string.IsNullOrWhiteSpace(processingGroup))
             throw new ArgumentException("FSM name and processing group are required.");
-        if (_handles[unitTag].ContainsKey(fsmName))
+        if (context.HasCapability(fsmName))
             return false;
-
-        AttachHandle(unitTag, fsmName, processingGroup);
+        AttachHandle(context, fsmName, processingGroup);
         return true;
-    }
-
-    private void AttachHandle(ulong unitTag, string fsmName, string processingGroup)
-    {
-        var handle = FSM_API.Create.CreateInstance(fsmName, _contexts[unitTag], processingGroup);
-        _handles[unitTag].Add(fsmName, handle);
     }
 
     public void Reconcile(NormalizedObservation observation, Action<ulong, BehaviorCommand> emit)
@@ -63,30 +81,44 @@ public sealed class UnitBehaviorRuntime
         ArgumentNullException.ThrowIfNull(emit);
         _activeEmit = emit;
 
+        // An entity omitted from this frame is merely unobserved. Keep its
+        // context valid and retain its last-known facts until explicit death.
         foreach (var context in _contexts.Values)
-        {
-            context.IsCurrentlyVisible = false;
-            context.IsValid = false;
-        }
+            context.MarkNotObserved(observation.GameLoop);
 
         foreach (var deadTag in observation.DeadUnitTags.OrderBy(tag => tag))
             Remove(deadTag);
 
-        foreach (var facts in observation.Units)
+        foreach (var facts in observation.Units.OrderBy(unit => unit.Tag))
         {
-            if (facts.Alliance != UnitAlliance.Self || !facts.IsLiveVisible ||
-                observation.DeadUnitTags.Contains(facts.Tag) ||
-                !UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile))
+            if (facts.Tag == 0 || observation.DeadUnitTags.Contains(facts.Tag))
                 continue;
 
-            if (_contexts.TryGetValue(facts.Tag, out var context) &&
-                (!context.UnitKind.Equals(profile.UnitKind, StringComparison.OrdinalIgnoreCase) ||
-                 context.IsWorker != profile.IsWorker))
+            var exists = _contexts.TryGetValue(facts.Tag, out var context);
+            if (!exists)
+            {
+                // Positive HealthMax is the initial protocol-backed signal that
+                // this entity has hit points. Once created, its context survives
+                // later records that omit health data.
+                if (facts.HealthMax <= 0)
+                    continue;
+                context = AttachEntity(facts);
+            }
+            else if (context.UnitTypeId != 0 && facts.UnitTypeId != 0 &&
+                     context.UnitTypeId != facts.UnitTypeId)
+            {
+                // Morphs retain the game tag but may change their capabilities.
+                // Rebuild the context/handles for the new authoritative unit type.
                 Remove(facts.Tag);
+                if (facts.HealthMax <= 0)
+                    continue;
+                context = AttachEntity(facts);
+            }
 
-            if (!_contexts.TryGetValue(facts.Tag, out var current))
-                current = Attach(facts.Tag, profile, static _ => { });
-            current.Apply(facts);
+            context.Apply(facts);
+            if (UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile) &&
+                !context.HasCapability(profile.BehaviorFsm))
+                AttachProfileCapability(context, profile);
         }
     }
 
@@ -111,28 +143,22 @@ public sealed class UnitBehaviorRuntime
     public bool TryGetContext(ulong unitTag, out UnitBehaviorContext context) =>
         _contexts.TryGetValue(unitTag, out context);
 
-    // Retained for existing callers; returns the unit's first attached capability.
     public bool TryGetHandle(ulong unitTag, out FSMHandle handle)
     {
         handle = default;
-        if (!_handles.TryGetValue(unitTag, out var handles) || handles.Count == 0) return false;
-        handle = handles.Values.First();
-        return true;
+        return _contexts.TryGetValue(unitTag, out var context) && context.TryGetFirstHandle(out handle);
     }
 
     public IReadOnlyCollection<string> GetCapabilities(ulong unitTag) =>
-        _handles.TryGetValue(unitTag, out var handles)
-            ? handles.Keys.ToArray()
+        _contexts.TryGetValue(unitTag, out var context)
+            ? context.Capabilities
             : Array.Empty<string>();
 
     public bool Remove(ulong unitTag)
     {
         if (!_contexts.Remove(unitTag, out var context)) return false;
-        context.IsValid = false;
-        context.IsCurrentlyVisible = false;
-        if (_handles.Remove(unitTag, out var handles))
-            foreach (var handle in handles.Values)
-                FSM_API.Interaction.DestroyInstance(handle);
+        context.Invalidate();
+        context.DestroyOwnedHandles();
         return true;
     }
 
@@ -140,25 +166,20 @@ public sealed class UnitBehaviorRuntime
     {
         foreach (var context in _contexts.Values)
         {
-            context.IsValid = false;
-            context.IsCurrentlyVisible = false;
+            context.Invalidate();
+            context.DestroyOwnedHandles();
         }
-        foreach (var handles in _handles.Values)
-            foreach (var handle in handles.Values)
-                FSM_API.Interaction.DestroyInstance(handle);
         _contexts.Clear();
-        _handles.Clear();
         _activeEmit = null;
     }
 
-    /// <summary>Steps continuously active groups; repair is deliberately excluded.</summary>
+    /// <summary>Compatibility scheduler; the frame owner will take over this ordered loop.</summary>
     public void Update()
     {
         try
         {
-            FSM_API.Interaction.Update(UnitBehaviorCatalog.MiningProcessingGroup);
-            FSM_API.Interaction.Update(UnitBehaviorCatalog.ConstructionProcessingGroup);
-            FSM_API.Interaction.Update(UnitBehaviorCatalog.CombatProcessingGroup);
+            foreach (var group in UnitBehaviorCatalog.ProcessGroupsThisFrame)
+                FSM_API.Interaction.Update(group);
         }
         finally { _activeEmit = null; }
     }

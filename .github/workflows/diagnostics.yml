@@ -4,8 +4,8 @@ on:
   push:
     branches: [development]
     paths:
-      - "diagnostics/**/*.json"
-      - "diagnostics/**/*.csv"
+      - "extracted/**/*.json"
+      - "extracted/**/*.csv"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +23,7 @@ jobs:
           import json
           from pathlib import Path
 
-          root = Path("diagnostics")
+          root = Path("extracted")
           files = sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in {".json", ".csv"})
           if not files:
               raise SystemExit("No JSON or CSV diagnostics found.")
@@ -39,6 +39,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sc2-diagnostics-${{ github.sha }}
-          path: diagnostics/
+          path: extracted/
           if-no-files-found: error
           retention-days: 30

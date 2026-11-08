@@ -23,6 +23,7 @@ public sealed class Sc2OpeningRallyController
     private MapPoint? _temporaryTarget;
     private bool _temporaryAccepted;
     private bool _restoreAccepted;
+    private bool _configurationFailureReported;
 
     public bool IsTemporaryRallyAccepted => _temporaryAccepted;
     public bool IsRestoreAccepted => _restoreAccepted;
@@ -39,7 +40,14 @@ public sealed class Sc2OpeningRallyController
         ArgumentNullException.ThrowIfNull(assignments);
 
         if (gameData.RallyWorkersAbilityId is not > 0)
+        {
+            if (!_configurationFailureReported)
+            {
+                Console.WriteLine("[Opening] Cannot begin SCV production: SC2 game data did not expose an unambiguous Rally_Workers ability.");
+                _configurationFailureReported = true;
+            }
             return null;
+        }
 
         if (!_temporaryAccepted)
         {
@@ -55,7 +63,14 @@ public sealed class Sc2OpeningRallyController
                 .OrderBy(unit => unit.Tag)
                 .FirstOrDefault();
             if (townHall is null || spatialMap is null)
+            {
+                if (!_configurationFailureReported)
+                {
+                    Console.WriteLine("[Opening] Cannot set the temporary worker rally: a visible Command Center and valid map geometry are required.");
+                    _configurationFailureReported = true;
+                }
                 return null;
+            }
 
             var origin = new MapPoint(townHall.PositionX, townHall.PositionY);
             var forward = (spatialMap.Center - origin).Normalize();

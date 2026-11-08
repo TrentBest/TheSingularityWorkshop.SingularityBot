@@ -5,9 +5,8 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Selects the first Supply Depot builder when the mineral bank crosses the
-/// configured threshold, then stages that returning SCV and constructs at a
-/// placement accepted by the SC2 query API.
+/// Reserves the second SCV produced after the opening begins, stages it at a
+/// queried Supply Depot site, and constructs when the Depot is affordable.
 /// </summary>
 public sealed class Sc2OpeningBuilderController
 {
@@ -23,7 +22,6 @@ public sealed class Sc2OpeningBuilderController
     private readonly SortedSet<ulong> _producedScvTags = new();
     private bool _initialScvPopulationCaptured;
     private ulong? _builderTag;
-    private ulong? _returnTownHallTag;
     private IReadOnlyList<MapPoint> _candidatePoints = Array.Empty<MapPoint>();
     private bool _placementQueryPending;
     private MapPoint? _placement;

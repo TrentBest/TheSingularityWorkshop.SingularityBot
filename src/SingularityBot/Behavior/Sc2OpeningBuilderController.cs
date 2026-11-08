@@ -14,6 +14,7 @@ public sealed class Sc2OpeningBuilderController
     private enum PendingAction
     {
         None,
+        Stop,
         Move,
         Build
     }
@@ -54,7 +55,8 @@ public sealed class Sc2OpeningBuilderController
             spatialMap is null ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
             gameData.SupplyDepotMineralCost == 0 ||
-            gameData.MoveAbilityId is not > 0)
+            gameData.MoveAbilityId is not > 0 ||
+            gameData.StopAbilityId is not > 0)
             return null;
 
         if (_builderTag is ulong selectedTag &&
@@ -104,8 +106,11 @@ public sealed class Sc2OpeningBuilderController
 
             _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
             _placementQueryPending = _candidatePoints.Count > 0;
-            Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} assigned as dedicated Depot builder; staging toward the ramp.");
-            return null;
+            Console.WriteLine($"[Opening] First produced SCV {_builderTag.Value} reserved; issuing Stop to interrupt its existing mining order.");
+            _pendingAction = PendingAction.Stop;
+            return CreateUnitCommand(
+                _builderTag.Value,
+                checked((int)gameData.StopAbilityId.Value));
         }
 
         if (_placement is null)
@@ -275,6 +280,20 @@ public sealed class Sc2OpeningBuilderController
             .Where(map.Bounds.Contains)
             .ToArray();
     }
+
+    private static SC2APIProtocol.Action CreateUnitCommand(ulong unitTag, int abilityId) =>
+        new()
+        {
+            ActionRaw = new ActionRaw
+            {
+                UnitCommand = new ActionRawUnitCommand
+                {
+                    AbilityId = abilityId,
+                    UnitTags = { unitTag },
+                    QueueCommand = false
+                }
+            }
+        };
 
     private static SC2APIProtocol.Action CreatePositionCommand(
         ulong unitTag,

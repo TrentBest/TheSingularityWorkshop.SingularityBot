@@ -31,6 +31,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private bool _behaviorCatalogRegistered;
     private bool _spatialDiagnosticsReported;
     private readonly Sc2OpeningProductionController _openingProduction = new();
+    private readonly Sc2OpeningRallyController _openingRally = new();
+    private bool _openingRallyActionSubmitted;
     private bool _openingProductionActionSubmitted;
     private bool _scvTrainingOrderObserved;
     private bool _initialScvProductionObserved;
@@ -180,8 +182,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         var assignments = _workerAssignments.Reconcile(normalized);
 
-        // The opening's first protocol action is isolated: train one SCV before
-        // issuing worker-route commands. The next observation must show the order.
+        // The Command Center's temporary worker rally is a hard production gate.
+        // Restore is also isolated so it cannot compete with another CC command.
+        var rallyAction = _openingRally.TryCreateAction(
+            normalized,
+            SpatialMap,
+            _gameData,
+            assignments,
+            _openingBuilder.IsDispatched);
+        _openingRallyActionSubmitted = rallyAction is not null;
+        if (rallyAction is not null)
+            return new[] { rallyAction };
+        if (!_openingRally.IsTemporaryRallyAccepted)
+            return Array.Empty<SC2APIProtocol.Action>();
+
+        // Train only after SC2 has accepted the temporary rally command.
         var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);
         _openingProductionActionSubmitted = productionAction is not null;
         if (productionAction is not null)
@@ -264,12 +279,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (response is null || response.Result.Count == 0)
         {
             Console.WriteLine("[SC2 API] Action request returned no per-action result.");
+            if (_openingRallyActionSubmitted)
+                _openingRally.OnActionResult(null);
             if (_openingProductionActionSubmitted)
                 _openingProduction.OnActionResult(null);
             if (_openingSprayActionSubmitted)
                 _openingSpray.OnActionResult(null, _workerAssignments);
             if (_openingBuilderActionSubmitted)
                 _openingBuilder.OnActionResult(null);
+            _openingRallyActionSubmitted = false;
             _openingProductionActionSubmitted = false;
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
@@ -284,6 +302,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             Console.WriteLine($"[SC2 API] Action {index}: ability={command?.AbilityId.ToString() ?? "unknown"}, units=[{unitTags}], result={result}.");
         }
         var resultIndex = 0;
+        if (_openingRallyActionSubmitted)
+        {
+            _openingRally.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
         if (_openingProductionActionSubmitted)
         {
             _openingProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
@@ -299,6 +322,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingBuilder.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
             resultIndex++;
         }
+        _openingRallyActionSubmitted = false;
         _openingProductionActionSubmitted = false;
         _openingSprayActionSubmitted = false;
         _openingBuilderActionSubmitted = false;

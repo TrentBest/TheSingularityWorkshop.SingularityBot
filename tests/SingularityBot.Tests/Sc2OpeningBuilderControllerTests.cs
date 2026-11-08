@@ -71,7 +71,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         SelectFirstScv(controller, assignments, map, gameData);
         SetValidPlacement(controller);
 
-        var move = controller.TryCreateAction(Snapshot(50, 13, 15,
+        var move = controller.TryCreateAction(SnapshotAt(123, 50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.NotNull(move);
@@ -120,13 +120,13 @@ public sealed class Sc2OpeningBuilderControllerTests
         SelectFirstScv(controller, assignments, map, gameData);
         SetValidPlacement(controller);
 
-        var firstMove = controller.TryCreateAction(Snapshot(150, 13, 15,
+        var firstMove = controller.TryCreateAction(SnapshotAt(123, 150, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.NotNull(firstMove);
         controller.OnActionResult(ActionResult.Success);
 
-        var retryMove = controller.TryCreateAction(SnapshotAt(123, 150, 13, 15,
+        var retryMove = controller.TryCreateAction(SnapshotAt(146, 150, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.NotNull(retryMove);
@@ -145,7 +145,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         SetValidPlacement(controller);
         var site = controller.Placement.Value;
 
-        var move = controller.TryCreateAction(Snapshot(50, 13, 15,
+        var move = controller.TryCreateAction(SnapshotAt(123, 50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.NotNull(move);
@@ -178,7 +178,12 @@ public sealed class Sc2OpeningBuilderControllerTests
         var selection = controller.TryCreateAction(Snapshot(50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
-        Assert.Null(selection);
+        Assert.NotNull(selection);
+        Assert.Equal(16, selection.ActionRaw.UnitCommand.AbilityId);
+        Assert.False(selection.ActionRaw.UnitCommand.QueueCommand);
+        Assert.Equal(11UL, selection.ActionRaw.UnitCommand.UnitTags[0]);
+        controller.OnActionResult(ActionResult.Success);
+        Assert.True(controller.IsDispatched);
         Assert.Equal(11UL, controller.BuilderTag);
     }
 

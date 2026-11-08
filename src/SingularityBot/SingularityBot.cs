@@ -206,7 +206,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (builderAction is not null)
         {
             var command = builderAction.ActionRaw.UnitCommand;
-            Console.WriteLine($"[Opening] Builder SCV {_openingBuilder.BuilderTag}: ability={command.AbilityId}, target=({command.TargetWorldSpacePos.X:F1},{command.TargetWorldSpacePos.Y:F1}).");
+            var target = command.TargetWorldSpacePos is null
+                ? "none"
+                : $"({command.TargetWorldSpacePos.X:F1},{command.TargetWorldSpacePos.Y:F1})";
+            Console.WriteLine($"[Opening] Builder SCV {_openingBuilder.BuilderTag}: ability={command.AbilityId}, target={target}.");
         }
 
         // Refresh after a builder reservation so the same frame cannot emit a stale gather intent.

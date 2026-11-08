@@ -34,6 +34,30 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void CapturesStartingWorkersBeforeProductionGateOpens()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var gameData = GameData();
+
+        controller.ObserveWorkers(Snapshot(50, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(1, "CommandCenter", 10, 10)));
+        controller.ObserveWorkers(Snapshot(50, 13, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)));
+
+        var stop = controller.TryCreateAction(Snapshot(50, 13, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
+
+        Assert.NotNull(stop);
+        Assert.Equal(3665, stop.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, stop.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.True(assignments.IsReserved(11));
+    }
+
+    [Fact]
     public void StagesFirstProducedBuilderAndWaitsUntilDepotIsAffordable()
     {
         var controller = new Sc2OpeningBuilderController();

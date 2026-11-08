@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using Google.Protobuf;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using SC2APIProtocol;
 using SingularityBot.Behavior;
 using SingularityBot.Observation;
@@ -41,6 +44,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         uint playerId,
         string opponentId)
     {
+        WriteOnStartSnapshot(gameInfo, data, pingResponse, observation, playerId, opponentId);
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
 
@@ -65,6 +69,55 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _behaviorCatalogRegistered = true;
 
         Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, gather={_gameData.HarvestGatherAbilityId?.ToString() ?? "unavailable"}, return={_gameData.HarvestReturnAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
+    }
+
+    /// <summary>
+    /// Persists the complete protocol payload supplied to OnStart so map and
+    /// game-data assumptions can be checked against the authoritative inputs.
+    /// </summary>
+    private static void WriteOnStartSnapshot(
+        ResponseGameInfo gameInfo,
+        ResponseData data,
+        ResponsePing pingResponse,
+        ResponseObservation observation,
+        uint playerId,
+        string opponentId)
+    {
+        try
+        {
+            var snapshot = new JsonObject
+            {
+                ["capturedAtUtc"] = DateTime.UtcNow.ToString("O"),
+                ["playerId"] = playerId,
+                ["opponentId"] = opponentId,
+                ["gameInfo"] = SerializeProtocolMessage(gameInfo),
+                ["data"] = SerializeProtocolMessage(data),
+                ["pingResponse"] = SerializeProtocolMessage(pingResponse),
+                ["initialObservation"] = SerializeProtocolMessage(observation)
+            };
+
+            var diagnosticsDirectory = Path.Combine(Environment.CurrentDirectory, "diagnostics");
+            Directory.CreateDirectory(diagnosticsDirectory);
+
+            var fileName = $"on-start-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.json";
+            var path = Path.Combine(diagnosticsDirectory, fileName);
+            File.WriteAllText(path, snapshot.ToJsonString(new JsonSerializerOptions
+            {
+                WriteIndented = true
+            }));
+
+            Console.WriteLine($"[Diagnostics] Complete OnStart protocol snapshot: {path}.");
+        }
+        catch (Exception exception)
+        {
+            // Diagnostics must never prevent the bot from entering the match.
+            Console.WriteLine($"[Diagnostics] Could not serialize OnStart protocol inputs: {exception.Message}");
+        }
+    }
+
+    private static JsonNode SerializeProtocolMessage(IMessage message)
+    {
+        return message == null ? null : JsonNode.Parse(JsonFormatter.Default.Format(message));
     }
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)

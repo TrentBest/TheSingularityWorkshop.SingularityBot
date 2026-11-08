@@ -19,14 +19,11 @@ public sealed class Sc2OpeningBuilderControllerTests
         controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments);
-        var stop = controller.TryCreateAction(Snapshot(50, 13, 15,
+        var selection = controller.TryCreateAction(Snapshot(50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
 
-        Assert.NotNull(stop);
-        Assert.Equal(3665, stop.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, stop.ActionRaw.UnitCommand.UnitTags[0]);
-        controller.OnActionResult(ActionResult.Success);
+        Assert.Null(selection); // Rally already directs the new SCV; no Stop command is issued.
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
         Assert.False(assignments.IsReserved(10));
@@ -47,13 +44,12 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)));
 
-        var stop = controller.TryCreateAction(Snapshot(50, 13, 15,
+        var selection = controller.TryCreateAction(Snapshot(50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
 
-        Assert.NotNull(stop);
-        Assert.Equal(3665, stop.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, stop.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.Null(selection);
+        Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
     }
 
@@ -76,6 +72,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         var site = controller.Placement.Value;
         Assert.Equal(site.X, move.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
         controller.OnActionResult(ActionResult.Success);
+        Assert.True(controller.IsDispatched);
 
         Assert.Null(controller.TryCreateAction(Snapshot(99, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", site.X, site.Y),
@@ -169,11 +166,11 @@ public sealed class Sc2OpeningBuilderControllerTests
         controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments);
-        var stop = controller.TryCreateAction(Snapshot(50, 13, 15,
+        var selection = controller.TryCreateAction(Snapshot(50, 13, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
-        Assert.NotNull(stop);
-        controller.OnActionResult(ActionResult.Success);
+        Assert.Null(selection);
+        Assert.Equal(11UL, controller.BuilderTag);
     }
 
     private static void SetValidPlacement(Sc2OpeningBuilderController controller)

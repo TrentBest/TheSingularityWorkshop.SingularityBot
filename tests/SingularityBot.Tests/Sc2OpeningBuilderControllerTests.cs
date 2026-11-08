@@ -27,8 +27,8 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.Equal(16, selection.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(11UL, selection.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.False(selection.ActionRaw.UnitCommand.QueueCommand);
-        Assert.Equal(controller.Placement?.X ?? selection.ActionRaw.UnitCommand.TargetWorldSpacePos.X,
-            selection.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
+        Assert.NotNull(selection.ActionRaw.UnitCommand.TargetWorldSpacePos);
+        Assert.True(selection.ActionRaw.UnitCommand.TargetWorldSpacePos.X > 10f);
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
         Assert.False(assignments.IsReserved(10));

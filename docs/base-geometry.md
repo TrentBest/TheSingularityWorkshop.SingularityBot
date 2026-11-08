@@ -73,3 +73,33 @@ Persist for each base:
 - rejected candidate reasons.
 
 Unit tests cover translation invariance, rotation invariance, reflection, stable X/Y ordering, collinear and irregular mineral layouts, missing/one/two geysers, degenerate lines, multiple ramp hypotheses, and ambiguous evidence. Integration tests compare inferred terrain features against SC2's actual grids. Local matches verify that a wall blocks ground units and that bunker plans protect the intended workers. No geometry score alone is evidence of in-game success.
+
+
+## First-match calibration: guess, observe, correct
+
+For the current target map, do not block the first usable wall attempt on perfect ramp classification. Use the Town-Hall-to-map-center vector as a directional prior, choose a plausible ramp-facing direction, and issue a first candidate layout. The first match is a calibration run.
+
+For every attempted structure, record:
+- map identity and playable bounds;
+- spawn/Town Hall position and inferred facing vector;
+- structure type and footprint dimensions;
+- requested placement coordinate and the coordinate reported by the observation after construction;
+- whether SC2 accepted the placement and whether the structure completed.
+
+When the observed structure position differs from the requested position, calculate the tile correction:
+
+`dx = observedX - requestedX`
+
+`dy = observedY - requestedY`
+
+Apply the inverse correction to subsequent candidate placements:
+
+`correctedX = candidateX - dx`
+
+`correctedY = candidateY - dy`
+
+This is a measured placement-origin/map-grid correction, not proof that the ramp direction itself was correct. Keep those two error sources separate: first compare the requested and observed footprint centers to calibrate coordinate interpretation; then assess whether the resulting layout is actually aligned with the ramp. Do not silently fold a directional mistake into a global coordinate offset.
+
+Store calibration by map identity, spawn orientation, and structure/footprint convention. A calibration from one spawn or footprint must not be applied blindly to another. Use SC2 placement queries for every corrected candidate. After the first wall is built, inspect its relationship to the ramp and run a ground-unit traversal test; a visually plausible wall is not proof of a sealed wall.
+
+The operator's first-match feedback should be tile-based: report the requested coordinate, observed coordinate, and signed X/Y difference. One correction at a time makes the next run interpretable. If the first placement is accepted and observed at the requested coordinate, the coordinate transform needs no offset correction; any remaining miss is a ramp-direction or layout-geometry error.

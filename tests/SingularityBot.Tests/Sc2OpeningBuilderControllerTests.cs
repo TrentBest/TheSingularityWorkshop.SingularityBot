@@ -82,7 +82,7 @@ public sealed class Sc2OpeningBuilderControllerTests
 
         Assert.NotNull(controller.TakePlacementQuery(gameData));
         var rejected = new ResponseQuery();
-        rejected.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Error });
+        rejected.Placements.Add(new ResponseQueryBuildingPlacement { Result = (ActionResult)2 });
         controller.OnPlacementQueryResult(rejected);
 
         Assert.NotNull(controller.TakePlacementQuery(gameData));
@@ -107,9 +107,9 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.NotNull(firstMove);
         controller.OnActionResult(ActionResult.Success);
 
-        var retryMove = controller.TryCreateAction(Snapshot(150, 14, 15,
+        var retryMove = controller.TryCreateAction(SnapshotAt(123, 150, 14, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
-            Fact(1, "CommandCenter", 10, 10)) with { }, map, gameData, true, assignments);
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.Null(retryMove);
     }
 
@@ -178,7 +178,10 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     private static NormalizedObservation Snapshot(uint minerals, uint used, uint cap, params UnitObservationFacts[] units) =>
-        new(100, 1, units, new HashSet<ulong>()) { Minerals = minerals, FoodUsed = used, FoodCap = cap };
+        SnapshotAt(100, minerals, used, cap, units);
+
+    private static NormalizedObservation SnapshotAt(uint gameLoop, uint minerals, uint used, uint cap, params UnitObservationFacts[] units) =>
+        new(gameLoop, 1, units, new HashSet<ulong>()) { Minerals = minerals, FoodUsed = used, FoodCap = cap };
 
     private static UnitObservationFacts Fact(
         ulong tag, string kind, float x, float y, float buildProgress = 1) =>

@@ -11,7 +11,7 @@ namespace SingularityBot.Behavior;
 /// </summary>
 public sealed class Sc2OpeningBuilderController
 {
-    public const uint DefaultBuilderPullThreshold = 10;
+    public const uint DefaultBuilderPullThreshold = 80;
 
     private enum PendingAction
     {
@@ -90,7 +90,7 @@ public sealed class Sc2OpeningBuilderController
                 return null;
 
             _builderTag = returner.Value.Worker.Tag;
-            Console.WriteLine($"[Opening] 10-mineral threshold reached; pulling returning SCV {_builderTag.Value} from its mineral return cycle.");
+            Console.WriteLine($"[Opening] 80-mineral threshold reached; pulling returning SCV {_builderTag.Value} from its mineral return cycle.");
             _returnTownHallTag = returner.Value.TownHallTag;
             assignments.Reserve(returner.Value.Worker.Tag);
             var townHall = observation.Units.FirstOrDefault(unit => unit.Tag == _returnTownHallTag.Value && unit.IsLiveVisible);

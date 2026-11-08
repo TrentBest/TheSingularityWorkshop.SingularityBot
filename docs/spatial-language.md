@@ -55,3 +55,47 @@ Chokepoint behavior is a separate strategic constraint. If the enemy mass is cro
 ## Current implementation boundary
 
 The first protocol-independent geometry implementation lives in `SingularityBot.Spatial.SpatialMap`. It provides map bounds, center, side classification, quadrants, 3x3 sectors, sector perimeter points and neighbor queries. It does not yet build unit occupancy indexes, infer map control, plan routes, or issue combat actions. Those belong in the next observation/intelligence layer and must be validated against real SC2 observations.
+
+
+## Town-Hall-relative base geometry
+
+Strategic map quadrants and the local geometry of a base are different coordinate systems. The former remain fixed to the playable rectangle; the latter are attached to an individual Command Center and rotate with that base.
+
+The primary base frame is anchored at the Town Hall. The Town-Hall-to-map-center vector is the initial facing estimate, not a final claim about the ramp. Resource and terrain geometry refine it. Once the ramp is identified, rotate the local frame so **Quadrant I is the ramp-facing quadrant**. The other three quadrants follow in a consistent clockwise/counter-clockwise convention documented by the frame implementation. Never infer a local quadrant from world north/east alone.
+
+### Mineral axis
+
+1. Collect the mineral-field centers associated with this Town Hall.
+2. Sort deterministically by world X, then Y. Use the extreme endpoints to seed the mineral-line axis and midpoint.
+3. For each plausible additional mineral patch, construct a candidate line through the midpoint with the proposed length-4 probe. Evaluate nearby tile centers on both sides and fit the line to all patch centers; this avoids assuming that every mineral patch is perfectly collinear.
+4. Retain the fitted axis, perpendicular, endpoints, residual/error, and confidence. Degenerate or widely scattered clusters remain unresolved rather than being forced into a line.
+
+The length-4 probe is a geometric seed, not a hard-coded final mineral-line length. The final extents come from the actual patch positions and adjacent-tile checks.
+
+### Gas axis and defensive coverage
+
+When two geysers are associated with the base, construct the gas line through their centers and retain its midpoint and direction. Compare the gas and mineral axes and compare their midpoints in the Town-Hall frame. This classifies the gas line as same-side, opposite-side, or crossing/ambiguous relative to the mineral line.
+
+Bunker placement is then an optimization, not a fixed rule: compare worker travel, Marine coverage, approach lanes, threat exposure, and whether one bunker can protect both gas approaches. A second bunker is justified only when its incremental defensive value exceeds its mineral and build-time opportunity cost. Bunkers may also be evaluated as emergency SCV shelter, but evacuation capacity and unload safety must be included in the score.
+
+### Ramp detection and local quadrants
+
+A ramp candidate is a connected region of cells that are pathable but not buildable, adjacent to a meaningful terrain-height transition, and connected to the base's traversable ground. A single unbuildable/pathable cell is not enough: cliffs, destructibles, map decorations, and narrow pathing artifacts can produce false positives.
+
+Score candidate regions using:
+- connected width and length;
+- terrain-height delta across the region;
+- pathing continuity from the Town Hall's ground region to the outer region;
+- adjacent buildable cells suitable for a wall;
+- alignment with the Town-Hall-to-map-center estimate;
+- whether a ground unit can traverse the proposed Depot/Barracks wall in a local match.
+
+The best-supported ramp direction defines local Quadrant I. If multiple ramps or candidate regions remain plausible, preserve multiple hypotheses and do not place a supposedly sealed wall.
+
+### Expansion frames
+
+Every expansion Town Hall receives its own local frame. Do not copy the primary base's world-space rotation or quadrant labels. Derive the new frame from its own mineral and geyser clusters, local pathing/elevation, and the Town-Hall-to-map-center estimate; then identify its own ramp/approach direction. The primary base frame is a template for the algorithm, not a coordinate transform to reuse blindly.
+
+### Confidence and evidence
+
+Keep source observations, fitted lines, residuals, terrain evidence, candidate scores, and unresolved alternatives. Geometry proposes sites; SC2 placement queries establish build legality; pathing checks and controlled matches establish traversal and defensive value. A legal building placement does not prove a wall is sealed.

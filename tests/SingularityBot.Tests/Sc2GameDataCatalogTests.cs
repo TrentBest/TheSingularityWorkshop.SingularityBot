@@ -49,6 +49,19 @@ public sealed class Sc2GameDataCatalogTests
         Assert.Equal((uint)3665, catalog.StopAbilityId);
     }
 
+
+    [Fact]
+    public void Create_ResolvesCommandCenterWorkerRallyFromAuthoritativeGameData()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData { AbilityId = 3690, LinkName = "Rally_Workers" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3673, LinkName = "Rally_Units" });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)3690, catalog.RallyWorkersAbilityId);
+    }
+
     [Fact]
     public void Create_LeavesMissingAbilityMetadataUnavailable()
     {

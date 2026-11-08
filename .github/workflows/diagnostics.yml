@@ -1,0 +1,44 @@
+name: SC2 Diagnostics
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - "diagnostics/**/*.json"
+      - "diagnostics/**/*.csv"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate diagnostic files
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          root = Path("diagnostics")
+          files = sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in {".json", ".csv"})
+          if not files:
+              raise SystemExit("No JSON or CSV diagnostics found.")
+          for path in files:
+              if path.suffix.lower() == ".json":
+                  json.loads(path.read_text(encoding="utf-8"))
+              else:
+                  with path.open(newline="", encoding="utf-8") as stream:
+                      list(csv.reader(stream))
+              print(f"Validated {path}")
+          PY
+      - name: Archive diagnostics for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: sc2-diagnostics-${{ github.sha }}
+          path: diagnostics/
+          if-no-files-found: error
+          retention-days: 30

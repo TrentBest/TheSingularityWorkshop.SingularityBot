@@ -18,6 +18,7 @@ SC2 protocol handling stays at the adapter boundary. FSM_API owns reusable lifec
 - [Behavior and FSM model](behavior-model.md)
 - [Terran opening and worker logistics](opening-economy-logistics.md)
 - [Spatial language: Side, Quadrant and Sector](spatial-language.md)
+- [Base geometry and resource-line inference](base-geometry.md)
 - [Strategy format](strategy-format.md)
 - [Example strategy](../strategies/terran-opening.example.json)
 - [Lineage and licensing](lineage.md)

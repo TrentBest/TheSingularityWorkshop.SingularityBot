@@ -43,7 +43,7 @@ public sealed class Sc2OpeningRallyControllerTests
 
         Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData,
             new Dictionary<ulong, WorkerResourceAssignment>(), false));
-        controller.OnActionResult(ActionResult.Error);
+        controller.OnActionResult((ActionResult)2);
 
         Assert.False(controller.IsTemporaryRallyAccepted);
         Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData,

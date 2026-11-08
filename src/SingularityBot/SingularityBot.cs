@@ -82,7 +82,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         UnitBehaviorCatalog.Register();
         _behaviorCatalogRegistered = true;
 
-        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, smart={_gameData.SmartAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
+        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, smart={_gameData.SmartAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, rally-workers={_gameData.RallyWorkersAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
     }
 
     /// <summary>
@@ -192,9 +192,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingBuilder.IsDispatched);
         _openingRallyActionSubmitted = rallyAction is not null;
         if (rallyAction is not null)
+        {
+            _pendingQuery = null;
             return new[] { rallyAction };
+        }
         if (!_openingRally.IsTemporaryRallyAccepted)
+        {
+            _pendingQuery = null;
             return Array.Empty<SC2APIProtocol.Action>();
+        }
 
         // Train only after SC2 has accepted the temporary rally command.
         var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);

@@ -38,12 +38,6 @@ public static class SpatialMapFactory
         if (ownUnits == null || ownUnits.Length == 0)
             return false;
 
-        var commandCenter = ownUnits.FirstOrDefault(unit =>
-            string.Equals(
-                gameInfo?.StartRaw == null ? null : null,
-                "CommandCenter",
-                StringComparison.OrdinalIgnoreCase));
-
         // Unit type IDs are deliberately not guessed here. The starting town
         // hall is the largest grounded structure in the initial own-unit set.
         var townHall = ownUnits
@@ -74,9 +68,12 @@ public static class SpatialMapFactory
                 .OrderBy(point => point.DistanceSquaredTo(friendlyStart))
                 .First();
             friendlyStart = nearestStart;
-            enemyStart = starts
+            var otherStarts = starts
                 .Where(point => point.DistanceSquaredTo(friendlyStart) > 0.0001f)
-                .SingleOrDefault();
+                .ToArray();
+            if (otherStarts.Length != 1)
+                return false;
+            enemyStart = otherStarts[0];
         }
 
         if (enemyStart.DistanceSquaredTo(friendlyStart) <= 0.0001f)

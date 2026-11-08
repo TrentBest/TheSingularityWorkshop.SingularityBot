@@ -160,6 +160,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (_writeDiagnostics)
             _baselineRecorder.Record(normalized);
 
+        // Capture the starting SCV population before opening production can
+        // return early and before the first newly trained worker enters mining.
+        _openingBuilder.ObserveWorkers(normalized);
+
         foreach (var actionError in observation.ActionErrors)
             Console.WriteLine($"[SC2 API] Action error: unit={actionError.UnitTag}, ability={actionError.AbilityId}, result={actionError.Result}.");
 

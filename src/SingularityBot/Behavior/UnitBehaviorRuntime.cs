@@ -164,8 +164,10 @@ public sealed class UnitBehaviorRuntime
     }
 
     /// <summary>Called only when repair work or its eligibility has changed.</summary>
-    public void UpdateRepair()
+    public void UpdateRepair(Action<ulong, BehaviorCommand> emit)
     {
+        ArgumentNullException.ThrowIfNull(emit);
+        _activeEmit = emit;
         try { FSM_API.Interaction.Update(UnitBehaviorCatalog.RepairProcessingGroup); }
         finally { _activeEmit = null; }
     }

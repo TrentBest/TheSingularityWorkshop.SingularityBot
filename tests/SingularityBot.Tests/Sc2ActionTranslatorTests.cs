@@ -26,6 +26,7 @@ public sealed class Sc2ActionTranslatorTests
         Assert.Equal(21UL, command.TargetUnitTag);
         Assert.Equal(1, command.AbilityId);
         Assert.Equal(new[] { 10UL }, command.UnitTags);
+        Assert.False(command.QueueCommand);
     }
 
     [Fact]

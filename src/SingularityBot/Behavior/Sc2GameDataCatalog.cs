@@ -73,7 +73,7 @@ public sealed class Sc2GameDataCatalog
             scv?.MineralCost ?? 0,
             scv?.FoodRequired ?? 0,
             ResolveAbility(data.Abilities, "Move") ?? ResolveAbility(data.Abilities, "Move_Move"),
-            ResolveAbility(data.Abilities, "Stop"),
+            ResolveStopAbility(data.Abilities),
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
             supplyDepot?.MineralCost ?? 0,
             ResolveSprayAbility(data.Abilities));
@@ -102,6 +102,21 @@ public sealed class Sc2GameDataCatalog
                 ability.LinkName.EndsWith("_Spray", StringComparison.OrdinalIgnoreCase))
             .Select(ability => ability.AbilityId)
             .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+
+        return candidates.Length == 1 ? candidates[0] : null;
+    }
+
+    private static uint? ResolveStopAbility(IEnumerable<AbilityData> abilities)
+    {
+        // SC2 exposes several lowercase "stop" button variants (including
+        // emotes and a unit-targeted variant). The generic Stop command is
+        // the distinct, case-sensitive LinkName "Stop" that remaps none.
+        var candidates = abilities
+            .Where(ability => ability.AbilityId != 0 &&
+                string.Equals(ability.LinkName, "Stop", StringComparison.Ordinal))
+            .Select(ability => ability.AbilityId)
             .Distinct()
             .ToArray();
 

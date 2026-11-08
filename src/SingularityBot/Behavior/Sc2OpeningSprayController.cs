@@ -6,7 +6,7 @@ namespace SingularityBot.Behavior;
 /// <summary>
 /// Uses SC2's per-unit available-ability query to prove whether an SCV can spray.
 /// If available, issues spray, waits for the API result, then explicitly resumes
-/// the same mineral route. No ability ID is guessed.
+/// the same mineral route using Smart. No ability ID is guessed.
 /// </summary>
 public sealed class Sc2OpeningSprayController
 {
@@ -114,7 +114,7 @@ public sealed class Sc2OpeningSprayController
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(planner);
 
-        if (_stage is not (Stage.SprayReady or Stage.GatherReady) || _workerTag is null)
+        if (_stage is not (Stage.SprayReady or Stage.SmartReady) || _workerTag is null)
             return null;
 
         if (observation.DeadUnitTags.Contains(_workerTag.Value))
@@ -169,7 +169,7 @@ public sealed class Sc2OpeningSprayController
             return null;
         }
 
-        _stage = Stage.GatherSubmitted;
+        _stage = Stage.SmartSubmitted;
         return new SC2APIProtocol.Action
         {
             ActionRaw = new ActionRaw
@@ -193,7 +193,7 @@ public sealed class Sc2OpeningSprayController
         {
             if (result == ActionResult.Success)
             {
-                _stage = Stage.GatherReady;
+                _stage = Stage.SmartReady;
                 Console.WriteLine($"[Control proof] SC2 accepted Spray for SCV {_workerTag}; resuming its assigned mineral route with Smart next.");
             }
             else
@@ -205,7 +205,7 @@ public sealed class Sc2OpeningSprayController
             return;
         }
 
-        if (_stage == Stage.GatherSubmitted)
+        if (_stage == Stage.SmartSubmitted)
         {
             if (result == ActionResult.Success)
             {

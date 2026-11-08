@@ -5,7 +5,6 @@ namespace SingularityBot;
 
 public static class Program
 {
-    private static readonly SC2API_CSharp.Bot Bot = new SingularityBot();
     private static readonly Race BotRace = Race.Terran;
     private static readonly string MapName = "AcolyteLE.SC2Map";
     private static readonly Race OpponentRace = Race.Random;
@@ -13,10 +12,20 @@ public static class Program
 
     public static void Run(string[] args)
     {
+        var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
+        var connectionArgs = args.Where(argument =>
+            !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal)).ToArray();
+        var localRun = connectionArgs.Length == 0;
+        if (passiveBaseline && !localRun)
+            throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.");
+
+        var bot = new SingularityBot(
+            passiveBaseline: passiveBaseline,
+            writeDiagnostics: localRun);
         var connection = new GameConnection();
-        if (args.Length == 0)
-            connection.RunSinglePlayer(Bot, MapName, BotRace, OpponentRace, OpponentDifficulty).GetAwaiter().GetResult();
+        if (localRun)
+            connection.RunSinglePlayer(bot, MapName, BotRace, OpponentRace, OpponentDifficulty).GetAwaiter().GetResult();
         else
-            connection.RunLadder(Bot, BotRace, args).GetAwaiter().GetResult();
+            connection.RunLadder(bot, BotRace, connectionArgs).GetAwaiter().GetResult();
     }
 }

@@ -45,6 +45,24 @@ public sealed class Sc2OpeningProductionControllerTests
             Snapshot(100, 12, 15, commandCenter), GameData()));
     }
 
+
+    [Fact]
+    public void DoesNotStartAnotherScvAfterTheFirstTrainingOrderCompletes()
+    {
+        var controller = new Sc2OpeningProductionController();
+        var commandCenter = Fact(100, "CommandCenter") with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(524, null, null, null) }
+        };
+
+        Assert.Null(controller.TryCreateScvTrainingAction(
+            Snapshot(100, 12, 15, commandCenter), GameData()));
+
+        Assert.Null(controller.TryCreateScvTrainingAction(
+            Snapshot(100, 12, 15, Fact(100, "CommandCenter"), gameLoop: 200), GameData()));
+    }
+
     [Fact]
     public void HoldsRequestUntilNextObservationAndRetriesWhenOrderNeverAppears()
     {

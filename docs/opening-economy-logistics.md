@@ -102,3 +102,10 @@ The current implementation still has a single-Depot lifecycle, but its default w
 ## First worker control proof: Spray, then mine
 
 After the first Command Center SCV-training order is observed, the controller chooses an assigned, non-cargo SCV and asks SC2 for that unit's available abilities. It issues Spray only when a unique Spray ability is present in game data and the unit-specific query confirms it is available. It then waits for the SC2 action result before explicitly gathering the same mineral tag again. The original assignment is reserved during this sequence and restored afterward. If Spray is missing, ambiguous, or unavailable to the SCV, the controller reports that fact and restores the assignment; it does not guess an ability ID. The local match must confirm that the accepted Spray is visibly rendered.
+
+
+## Dedicated first-Depot builder
+
+The first Depot no longer pulls a returning mineral worker at an 80-mineral threshold. After the first SCV training order is observed, the opening builder captures the starting SCV population and tracks newly produced SCVs. The second newly produced SCV is reserved as the dedicated builder; the first newly produced SCV remains available to the economy. The dedicated builder is sent toward the ramp-facing candidate site as soon as it is identified, then waits there until the 100-mineral Supply Depot cost is available.
+
+This is a deliberate worker-continuity experiment: preserve the starting mineral crew and spend the second produced worker's travel time staging for construction. Diagnostics identify the selected SCV tag and requested placement. The builder is released only after the Depot is observed complete. Match telemetry should compare time-to-Depot, mineral income, and worker idle time against the prior pull-a-returning-SCV strategy.

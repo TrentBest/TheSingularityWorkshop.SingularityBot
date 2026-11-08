@@ -9,7 +9,7 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OpeningBuilderControllerTests
 {
     [Fact]
-    public void WaitsForSecondNewScvAndReservesOnlyThatWorker()
+    public void SelectsFirstNewScvAndReservesItBeforeMining()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -27,7 +27,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.Null(controller.BuilderTag);
 
         Assert.Null(controller.TryCreateAction(Snapshot(50, 14, 15,
-            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments));
 
@@ -45,7 +45,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
-        SelectSecondScv(controller, assignments, map, gameData);
+        SelectFirstScv(controller, assignments, map, gameData);
 
         var queryResult = new ResponseQuery();
         queryResult.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
@@ -53,15 +53,15 @@ public sealed class Sc2OpeningBuilderControllerTests
         var site = controller.Placement.Value;
 
         var move = controller.TryCreateAction(Snapshot(50, 14, 15,
-            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
         Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(12UL, move.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.Equal(site.X, move.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
         controller.OnActionResult(ActionResult.Success);
 
         Assert.Null(controller.TryCreateAction(Snapshot(99, 14, 15,
-            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", site.X, site.Y),
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(11, "SCV", site.X, site.Y),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments));
 
         var build = controller.TryCreateAction(Snapshot(100, 14, 15,
@@ -144,7 +144,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             map, gameData, true, assignments);
 
         Assert.True(controller.IsCompleted);
-        Assert.False(assignments.IsReserved(12));
+        Assert.False(assignments.IsReserved(11));
     }
 
     private static void SelectSecondScv(

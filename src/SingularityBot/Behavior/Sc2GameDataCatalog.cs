@@ -16,6 +16,7 @@ public sealed class Sc2GameDataCatalog
         uint scvMineralCost,
         float scvFoodRequired,
         uint? moveAbilityId,
+        uint? stopAbilityId,
         uint? supplyDepotBuildAbilityId,
         uint supplyDepotMineralCost,
         uint? sprayAbilityId)
@@ -27,6 +28,7 @@ public sealed class Sc2GameDataCatalog
         ScvMineralCost = scvMineralCost;
         ScvFoodRequired = scvFoodRequired;
         MoveAbilityId = moveAbilityId;
+        StopAbilityId = stopAbilityId;
         SupplyDepotBuildAbilityId = supplyDepotBuildAbilityId;
         SupplyDepotMineralCost = supplyDepotMineralCost;
         SprayAbilityId = sprayAbilityId;
@@ -39,6 +41,7 @@ public sealed class Sc2GameDataCatalog
     public uint ScvMineralCost { get; }
     public float ScvFoodRequired { get; }
     public uint? MoveAbilityId { get; }
+    public uint? StopAbilityId { get; }
     public uint? SupplyDepotBuildAbilityId { get; }
     public uint SupplyDepotMineralCost { get; }
     public uint? SprayAbilityId { get; }
@@ -70,6 +73,7 @@ public sealed class Sc2GameDataCatalog
             scv?.MineralCost ?? 0,
             scv?.FoodRequired ?? 0,
             ResolveAbility(data.Abilities, "Move") ?? ResolveAbility(data.Abilities, "Move_Move"),
+            ResolveAbility(data.Abilities, "Stop"),
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
             supplyDepot?.MineralCost ?? 0,
             ResolveSprayAbility(data.Abilities));

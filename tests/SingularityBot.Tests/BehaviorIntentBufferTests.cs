@@ -31,7 +31,7 @@ public sealed class BehaviorIntentBufferTests
     }
 
     [Fact]
-    public void EqualPriorityKeepsFirstIntentAndDrainIsTagOrdered()
+    public void HigherPriorityWinsAndDrainIsTagOrdered()
     {
         var buffer = new BehaviorIntentBuffer();
 
@@ -41,7 +41,7 @@ public sealed class BehaviorIntentBufferTests
 
         var intents = buffer.Drain();
         Assert.Equal(new ulong[] { 10, 20 }, intents.Select(intent => intent.Key));
-        Assert.Equal(BehaviorCommand.AttackVisibleThreat, intents[1].Value);
+        Assert.Equal(BehaviorCommand.DefendWorkerLine, intents[1].Value);
         Assert.Empty(buffer.Drain());
     }
 }

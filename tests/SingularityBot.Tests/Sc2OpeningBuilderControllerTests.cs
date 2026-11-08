@@ -9,7 +9,7 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OpeningBuilderControllerTests
 {
     [Fact]
-    public void PullsTheReturningScvWhenMineralBankCrossesTenAndQueriesDepotPlacement()
+    public void PullsTheReturningScvWhenMineralBankCrossesEightyAndQueriesDepotPlacement()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -23,7 +23,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             map, gameData, true, assignments));
 
         Assert.Null(controller.TryCreateAction(
-            Snapshot(10, 10, 10, Fact(10, "SCV", 5, 5, true, true,
+            Snapshot(80, 10, 10, Fact(10, "SCV", 5, 5, true, true,
                 new[] { new UnitOrderObservationFacts(3667, 1, null, null) }),
                 Fact(1, "CommandCenter", 10, 10)),
             map, gameData, true, assignments));
@@ -57,7 +57,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         assignments.Reconcile(first);
         controller.TryCreateAction(first, map, gameData, true, assignments);
 
-        var crossed = Snapshot(10, 10, 11,
+        var crossed = Snapshot(80, 10, 11,
             Fact(10, "SCV", 5, 5, true, true,
                 new[] { new UnitOrderObservationFacts(3666, 20, null, null) }),
             Fact(1, "CommandCenter", 10, 10),

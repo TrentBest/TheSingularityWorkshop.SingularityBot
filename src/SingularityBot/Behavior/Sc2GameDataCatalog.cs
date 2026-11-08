@@ -11,8 +11,7 @@ public sealed class Sc2GameDataCatalog
     private Sc2GameDataCatalog(
         IReadOnlyDictionary<uint, string> unitNames,
         IReadOnlyDictionary<uint, string> buffNames,
-        uint? harvestGatherAbilityId,
-        uint? harvestReturnAbilityId,
+        uint? smartAbilityId,
         uint? scvTrainAbilityId,
         uint scvMineralCost,
         float scvFoodRequired,
@@ -23,8 +22,7 @@ public sealed class Sc2GameDataCatalog
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
-        HarvestGatherAbilityId = harvestGatherAbilityId;
-        HarvestReturnAbilityId = harvestReturnAbilityId;
+        SmartAbilityId = smartAbilityId;
         ScvTrainAbilityId = scvTrainAbilityId;
         ScvMineralCost = scvMineralCost;
         ScvFoodRequired = scvFoodRequired;
@@ -36,8 +34,7 @@ public sealed class Sc2GameDataCatalog
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
     public IReadOnlyDictionary<uint, string> BuffNames { get; }
-    public uint? HarvestGatherAbilityId { get; }
-    public uint? HarvestReturnAbilityId { get; }
+    public uint? SmartAbilityId { get; }
     public uint? ScvTrainAbilityId { get; }
     public uint ScvMineralCost { get; }
     public float ScvFoodRequired { get; }
@@ -68,8 +65,7 @@ public sealed class Sc2GameDataCatalog
         return new Sc2GameDataCatalog(
             unitNames,
             buffNames,
-            ResolveAbility(data.Abilities, "HarvestGather", "Harvest_Gather"),
-            ResolveAbility(data.Abilities, "HarvestReturn", "Harvest_Return"),
+            ResolveAbility(data.Abilities, "Smart"),
             scv?.AbilityId is > 0 ? scv.AbilityId : null,
             scv?.MineralCost ?? 0,
             scv?.FoodRequired ?? 0,

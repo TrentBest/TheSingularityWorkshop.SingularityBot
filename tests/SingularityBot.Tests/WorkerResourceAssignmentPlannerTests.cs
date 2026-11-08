@@ -50,6 +50,26 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void RedistributesStartingWorkersWhenTheGamePointsThemAllAtOneMineral()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var initialGather = new[] { new UnitOrderObservationFacts(3666, 20, null, null) };
+        var assignments = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0, hasOrders: true, orders: initialGather),
+            Fact(11, "SCV", UnitAlliance.Self, 2, 0, hasOrders: true, orders: initialGather),
+            Fact(12, "SCV", UnitAlliance.Self, 3, 0, hasOrders: true, orders: initialGather),
+            Fact(13, "SCV", UnitAlliance.Self, 4, 0, hasOrders: true, orders: initialGather),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0)));
+
+        Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 20));
+        Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 21));
+        Assert.Equal(21UL, assignments[12].MineralTag);
+        Assert.Equal(21UL, assignments[13].MineralTag);
+    }
+
+    [Fact]
     public void AdoptsExistingRoutesBeforeFillingRemainingMineralCapacity()
     {
         var planner = new WorkerResourceAssignmentPlanner();

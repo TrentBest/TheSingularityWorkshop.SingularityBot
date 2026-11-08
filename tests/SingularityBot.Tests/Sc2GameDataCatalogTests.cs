@@ -35,6 +35,21 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ResolvesGenericStopInsteadOfAmbiguousStopVariants()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData { AbilityId = 4, LinkName = "stop", ButtonName = "Stop", RemapsToAbilityId = 3665 });
+        data.Abilities.Add(new AbilityData { AbilityId = 5, LinkName = "stop", ButtonName = "HoldFireSpecial", RemapsToAbilityId = 3665 });
+        data.Abilities.Add(new AbilityData { AbilityId = 9, LinkName = "stop", Target = AbilityData.Types.Target.Unit, RemapsToAbilityId = 3665 });
+        data.Abilities.Add(new AbilityData { AbilityId = 3665, LinkName = "Stop", ButtonName = "Stop" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3783, LinkName = "BattlecruiserStop", ButtonName = "Stop", RemapsToAbilityId = 3665 });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)3665, catalog.StopAbilityId);
+    }
+
+    [Fact]
     public void Create_LeavesMissingAbilityMetadataUnavailable()
     {
         var catalog = Sc2GameDataCatalog.Create(new ResponseData());

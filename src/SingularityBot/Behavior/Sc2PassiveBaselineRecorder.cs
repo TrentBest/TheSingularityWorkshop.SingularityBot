@@ -124,15 +124,15 @@ public sealed class Sc2PassiveBaselineRecorder
         }
     }
 
-    public void Write(string directory)
+    public void Write(string directory, string filePrefix = "passive-baseline")
     {
         Directory.CreateDirectory(directory);
         var timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ", CultureInfo.InvariantCulture);
-        var path = Path.Combine(directory, $"passive-baseline-{timestamp}.csv");
+        var path = Path.Combine(directory, $"{filePrefix}-{timestamp}.csv");
         File.WriteAllLines(path, _rows);
-        var workerPath = Path.Combine(directory, $"passive-baseline-workers-{timestamp}.csv");
+        var workerPath = Path.Combine(directory, $"{filePrefix}-workers-{timestamp}.csv");
         File.WriteAllLines(workerPath, _workerRows);
-        var resourcePath = Path.Combine(directory, $"passive-baseline-resources-{timestamp}.csv");
+        var resourcePath = Path.Combine(directory, $"{filePrefix}-resources-{timestamp}.csv");
         File.WriteAllLines(resourcePath, _resourceRows);
         var reached = _timeToTargetSeconds is null
             ? "not reached"

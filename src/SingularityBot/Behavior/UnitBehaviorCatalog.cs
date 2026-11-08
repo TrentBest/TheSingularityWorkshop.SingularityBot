@@ -2,109 +2,92 @@ using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
 
-/// <summary>
-/// Registers reusable worker and combat behavior definitions. Definitions are
-/// shared; every live unit receives its own context and FSM instance.
-/// </summary>
+/// <summary>Registers independent worker capabilities and combat behavior definitions.</summary>
 public static class UnitBehaviorCatalog
 {
     public const string ProcessingGroup = "SingularityBot.Units";
+    public const string MiningProcessingGroup = "SingularityBot.Mining";
+    public const string ConstructionProcessingGroup = "SingularityBot.Construction";
+    public const string RepairProcessingGroup = "SingularityBot.Repair";
+    public const string CombatProcessingGroup = "SingularityBot.Combat";
     public const string WorkerFsm = "SingularityBot.Worker";
+    public const string ConstructionFsm = "SingularityBot.ConstructionCapability";
+    public const string RepairFsm = "SingularityBot.RepairCapability";
     public const string CombatFsm = "SingularityBot.CombatUnit";
 
     public static void Register()
     {
         FSM_API.Create.CreateProcessingGroup(ProcessingGroup);
+        FSM_API.Create.CreateProcessingGroup(MiningProcessingGroup);
+        FSM_API.Create.CreateProcessingGroup(ConstructionProcessingGroup);
+        FSM_API.Create.CreateProcessingGroup(RepairProcessingGroup);
+        FSM_API.Create.CreateProcessingGroup(CombatProcessingGroup);
         RegisterWorker();
+        RegisterConstruction();
+        RegisterRepair();
         RegisterCombatUnit();
     }
 
+    // Baseline SCV capability: maintain its economy route. Cargo return takes
+    // precedence over a fresh mineral assignment, without owning construction
+    // or repair decisions.
     private static void RegisterWorker()
     {
-        FSM_API.Create.CreateFiniteStateMachine(WorkerFsm, processRate: 1, processingGroup: ProcessingGroup)
-            .State("Assess",
-                onEnter: null,
-                onUpdate: ctx =>
+        FSM_API.Create.CreateFiniteStateMachine(WorkerFsm, processRate: 1, processingGroup: MiningProcessingGroup)
+            .State("Assess", null,
+                ctx =>
                 {
                     if (ctx is not UnitBehaviorContext unit) return;
                     if (unit.HasCargo) unit.Emit(BehaviorCommand.ReturnCarriedResources);
-                    else if (unit.BuildOrderAvailable) unit.Emit(BehaviorCommand.BuildRequestedStructure);
-                    else if (unit.HasVisibleThreat) unit.Emit(BehaviorCommand.DefendWorkerLine);
-                    // Existing SC2 orders are observations, not proof that the bot
-                    // has issued or owns the route. The Working state's entry emits
-                    // an explicit Smart command for every assigned worker.
-                },
-                onExit: null)
-            .State("Returning",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.ReturnCarriedResources),
-                onUpdate: null,
-                onExit: null)
-            .State("Working",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.AssignWorkerToMinerals),
-                onUpdate: null,
-                onExit: null)
-            .State("Building",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.BuildRequestedStructure),
-                onUpdate: null,
-                onExit: null)
-            .State("Defending",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.DefendWorkerLine),
-                onUpdate: null,
-                onExit: null)
+                    else if (unit.AssignedMineralTag is not null)
+                        unit.Emit(BehaviorCommand.AssignWorkerToMinerals);
+                }, null)
             .WithInitialState("Assess")
-            .Transition("Assess", "Returning", ctx => ctx is UnitBehaviorContext unit && unit.HasCargo)
-            .Transition("Assess", "Building", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo && unit.BuildOrderAvailable)
-            .Transition("Assess", "Defending", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo && !unit.BuildOrderAvailable && unit.HasVisibleThreat)
-            .Transition("Assess", "Working", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo && !unit.BuildOrderAvailable && !unit.HasVisibleThreat && unit.AssignedMineralTag is not null)
-            .Transition("Returning", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.HasCargo)
-            .Transition("Working", "Assess", ctx => ctx is UnitBehaviorContext unit &&
-                (unit.HasCargo || unit.BuildOrderAvailable || unit.HasVisibleThreat ||
-                 unit.WorkerRoutePhase == WorkerRoutePhase.Unassigned))
-            .Transition("Building", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.BuildOrderAvailable)
-            .Transition("Defending", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.HasVisibleThreat)
+            .BuildDefinition();
+    }
+
+    private static void RegisterConstruction()
+    {
+        FSM_API.Create.CreateFiniteStateMachine(ConstructionFsm, processRate: 1, processingGroup: ConstructionProcessingGroup)
+            .State("Waiting", null,
+                ctx =>
+                {
+                    if (ctx is UnitBehaviorContext unit && unit.BuildOrderAvailable)
+                        unit.Emit(BehaviorCommand.BuildRequestedStructure);
+                }, null)
+            .WithInitialState("Waiting")
+            .BuildDefinition();
+    }
+
+    // The repair FSM is registered in its own group. Its context is populated
+    // by the repair coordinator; it is never polled by the normal frame update.
+    private static void RegisterRepair()
+    {
+        FSM_API.Create.CreateFiniteStateMachine(RepairFsm, processRate: 1, processingGroup: RepairProcessingGroup)
+            .State("Waiting", null,
+                ctx =>
+                {
+                    if (ctx is UnitBehaviorContext unit && unit.RepairTargetTag is not null &&
+                        unit.IsRepairAssignmentSafe)
+                        unit.Emit(BehaviorCommand.RepairAssignedTarget);
+                }, null)
+            .WithInitialState("Waiting")
             .BuildDefinition();
     }
 
     private static void RegisterCombatUnit()
     {
-        FSM_API.Create.CreateFiniteStateMachine(CombatFsm, processRate: 1, processingGroup: ProcessingGroup)
-            .State("Assess",
-                onEnter: null,
-                onUpdate: ctx =>
+        FSM_API.Create.CreateFiniteStateMachine(CombatFsm, processRate: 1, processingGroup: CombatProcessingGroup)
+            .State("Assess", null,
+                ctx =>
                 {
                     if (ctx is not UnitBehaviorContext unit) return;
                     if (unit.ShouldRetreat) unit.Emit(BehaviorCommand.RetreatToSafety);
                     else if (unit.HasVisibleThreat) unit.Emit(BehaviorCommand.AttackVisibleThreat);
                     else if (unit.ShouldRegroup) unit.Emit(BehaviorCommand.RegroupWithArmy);
                     else if (unit.HasObjective) unit.Emit(BehaviorCommand.AdvanceToObjective);
-                },
-                onExit: null)
-            .State("Engage",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.AttackVisibleThreat),
-                onUpdate: null,
-                onExit: null)
-            .State("Retreat",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.RetreatToSafety),
-                onUpdate: null,
-                onExit: null)
-            .State("Regroup",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.RegroupWithArmy),
-                onUpdate: null,
-                onExit: null)
-            .State("Advance",
-                onEnter: ctx => (ctx as UnitBehaviorContext)?.Emit(BehaviorCommand.AdvanceToObjective),
-                onUpdate: null,
-                onExit: null)
+                }, null)
             .WithInitialState("Assess")
-            .Transition("Assess", "Retreat", ctx => ctx is UnitBehaviorContext unit && unit.ShouldRetreat)
-            .Transition("Assess", "Engage", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat && unit.HasVisibleThreat)
-            .Transition("Assess", "Regroup", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat && !unit.HasVisibleThreat && unit.ShouldRegroup)
-            .Transition("Assess", "Advance", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat && !unit.HasVisibleThreat && !unit.ShouldRegroup && unit.HasObjective)
-            .Transition("Engage", "Retreat", ctx => ctx is UnitBehaviorContext unit && unit.ShouldRetreat)
-            .Transition("Engage", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.HasVisibleThreat && !unit.ShouldRetreat)
-            .Transition("Retreat", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat)
-            .Transition("Regroup", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRegroup)
-            .Transition("Advance", "Assess", ctx => ctx is UnitBehaviorContext unit && (unit.IsAtObjective || unit.ShouldRegroup || unit.HasVisibleThreat))
             .BuildDefinition();
     }
 }

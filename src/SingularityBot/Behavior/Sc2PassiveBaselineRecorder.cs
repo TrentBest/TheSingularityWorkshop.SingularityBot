@@ -15,6 +15,10 @@ public sealed class Sc2PassiveBaselineRecorder
     {
         "gameLoop,elapsedSeconds,minerals,foodUsed,foodCap,scvCount,scvsWithOrders,distinctMineralTargets,scvsWithCargo"
     };
+    private readonly List<string> _workerRows = new()
+    {
+        "gameLoop,elapsedSeconds,workerTag,x,y,hasCargo,orderAbilityId,targetUnitTag,targetX,targetY,distanceToTarget"
+    };
 
     private long _startedAt;
     private uint _lastSampleLoop;
@@ -39,6 +43,34 @@ public sealed class Sc2PassiveBaselineRecorder
             .Select(tag => tag.Value)
             .Distinct()
             .Count();
+
+        var visibleUnits = observation.Units
+            .Where(unit => unit.IsLiveVisible && unit.HasPosition)
+            .ToDictionary(unit => unit.Tag);
+        foreach (var worker in workers)
+        {
+            var order = worker.Orders.FirstOrDefault();
+            UnitObservationFacts target = null;
+            var hasTarget = order?.TargetUnitTag is ulong targetTag &&
+                            visibleUnits.TryGetValue(targetTag, out target);
+            var distance = hasTarget
+                ? MathF.Sqrt(
+                    MathF.Pow(worker.PositionX - target.PositionX, 2) +
+                    MathF.Pow(worker.PositionY - target.PositionY, 2))
+                : (float?)null;
+            _workerRows.Add(string.Join(",",
+                observation.GameLoop.ToString(CultureInfo.InvariantCulture),
+                elapsed.ToString("F3", CultureInfo.InvariantCulture),
+                worker.Tag.ToString(CultureInfo.InvariantCulture),
+                worker.PositionX.ToString("F3", CultureInfo.InvariantCulture),
+                worker.PositionY.ToString("F3", CultureInfo.InvariantCulture),
+                worker.HasCargo ? "1" : "0",
+                order?.AbilityId.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                order?.TargetUnitTag?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                hasTarget ? target.PositionX.ToString("F3", CultureInfo.InvariantCulture) : string.Empty,
+                hasTarget ? target.PositionY.ToString("F3", CultureInfo.InvariantCulture) : string.Empty,
+                distance?.ToString("F3", CultureInfo.InvariantCulture) ?? string.Empty));
+        }
 
         _startingMinerals ??= observation.Minerals;
         if (observation.Minerals >= MineralTarget && _timeToTargetSeconds is null)
@@ -70,9 +102,11 @@ public sealed class Sc2PassiveBaselineRecorder
         var timestamp = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ", CultureInfo.InvariantCulture);
         var path = Path.Combine(directory, $"passive-baseline-{timestamp}.csv");
         File.WriteAllLines(path, _rows);
+        var workerPath = Path.Combine(directory, $"passive-baseline-workers-{timestamp}.csv");
+        File.WriteAllLines(workerPath, _workerRows);
         var reached = _timeToTargetSeconds is null
             ? "not reached"
             : $"{_timeToTargetSeconds.Value:F3}s at game loop {_targetReachedAtLoop}";
-        Console.WriteLine($"[Baseline] Zero-intervention run: start minerals={_startingMinerals?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}, time to 300 minerals={reached}, samples={_rows.Count - 1}, trace={path}.");
+        Console.WriteLine($"[Baseline] Zero-intervention run: start minerals={_startingMinerals?.ToString(CultureInfo.InvariantCulture) ?? "unknown"}, time to 300 minerals={reached}, samples={_rows.Count - 1}, trace={path}, worker-frame-rows={_workerRows.Count - 1}, worker-trace={workerPath}.");
     }
 }

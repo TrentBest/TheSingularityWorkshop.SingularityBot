@@ -1,7 +1,7 @@
 using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
 
-namespace SingularityBot;
+namespace SingularityBot.Behavior;
 
 /// <summary>
 /// Owns one persistent observation context and any number of complementary FSM

@@ -13,7 +13,7 @@ public sealed class Sc2GameDataCatalogTests
         data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV" });
         data.Units.Add(new UnitTypeData { UnitId = 341, Name = "MineralField750" });
         data.Buffs.Add(new BuffData { BuffId = 271, Name = "CarryingMinerals" });
-        data.Abilities.Add(new AbilityData { AbilityId = 1, LinkName = "Smart" });
+        data.Abilities.Add(new AbilityData { AbilityId = 1, ButtonName = "Smart" });
 
         var catalog = Sc2GameDataCatalog.Create(data);
 
@@ -27,7 +27,7 @@ public sealed class Sc2GameDataCatalogTests
     public void Create_ResolvesSmartCommandFromAuthoritativeGameData()
     {
         var data = new ResponseData();
-        data.Abilities.Add(new AbilityData { AbilityId = 1, LinkName = "Smart" });
+        data.Abilities.Add(new AbilityData { AbilityId = 1, ButtonName = "Smart" });
 
         var catalog = Sc2GameDataCatalog.Create(data);
 

@@ -24,7 +24,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
 
         Assert.NotNull(stop);
-        Assert.Equal(4, stop.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(3665, stop.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(11UL, stop.ActionRaw.UnitCommand.UnitTags[0]);
         controller.OnActionResult(ActionResult.Success);
         Assert.Equal(11UL, controller.BuilderTag);
@@ -168,7 +168,8 @@ public sealed class Sc2OpeningBuilderControllerTests
         data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1 });
         data.Units.Add(new UnitTypeData { UnitId = 19, Name = "SupplyDepot", AbilityId = 319, MineralCost = 100 });
         data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "Move" });
-        data.Abilities.Add(new AbilityData { AbilityId = 4, LinkName = "Stop" });
+        data.Abilities.Add(new AbilityData { AbilityId = 4, LinkName = "stop", ButtonName = "Stop", RemapsToAbilityId = 3665 },
+            new AbilityData { AbilityId = 3665, LinkName = "Stop", ButtonName = "Stop" });
         return Sc2GameDataCatalog.Create(data);
     }
 

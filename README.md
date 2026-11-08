@@ -46,6 +46,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)
+- [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)
 - [Terran opening and worker logistics](docs/opening-economy-logistics.md)
 - [Strategy format](docs/strategy-format.md)
 - [Roadmap and acceptance gates](docs/roadmap.md)

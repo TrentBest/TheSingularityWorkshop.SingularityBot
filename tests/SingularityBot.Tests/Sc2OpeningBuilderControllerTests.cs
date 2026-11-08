@@ -72,6 +72,48 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void RetriesPlacementQueryWhenSc2RejectsEveryCandidate()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var gameData = GameData();
+        SelectSecondScv(controller, assignments, map, gameData);
+
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        var rejected = new ResponseQuery();
+        rejected.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Error });
+        controller.OnPlacementQueryResult(rejected);
+
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
+    }
+
+    [Fact]
+    public void RetriesMoveWhenAcceptedBuilderDoesNotReachPlacement()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var gameData = GameData();
+        SelectSecondScv(controller, assignments, map, gameData);
+
+        var queryResult = new ResponseQuery();
+        queryResult.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(queryResult);
+
+        var firstMove = controller.TryCreateAction(Snapshot(150, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, true, assignments);
+        Assert.NotNull(firstMove);
+        controller.OnActionResult(ActionResult.Success);
+
+        var retryMove = controller.TryCreateAction(Snapshot(150, 14, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5), Fact(12, "SCV", 7, 5),
+            Fact(1, "CommandCenter", 10, 10)) with { }, map, gameData, true, assignments);
+        Assert.Null(retryMove);
+    }
+
+    [Fact]
     public void ReleasesDedicatedBuilderAfterDepotCompletes()
     {
         var controller = new Sc2OpeningBuilderController();

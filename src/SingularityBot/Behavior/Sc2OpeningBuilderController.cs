@@ -11,7 +11,6 @@ namespace SingularityBot.Behavior;
 /// </summary>
 public sealed class Sc2OpeningBuilderController
 {
-    public const uint DefaultBuilderPullThreshold = 80;
 
     private enum PendingAction
     {
@@ -20,10 +19,9 @@ public sealed class Sc2OpeningBuilderController
         Build
     }
 
-    private readonly uint _builderPullThreshold;
-    private uint _previousMinerals;
-    private bool _hasMineralSample;
-    private bool _thresholdReached;
+    private readonly HashSet<ulong> _initialScvTags = new();
+    private readonly SortedSet<ulong> _producedScvTags = new();
+    private bool _initialScvPopulationCaptured;
     private ulong? _builderTag;
     private ulong? _returnTownHallTag;
     private IReadOnlyList<MapPoint> _candidatePoints = Array.Empty<MapPoint>();
@@ -35,15 +33,9 @@ public sealed class Sc2OpeningBuilderController
     private PendingAction _pendingAction;
     private bool _completed;
 
-    public Sc2OpeningBuilderController(uint builderPullThreshold = DefaultBuilderPullThreshold)
-    {
-        if (builderPullThreshold == 0)
-            throw new ArgumentOutOfRangeException(nameof(builderPullThreshold));
-        _builderPullThreshold = builderPullThreshold;
-    }
+    public Sc2OpeningBuilderController() { }
 
     public ulong? BuilderTag => _builderTag;
-    public bool ThresholdReached => _thresholdReached;
     public bool IsCompleted => _completed;
     public MapPoint? Placement => _placement;
 
@@ -58,8 +50,7 @@ public sealed class Sc2OpeningBuilderController
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
 
-        UpdateMineralThreshold(observation.Minerals);
-        if (_completed || !initialScvProductionObserved || !_thresholdReached ||
+        if (_completed || !initialScvProductionObserved ||
             spatialMap is null ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
             gameData.SupplyDepotMineralCost == 0 ||
@@ -83,21 +74,37 @@ public sealed class Sc2OpeningBuilderController
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
+        if (!_initialScvPopulationCaptured)
+        {
+            foreach (var worker in observation.Units.Where(IsLiveScv))
+                _initialScvTags.Add(worker.Tag);
+            _initialScvPopulationCaptured = true;
+            Console.WriteLine($"[Opening] Captured {_initialScvTags.Count} starting SCVs; the second newly produced SCV will build the first Depot.");
+        }
+
+        foreach (var worker in observation.Units.Where(IsLiveScv))
+        {
+            if (!_initialScvTags.Contains(worker.Tag))
+                _producedScvTags.Add(worker.Tag);
+        }
+
         if (_builderTag is null)
         {
-            var returner = FindReturningScv(observation, assignments);
-            if (returner is null)
+            if (_producedScvTags.Count < 2)
                 return null;
 
-            _builderTag = returner.Value.Worker.Tag;
-            Console.WriteLine($"[Opening] 80-mineral threshold reached; pulling returning SCV {_builderTag.Value} from its mineral return cycle.");
-            _returnTownHallTag = returner.Value.TownHallTag;
-            assignments.Reserve(returner.Value.Worker.Tag);
-            var townHall = observation.Units.FirstOrDefault(unit => unit.Tag == _returnTownHallTag.Value && unit.IsLiveVisible);
+            // SC2 unit tags increase with creation order; retain the second new SCV
+            // as the dedicated builder rather than interrupting a starting miner.
+            _builderTag = _producedScvTags.ElementAt(1);
+            assignments.Reserve(_builderTag.Value);
+            var townHall = observation.Units.FirstOrDefault(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && IsTownHall(unit.UnitKind));
             if (townHall is null)
                 return null;
+
             _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
             _placementQueryPending = _candidatePoints.Count > 0;
+            Console.WriteLine($"[Opening] Second produced SCV {_builderTag.Value} assigned as dedicated Depot builder; staging toward the ramp.");
             return null;
         }
 
@@ -227,67 +234,18 @@ public sealed class Sc2OpeningBuilderController
         _pendingAction = PendingAction.None;
     }
 
-    private void UpdateMineralThreshold(uint minerals)
-    {
-        if (!_hasMineralSample)
-        {
-            _hasMineralSample = true;
-            _previousMinerals = minerals;
-            return;
-        }
+    private static bool IsLiveScv(UnitObservationFacts unit) =>
+        unit.Alliance == UnitAlliance.Self &&
+        unit.IsLiveVisible &&
+        unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase);
 
-        if (!_thresholdReached &&
-            _previousMinerals < _builderPullThreshold &&
-            minerals >= _builderPullThreshold)
-            _thresholdReached = true;
-
-        _previousMinerals = minerals;
-    }
-
-    private static (UnitObservationFacts Worker, ulong TownHallTag)? FindReturningScv(
-        NormalizedObservation observation,
-        WorkerResourceAssignmentPlanner assignments)
-    {
-        var townHallTags = observation.Units
-            .Where(unit => unit.Alliance == UnitAlliance.Self &&
-                           unit.IsLiveVisible &&
-                           IsTownHall(unit.UnitKind) &&
-                           !observation.DeadUnitTags.Contains(unit.Tag))
-            .Select(unit => unit.Tag)
-            .ToHashSet();
-
-        foreach (var worker in observation.Units
-                     .Where(unit => unit.Alliance == UnitAlliance.Self &&
-                                    unit.IsLiveVisible &&
-                                    unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) &&
-                                    unit.HasCargo &&
-                                    !assignments.IsReserved(unit.Tag) &&
-                                    unit.Orders.Count > 0 &&
-                                    !observation.DeadUnitTags.Contains(unit.Tag))
-                     .OrderBy(unit => unit.Tag))
-        {
-            var targetTag = worker.Orders[0].TargetUnitTag;
-            if (targetTag is not ulong target)
-                continue;
-
-            if (townHallTags.Contains(target))
-                return (worker, target);
-
-            if (assignments.TryGet(worker.Tag, out var assignment) &&
-                assignment.MineralTag == target &&
-                townHallTags.Contains(assignment.TownHallTag))
-                return (worker, assignment.TownHallTag);
-        }
-
-        return null;
-    }
 
     private static IReadOnlyList<MapPoint> CreatePlacementCandidates(
         UnitObservationFacts townHall,
         SpatialMap map)
     {
         var origin = new MapPoint(townHall.PositionX, townHall.PositionY);
-        var forward = (map.Side.EnemyStart - origin).Normalize();
+        var forward = (map.Center - origin).Normalize();
         var lateral = new MapPoint(-forward.Y, forward.X);
         var offsets = new (float Forward, float Lateral)[]
         {

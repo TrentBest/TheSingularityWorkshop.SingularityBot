@@ -16,6 +16,15 @@ namespace SingularityBot;
 public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
+    private readonly bool _passiveBaseline;
+    private readonly bool _writeDiagnostics;
+    private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
+
+    public SingularityBot(bool passiveBaseline = false, bool writeDiagnostics = false)
+    {
+        _passiveBaseline = passiveBaseline;
+        _writeDiagnostics = writeDiagnostics;
+    }
     private readonly WorkerResourceAssignmentPlanner _workerAssignments = new();
     private Sc2GameDataCatalog _gameData;
     private uint _playerId;
@@ -44,7 +53,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         uint playerId,
         string opponentId)
     {
-        WriteOnStartSnapshot(gameInfo, data, pingResponse, observation, playerId, opponentId);
+        if (_writeDiagnostics)
+            WriteOnStartSnapshot(gameInfo, data, pingResponse, observation, playerId, opponentId);
+        if (_passiveBaseline)
+            _baselineRecorder.Start();
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
 
@@ -122,6 +134,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
     {
+        if (_passiveBaseline)
+        {
+            var baselineObservation = Sc2ObservationNormalizer.Normalize(
+                observation,
+                _playerId,
+                _gameData.UnitNames,
+                _gameData.BuffNames);
+            _baselineRecorder.Record(baselineObservation);
+            return Array.Empty<SC2APIProtocol.Action>();
+        }
+
         UpdateSpatialIntelligence(observation);
 
         // Normalize once and use the same authoritative frame for reconciliation,
@@ -340,6 +363,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnEnd(ResponseObservation observation, Result result)
     {
+        if (_passiveBaseline)
+            _baselineRecorder.Write(Path.Combine(Environment.CurrentDirectory, "diagnostics"));
         _unitBehaviors.RemoveAll();
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();

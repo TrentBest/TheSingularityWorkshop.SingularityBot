@@ -108,7 +108,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 ["initialObservation"] = SerializeProtocolMessage(observation)
             };
 
-            var diagnosticsDirectory = Path.Combine(Environment.CurrentDirectory, "diagnostics");
+            var diagnosticsDirectory = Sc2Diagnostics.OutputDirectory;
             Directory.CreateDirectory(diagnosticsDirectory);
 
             var fileName = $"on-start-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.json";
@@ -363,7 +363,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public void OnEnd(ResponseObservation observation, Result result)
     {
         if (_passiveBaseline)
-            _baselineRecorder.Write(Path.Combine(Environment.CurrentDirectory, "diagnostics"));
+            _baselineRecorder.Write(Sc2Diagnostics.OutputDirectory);
         _unitBehaviors.RemoveAll();
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();

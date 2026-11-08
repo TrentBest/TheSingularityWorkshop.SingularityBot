@@ -12,8 +12,7 @@ public static class Sc2ActionTranslator
     public static IReadOnlyList<SC2APIProtocol.Action> Translate(
         IReadOnlyList<KeyValuePair<ulong, BehaviorCommand>> intents,
         NormalizedObservation observation,
-        uint? harvestGatherAbilityId,
-        uint? harvestReturnAbilityId = null,
+        uint? smartAbilityId,
         IReadOnlyDictionary<ulong, WorkerResourceAssignment> workerAssignments = null)
     {
         ArgumentNullException.ThrowIfNull(intents);
@@ -57,19 +56,19 @@ public static class Sc2ActionTranslator
             {
                 case BehaviorCommand.AssignWorkerToMinerals:
                 {
-                    if (!TryGetAbilityId(harvestGatherAbilityId, out var gatherAbilityId) ||
+                    if (!TryGetAbilityId(smartAbilityId, out var smartId) ||
                         worker.HasCargo ||
                         workerAssignments is null ||
                         !workerAssignments.TryGetValue(worker.Tag, out var assignment) ||
                         !mineralFields.ContainsKey(assignment.MineralTag))
                         continue;
 
-                    actions.Add(CreateUnitCommand(worker.Tag, gatherAbilityId, assignment.MineralTag));
+                    actions.Add(CreateUnitCommand(worker.Tag, smartId, assignment.MineralTag));
                     break;
                 }
                 case BehaviorCommand.ReturnCarriedResources:
                 {
-                    if (!TryGetAbilityId(harvestReturnAbilityId, out var returnAbilityId) ||
+                    if (!TryGetAbilityId(smartAbilityId, out var smartId) ||
                         !worker.HasCargo || townHalls.Length == 0)
                         continue;
 
@@ -77,7 +76,7 @@ public static class Sc2ActionTranslator
                         .OrderBy(field => DistanceSquared(worker, field))
                         .ThenBy(field => field.Tag)
                         .First();
-                    actions.Add(CreateUnitCommand(worker.Tag, returnAbilityId, townHall.Tag));
+                    actions.Add(CreateUnitCommand(worker.Tag, smartId, townHall.Tag));
                     break;
                 }
             }

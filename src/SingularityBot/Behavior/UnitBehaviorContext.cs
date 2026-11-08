@@ -71,6 +71,9 @@ public sealed class UnitBehaviorContext : IStateContext
     public bool IsAtObjective { get; set; }
     public bool ShouldRegroup { get; set; }
     public bool BuildOrderAvailable { get; set; }
+    public ulong? RepairTargetTag { get; set; }
+    public bool IsRepairAssignmentSafe { get; set; }
+    public int RepairDistanceManhattan { get; set; }
 
     public void Apply(UnitObservationFacts facts)
     {

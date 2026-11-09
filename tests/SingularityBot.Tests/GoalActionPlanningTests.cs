@@ -35,7 +35,7 @@ public sealed class GoalActionPlanningTests
         runtime.UpdateGroup(UnitBehaviorCatalog.LowDpsProcessingGroup);
         Assert.Contains(BehaviorCommand.ScoutSector, emitted);
 
-        var marine = runtime.Contexts.Single(c => c.UnitTag == 3);
+        var marine = runtime.Contexts.Single(c => c.UnitTag == 4);
         marine.AttackTargetTag = 8001;
         marine.WeaponCooldownRemaining = 3;
         runtime.UpdateGroup(UnitBehaviorCatalog.HighDpsProcessingGroup);

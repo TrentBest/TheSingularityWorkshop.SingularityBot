@@ -20,6 +20,7 @@ SC2 protocol handling stays at the adapter boundary. FSM_API owns reusable lifec
 - [Spatial language: Side, Quadrant and Sector](spatial-language.md)
 - [Base geometry and resource-line inference](base-geometry.md)
 - [Strategy format](strategy-format.md)
+- [Goal action planning](goal-action-planning.md)
 - [Example strategy](../strategies/terran-opening.example.json)
 - [Lineage and licensing](lineage.md)
 - [Source migration audit](migration-audit.md)

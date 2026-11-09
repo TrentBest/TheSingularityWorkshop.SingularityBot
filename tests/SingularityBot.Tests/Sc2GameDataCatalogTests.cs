@@ -21,6 +21,9 @@ public sealed class Sc2GameDataCatalogTests
         Assert.Equal("MineralField750", catalog.UnitNames[341]);
         Assert.Equal("CarryingMinerals", catalog.BuffNames[271]);
         Assert.Equal((uint)1, catalog.SmartAbilityId);
+        Assert.True(catalog.TryGetAbility(1, out var smart));
+        Assert.Equal("Smart", smart.ButtonName);
+        Assert.Equal(AbilityData.Types.Target.PointOrUnit, smart.Target);
     }
 
     [Fact]
@@ -60,6 +63,44 @@ public sealed class Sc2GameDataCatalogTests
         var catalog = Sc2GameDataCatalog.Create(data);
 
         Assert.Equal((uint)3690, catalog.RallyWorkersAbilityId);
+    }
+
+    [Fact]
+    public void Create_RetainsAbilityTargetAndPlacementMetadataFromOnStart()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData
+        {
+            AbilityId = 319,
+            LinkName = "TerranBuild",
+            LinkIndex = 1,
+            ButtonName = "SupplyDepot",
+            FriendlyName = "Build SupplyDepot",
+            Available = true,
+            Target = AbilityData.Types.Target.Point,
+            IsBuilding = true,
+            FootprintRadius = 1
+        });
+        data.Abilities.Add(new AbilityData
+        {
+            AbilityId = 316,
+            LinkName = "Repair",
+            ButtonName = "Repair",
+            Available = true,
+            Target = AbilityData.Types.Target.Unit,
+            RemapsToAbilityId = 3685
+        });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal(2, catalog.AbilitiesById.Count);
+        var build = Assert.Single(catalog.FindAbilities("SupplyDepot"));
+        Assert.Equal((uint)319, build.AbilityId);
+        Assert.Equal(AbilityData.Types.Target.Point, build.Target);
+        Assert.True(build.IsBuilding);
+        Assert.Equal(1f, build.FootprintRadius);
+        Assert.Equal((uint)3685, catalog.AbilitiesById[316].RemapsToAbilityId);
+        Assert.Equal(AbilityData.Types.Target.Unit, catalog.AbilitiesById[316].Target);
     }
 
     [Fact]

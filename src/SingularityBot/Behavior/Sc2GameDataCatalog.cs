@@ -11,6 +11,7 @@ public sealed class Sc2GameDataCatalog
     private Sc2GameDataCatalog(
         IReadOnlyDictionary<uint, string> unitNames,
         IReadOnlyDictionary<uint, string> buffNames,
+        IReadOnlyDictionary<uint, Sc2AbilityFacts> abilitiesById,
         uint? smartAbilityId,
         uint? scvTrainAbilityId,
         uint scvMineralCost,
@@ -24,6 +25,7 @@ public sealed class Sc2GameDataCatalog
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
+        AbilitiesById = abilitiesById;
         SmartAbilityId = smartAbilityId;
         ScvTrainAbilityId = scvTrainAbilityId;
         ScvMineralCost = scvMineralCost;
@@ -38,6 +40,18 @@ public sealed class Sc2GameDataCatalog
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
     public IReadOnlyDictionary<uint, string> BuffNames { get; }
+    /// <summary>All non-zero abilities supplied by the match's authoritative ResponseData.</summary>
+    public IReadOnlyDictionary<uint, Sc2AbilityFacts> AbilitiesById { get; }
+    public bool TryGetAbility(uint abilityId, out Sc2AbilityFacts ability) =>
+        AbilitiesById.TryGetValue(abilityId, out ability);
+    public IReadOnlyList<Sc2AbilityFacts> FindAbilities(string name) =>
+        AbilitiesById.Values
+            .Where(ability =>
+                string.Equals(ability.LinkName, name, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ability.ButtonName, name, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ability.FriendlyName, name, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(ability => ability.AbilityId)
+            .ToArray();
     public uint? SmartAbilityId { get; }
     public uint? ScvTrainAbilityId { get; }
     public uint ScvMineralCost { get; }
@@ -63,6 +77,11 @@ public sealed class Sc2GameDataCatalog
             .GroupBy(buff => buff.BuffId)
             .ToDictionary(group => group.Key, group => group.First().Name);
 
+        var abilitiesById = data.Abilities
+            .Where(ability => ability.AbilityId != 0)
+            .GroupBy(ability => ability.AbilityId)
+            .ToDictionary(group => group.Key, group => Sc2AbilityFacts.From(group.First()));
+
         var scv = data.Units.FirstOrDefault(unit =>
             string.Equals(unit.Name, "SCV", StringComparison.OrdinalIgnoreCase));
         var supplyDepot = data.Units.FirstOrDefault(unit =>
@@ -71,6 +90,7 @@ public sealed class Sc2GameDataCatalog
         return new Sc2GameDataCatalog(
             unitNames,
             buffNames,
+            abilitiesById,
             ResolveSmartAbility(data.Abilities),
             scv?.AbilityId is > 0 ? scv.AbilityId : null,
             scv?.MineralCost ?? 0,
@@ -140,4 +160,38 @@ public sealed class Sc2GameDataCatalog
 
         return candidates.Length == 1 ? candidates[0] : null;
     }
+}
+
+
+/// <summary>
+/// Immutable subset of SC2 AbilityData needed to validate and construct raw
+/// commands. Values originate only from ResponseData supplied to OnStart.
+/// </summary>
+public sealed record Sc2AbilityFacts(
+    uint AbilityId,
+    string LinkName,
+    uint LinkIndex,
+    string ButtonName,
+    string FriendlyName,
+    uint RemapsToAbilityId,
+    bool Available,
+    AbilityData.Types.Target Target,
+    bool IsBuilding,
+    bool IsInstantPlacement,
+    float FootprintRadius,
+    float CastRange)
+{
+    internal static Sc2AbilityFacts From(AbilityData ability) => new(
+        ability.AbilityId,
+        ability.LinkName ?? string.Empty,
+        ability.LinkIndex,
+        ability.ButtonName ?? string.Empty,
+        ability.FriendlyName ?? string.Empty,
+        ability.RemapsToAbilityId,
+        ability.Available,
+        ability.Target,
+        ability.IsBuilding,
+        ability.IsInstantPlacement,
+        ability.FootprintRadius,
+        ability.CastRange);
 }

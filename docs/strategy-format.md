@@ -62,10 +62,11 @@ A strategy descriptor should identify:
 - its declared playstyle and strategic objective;
 - the conditions under which it is a good fit (race, matchup, map traits, map knowledge and current advantages);
 - its goals, constraints, capabilities and production preferences;
+- its army-organization and formation preferences, including force roles, positioning intent, cohesion and coordination requirements;
 - the transitions it may enter, including the evidence and guards required;
 - the conditions under which it should remain committed, reconsider, or fall back.
 
-A transition is a deliberate change from one strategy or playstyle to another. It is not merely a production-queue edit. It may change technology direction, unit composition, economy, map-control posture, risk tolerance and tactical priorities together. It must preserve global constraints and pass through the same validated action pipeline as every other decision.
+A transition is a deliberate change from one strategy or playstyle to another. It is not merely a production-queue edit. It may change technology direction, unit composition, economy, map-control posture, risk tolerance, tactical priorities and army formations together. A transition can therefore change both the forces being fielded and how those forces organize, position, move and coordinate. It must preserve global constraints and pass through the same validated action pipeline as every other decision.
 
 ### Example: defend the natural, then switch to Banshees
 
@@ -80,6 +81,24 @@ This is an opportunity-driven branch:
 4. Check affordability, prerequisites, production capacity, timing and exposure while teching.
 5. Commit only when the transition's guards pass; then update strategic goals and production priorities coherently.
 6. Reassess as new observations arrive. If the premise fails (for example, significant anti-air appears or the natural becomes unsafe), select an explicitly permitted response rather than blindly completing the original plan.
+
+### Formations are part of strategy
+
+Formations should be authorable strategic behavior, not hard-coded presentation or a cosmetic grouping of units. A strategy may specify the formations it prefers for different objectives and circumstances, and a transition may replace one formation policy with another.
+
+The formation vocabulary should be composable rather than limited to a fixed list of named shapes. It should be able to express, as capabilities are implemented:
+
+- **Force roles:** front line, screen, flank, reserve, support, escort, siege, harassment and objective-control elements.
+- **Spatial intent:** line, arc, wedge, column, spread, concave, perimeter, split force or other geometry appropriate to the terrain and objective.
+- **Cohesion:** spacing, separation, regrouping, reinforcement and acceptable distance between elements.
+- **Coordination:** synchronized movement, staged engagement, focus areas, flanking, screening and reserve commitment.
+- **Adaptation:** reform around terrain and obstacles, respond to area damage or air threats, protect vulnerable units, and change formation when the objective or threat changes.
+
+A formation definition should describe its purpose, applicability, required capabilities, constraints and exit/reform conditions. The runtime must account for pathability, terrain, unit movement/combat capabilities, current threats and the cost of reorganizing. It must not assume every unit can occupy an idealized position or that a named formation is always tactically appropriate.
+
+For example, a force defending an expansion may use a compact defensive line with a reserve and protected support units. After a successful strategic transition to mobile air harassment, the ground force may retain a holding/screening formation while the air force adopts a separate escort-and-harass pattern. Strategy owns the intent and coordination between these formations; the tactical runtime resolves feasible positions and actions through validated commands.
+
+These are authoring and architecture requirements, not claims that formation planning or execution is currently implemented.
 
 ### Transition contract
 

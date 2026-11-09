@@ -30,6 +30,7 @@ public sealed class GoalActionPlanningTests
         Assert.All(runtime.Contexts, c => Assert.True(c.StutterStepEnabled));
         runtime.UpdateGroup(UnitBehaviorCatalog.StrategyProcessingGroup);
         runtime.UpdateGroup(UnitBehaviorCatalog.LowDpsProcessingGroup);
+        runtime.UpdateGroup(UnitBehaviorCatalog.LowDpsProcessingGroup);
         Assert.Contains(BehaviorCommand.ScoutSector, emitted);
         runtime.RemoveAll();
     }

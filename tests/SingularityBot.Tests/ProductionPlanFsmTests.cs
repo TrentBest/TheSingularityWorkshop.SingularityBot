@@ -70,4 +70,44 @@ public sealed class ProductionPlanFsmTests
         Assert.Contains(errors, error => error.Contains("desiredCount"));
         Assert.Contains(errors, error => error.Contains("priority"));
     }
+
+    [Fact]
+    public void ProductionPlanParser_ReadsCamelCaseAndDependencyEdges()
+    {
+        const string json = """
+        {
+          "schemaVersion": "0.1",
+          "id": "slow-push",
+          "name": "Slow Push",
+          "race": "Terran",
+          "steps": [
+            { "id": "factory", "target": "Factory", "producer": "SCV", "desiredCount": 1, "earliestGameLoop": 0, "priority": 90 },
+            { "id": "tanks", "target": "SiegeTank", "producer": "Factory", "desiredCount": 2, "earliestGameLoop": 0, "priority": 90, "dependsOn": ["factory"] }
+          ]
+        }
+        """;
+
+        var plan = ProductionPlanDefinition.Parse(json);
+
+        Assert.Empty(ProductionPlanValidator.Validate(plan));
+        Assert.Equal("factory", Assert.Single(plan.Steps[1].DependsOn));
+    }
+
+    [Fact]
+    public void ProductionPlanValidator_RejectsDependencyCycles()
+    {
+        var plan = new ProductionPlanDefinition
+        {
+            Id = "cycle",
+            Name = "Cycle",
+            Race = "Terran",
+            Steps =
+            [
+                new("a", "Factory", "SCV", 1, 0, 50, new[] { "b" }),
+                new("b", "Starport", "SCV", 1, 0, 50, new[] { "a" })
+            ]
+        };
+
+        Assert.Contains(ProductionPlanValidator.Validate(plan), error => error.Contains("cycle"));
+    }
 }

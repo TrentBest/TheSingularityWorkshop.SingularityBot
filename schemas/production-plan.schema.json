@@ -69,6 +69,14 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 100
+          },
+          "dependsOn": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       }

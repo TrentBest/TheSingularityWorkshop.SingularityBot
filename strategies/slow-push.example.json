@@ -5,20 +5,48 @@
   "race": "Terran",
   "steps": [
     {
+      "id": "supply-depot",
+      "target": "SupplyDepot",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 100
+    },
+    {
+      "id": "barracks",
+      "target": "Barracks",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 100,
+      "dependsOn": ["supply-depot"]
+    },
+    {
+      "id": "factory",
+      "target": "Factory",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 90,
+      "dependsOn": ["barracks"]
+    },
+    {
+      "id": "starport",
+      "target": "Starport",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 85,
+      "dependsOn": ["factory"]
+    },
+    {
       "id": "marines",
       "target": "Marine",
       "producer": "Barracks",
       "desiredCount": 12,
       "earliestGameLoop": 0,
-      "priority": 80
-    },
-    {
-      "id": "medivacs",
-      "target": "Medivac",
-      "producer": "Starport",
-      "desiredCount": 2,
-      "earliestGameLoop": 0,
-      "priority": 90
+      "priority": 80,
+      "dependsOn": ["barracks"]
     },
     {
       "id": "siege-tanks",
@@ -26,7 +54,17 @@
       "producer": "Factory",
       "desiredCount": 2,
       "earliestGameLoop": 0,
-      "priority": 85
+      "priority": 90,
+      "dependsOn": ["factory"]
+    },
+    {
+      "id": "medivacs",
+      "target": "Medivac",
+      "producer": "Starport",
+      "desiredCount": 2,
+      "earliestGameLoop": 0,
+      "priority": 85,
+      "dependsOn": ["starport"]
     }
   ]
 }

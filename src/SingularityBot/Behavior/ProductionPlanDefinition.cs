@@ -2,10 +2,6 @@ using System.Text.Json;
 
 namespace SingularityBot.Behavior;
 
-/// <summary>
-/// Data-only production plan. It deliberately contains no executable callbacks,
-/// protocol messages, ability identifiers, or assumptions about SC2 game data.
-/// </summary>
 public sealed class ProductionPlanDefinition
 {
     public string SchemaVersion { get; init; } = "0.1";
@@ -31,7 +27,8 @@ public sealed record ProductionStepDefinition(
     string Producer,
     int DesiredCount,
     int EarliestGameLoop,
-    int Priority);
+    int Priority,
+    IReadOnlyList<string> DependsOn = null);
 
 public static class ProductionPlanValidator
 {
@@ -70,6 +67,43 @@ public static class ProductionPlanValidator
                 errors.Add($"{path}.priority: must be between 0 and 100.");
         }
 
+        var knownIds = plan.Steps.Select(step => step.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var step in plan.Steps)
+        {
+            foreach (var dependency in step.DependsOn ?? Array.Empty<string>())
+            {
+                if (dependency == step.Id)
+                    errors.Add($"$.steps[{step.Id}].dependsOn: a step cannot depend on itself.");
+                else if (!knownIds.Contains(dependency))
+                    errors.Add($"$.steps[{step.Id}].dependsOn: unknown step '{dependency}'.");
+            }
+        }
+
+        if (ids.Count == plan.Steps.Count && HasDependencyCycle(plan.Steps))
+            errors.Add("$.steps: dependency graph contains a cycle.");
+
         return errors;
+    }
+
+    private static bool HasDependencyCycle(IReadOnlyList<ProductionStepDefinition> steps)
+    {
+        var byId = steps.GroupBy(step => step.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var visiting = new HashSet<string>(StringComparer.Ordinal);
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+
+        bool Visit(string id)
+        {
+            if (visiting.Contains(id)) return true;
+            if (!visited.Add(id)) return false;
+            visiting.Add(id);
+            foreach (var dependency in byId[id].DependsOn ?? Array.Empty<string>())
+                if (byId.ContainsKey(dependency) && Visit(dependency))
+                    return true;
+            visiting.Remove(id);
+            return false;
+        }
+
+        return byId.Keys.Any(Visit);
     }
 }

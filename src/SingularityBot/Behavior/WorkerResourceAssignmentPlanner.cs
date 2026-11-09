@@ -101,7 +101,7 @@ public sealed class WorkerResourceAssignmentPlanner
             var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
             if (targetTag is not ulong mineralTag ||
                 !minerals.TryGetValue(mineralTag, out var mineral) ||
-                occupancy.GetValueOrDefault(mineralTag) >= mineralSaturation)
+                occupancy.GetValueOrDefault(mineralTag) >= 1)
                 continue;
 
             var townHall = townHalls
@@ -150,6 +150,10 @@ public sealed class WorkerResourceAssignmentPlanner
                     Distance = DistanceSquared(worker, mineral)
                 })
                 .OrderBy(item => occupancy.GetValueOrDefault(item.Mineral.Tag))
+                // Fill every patch once before assigning second workers. Within
+                // the same saturation tier, prefer the longest mineral-to-town-hall
+                // route so the far patches receive their second worker first.
+                .ThenByDescending(item => DistanceSquared(item.Mineral, item.TownHall))
                 .ThenBy(item => item.Distance)
                 .ThenBy(item => item.Mineral.Tag)
                 .FirstOrDefault();

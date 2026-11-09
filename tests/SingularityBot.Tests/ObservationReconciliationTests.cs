@@ -110,6 +110,49 @@ public sealed class ObservationReconciliationTests
     }
 
     [Fact]
+    public void Runtime_CreatesExistenceFsmForEnemyAndRetainsItThroughFogUntilExplicitDeath()
+    {
+        UnitBehaviorCatalog.Register();
+        var runtime = new UnitBehaviorRuntime();
+        var enemy = new UnitObservationFacts(
+            900, 8, "Marine", 2, UnitAlliance.Enemy, UnitVisibility.Visible,
+            45, 45, 0, 0, 1, 30, 40, true, false, false,
+            false, false, false, 50);
+
+        runtime.Reconcile(
+            new NormalizedObservation(50, 1, new[] { enemy }, new HashSet<ulong>()),
+            static (_, _) => { });
+
+        Assert.True(runtime.TryGetContext(900, out var context));
+        Assert.True(context.IsValid);
+        Assert.Equal(UnitAlliance.Enemy, context.Alliance);
+        Assert.True(context.IsCurrentlyVisible);
+        Assert.Contains(UnitBehaviorCatalog.EntityExistenceFsm, context.Capabilities);
+        Assert.Contains(UnitBehaviorCatalog.CombatFsm, context.Capabilities);
+
+        runtime.Update();
+        runtime.Reconcile(
+            new NormalizedObservation(51, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong>()),
+            static (_, _) => { });
+
+        Assert.True(runtime.TryGetContext(900, out var remembered));
+        Assert.Same(context, remembered);
+        Assert.True(remembered.IsValid);
+        Assert.False(remembered.IsCurrentlyVisible);
+        Assert.Equal(50u, remembered.LastSeenGameLoop);
+        Assert.Equal(30f, remembered.PositionX);
+
+        runtime.Update();
+        runtime.Reconcile(
+            new NormalizedObservation(52, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 900 }),
+            static (_, _) => { });
+
+        Assert.False(runtime.TryGetContext(900, out _));
+        Assert.False(context.IsValid);
+        Assert.Equal(0, runtime.Count);
+    }
+
+    [Fact]
     public void Runtime_UpdatesStableContextAndDoesNotRetireOnAbsenceButDoesOnDeath()
     {
         UnitBehaviorCatalog.Register();
@@ -151,7 +194,9 @@ public sealed class ObservationReconciliationTests
         Assert.Same(initial, changedContext);
         Assert.Equal(30, changedContext.Health);
         Assert.False(changedContext.HasCargo);
-        Assert.False(runtime.TryGetContext(45, out _));
+        Assert.True(runtime.TryGetContext(45, out var unknownContext));
+        Assert.Equal("UncataloguedUnit", unknownContext.UnitKind);
+        Assert.Contains(UnitBehaviorCatalog.EntityExistenceFsm, unknownContext.Capabilities);
 
         // The same FSM context survives the frame boundary. An emission from
         // that persistent context must route to this observation's buffer,
@@ -168,7 +213,7 @@ public sealed class ObservationReconciliationTests
 
         Assert.True(runtime.TryGetContext(44, out var retained));
         Assert.Same(initial, retained);
-        Assert.False(retained.IsValid);
+        Assert.True(retained.IsValid);
         Assert.False(retained.IsCurrentlyVisible);
         Assert.True(runtime.TryGetHandle(44, out var suspendedHandle));
         Assert.Same(originalHandle, suspendedHandle);

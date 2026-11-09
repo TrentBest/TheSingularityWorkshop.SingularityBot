@@ -104,6 +104,22 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ResolvesBarracksAndMarineProductionFactsFromOnStartData()
+    {
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData { UnitId = 21, Name = "Barracks", AbilityId = 321, MineralCost = 150 });
+        data.Units.Add(new UnitTypeData { UnitId = 48, Name = "Marine", AbilityId = 560, MineralCost = 50, FoodRequired = 1 });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)321, catalog.BarracksBuildAbilityId);
+        Assert.Equal((uint)150, catalog.BarracksMineralCost);
+        Assert.Equal((uint)560, catalog.MarineTrainAbilityId);
+        Assert.Equal((uint)50, catalog.MarineMineralCost);
+        Assert.Equal(1f, catalog.MarineFoodRequired);
+    }
+
+    [Fact]
     public void Create_LeavesMissingAbilityMetadataUnavailable()
     {
         var catalog = Sc2GameDataCatalog.Create(new ResponseData());

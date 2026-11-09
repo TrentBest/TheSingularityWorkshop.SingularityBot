@@ -174,6 +174,7 @@ public static class UnitBehaviorCatalog
         foreach (var from in new[] { "Unassigned", "Rallying", "Scouting", "Containing", "Engaging", "FallingBack" })
         foreach (var role in Enum.GetValues<GoalActionRole>())
         {
+            if (role == GoalActionRole.None) continue;
             var to = role switch { GoalActionRole.Rally => "Rallying", GoalActionRole.Scout => "Scouting", GoalActionRole.Contain => "Containing", GoalActionRole.Engage => "Engaging", _ => "FallingBack" };
             if (from != to) graph.Transition(from, to, ctx => HasRole(ctx, role));
         }

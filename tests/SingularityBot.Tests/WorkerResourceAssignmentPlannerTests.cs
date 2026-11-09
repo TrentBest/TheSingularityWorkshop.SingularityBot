@@ -289,6 +289,41 @@ public sealed class WorkerResourceAssignmentPlannerTests
         Assert.Equal(first.WorkerX, moved.WorkerX);
     }
 
+    [Fact]
+    public void FirstFrameSpreadsAllTwelveStartingWorkersAndEmitsTheirGatherCommands()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var initialGather = new[] { new UnitOrderObservationFacts(3666, 200, null, null) };
+        var units = new List<UnitObservationFacts>
+        {
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0)
+        };
+
+        for (ulong tag = 100; tag < 112; tag++)
+            units.Add(Fact(tag, "SCV", UnitAlliance.Self, (float)(tag - 99), 0,
+                hasOrders: true, orders: initialGather));
+
+        for (ulong tag = 200; tag < 208; tag++)
+            units.Add(Fact(tag, "MineralField750", UnitAlliance.Neutral, (float)(tag - 195), 4));
+
+        var observation = Snapshot(units.ToArray());
+        var assignments = planner.Reconcile(observation);
+        var intents = assignments.Keys
+            .OrderBy(tag => tag)
+            .Select(tag => new KeyValuePair<ulong, BehaviorCommand>(
+                tag, BehaviorCommand.AssignWorkerToMinerals))
+            .ToArray();
+
+        var actions = Sc2ActionTranslator.Translate(intents, observation, 1, assignments);
+
+        Assert.Equal(12, assignments.Count);
+        Assert.Equal(12, actions.Count);
+        Assert.Equal(12, actions.SelectMany(action => action.ActionRaw.UnitCommand.UnitTags).Distinct().Count());
+        Assert.All(assignments.Values.GroupBy(item => item.MineralTag),
+            group => Assert.InRange(group.Count(), 1, WorkerResourceAssignmentPlanner.DefaultMineralSaturation));
+        Assert.Equal(8, assignments.Values.Select(item => item.MineralTag).Distinct().Count());
+    }
+
     private static NormalizedObservation Snapshot(params UnitObservationFacts[] units) =>
         new(units.Length == 0 ? 0u : units.Max(unit => unit.GameLoop), 1, units, new HashSet<ulong>());
 

@@ -284,7 +284,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         // The scheduler advances every registered group in declared order even
         // when an opening gate suppresses outgoing actions for this frame.
-        _unitBehaviors.Update();
+        try
+        {
+            foreach (var pg in _unitBehaviors.ProcessGroupsThisFrame)
+                _unitBehaviors.UpdateGroup(pg);
+        }
+        finally
+        {
+            _unitBehaviors.EndFrame();
+        }
 
         if (sprayAction is not null)
             actions.Add(sprayAction);

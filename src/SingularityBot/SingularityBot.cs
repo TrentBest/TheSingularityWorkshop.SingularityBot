@@ -46,6 +46,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public SpatialMap SpatialMap { get; private set; }
     public SpatialIntelligence SpatialIntelligence { get; private set; }
+    public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
 
     public void OnStart(
         ResponseGameInfo gameInfo,
@@ -286,8 +287,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // when an opening gate suppresses outgoing actions for this frame.
         try
         {
-            foreach (var pg in _unitBehaviors.ProcessGroupsThisFrame)
-                _unitBehaviors.UpdateGroup(pg);
+            foreach (var pg in ProcessGroupsThisFrame)
+                FSM_API.Interaction.Update(pg);
         }
         finally
         {

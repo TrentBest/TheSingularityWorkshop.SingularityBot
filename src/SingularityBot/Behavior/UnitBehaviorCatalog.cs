@@ -12,6 +12,7 @@ public static class UnitBehaviorCatalog
     public const string LowDpsProcessingGroup = "SingularityBot.LowDPS";
     public const string ActionResolutionProcessingGroup = "SingularityBot.ActionResolution";
     public const string ProductionProcessingGroup = "SingularityBot.Production";
+    public const string GoalActionProcessingGroup = StrategyProcessingGroup;
 
     public const string MiningProcessingGroup = LowDpsProcessingGroup;
     public const string ConstructionProcessingGroup = LowDpsProcessingGroup;
@@ -30,6 +31,9 @@ public static class UnitBehaviorCatalog
     public const string FlankLeftFsm = "SingularityBot.FlankLeft";
     public const string FlankRightFsm = "SingularityBot.FlankRight";
     public const string AttackTargetFsm = "SingularityBot.AttackTarget";
+    public const string GoalActionFsm = "SingularityBot.GoalAction";
+    public const string ScoutSectorFsm = "SingularityBot.ScoutSector";
+    public const string StutterStepFsm = "SingularityBot.StutterStep";
 
     public static IReadOnlyList<string> ProcessGroupsThisFrame { get; } =
     [
@@ -49,6 +53,9 @@ public static class UnitBehaviorCatalog
         RegisterRepair();
         RegisterMovementCapabilities();
         RegisterAttackTarget();
+        RegisterGoalActions();
+        RegisterScoutSector();
+        RegisterStutterStep();
         RegisterCombatUnit();
         ProductionBehaviorCatalog.Register();
     }
@@ -153,6 +160,54 @@ public static class UnitBehaviorCatalog
             .WithInitialState("Dormant")
             .BuildDefinition();
     }
+
+
+    private static void RegisterGoalActions()
+    {
+        var graph = FSM_API.Create.CreateFiniteStateMachine(GoalActionFsm, processRate: 1, processingGroup: GoalActionProcessingGroup)
+            .State("Unassigned", null, null, null)
+            .State("Rallying", ctx => Emit(ctx, BehaviorCommand.HoldRallyPoint), null, null)
+            .State("Scouting", null, null, null)
+            .State("Containing", ctx => Emit(ctx, BehaviorCommand.ContainSector), null, null)
+            .State("Engaging", ctx => Emit(ctx, BehaviorCommand.EngageObjective), null, null)
+            .State("FallingBack", ctx => Emit(ctx, BehaviorCommand.FallbackToRally), null, null);
+        foreach (var from in new[] { "Unassigned", "Rallying", "Scouting", "Containing", "Engaging", "FallingBack" })
+        foreach (var role in Enum.GetValues<GoalActionRole>())
+        {
+            var to = role switch { GoalActionRole.Rally => "Rallying", GoalActionRole.Scout => "Scouting", GoalActionRole.Contain => "Containing", GoalActionRole.Engage => "Engaging", _ => "FallingBack" };
+            if (from != to) graph.Transition(from, to, ctx => HasRole(ctx, role));
+        }
+        graph.WithInitialState("Unassigned").BuildDefinition();
+    }
+
+    private static void RegisterScoutSector() =>
+        RegisterToggleCapability(ScoutSectorFsm, LowDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.GoalRole == GoalActionRole.Scout && unit.AssignedSector.HasValue,
+            BehaviorCommand.ScoutSector);
+
+    private static void RegisterStutterStep()
+    {
+        FSM_API.Create.CreateFiniteStateMachine(StutterStepFsm, processRate: 1, processingGroup: HighDpsProcessingGroup)
+            .State("Disabled", null, null, null)
+            .State("WeaponReady", ctx => Emit(ctx, BehaviorCommand.AttackTarget), null, null)
+            .State("WeaponCooldown", ctx => Emit(ctx, BehaviorCommand.StutterStepMove), null, null)
+            .Transition("Disabled", "WeaponReady", IsStutterReady)
+            .Transition("Disabled", "WeaponCooldown", IsStutterCooling)
+            .Transition("WeaponReady", "WeaponCooldown", IsStutterCooling)
+            .Transition("WeaponReady", "Disabled", ctx => !IsStutterEnabled(ctx))
+            .Transition("WeaponCooldown", "WeaponReady", IsStutterReady)
+            .Transition("WeaponCooldown", "Disabled", ctx => !IsStutterEnabled(ctx))
+            .WithInitialState("Disabled").BuildDefinition();
+    }
+
+    private static bool HasRole(IStateContext ctx, GoalActionRole role) =>
+        ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.GoalRole == role;
+    private static bool IsStutterEnabled(IStateContext ctx) =>
+        ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.StutterStepEnabled && unit.AttackTargetTag.HasValue;
+    private static bool IsStutterReady(IStateContext ctx) =>
+        IsStutterEnabled(ctx) && ctx is UnitBehaviorContext unit && unit.WeaponCooldownRemaining <= 0;
+    private static bool IsStutterCooling(IStateContext ctx) =>
+        IsStutterEnabled(ctx) && ctx is UnitBehaviorContext unit && unit.WeaponCooldownRemaining > 0;
 
     /// <summary>Tactical selection is represented by guarded FSM transitions, not an if/else chain.</summary>
     private static void RegisterCombatUnit()

@@ -18,7 +18,7 @@ public sealed class GoalActionPlanningTests
         {
             var unit = runtime.Attach(tag, UnitExpertiseProfiles.Marine, emitted.Add);
             unit.Apply(new UnitObservationFacts(tag, 1, "Marine", 1, UnitAlliance.Self,
-                UnitVisibility.Visible, 45, 45, 0, 0, 1, 10, 10, true,
+                UnitVisibility.Visible, tag == 3 ? 10 : 45, 45, 0, 0, 1, 10, 10, true,
                 false, false, false, false, false, 1));
         }
 
@@ -27,7 +27,7 @@ public sealed class GoalActionPlanningTests
         Assert.Equal(2, scouts.Length);
         Assert.Equal(2, scouts.Select(c => c.AssignedSector).Distinct().Count());
         Assert.DoesNotContain(map.GetSector(map.Side.EnemyStart).Id, scouts.Select(c => c.AssignedSector.Value));
-        Assert.Equal(GoalActionRole.Contain, runtime.Contexts.Single(c => c.UnitTag == 3).GoalRole);
+        Assert.Equal(GoalActionRole.Fallback, runtime.Contexts.Single(c => c.UnitTag == 3).GoalRole);
         Assert.All(runtime.Contexts, c => Assert.True(c.StutterStepEnabled));
 
         runtime.UpdateGroup(UnitBehaviorCatalog.StrategyProcessingGroup);

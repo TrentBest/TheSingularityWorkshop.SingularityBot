@@ -175,6 +175,11 @@ public sealed class UnitBehaviorRuntime
 
     public void EndFrame() => _activeEmit = null;
 
-    public void Update() => FSM_API.Interaction.Update();
+    /// <summary>Advances every declared processing group in the same order as the frame owner.</summary>
+    public void Update()
+    {
+        foreach (var processingGroup in ProcessGroupsThisFrame)
+            UpdateGroup(processingGroup);
+    }
     public void UpdateRepair() => UpdateGroup(UnitBehaviorCatalog.RepairProcessingGroup);
 }

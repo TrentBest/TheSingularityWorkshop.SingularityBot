@@ -37,6 +37,7 @@ jobs:
           schemas = {
               "strategy": json.loads(Path("schemas/strategy.schema.json").read_text(encoding="utf-8")),
               "production": json.loads(Path("schemas/production-plan.schema.json").read_text(encoding="utf-8")),
+              "goal": json.loads(Path("schemas/goal-action-plan.schema.json").read_text(encoding="utf-8")),
           }
           validators = {name: Draft202012Validator(schema) for name, schema in schemas.items()}
           files = sorted(Path("strategies").glob("*.json"))
@@ -44,7 +45,7 @@ jobs:
               raise SystemExit("No strategy JSON files found.")
           for path in files:
               document = json.loads(path.read_text(encoding="utf-8"))
-              schema_name = "production" if "steps" in document else "strategy"
+              schema_name = "production" if "steps" in document else ("goal" if "defaultRole" in document else "strategy")
               errors = sorted(
                   validators[schema_name].iter_errors(document),
                   key=lambda error: list(map(str, error.absolute_path)),

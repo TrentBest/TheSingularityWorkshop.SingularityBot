@@ -24,7 +24,7 @@ public sealed class SpatialReasoningTests
  }
  [Fact] public void CandidateScoringMaximizesEnemiesBehind() {
   var result=SpatialReasoning.FindPositionWithMostEnemiesBehind(new(0,0),new[]{new SpatialPoint(11,0),new SpatialPoint(0,5)},new[]{new SpatialPoint(8,0),new SpatialPoint(9,1),new SpatialPoint(10,-1)});
-  Assert.NotNull(result); Assert.Equal(new SpatialPoint(5,0),result.Value.Destination); Assert.Equal(3,result.Value.EnemiesBehind);
+  Assert.NotNull(result); Assert.Equal(new SpatialPoint(11,0),result.Value.Destination); Assert.Equal(3,result.Value.EnemiesBehind);
  }
  [Fact] public void ZeroDirectionHasNoInventedRearHemisphere() =>
   Assert.Equal(0,SpatialReasoning.CountEnemiesBehind(new(0,0),new(0,0),new[]{new SpatialPoint(1,1)}));

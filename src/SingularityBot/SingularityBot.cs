@@ -200,6 +200,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         SC2APIProtocol.Action marineAction = null;
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
+        // Opening production and mineral routing are independent commands: the
+        // first SCV request must not suppress the starting workers' first-frame spread.
+        var allowWorkerBehaviorActions = true;
 
         // Existing opening controllers are being migrated into FSM capabilities.
         // Until that migration is complete, their gates suppress competing actions,
@@ -215,6 +218,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             actions.Add(rallyAction);
             allowWorkerActions = false;
+            allowWorkerBehaviorActions = false;
             _pendingQuery = null;
         }
         // Worker rally is an optimization, not a production prerequisite. If
@@ -331,7 +335,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (marineAction is not null)
             actions.Add(marineAction);
 
-        if (allowWorkerActions)
+        if (allowWorkerBehaviorActions)
         {
             var workerIntents = intents.Drain()
                 .Where(intent => !_workerAssignments.IsReserved(intent.Key))

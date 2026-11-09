@@ -14,6 +14,7 @@ public sealed class UnitBehaviorRuntime
     private Action<ulong, BehaviorCommand>? _activeEmit;
 
     public int Count => _contexts.Count;
+    public IReadOnlyCollection<UnitBehaviorContext> Contexts => _contexts.Values.ToArray();
     public IReadOnlyList<string> ProcessGroupsThisFrame => UnitBehaviorCatalog.ProcessGroupsThisFrame;
 
     public UnitBehaviorContext Attach(

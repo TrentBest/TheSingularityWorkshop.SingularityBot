@@ -12,7 +12,6 @@ public static class UnitBehaviorCatalog
     public const string LowDpsProcessingGroup = "SingularityBot.LowDPS";
     public const string ActionResolutionProcessingGroup = "SingularityBot.ActionResolution";
 
-    // Compatibility names map existing capabilities into the new scheduler.
     public const string MiningProcessingGroup = LowDpsProcessingGroup;
     public const string ConstructionProcessingGroup = LowDpsProcessingGroup;
     public const string RepairProcessingGroup = HighDpsProcessingGroup;
@@ -23,26 +22,31 @@ public static class UnitBehaviorCatalog
     public const string ConstructionFsm = "SingularityBot.ConstructionCapability";
     public const string RepairFsm = "SingularityBot.RepairCapability";
     public const string CombatFsm = "SingularityBot.CombatUnit";
+    public const string MoveTowardsFsm = "SingularityBot.MoveTowards";
+    public const string MoveAwayFsm = "SingularityBot.MoveAwayFrom";
+    public const string FollowFsm = "SingularityBot.Follow";
+    public const string PatrolFsm = "SingularityBot.Patrol";
+    public const string FlankLeftFsm = "SingularityBot.FlankLeft";
+    public const string FlankRightFsm = "SingularityBot.FlankRight";
+    public const string AttackTargetFsm = "SingularityBot.AttackTarget";
 
-    // The frame owner advances these groups in exactly this order.
     public static IReadOnlyList<string> ProcessGroupsThisFrame { get; } =
     [
-        DataSyncProcessingGroup,
-        StrategyProcessingGroup,
-        SubStrategyProcessingGroup,
-        HighDpsProcessingGroup,
-        LowDpsProcessingGroup,
-        ActionResolutionProcessingGroup
+        DataSyncProcessingGroup, StrategyProcessingGroup, SubStrategyProcessingGroup,
+        HighDpsProcessingGroup, LowDpsProcessingGroup, ActionResolutionProcessingGroup
     ];
 
     public static void Register()
     {
         foreach (var group in ProcessGroupsThisFrame.Distinct())
             FSM_API.Create.CreateProcessingGroup(group);
+
         RegisterEntityExistence();
         RegisterWorker();
         RegisterConstruction();
         RegisterRepair();
+        RegisterMovementCapabilities();
+        RegisterAttackTarget();
         RegisterCombatUnit();
     }
 
@@ -88,29 +92,86 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterRepair()
     {
-        FSM_API.Create.CreateFiniteStateMachine(RepairFsm, processRate: 1, processingGroup: RepairProcessingGroup)
-            .State("Waiting", null, ctx =>
+        RegisterToggleCapability(RepairFsm, RepairProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.RepairTargetTag is not null && unit.IsRepairAssignmentSafe,
+            BehaviorCommand.RepairAssignedTarget);
+    }
+
+    private static void RegisterMovementCapabilities()
+    {
+        RegisterToggleCapability(MoveTowardsFsm, LowDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.MoveTowardsTargetTag is not null,
+            BehaviorCommand.MoveTowardsTarget);
+        RegisterToggleCapability(MoveAwayFsm, LowDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.MoveAwayFromTargetTag is not null,
+            BehaviorCommand.MoveAwayFromTarget);
+        RegisterToggleCapability(FollowFsm, LowDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.FollowTargetTag is not null,
+            BehaviorCommand.FollowTarget);
+        RegisterToggleCapability(PatrolFsm, LowDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.HasPatrolRoute,
+            BehaviorCommand.PatrolRoute);
+        RegisterToggleCapability(FlankLeftFsm, LowDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.FlankTargetTag is not null && unit.FlankLeftRequested,
+            BehaviorCommand.FlankLeftOfTarget);
+        RegisterToggleCapability(FlankRightFsm, LowDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.FlankTargetTag is not null && unit.FlankRightRequested,
+            BehaviorCommand.FlankRightOfTarget);
+    }
+
+    private static void RegisterAttackTarget()
+    {
+        RegisterToggleCapability(AttackTargetFsm, HighDpsProcessingGroup,
+            unit => unit.IsCurrentlyVisible && unit.AttackTargetTag is not null,
+            BehaviorCommand.AttackTarget);
+    }
+
+    /// <summary>
+    /// Each capability is a real FSM_API graph. Entry into Executing emits one
+    /// semantic intent; clearing its guard returns the instance to Dormant.
+    /// </summary>
+    private static void RegisterToggleCapability(
+        string fsmName,
+        string processingGroup,
+        Func<UnitBehaviorContext, bool> requested,
+        BehaviorCommand command)
+    {
+        FSM_API.Create.CreateFiniteStateMachine(fsmName, processRate: 1, processingGroup: processingGroup)
+            .State("Dormant", null, null, null)
+            .State("Executing", ctx =>
             {
-                if (ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible &&
-                    unit.RepairTargetTag is not null && unit.IsRepairAssignmentSafe)
-                    unit.Emit(BehaviorCommand.RepairAssignedTarget);
-            }, null)
-            .WithInitialState("Waiting")
+                if (ctx is UnitBehaviorContext unit)
+                    unit.Emit(command);
+            }, null, null)
+            .Transition("Dormant", "Executing",
+                ctx => ctx is UnitBehaviorContext unit && requested(unit))
+            .Transition("Executing", "Dormant",
+                ctx => ctx is UnitBehaviorContext unit && !requested(unit))
+            .WithInitialState("Dormant")
             .BuildDefinition();
     }
 
+    /// <summary>Tactical selection is represented by guarded FSM transitions, not an if/else chain.</summary>
     private static void RegisterCombatUnit()
     {
         FSM_API.Create.CreateFiniteStateMachine(CombatFsm, processRate: 1, processingGroup: CombatProcessingGroup)
-            .State("Assess", null, ctx =>
-            {
-                if (ctx is not UnitBehaviorContext unit || !unit.IsCurrentlyVisible) return;
-                if (unit.ShouldRetreat) unit.Emit(BehaviorCommand.RetreatToSafety);
-                else if (unit.HasVisibleThreat) unit.Emit(BehaviorCommand.AttackVisibleThreat);
-                else if (unit.ShouldRegroup) unit.Emit(BehaviorCommand.RegroupWithArmy);
-                else if (unit.HasObjective) unit.Emit(BehaviorCommand.AdvanceToObjective);
-            }, null)
+            .State("Assess", null, null, null)
+            .State("Retreating", ctx => Emit(ctx, BehaviorCommand.RetreatToSafety), null, null)
+            .State("Regrouping", ctx => Emit(ctx, BehaviorCommand.RegroupWithArmy), null, null)
+            .State("Advancing", ctx => Emit(ctx, BehaviorCommand.AdvanceToObjective), null, null)
+            .Transition("Assess", "Retreating", ctx => ctx is UnitBehaviorContext unit && unit.ShouldRetreat)
+            .Transition("Assess", "Regrouping", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat && unit.ShouldRegroup)
+            .Transition("Assess", "Advancing", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat && !unit.ShouldRegroup && unit.HasObjective)
+            .Transition("Retreating", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat)
+            .Transition("Regrouping", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRegroup && !unit.ShouldRetreat)
+            .Transition("Advancing", "Assess", ctx => ctx is UnitBehaviorContext unit && (!unit.HasObjective || unit.ShouldRetreat || unit.ShouldRegroup))
             .WithInitialState("Assess")
             .BuildDefinition();
+    }
+
+    private static void Emit(IStateContext context, BehaviorCommand command)
+    {
+        if (context is UnitBehaviorContext unit && unit.IsCurrentlyVisible)
+            unit.Emit(command);
     }
 }

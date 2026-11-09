@@ -1,10 +1,6 @@
 namespace SingularityBot.Behavior;
 
-/// <summary>
-/// A domain-level intent emitted by an FSM. The SC2 adapter is responsible for
-/// translating intents into protocol actions and validating them against the
-/// current observation before submission.
-/// </summary>
+/// <summary>Domain intent emitted by an FSM capability and validated by the SC2 adapter.</summary>
 public enum BehaviorCommand
 {
     None,
@@ -12,6 +8,13 @@ public enum BehaviorCommand
     ReturnCarriedResources,
     BuildRequestedStructure,
     RepairAssignedTarget,
+    FollowTarget,
+    PatrolRoute,
+    MoveTowardsTarget,
+    MoveAwayFromTarget,
+    FlankLeftOfTarget,
+    FlankRightOfTarget,
+    AttackTarget,
     DefendWorkerLine,
     AdvanceToObjective,
     AttackVisibleThreat,

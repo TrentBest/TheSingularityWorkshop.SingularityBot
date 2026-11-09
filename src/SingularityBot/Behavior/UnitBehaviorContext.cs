@@ -12,17 +12,11 @@ public sealed class UnitBehaviorContext : IStateContext
     private readonly Action<BehaviorCommand> _emit;
     private readonly Dictionary<string, FSMHandle> _ownedHandles = new(StringComparer.Ordinal);
 
-    public UnitBehaviorContext(
-        ulong unitTag,
-        string name,
-        string unitKind,
-        bool isWorker,
-        Action<BehaviorCommand> emit)
+    public UnitBehaviorContext(ulong unitTag, string name, string unitKind, bool isWorker, Action<BehaviorCommand> emit)
     {
         if (unitTag == 0) throw new ArgumentOutOfRangeException(nameof(unitTag));
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("A context name is required.", nameof(name));
         if (string.IsNullOrWhiteSpace(unitKind)) throw new ArgumentException("A unit kind is required.", nameof(unitKind));
-
         UnitTag = unitTag;
         Name = name;
         UnitKind = unitKind;
@@ -65,6 +59,17 @@ public sealed class UnitBehaviorContext : IStateContext
     public uint WorkerAssignmentGeneration { get; private set; }
     public WorkerRoutePhase WorkerRoutePhase { get; private set; }
     public uint WorkerRoutePhaseChangedAtGameLoop { get; private set; }
+
+    // Behavior requests are caller-owned facts/assignments consumed by independent FSM capabilities.
+    public ulong? MoveTowardsTargetTag { get; set; }
+    public ulong? MoveAwayFromTargetTag { get; set; }
+    public ulong? FollowTargetTag { get; set; }
+    public bool HasPatrolRoute { get; set; }
+    public ulong? FlankTargetTag { get; set; }
+    public bool FlankLeftRequested { get; set; }
+    public bool FlankRightRequested { get; set; }
+    public ulong? AttackTargetTag { get; set; }
+
     public bool HasVisibleThreat { get; set; }
     public bool ShouldRetreat { get; set; }
     public bool HasObjective { get; set; }
@@ -118,8 +123,6 @@ public sealed class UnitBehaviorContext : IStateContext
         CurrentVisibility = facts.Visibility;
         LastObservedGameLoop = facts.GameLoop;
 
-        // A visible observation is authoritative for the complete live record.
-        // Snapshot/hidden records refresh only fields actually represented.
         if (facts.IsLiveVisible)
         {
             LastSeenGameLoop = facts.GameLoop;
@@ -172,7 +175,6 @@ public sealed class UnitBehaviorContext : IStateContext
         var changed = WorkerAssignmentGeneration != assignment.Generation ||
                       AssignedMineralTag != assignment.MineralTag ||
                       AssignedTownHallTag != assignment.TownHallTag;
-
         AssignedMineralTag = assignment.MineralTag;
         AssignedTownHallTag = assignment.TownHallTag;
         WorkerAssignmentGeneration = assignment.Generation;
@@ -183,7 +185,6 @@ public sealed class UnitBehaviorContext : IStateContext
             : orderTarget == AssignedMineralTag ? WorkerRoutePhase.Outbound
             : HasAssignedWork ? WorkerRoutePhase.ExecutingOrder
             : WorkerRoutePhase.Assigned;
-
         SetRoutePhase(changed ? WorkerRoutePhase.Assigned : observedPhase, gameLoop, forceTimestamp: changed);
     }
 

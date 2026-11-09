@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Validate strategy documents
+      - name: Validate strategy and production-plan documents
         run: |
           python -m pip install --disable-pip-version-check jsonschema
           python - <<'PY'
@@ -34,20 +34,27 @@ jobs:
           from pathlib import Path
           from jsonschema import Draft202012Validator
 
-          schema = json.loads(Path("schemas/strategy.schema.json").read_text(encoding="utf-8"))
-          validator = Draft202012Validator(schema)
+          schemas = {
+              "strategy": json.loads(Path("schemas/strategy.schema.json").read_text(encoding="utf-8")),
+              "production": json.loads(Path("schemas/production-plan.schema.json").read_text(encoding="utf-8")),
+          }
+          validators = {name: Draft202012Validator(schema) for name, schema in schemas.items()}
           files = sorted(Path("strategies").glob("*.json"))
           if not files:
               raise SystemExit("No strategy JSON files found.")
           for path in files:
               document = json.loads(path.read_text(encoding="utf-8"))
-              errors = sorted(validator.iter_errors(document), key=lambda error: list(map(str, error.absolute_path)))
+              schema_name = "production" if "steps" in document else "strategy"
+              errors = sorted(
+                  validators[schema_name].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
               if errors:
                   for error in errors:
                       location = "/".join(map(str, error.absolute_path)) or "$"
                       print(f"{path}:{location}: {error.message}")
-                  raise SystemExit(f"Strategy validation failed: {path}")
-              print(f"Validated {path}")
+                  raise SystemExit(f"{schema_name.title()} validation failed: {path}")
+              print(f"Validated {path} against {schema_name} schema")
           PY
       - name: Restore
         run: dotnet restore src/SingularityBot.Runner/SingularityBot.Runner.csproj

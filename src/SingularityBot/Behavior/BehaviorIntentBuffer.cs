@@ -23,6 +23,41 @@ public sealed class BehaviorIntentBuffer
         return result;
     }
 
+    /// <summary>
+    /// Produces typed, position-bearing intents from the winning commands and
+    /// the same observation's persistent unit facts. This is an adapter boundary:
+    /// it does not guess SC2 ability IDs or issue game actions.
+    /// </summary>
+    public IReadOnlyList<BehaviorIntent> DrainDetailed(UnitBehaviorRuntime runtime)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+        var commands = Drain();
+        var result = new List<BehaviorIntent>(commands.Length);
+        foreach (var item in commands)
+        {
+            runtime.TryGetContext(item.Key, out var unit);
+            var targetTag = item.Value switch
+            {
+                BehaviorCommand.AttackTarget or BehaviorCommand.StutterStepMove => unit?.AttackTargetTag,
+                BehaviorCommand.FollowTarget => unit?.FollowTargetTag,
+                BehaviorCommand.MoveTowardsTarget => unit?.MoveTowardsTargetTag,
+                BehaviorCommand.MoveAwayFromTarget => unit?.MoveAwayFromTargetTag,
+                BehaviorCommand.FlankLeftOfTarget or BehaviorCommand.FlankRightOfTarget => unit?.FlankTargetTag,
+                BehaviorCommand.RepairAssignedTarget => unit?.RepairTargetTag,
+                _ => null
+            };
+            var hasDestination = unit is not null &&
+                (item.Value == BehaviorCommand.ScoutSector || item.Value == BehaviorCommand.ContainSector) &&
+                unit.AssignedSector.HasValue;
+            result.Add(new BehaviorIntent(
+                item.Key, item.Value, targetTag,
+                hasDestination ? unit.SectorCenterX : null,
+                hasDestination ? unit.SectorCenterY : null,
+                hasDestination ? unit.AssignedSector : null));
+        }
+        return result;
+    }
+
     private static int Priority(BehaviorCommand command) => command switch
     {
         BehaviorCommand.RetreatToSafety => 100,

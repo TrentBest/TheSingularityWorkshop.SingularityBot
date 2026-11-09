@@ -17,7 +17,7 @@ namespace SingularityBot;
 public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
-    private readonly GoalActionPlanDefinition _goalActionPlan = new();
+    private GoalActionPlanDefinition _goalActionPlan = new();
     private readonly bool _passiveBaseline;
     private readonly bool _writeDiagnostics;
     private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
@@ -49,6 +49,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public SpatialMap SpatialMap { get; private set; }
     public SpatialIntelligence SpatialIntelligence { get; private set; }
     public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
+
+    /// <summary>Sets the user-authored goal plan before or during a match.</summary>
+    public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)
+    {
+        var plan = GoalActionPlanDefinition.Parse(json);
+        var errors = plan.Validate();
+        if (errors.Count == 0) _goalActionPlan = plan;
+        return errors;
+    }
 
     public void OnStart(
         ResponseGameInfo gameInfo,

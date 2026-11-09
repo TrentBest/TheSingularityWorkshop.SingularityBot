@@ -4,7 +4,7 @@
 
 This document defines how the bot should represent possible engagements, estimate the force needed to achieve an effect, allocate attackers across targets, and choose among matchup-specific plans. It extends [movement doctrine](movement-doctrine.md): movement decides how forces reach and occupy useful space; engagement allocation decides how their weapons are applied once opportunities arise.
 
-This is a design contract, not a claim that these capabilities are implemented. The first playable Terran economy remains the immediate runtime gate.
+This is a design contract, not a claim that these capabilities are implemented. The first playable Terran economy remains the immediate runtime gate. The persistent operational picture, evidence ledger, durable objectives, expiring opportunities and Zerg scouting example are specified in [Engagement service and operational picture](engagement-service.md).
 
 ## 1. An engagement is a candidate operation
 

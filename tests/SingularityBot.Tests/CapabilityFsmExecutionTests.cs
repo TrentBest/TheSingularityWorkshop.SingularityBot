@@ -1,4 +1,5 @@
 using SingularityBot.Behavior;
+using SingularityBot.Observation;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -22,9 +23,9 @@ public sealed class CapabilityFsmExecutionTests
         Assert.Contains(UnitBehaviorCatalog.AttackTargetFsm, context.Capabilities);
         Assert.Contains(UnitBehaviorCatalog.CombatFsm, context.Capabilities);
 
-        context.Apply(new SingularityBot.Observation.UnitObservationFacts(
-            7001, 1, "Marine", 1, SingularityBot.Observation.UnitAlliance.Self,
-            SingularityBot.Observation.UnitVisibility.Visible,
+        context.Apply(new UnitObservationFacts(
+            7001, 1, "Marine", 1, UnitAlliance.Self,
+            UnitVisibility.Visible,
             45, 45, 0, 0, 1, 10, 10, true, false, false,
             false, false, false, 1));
 
@@ -50,9 +51,9 @@ public sealed class CapabilityFsmExecutionTests
         var runtime = new UnitBehaviorRuntime();
         var emitted = new List<BehaviorCommand>();
         var context = runtime.Attach(7002, UnitExpertiseProfiles.Marine, emitted.Add);
-        context.Apply(new SingularityBot.Observation.UnitObservationFacts(
-            7002, 1, "Marine", 1, SingularityBot.Observation.UnitAlliance.Self,
-            SingularityBot.Observation.UnitVisibility.Visible,
+        context.Apply(new UnitObservationFacts(
+            7002, 1, "Marine", 1, UnitAlliance.Self,
+            UnitVisibility.Visible,
             45, 45, 0, 0, 1, 10, 10, true, false, false,
             false, false, false, 1));
 

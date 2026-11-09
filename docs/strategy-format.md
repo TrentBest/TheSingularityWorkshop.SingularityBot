@@ -124,3 +124,8 @@ Transition asks: "Given what has happened since then, is another strategy now su
 Both decisions use the same strategy descriptors and evaluation vocabulary, but transition additionally accounts for sunk investment, time-to-impact, switching costs and the current tactical state. A strategy may expose multiple permitted transitions; the runtime chooses among eligible options, not the editor by itself. The editor authors the strategic possibilities and their guards; the runtime evaluates live evidence and makes the match-time decision.
 
 These are design requirements until implemented and tested. The current Terran opening remains the first runtime proof; this model must not be mistaken for an implemented adaptive strategy engine.
+
+
+## Movement and engagement doctrine
+
+Strategic descriptors and transitions define which movement and engagement doctrines a force may adopt. The detailed doctrine contract—including staged advances, beachheads, guards, screens, holds, support relationships, unit-specific engagement behavior, human demonstration/learning, map visualization and spectacle—is documented in [Movement, force-control and engagement doctrine](movement-doctrine.md).

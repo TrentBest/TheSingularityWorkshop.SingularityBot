@@ -204,7 +204,7 @@ public static class UnitBehaviorCatalog
     private static bool HasRole(IStateContext ctx, GoalActionRole role) =>
         ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.GoalRole == role;
     private static bool IsStutterEnabled(IStateContext ctx) =>
-        ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.StutterStepEnabled && unit.AttackTargetTag.HasValue;
+        ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.StutterStepEnabled && unit.GoalRole != GoalActionRole.Fallback && unit.AttackTargetTag.HasValue;
     private static bool IsStutterReady(IStateContext ctx) =>
         IsStutterEnabled(ctx) && ctx is UnitBehaviorContext unit && unit.WeaponCooldownRemaining <= 0;
     private static bool IsStutterCooling(IStateContext ctx) =>

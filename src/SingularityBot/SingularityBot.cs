@@ -17,6 +17,7 @@ namespace SingularityBot;
 public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
+    private readonly GoalActionPlanDefinition _goalActionPlan = new();
     private readonly bool _passiveBaseline;
     private readonly bool _writeDiagnostics;
     private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
@@ -159,6 +160,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
         UpdateSpatialIntelligence(observation);
+        if (SpatialMap is not null)
+            GoalActionPlanner.Apply(_goalActionPlan, _unitBehaviors, SpatialMap);
 
         if (_writeDiagnostics)
             _baselineRecorder.Record(normalized);

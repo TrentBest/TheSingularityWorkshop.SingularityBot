@@ -118,7 +118,7 @@ public sealed class UnitBehaviorContext : IStateContext
             throw new ArgumentException("Observation facts belong to a different unit tag.", nameof(facts));
 
         UnitTypeId = facts.UnitTypeId == 0 ? UnitTypeId : facts.UnitTypeId;
-        OwnerId = facts.OwnerId;
+        OwnerId = checked((uint)facts.OwnerId);
         Alliance = facts.Alliance;
         CurrentVisibility = facts.Visibility;
         LastObservedGameLoop = facts.GameLoop;

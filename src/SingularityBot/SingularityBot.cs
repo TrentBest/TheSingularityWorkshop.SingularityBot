@@ -147,8 +147,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             return Array.Empty<SC2APIProtocol.Action>();
         }
 
-        UpdateSpatialIntelligence(observation);
-
         // DataSync starts immediately after normalization. Every later decision
         // consumes the same persistent entity registry and frame facts.
         var normalized = Sc2ObservationNormalizer.Normalize(
@@ -158,6 +156,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _gameData.BuffNames);
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
+        UpdateSpatialIntelligence(observation);
 
         if (_writeDiagnostics)
             _baselineRecorder.Record(normalized);
@@ -216,6 +215,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 var command = productionAction.ActionRaw.UnitCommand;
                 Console.WriteLine($"[Opening] Requesting first SCV: Command Center={command.UnitTags[0]}, ability={command.AbilityId}, minerals={normalized.Minerals}, supply={normalized.FoodUsed}/{normalized.FoodCap}.");
                 actions.Add(productionAction);
+                _pendingQuery = null;
                 allowWorkerActions = false;
             }
         }

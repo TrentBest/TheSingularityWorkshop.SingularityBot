@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "0.1",
+  "id": "terran.marine-cheese",
+  "name": "Marine Cheese Attack",
+  "race": "Terran",
+  "steps": [
+    {
+      "id": "marines",
+      "target": "Marine",
+      "producer": "Barracks",
+      "desiredCount": 8,
+      "earliestGameLoop": 0,
+      "priority": 100
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "0.1",
+  "id": "terran.slow-push",
+  "name": "Terran Slow Push",
+  "race": "Terran",
+  "steps": [
+    {
+      "id": "marines",
+      "target": "Marine",
+      "producer": "Barracks",
+      "desiredCount": 12,
+      "earliestGameLoop": 0,
+      "priority": 80
+    },
+    {
+      "id": "medivacs",
+      "target": "Medivac",
+      "producer": "Starport",
+      "desiredCount": 2,
+      "earliestGameLoop": 0,
+      "priority": 90
+    },
+    {
+      "id": "siege-tanks",
+      "target": "SiegeTank",
+      "producer": "Factory",
+      "desiredCount": 2,
+      "earliestGameLoop": 0,
+      "priority": 85
+    }
+  ]
+}

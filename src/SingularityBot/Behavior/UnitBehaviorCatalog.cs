@@ -11,6 +11,7 @@ public static class UnitBehaviorCatalog
     public const string HighDpsProcessingGroup = "SingularityBot.HighDPS";
     public const string LowDpsProcessingGroup = "SingularityBot.LowDPS";
     public const string ActionResolutionProcessingGroup = "SingularityBot.ActionResolution";
+    public const string ProductionProcessingGroup = "SingularityBot.Production";
 
     public const string MiningProcessingGroup = LowDpsProcessingGroup;
     public const string ConstructionProcessingGroup = LowDpsProcessingGroup;
@@ -33,7 +34,8 @@ public static class UnitBehaviorCatalog
     public static IReadOnlyList<string> ProcessGroupsThisFrame { get; } =
     [
         DataSyncProcessingGroup, StrategyProcessingGroup, SubStrategyProcessingGroup,
-        HighDpsProcessingGroup, LowDpsProcessingGroup, ActionResolutionProcessingGroup
+        HighDpsProcessingGroup, LowDpsProcessingGroup, ActionResolutionProcessingGroup,
+        ProductionProcessingGroup
     ];
 
     public static void Register()
@@ -48,6 +50,7 @@ public static class UnitBehaviorCatalog
         RegisterMovementCapabilities();
         RegisterAttackTarget();
         RegisterCombatUnit();
+        ProductionBehaviorCatalog.Register();
     }
 
     private static void RegisterEntityExistence()

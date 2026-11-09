@@ -20,6 +20,11 @@ public sealed class Sc2GameDataCatalog
         uint? stopAbilityId,
         uint? supplyDepotBuildAbilityId,
         uint supplyDepotMineralCost,
+        uint? barracksBuildAbilityId,
+        uint barracksMineralCost,
+        uint? marineTrainAbilityId,
+        uint marineMineralCost,
+        float marineFoodRequired,
         uint? sprayAbilityId,
         uint? rallyWorkersAbilityId)
     {
@@ -34,6 +39,11 @@ public sealed class Sc2GameDataCatalog
         StopAbilityId = stopAbilityId;
         SupplyDepotBuildAbilityId = supplyDepotBuildAbilityId;
         SupplyDepotMineralCost = supplyDepotMineralCost;
+        BarracksBuildAbilityId = barracksBuildAbilityId;
+        BarracksMineralCost = barracksMineralCost;
+        MarineTrainAbilityId = marineTrainAbilityId;
+        MarineMineralCost = marineMineralCost;
+        MarineFoodRequired = marineFoodRequired;
         SprayAbilityId = sprayAbilityId;
         RallyWorkersAbilityId = rallyWorkersAbilityId;
     }
@@ -60,6 +70,11 @@ public sealed class Sc2GameDataCatalog
     public uint? StopAbilityId { get; }
     public uint? SupplyDepotBuildAbilityId { get; }
     public uint SupplyDepotMineralCost { get; }
+    public uint? BarracksBuildAbilityId { get; }
+    public uint BarracksMineralCost { get; }
+    public uint? MarineTrainAbilityId { get; }
+    public uint MarineMineralCost { get; }
+    public float MarineFoodRequired { get; }
     public uint? SprayAbilityId { get; }
     public uint? RallyWorkersAbilityId { get; }
 
@@ -86,6 +101,10 @@ public sealed class Sc2GameDataCatalog
             string.Equals(unit.Name, "SCV", StringComparison.OrdinalIgnoreCase));
         var supplyDepot = data.Units.FirstOrDefault(unit =>
             string.Equals(unit.Name, "SupplyDepot", StringComparison.OrdinalIgnoreCase));
+        var barracks = data.Units.FirstOrDefault(unit =>
+            string.Equals(unit.Name, "Barracks", StringComparison.OrdinalIgnoreCase));
+        var marine = data.Units.FirstOrDefault(unit =>
+            string.Equals(unit.Name, "Marine", StringComparison.OrdinalIgnoreCase));
 
         return new Sc2GameDataCatalog(
             unitNames,
@@ -99,6 +118,11 @@ public sealed class Sc2GameDataCatalog
             ResolveStopAbility(data.Abilities),
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
             supplyDepot?.MineralCost ?? 0,
+            barracks?.AbilityId is > 0 ? barracks.AbilityId : null,
+            barracks?.MineralCost ?? 0,
+            marine?.AbilityId is > 0 ? marine.AbilityId : null,
+            marine?.MineralCost ?? 0,
+            marine?.FoodRequired ?? 0,
             ResolveSprayAbility(data.Abilities),
             ResolveAbility(data.Abilities, "Rally_Workers"));
     }

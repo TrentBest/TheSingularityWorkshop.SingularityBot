@@ -217,8 +217,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (rallyAction is not null)
         {
             actions.Add(rallyAction);
-            allowWorkerActions = false;
-            allowWorkerBehaviorActions = false;
+            // Rallying the Command Center does not conflict with explicit
+            // starting-worker mineral assignments; keep first-frame routing live.
             _pendingQuery = null;
         }
         // Worker rally is an optimization, not a production prerequisite. If

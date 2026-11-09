@@ -74,14 +74,20 @@ public static class GoalActionPlanner
 
         foreach (var unit in candidates)
         {
-            unit.GoalRole = plan.DefaultRole;
+            var healthFraction = unit.HealthMax > 0 ? unit.Health / unit.HealthMax : 1f;
+            unit.GoalRole = healthFraction <= plan.FallbackHealthFraction
+                ? GoalActionRole.Fallback
+                : plan.EngageVisibleThreats && unit.HasVisibleThreat
+                    ? GoalActionRole.Engage
+                    : plan.DefaultRole;
             unit.AssignedSector = null;
             unit.StutterStepEnabled = plan.StutterStepEnabled;
         }
+        var scoutCandidates = candidates.Where(c => c.GoalRole == plan.DefaultRole).ToArray();
         var availableSectors = sectors.Where(id => !reservedByUnseenScouts.Contains(id)).ToArray();
-        for (var i = 0; i < Math.Min(availableSectors.Length, candidates.Length); i++)
+        for (var i = 0; i < Math.Min(availableSectors.Length, scoutCandidates.Length); i++)
         {
-            var unit = candidates[i];
+            var unit = scoutCandidates[i];
             var sector = map.Sectors.Single(s => s.Id == availableSectors[i]);
             unit.GoalRole = GoalActionRole.Scout;
             unit.AssignedSector = sector.Id;

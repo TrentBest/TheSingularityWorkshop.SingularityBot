@@ -35,24 +35,16 @@ public sealed class GoalActionPlanningTests
         runtime.RemoveAll();
     }
 
-    [Fact]
-    public void StutterStepMovesOnCooldownAndAttacksWhenReady()
-    {
-        UnitBehaviorCatalog.Register();
-        var runtime = new UnitBehaviorRuntime();
-        var emitted = new List<BehaviorCommand>();
-        var unit = runtime.Attach(9001, UnitExpertiseProfiles.Marine, emitted.Add);
-        unit.Apply(new UnitObservationFacts(9001, 1, "Marine", 1, UnitAlliance.Self,
-            UnitVisibility.Visible, 45, 45, 0, 0, 1, 10, 10, true,
-            false, false, false, false, false, 1));
-        unit.StutterStepEnabled = true;
-        unit.AttackTargetTag = 8001;
-        unit.WeaponCooldownRemaining = 3;
+        Assert.Contains(BehaviorCommand.ScoutSector, emitted);
+
+        var marine = runtime.Contexts.Single(c => c.UnitTag == 3);
+        marine.AttackTargetTag = 8001;
+        marine.WeaponCooldownRemaining = 3;
         runtime.UpdateGroup(UnitBehaviorCatalog.HighDpsProcessingGroup);
         runtime.UpdateGroup(UnitBehaviorCatalog.HighDpsProcessingGroup);
         Assert.Contains(BehaviorCommand.StutterStepMove, emitted);
         emitted.Clear();
-        unit.WeaponCooldownRemaining = 0;
+        marine.WeaponCooldownRemaining = 0;
         runtime.UpdateGroup(UnitBehaviorCatalog.HighDpsProcessingGroup);
         runtime.UpdateGroup(UnitBehaviorCatalog.HighDpsProcessingGroup);
         Assert.Contains(BehaviorCommand.AttackTarget, emitted);

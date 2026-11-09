@@ -23,6 +23,9 @@ public static class UnitDefinitions
         Capability(UnitBehaviorCatalog.FlankLeftFsm, UnitBehaviorCatalog.LowDpsProcessingGroup),
         Capability(UnitBehaviorCatalog.FlankRightFsm, UnitBehaviorCatalog.LowDpsProcessingGroup),
         Capability(UnitBehaviorCatalog.AttackTargetFsm, UnitBehaviorCatalog.HighDpsProcessingGroup),
+        Capability(UnitBehaviorCatalog.GoalActionFsm, UnitBehaviorCatalog.GoalActionProcessingGroup),
+        Capability(UnitBehaviorCatalog.ScoutSectorFsm, UnitBehaviorCatalog.LowDpsProcessingGroup),
+        Capability(UnitBehaviorCatalog.StutterStepFsm, UnitBehaviorCatalog.HighDpsProcessingGroup),
         Capability(UnitBehaviorCatalog.CombatFsm, UnitBehaviorCatalog.HighDpsProcessingGroup)
     ];
 
@@ -43,9 +46,10 @@ public static class UnitDefinitions
 
     public static readonly UnitDefinition Zealot = new("Zealot", MobileCore());
     public static readonly UnitDefinition Marine = new("Marine", MobileCore());
+    public static readonly UnitDefinition Marauder = new("Marauder", MobileCore());
     public static readonly UnitDefinition Zergling = new("Zergling", MobileCore());
 
-    public static IReadOnlyList<UnitDefinition> InitialSet => [SCV, Probe, Drone, Zealot, Marine, Zergling];
+    public static IReadOnlyList<UnitDefinition> InitialSet => [SCV, Probe, Drone, Zealot, Marine, Marauder, Zergling];
 
     private static readonly IReadOnlyDictionary<string, UnitDefinition> ByKind =
         InitialSet.ToDictionary(definition => definition.UnitKind, StringComparer.OrdinalIgnoreCase);

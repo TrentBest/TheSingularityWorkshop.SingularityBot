@@ -5,7 +5,7 @@ using SingularityBot.Spatial;
 
 namespace SingularityBot.Behavior;
 
-public enum GoalActionRole { Rally, Scout, Contain, Engage, Fallback }
+public enum GoalActionRole { None, Rally, Scout, Contain, Engage, Fallback }
 
 /// <summary>User-authored strategic posture, independent of production sequencing.</summary>
 public sealed class GoalActionPlanDefinition
@@ -63,11 +63,14 @@ public static class GoalActionPlanner
             .Distinct().OrderBy(id => id.Row).ThenBy(id => id.Column)
             .Take(plan.ScoutCount).ToArray();
 
-        var candidates = runtime.Contexts.Where(c => c.IsValid && c.IsCurrentlyVisible &&
+        var eligible = runtime.Contexts.Where(c => c.IsValid &&
             c.Alliance == UnitAlliance.Self &&
             (c.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) ||
-             c.UnitKind.Equals("Marauder", StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(c => c.UnitTag).ToArray();
+             c.UnitKind.Equals("Marauder", StringComparison.OrdinalIgnoreCase))).ToArray();
+        var reservedByUnseenScouts = eligible
+            .Where(c => !c.IsCurrentlyVisible && c.GoalRole == GoalActionRole.Scout && c.AssignedSector.HasValue)
+            .Select(c => c.AssignedSector.Value).ToHashSet();
+        var candidates = eligible.Where(c => c.IsCurrentlyVisible).OrderBy(c => c.UnitTag).ToArray();
 
         foreach (var unit in candidates)
         {
@@ -75,10 +78,11 @@ public static class GoalActionPlanner
             unit.AssignedSector = null;
             unit.StutterStepEnabled = plan.StutterStepEnabled;
         }
-        for (var i = 0; i < Math.Min(sectors.Length, candidates.Length); i++)
+        var availableSectors = sectors.Where(id => !reservedByUnseenScouts.Contains(id)).ToArray();
+        for (var i = 0; i < Math.Min(availableSectors.Length, candidates.Length); i++)
         {
             var unit = candidates[i];
-            var sector = map.Sectors.Single(s => s.Id == sectors[i]);
+            var sector = map.Sectors.Single(s => s.Id == availableSectors[i]);
             unit.GoalRole = GoalActionRole.Scout;
             unit.AssignedSector = sector.Id;
             unit.SectorCenterX = sector.Center.X;

@@ -51,3 +51,57 @@ The compiler does not submit protocol actions. FSM behavior emits intents; the a
 ## Future expansion
 
 Add generalized race, scouting, composition or tactical fields only when they have a concrete implementation, tests and observable runtime effect. GUI should edit and inspect this same contract; it must not invent a parallel schema or execution model.
+
+
+## Strategic transitions
+
+A strategy is not a one-way build order. It is a policy that can move between named strategic modes when observed match conditions make another trajectory more valuable. **Transition** is a first-class strategy operation alongside initial strategy selection.
+
+A strategy descriptor should identify:
+
+- its declared playstyle and strategic objective;
+- the conditions under which it is a good fit (race, matchup, map traits, map knowledge and current advantages);
+- its goals, constraints, capabilities and production preferences;
+- the transitions it may enter, including the evidence and guards required;
+- the conditions under which it should remain committed, reconsider, or fall back.
+
+A transition is a deliberate change from one strategy or playstyle to another. It is not merely a production-queue edit. It may change technology direction, unit composition, economy, map-control posture, risk tolerance and tactical priorities together. It must preserve global constraints and pass through the same validated action pipeline as every other decision.
+
+### Example: defend the natural, then switch to Banshees
+
+Suppose enemy scouting indicates a Zergling-heavy commitment. The bot estimates whether its current defensive force can hold the natural expansion with adequate safety margin. If the defense is sufficient, the strategy editor may authorize a transition away from the conventional follow-up and toward Banshee technology.
+
+The transition is eligible only when the bot has enough evidence and the required prerequisites can be met: technology access, resources, production capacity, timing, and a viable plan to protect the transition. The decision must also account for enemy anti-air options and uncertainty. Zerglings cannot attack air units, but that does not make Banshees universally invulnerable: Queens, Spore Crawlers, Hydralisks and other anti-air threats can change the calculation.
+
+This is an opportunity-driven branch:
+1. Observe and classify the opponent's likely composition; retain confidence and evidence, not just a guessed label.
+2. Estimate whether the current force can defend the natural over a defined horizon, including reinforcement arrival and uncertainty.
+3. Compare the expected value of continuing the default pathway with the proposed Banshee transition.
+4. Check affordability, prerequisites, production capacity, timing and exposure while teching.
+5. Commit only when the transition's guards pass; then update strategic goals and production priorities coherently.
+6. Reassess as new observations arrive. If the premise fails (for example, significant anti-air appears or the natural becomes unsafe), select an explicitly permitted response rather than blindly completing the original plan.
+
+### Transition contract
+
+A versioned transition definition should eventually express:
+
+- stable transition ID and target strategy/playstyle;
+- observable trigger predicates and their confidence/evidence requirements;
+- hard guards (must be true) versus weighted evaluation factors (contribute to desirability);
+- expected evaluation horizon and estimated commitment cost;
+- minimum advantage over the current strategy before switching;
+- cooldown or hysteresis to prevent oscillation;
+- cancellation, recovery or fallback behavior;
+- diagnostics explaining why the transition was selected, rejected or reconsidered.
+
+Do not encode an unverified enemy composition as certainty, or a predicted outcome as a fact. Hard safety and legality constraints are never traded against a weighted score. If evidence is stale, prerequisites are unknown, or the transition cannot be executed safely, remain with the current valid strategy.
+
+### Selection and transition are separate decisions
+
+Initial selection asks: "Given the map, matchup, race, map knowledge and starting conditions, which strategy/playstyle should we begin with?"
+
+Transition asks: "Given what has happened since then, is another strategy now sufficiently better to justify the cost and risk of changing course?"
+
+Both decisions use the same strategy descriptors and evaluation vocabulary, but transition additionally accounts for sunk investment, time-to-impact, switching costs and the current tactical state. A strategy may expose multiple permitted transitions; the runtime chooses among eligible options, not the editor by itself. The editor authors the strategic possibilities and their guards; the runtime evaluates live evidence and makes the match-time decision.
+
+These are design requirements until implemented and tested. The current Terran opening remains the first runtime proof; this model must not be mistaken for an implemented adaptive strategy engine.

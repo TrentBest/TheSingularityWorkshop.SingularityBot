@@ -56,8 +56,11 @@ An FSM emits an intent, not permission to submit a protocol action. The action p
 Implemented and present in the integration branch:
 
 - SC2 observations are normalized into deterministic, protocol-independent unit facts using game-data catalogs.
-- Visible own units are reconciled into persistent FSM contexts. Fog/absence suspends participation while retaining context; explicit death evidence retires it.
-- Supported unit-profile morphs replace the old behavior context/handle.
+- Every newly encountered entity with positive observed maximum health is reconciled into a persistent context regardless of alliance; known profiles add their current capability FSMs. Contexts survive snapshots, hidden records, and absence from a frame; only explicit dead-unit evidence retires them.
+- Entity contexts now own their FSM handles. The runtime no longer maintains a parallel per-entity handle dictionary.
+- Morphs that change the authoritative unit type rebuild the context and its capability handles under the same SC2 tag.
+- The catalog declares the ordered `DataSync -> Strategy -> SubStrategy -> HighDPS -> LowDPS -> ActionResolution` processing groups. Current worker and combat capabilities are mapped into LowDPS and HighDPS respectively; Strategy, SubStrategy, and ActionResolution are registered pipeline stages but their dedicated FSM definitions are not implemented yet.
+- The frame path now reconciles entity contexts immediately after normalization and no longer returns early from opening-rally/production gates before advancing the registered FSM groups. Those opening controllers remain imperative migration debt; this is not yet the completed FSM-only runtime.
 - FSM emissions are collected per observation rather than routed to a stale frame buffer.
 - Initial gather and return-cargo intents translate to SC2 unit commands for SCV/Probe/Drone workers. Gather resolves `Harvest_Gather`; return resolves `Harvest_Return` from game data and selects a visible friendly town hall deterministically.
 - Worker mineral reservations are deterministic and saturation-aware (two workers per mineral by default), with stable generations and retention through temporary worker/target occlusion. Explicit dead-unit events invalidate the affected reservation.
@@ -73,6 +76,8 @@ Not yet proven or implemented as a complete economy:
 - Deterministic recorded-observation replay, cycle/throughput metrics and live-match proof.
 
 A wired test step is not the same as a successful current CI run. A passing unit test is not a live-match result. Keep those evidence levels separate in status reports.
+
+See [Terran FSM catalog and processing pipeline](terran-fsm-catalog.md) for the proposed shared lifecycle graph, strategic FSMs, unit/structure capability definitions, and staged implementation order. These catalog definitions are design targets unless explicitly listed above as implemented.
 
 ## GUI contract
 

@@ -129,3 +129,8 @@ These are design requirements until implemented and tested. The current Terran o
 ## Movement and engagement doctrine
 
 Strategic descriptors and transitions define which movement and engagement doctrines a force may adopt. The detailed doctrine contract—including staged advances, beachheads, guards, screens, holds, support relationships, unit-specific engagement behavior, human demonstration/learning, map visualization and spectacle—is documented in [Movement, force-control and engagement doctrine](movement-doctrine.md).
+
+
+## Engagement allocation and opponent-aware plans
+
+A strategy may choose among candidate engagements—such as baseline attack-move, worker pressure, containment, siege, harassment or a composition-specific response. The bot must estimate target durability and committed incoming damage, allocate sufficient firepower to secure kills without wasteful overkill, and continuously reconcile assignments as targets and attack opportunities change. Opponent assessment must distinguish observed facts from confidence-rated inferences and feed the strategy caster rather than hard-code a response. See [Engagement allocation and opponent-aware plans](engagement-allocation.md) for the intended contract and test sequence.

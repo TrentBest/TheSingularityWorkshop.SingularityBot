@@ -26,11 +26,14 @@ public sealed class BehaviorIntentBuffer
     private static int Priority(BehaviorCommand command) => command switch
     {
         BehaviorCommand.RetreatToSafety => 100,
+        BehaviorCommand.FallbackToRally => 95,
+        BehaviorCommand.StutterStepMove => 85,
         BehaviorCommand.RepairAssignedTarget => 90,
         BehaviorCommand.BuildRequestedStructure => 80,
         BehaviorCommand.ReturnCarriedResources => 70,
         BehaviorCommand.DefendWorkerLine => 60,
         BehaviorCommand.AttackTarget => 58,
+        BehaviorCommand.EngageObjective => 57,
         BehaviorCommand.AttackVisibleThreat => 56,
         BehaviorCommand.FlankLeftOfTarget or BehaviorCommand.FlankRightOfTarget => 54,
         BehaviorCommand.MoveAwayFromTarget => 53,
@@ -38,6 +41,9 @@ public sealed class BehaviorIntentBuffer
         BehaviorCommand.PatrolRoute => 51,
         BehaviorCommand.MoveTowardsTarget => 50,
         BehaviorCommand.RegroupWithArmy => 49,
+        BehaviorCommand.ScoutSector => 48,
+        BehaviorCommand.ContainSector => 47,
+        BehaviorCommand.HoldRallyPoint => 46,
         BehaviorCommand.AdvanceToObjective => 40,
         BehaviorCommand.AssignWorkerToMinerals => 10,
         _ => 0

@@ -1,4 +1,5 @@
 using SingularityBot.Observation;
+using SingularityBot.Spatial;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -69,6 +70,12 @@ public sealed class UnitBehaviorContext : IStateContext
     public bool FlankLeftRequested { get; set; }
     public bool FlankRightRequested { get; set; }
     public ulong? AttackTargetTag { get; set; }
+    public GoalActionRole GoalRole { get; set; } = GoalActionRole.Contain;
+    public SectorId? AssignedSector { get; set; }
+    public float SectorCenterX { get; set; }
+    public float SectorCenterY { get; set; }
+    public bool StutterStepEnabled { get; set; }
+    public float WeaponCooldownRemaining { get; set; }
 
     public bool HasVisibleThreat { get; set; }
     public bool ShouldRetreat { get; set; }

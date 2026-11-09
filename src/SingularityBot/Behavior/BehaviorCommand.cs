@@ -19,5 +19,11 @@ public enum BehaviorCommand
     AdvanceToObjective,
     AttackVisibleThreat,
     RetreatToSafety,
-    RegroupWithArmy
+    RegroupWithArmy,
+    HoldRallyPoint,
+    ScoutSector,
+    ContainSector,
+    EngageObjective,
+    FallbackToRally,
+    StutterStepMove
 }

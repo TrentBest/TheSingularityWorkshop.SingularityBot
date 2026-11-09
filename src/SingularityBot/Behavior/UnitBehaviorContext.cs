@@ -70,7 +70,7 @@ public sealed class UnitBehaviorContext : IStateContext
     public bool FlankLeftRequested { get; set; }
     public bool FlankRightRequested { get; set; }
     public ulong? AttackTargetTag { get; set; }
-    public GoalActionRole GoalRole { get; set; } = GoalActionRole.Contain;
+    public GoalActionRole GoalRole { get; set; } = GoalActionRole.None;
     public SectorId? AssignedSector { get; set; }
     public float SectorCenterX { get; set; }
     public float SectorCenterY { get; set; }

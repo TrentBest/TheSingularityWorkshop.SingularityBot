@@ -38,12 +38,13 @@ public sealed class UnitBehaviorRuntime
         var kind = string.IsNullOrWhiteSpace(facts.UnitKind)
             ? $"UnknownUnitType:{facts.UnitTypeId}"
             : facts.UnitKind;
+        var hasProfile = UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile);
         var context = new UnitBehaviorContext(
-            facts.Tag, $"{kind}:{facts.Tag}", kind, false,
+            facts.Tag, $"{kind}:{facts.Tag}", kind, hasProfile && profile.IsWorker,
             command => Emit(facts.Tag, static _ => { }, command));
         _contexts.Add(facts.Tag, context);
         AttachHandle(context, UnitBehaviorCatalog.EntityExistenceFsm, UnitBehaviorCatalog.DataSyncProcessingGroup);
-        if (UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile))
+        if (hasProfile)
             AttachProfileCapability(context, profile);
         return context;
     }

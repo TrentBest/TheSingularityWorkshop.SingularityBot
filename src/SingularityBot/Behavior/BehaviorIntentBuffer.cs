@@ -32,7 +32,7 @@ public sealed class BehaviorIntentBuffer
     {
         ArgumentNullException.ThrowIfNull(runtime);
         var commands = Drain();
-        var result = new List<BehaviorIntent>(commands.Length);
+        var result = new List<BehaviorIntent>(commands.Count);
         foreach (var item in commands)
         {
             runtime.TryGetContext(item.Key, out var unit);

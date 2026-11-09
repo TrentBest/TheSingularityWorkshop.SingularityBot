@@ -242,6 +242,7 @@ public sealed class ObservationReconciliationTests
         Assert.False(runtime.TryGetContext(44, out _));
         Assert.False(initial.IsValid);
         Assert.False(runtime.TryGetHandle(44, out _));
-        Assert.Equal(0, runtime.Count);
+        Assert.True(runtime.TryGetContext(45, out _)); // The separately observed unsupported unit remains alive.
+        Assert.Equal(1, runtime.Count);
     }
 }

@@ -1,3 +1,5 @@
+using SingularityBot.Spatial;
+
 namespace SingularityBot.Behavior;
 
 /// <summary>
@@ -11,4 +13,4 @@ public sealed record BehaviorIntent(
     ulong? TargetUnitTag = null,
     float? DestinationX = null,
     float? DestinationY = null,
-    SingularityBot.Spatial.SectorId? Sector = null);
+    SectorId? Sector = null);

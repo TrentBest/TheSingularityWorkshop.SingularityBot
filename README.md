@@ -50,6 +50,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 - [Terran opening and worker logistics](docs/opening-economy-logistics.md)
 - [Strategy format](docs/strategy-format.md)
 - [Engagement service and operational picture](docs/engagement-service.md)
+- [Spatial reasoning foundation](docs/spatial-reasoning.md)
 - [Roadmap and acceptance gates](docs/roadmap.md)
 - [Windows development and local testing](docs/windows-development-setup.md)
 - [Local game sessions](docs/local-game-sessions.md)

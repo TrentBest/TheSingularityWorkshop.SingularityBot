@@ -13,6 +13,7 @@ public sealed class UnitBehaviorRuntime
     private Action<ulong, BehaviorCommand>? _activeEmit;
 
     public int Count => _contexts.Count;
+    public IReadOnlyList<string> ProcessGroupsThisFrame => UnitBehaviorCatalog.ProcessGroupsThisFrame;
 
     public UnitBehaviorContext Attach(
         ulong unitTag,
@@ -174,15 +175,26 @@ public sealed class UnitBehaviorRuntime
         _activeEmit = null;
     }
 
-    /// <summary>Compatibility scheduler; the frame owner will take over this ordered loop.</summary>
+    /// <summary>Advances one explicitly selected frame group.</summary>
+    public void UpdateGroup(string processingGroup)
+    {
+        if (string.IsNullOrWhiteSpace(processingGroup))
+            throw new ArgumentException("A processing group is required.", nameof(processingGroup));
+        FSM_API.Interaction.Update(processingGroup);
+    }
+
+    /// <summary>Ends the current observation's intent-emission scope.</summary>
+    public void EndFrame() => _activeEmit = null;
+
+    /// <summary>Test/helper scheduler using the same declared group order as OnFrame.</summary>
     public void Update()
     {
         try
         {
-            foreach (var group in UnitBehaviorCatalog.ProcessGroupsThisFrame)
-                FSM_API.Interaction.Update(group);
+            foreach (var group in ProcessGroupsThisFrame)
+                UpdateGroup(group);
         }
-        finally { _activeEmit = null; }
+        finally { EndFrame(); }
     }
 
     /// <summary>Called only when repair work or its eligibility has changed.</summary>

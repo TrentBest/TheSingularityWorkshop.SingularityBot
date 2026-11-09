@@ -42,6 +42,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private bool _openingSprayActionSubmitted;
     private RequestQuery _pendingQuery;
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
+    private readonly Sc2OpeningMarineController _openingMarine = new();
+    private bool _openingMarineActionSubmitted;
     private readonly Sc2OpeningSprayController _openingSpray = new();
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
@@ -195,6 +197,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var actions = new List<SC2APIProtocol.Action>();
         SC2APIProtocol.Action sprayAction = null;
         SC2APIProtocol.Action builderAction = null;
+        SC2APIProtocol.Action marineAction = null;
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
 
@@ -268,14 +271,29 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // Refresh after a builder reservation so this frame cannot emit a
             // stale gather intent for the worker now committed to construction.
             assignments = _workerAssignments.Reconcile(normalized);
+            if (builderAction is null && _openingBuilder.IsCompleted)
+            {
+                marineAction = _openingMarine.TryCreateAction(normalized, SpatialMap, _gameData, _workerAssignments);
+                _openingMarineActionSubmitted = marineAction is not null;
+            }
+            else
+            {
+                _openingMarineActionSubmitted = false;
+            }
+
             var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
-            if (sprayQuery is not null || placementQuery is not null)
+            var marinePlacementQuery = _openingBuilder.IsCompleted
+                ? _openingMarine.TakePlacementQuery(_gameData)
+                : null;
+            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null)
             {
                 _pendingQuery = new RequestQuery();
                 if (sprayQuery is not null)
                     _pendingQuery.Abilities.Add(sprayQuery.Abilities);
                 if (placementQuery is not null)
                     _pendingQuery.Placements.Add(placementQuery.Placements);
+                if (marinePlacementQuery is not null)
+                    _pendingQuery.Placements.Add(marinePlacementQuery.Placements);
             }
             else
             {
@@ -286,6 +304,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
+            _openingMarineActionSubmitted = false;
         }
 
         foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
@@ -312,6 +331,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             actions.Add(sprayAction);
         if (builderAction is not null)
             actions.Add(builderAction);
+        if (marineAction is not null)
+            actions.Add(marineAction);
 
         if (allowWorkerActions)
         {
@@ -341,10 +362,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingSpray.OnActionResult(null, _workerAssignments);
             if (_openingBuilderActionSubmitted)
                 _openingBuilder.OnActionResult(null);
+            if (_openingMarineActionSubmitted)
+                _openingMarine.OnActionResult(null);
             _openingRallyActionSubmitted = false;
             _openingProductionActionSubmitted = false;
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
+            _openingMarineActionSubmitted = false;
             return;
         }
 
@@ -376,10 +400,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingBuilder.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
             resultIndex++;
         }
+        if (_openingMarineActionSubmitted)
+        {
+            _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
         _openingRallyActionSubmitted = false;
         _openingProductionActionSubmitted = false;
         _openingSprayActionSubmitted = false;
         _openingBuilderActionSubmitted = false;
+        _openingMarineActionSubmitted = false;
     }
 
     public RequestQuery TakeQueryRequest()
@@ -392,6 +422,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public void OnQueryResult(ResponseQuery response)
     {
         _openingBuilder.OnPlacementQueryResult(response);
+        if (_openingBuilder.IsCompleted)
+            _openingMarine.OnPlacementQueryResult(response);
         _openingSpray.OnQueryResult(response, _workerAssignments);
     }
 

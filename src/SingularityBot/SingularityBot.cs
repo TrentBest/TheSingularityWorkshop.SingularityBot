@@ -96,7 +96,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         UnitBehaviorCatalog.Register();
         _behaviorCatalogRegistered = true;
 
-        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, smart={_gameData.SmartAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, rally-workers={_gameData.RallyWorkersAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}).");
+        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, smart={_gameData.SmartAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, rally-workers={_gameData.RallyWorkersAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}), move={_gameData.MoveAbilityId?.ToString() ?? "unavailable"}, build-Depot={_gameData.SupplyDepotBuildAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.SupplyDepotMineralCost}), build-Barracks={_gameData.BarracksBuildAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.BarracksMineralCost}), train-Marine={_gameData.MarineTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.MarineMineralCost}, supply={_gameData.MarineFoodRequired}).");
     }
 
     /// <summary>
@@ -217,12 +217,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             allowWorkerActions = false;
             _pendingQuery = null;
         }
-        else if (!_openingRally.IsTemporaryRallyAccepted)
-        {
-            allowWorkerActions = false;
-            _pendingQuery = null;
-        }
-
+        // Worker rally is an optimization, not a production prerequisite. If
+        // the optional rally ability is unavailable or rejected, the opening
+        // must still produce its first SCV and continue toward construction.
         if (allowWorkerActions)
         {
             var productionAction = _openingProduction.TryCreateScvTrainingAction(normalized, _gameData);

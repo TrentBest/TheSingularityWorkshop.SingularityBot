@@ -126,6 +126,7 @@ public sealed class Sc2OpeningMarineController
 
             _buildSubmitted = true;
             _buildRequestGameLoop = observation.GameLoop;
+            Console.WriteLine($"[Opening] Requesting Barracks: SCV={worker.Tag}, ability={gameData.BarracksBuildAbilityId}, minerals={observation.Minerals}, site=({_placement.Value.X:F1},{_placement.Value.Y:F1}).");
             _pendingAction = PendingAction.BuildBarracks;
             return PositionCommand(worker.Tag,
                 checked((int)gameData.BarracksBuildAbilityId.Value), _placement.Value);
@@ -134,6 +135,8 @@ public sealed class Sc2OpeningMarineController
         if (barracks.BuildProgress < 1f)
             return null;
 
+        if (!_barracksComplete)
+            Console.WriteLine($"[Opening] OBSERVED: Barracks {barracks.Tag} completed.");
         _barracksComplete = true;
         if (_builderTag is ulong builderTag)
         {
@@ -150,12 +153,16 @@ public sealed class Sc2OpeningMarineController
 
         if (marines.Length > 0)
         {
+            if (!MarineObserved)
+                Console.WriteLine($"[Opening] OBSERVED: Marine {marines[0].Tag} produced.");
             MarineObserved = true;
             var marine = marines[0];
             var target = map.Side.EnemyStart;
             var distanceSquared = DistanceSquared(marine.PositionX, marine.PositionY, target.X, target.Y);
             if (distanceSquared <= 4f)
             {
+                if (!_deployed)
+                    Console.WriteLine($"[Opening] OBSERVED: Marine {marine.Tag} reached enemy-start anchor ({target.X:F1},{target.Y:F1}).");
                 _deployed = true;
                 return null;
             }
@@ -175,6 +182,7 @@ public sealed class Sc2OpeningMarineController
 
             _marineMoveSubmitted = true;
             _marineMoveRequestGameLoop = observation.GameLoop;
+            Console.WriteLine($"[Opening] Sending Marine {marine.Tag} to enemy start ({target.X:F1},{target.Y:F1}); distance²={distanceSquared:F1}.");
             _pendingAction = PendingAction.MoveMarine;
             return PositionCommand(marine.Tag, checked((int)gameData.MoveAbilityId.Value), target);
         }
@@ -199,6 +207,7 @@ public sealed class Sc2OpeningMarineController
 
         _marineTrainingRequested = true;
         _marineTrainingRequestGameLoop = observation.GameLoop;
+        Console.WriteLine($"[Opening] Requesting first Marine: Barracks={barracks.Tag}, ability={gameData.MarineTrainAbilityId}, minerals={observation.Minerals}, supply={observation.FoodUsed}/{observation.FoodCap}.");
         _pendingAction = PendingAction.TrainMarine;
         return UnitCommand(barracks.Tag, checked((int)gameData.MarineTrainAbilityId.Value));
     }

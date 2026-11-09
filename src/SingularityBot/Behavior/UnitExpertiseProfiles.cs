@@ -29,11 +29,14 @@ public static class UnitExpertiseProfiles
     public static readonly UnitExpertiseProfile Marine =
         new("Marine", false, 5, 0.30, 4);
 
+    public static readonly UnitExpertiseProfile Marauder =
+        new("Marauder", false, 6, 0.35, 3);
+
     public static readonly UnitExpertiseProfile Zergling =
         new("Zergling", false, 1, 0.20, 6);
 
     public static IReadOnlyList<UnitExpertiseProfile> InitialSet =>
-        [SCV, Probe, Drone, Zealot, Marine, Zergling];
+        [SCV, Probe, Drone, Zealot, Marine, Marauder, Zergling];
 
     private static readonly IReadOnlyDictionary<string, UnitExpertiseProfile> ByKind =
         InitialSet.ToDictionary(profile => profile.UnitKind, StringComparer.OrdinalIgnoreCase);

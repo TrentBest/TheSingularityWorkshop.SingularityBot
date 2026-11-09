@@ -14,9 +14,11 @@ public sealed class ProductionStepContext : IStateContext
     {
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
         _emit = emit ?? throw new ArgumentNullException(nameof(emit));
+        Name = $"Production:{definition.Id}";
         IsValid = true;
     }
 
+    public string Name { get; set; }
     public ProductionStepDefinition Definition { get; }
     public bool IsValid { get; set; }
     public uint GameLoop { get; private set; }

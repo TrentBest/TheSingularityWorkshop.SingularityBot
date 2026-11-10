@@ -36,7 +36,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         var map = Map();
         var gameData = GameData();
 
-        var action = controller.TryCreateAction(Snapshot(50, 12, 15,
+        var action = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 9, 9, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
             Fact(11, "SCV", 5, 5),

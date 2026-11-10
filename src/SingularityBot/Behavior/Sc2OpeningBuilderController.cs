@@ -54,8 +54,6 @@ public sealed class Sc2OpeningBuilderController
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
 
-        ObserveWorkers(observation);
-
         if (_completed ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
             gameData.SupplyDepotMineralCost == 0 ||
@@ -138,9 +136,9 @@ public sealed class Sc2OpeningBuilderController
         if (builder is null || builder.HasCargo)
             return null;
 
-        // Do not leave the newly completed SCV's first command to rally inheritance
-        // or a later placement-query response. Immediately replace its current order
-        // with a direct, non-queued Move to the opening's staging point.
+        // Do not leave the selected construction-crew SCV's current mining order
+        // in place while placement is queried. Immediately replace it with a direct,
+        // non-queued Move to the opening's staging point.
         var movementTarget = _placement ?? _candidatePoints[0];
         if (_moveTarget is null ||
             DistanceSquared(_moveTarget.Value.X, _moveTarget.Value.Y, movementTarget.X, movementTarget.Y) > 0.01f)

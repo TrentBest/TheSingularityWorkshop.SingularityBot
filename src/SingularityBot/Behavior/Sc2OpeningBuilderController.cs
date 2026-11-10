@@ -41,6 +41,10 @@ public sealed class Sc2OpeningBuilderController
     public bool IsCompleted => _completed;
     public bool IsDispatched => _dispatched;
     public MapPoint? Placement => _placement;
+    public int CandidateCount => _candidatePoints.Count;
+    public bool IsPlacementQueryPending => _placementQueryPending;
+    public bool IsMoveSubmitted => _moveSubmitted;
+    public bool IsBuildSubmitted => _buildSubmitted;
 
     public SC2APIProtocol.Action TryCreateAction(
         NormalizedObservation observation,

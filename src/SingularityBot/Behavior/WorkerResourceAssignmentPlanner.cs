@@ -326,8 +326,7 @@ public sealed class WorkerResourceAssignmentPlanner
         UnitObservationFacts[] townHalls,
         int mineralSaturation,
         uint gameLoop,
-        Dictionary<ulong, int> occupancy,
-        bool isSupplementalWorker)
+        Dictionary<ulong, int> occupancy)
     {
         if (workers.Length == 0 || minerals.Length == 0 || townHalls.Length == 0)
             return;
@@ -413,7 +412,8 @@ public sealed class WorkerResourceAssignmentPlanner
         UnitObservationFacts mineral,
         UnitObservationFacts townHall,
         uint gameLoop,
-        Dictionary<ulong, int> occupancy)
+        Dictionary<ulong, int> occupancy,
+        bool isSupplementalWorker)
     {
         var assignment = new WorkerResourceAssignment(
             worker.Tag,

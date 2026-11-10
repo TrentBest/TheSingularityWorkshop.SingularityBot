@@ -42,6 +42,9 @@ public sealed record UnitObservationFacts(
     bool IsHallucination,
     uint GameLoop)
 {
+    /// <summary>Remaining weapon cooldown in game-loop units, as reported by SC2.</summary>
+    public float WeaponCooldownRemaining { get; init; }
+
     public IReadOnlyList<UnitOrderObservationFacts> Orders { get; init; } = Array.Empty<UnitOrderObservationFacts>();
 
     public bool IsLiveVisible => Visibility == UnitVisibility.Visible;

@@ -10,10 +10,12 @@ public sealed class MarineCombatPlannerTests
         new Dictionary<uint, CombatWeaponProfile>
         {
             [48] = new(5, 9),
-            [MarineCombatPlannerTests.EnemyType] = new(6, 12)
+            [MarineCombatPlannerTests.EnemyType] = new(6, 0),
+            [MarineCombatPlannerTests.ArmedEnemyType] = new(6, 12)
         };
 
     private const uint EnemyType = 100;
+    private const uint ArmedEnemyType = 101;
 
     [Fact]
     public void FiresImmediatelyWhenReadyAndInsideAuthoritativeRange()
@@ -41,7 +43,7 @@ public sealed class MarineCombatPlannerTests
     [Fact]
     public void WithdrawsWhenLocalThreatOutweighsFriendlyDamage()
     {
-        var result = Plan(Marine(1, 0, 0, 0), Enemy(2, 4, 0), Enemy(3, 5, 1));
+        var result = Plan(Marine(1, 0, 0, 0), ArmedEnemy(2, 4, 0), ArmedEnemy(3, 5, 1));
         Assert.Equal(MarineTacticalAction.Withdraw, Assert.Single(result).Action);
     }
 
@@ -89,7 +91,10 @@ public sealed class MarineCombatPlannerTests
         Fact(tag, 48, "Marine", UnitAlliance.Self, x, y, cooldown);
 
     private static UnitObservationFacts Enemy(ulong tag, float x, float y) =>
-        Fact(tag, EnemyType, "EnemyCombatUnit", UnitAlliance.Enemy, x, y);
+        Fact(tag, EnemyType, "EnemyStructure", UnitAlliance.Enemy, x, y);
+
+    private static UnitObservationFacts ArmedEnemy(ulong tag, float x, float y) =>
+        Fact(tag, ArmedEnemyType, "EnemyCombatUnit", UnitAlliance.Enemy, x, y);
 
     private static UnitObservationFacts Fact(
         ulong tag, uint type, string kind, UnitAlliance alliance, float x, float y, float cooldown = 0) =>

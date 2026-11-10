@@ -52,7 +52,13 @@ public sealed class Sc2OrbitalSupportController
 
         // First establish Orbital capability. Never steal minerals reserved
         // for SCV production, construction, or the current opening objective.
-        if (gameData.OrbitalUpgradeAbilityId is > 0 &&
+        var orbitalTechReady =
+            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && IsKind(unit, "SupplyDepot") && unit.BuildProgress >= 1f) &&
+            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && IsKind(unit, "Barracks"));
+
+        if (orbitalTechReady && gameData.OrbitalUpgradeAbilityId is > 0 &&
             gameData.OrbitalUpgradeMineralCost > 0)
         {
             var commandCenter = townHalls.FirstOrDefault(unit =>

@@ -69,6 +69,31 @@ public sealed class ObservationReconciliationTests
     }
 
     [Fact]
+    public void Normalizer_PreservesUnitEnergyForOrbitalCommandDecisions()
+    {
+        var raw = new ObservationRaw();
+        raw.Units.Add(new Unit
+        {
+            Tag = 42,
+            UnitType = 132,
+            Owner = 1,
+            Alliance = Alliance.Self,
+            DisplayType = DisplayType.Visible,
+            Energy = 75
+        });
+        var response = new ResponseObservation
+        {
+            Observation = new SC2APIProtocol.Observation { RawData = raw }
+        };
+
+        var normalized = Sc2ObservationNormalizer.Normalize(
+            response, 1, new Dictionary<uint, string> { [132] = "OrbitalCommand" },
+            new Dictionary<uint, string>());
+
+        Assert.Equal(75f, Assert.Single(normalized.Units).Energy);
+    }
+
+    [Fact]
     public void Runtime_ReplacesExpertiseContextWhenUnitMorphsToDifferentProfile()
     {
         UnitBehaviorCatalog.Register();

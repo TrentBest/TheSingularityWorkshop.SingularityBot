@@ -89,7 +89,6 @@ public static class MarineCombatPlanner
                 .Sum(enemy => weaponsByUnitType[enemy.UnitTypeId].DamagePerSecond);
 
             var distance = MathF.Sqrt((float)DistanceSquared(marine, target));
-            var enemyWeapon = weaponsByUnit[target.UnitTypeId];
             MarineTacticalAction action;
             string reason;
 

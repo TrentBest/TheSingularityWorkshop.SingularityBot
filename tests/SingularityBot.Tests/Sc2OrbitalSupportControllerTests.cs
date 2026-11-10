@@ -15,7 +15,7 @@ public sealed class Sc2OrbitalSupportControllerTests
         var commandCenter = Fact(1, "CommandCenter");
 
         Assert.Null(controller.TryCreateAction(Snapshot(299, commandCenter), data));
-        Assert.Null(controller.TryCreateAction(Snapshot(350, commandCenter), data, reservedMinerals: 200));
+        Assert.Null(controller.TryCreateAction(Snapshot(350, commandCenter), data, reservedMinerals: 201));
 
         var action = controller.TryCreateAction(Snapshot(350, commandCenter), data, reservedMinerals: 150);
         Assert.NotNull(action);

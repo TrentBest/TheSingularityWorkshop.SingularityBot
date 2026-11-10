@@ -90,11 +90,36 @@ public static class MarineCombatPlanner
             .ToArray();
         var marines = live.Where(unit => unit.Alliance == UnitAlliance.Self &&
             unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase)).ToArray();
-        var targets = live.Where(unit =>
-            (unit.Alliance == UnitAlliance.Enemy ||
-             (unit.Alliance == UnitAlliance.Neutral &&
-              (destructibleNeutralTags?.Contains(unit.Tag) == true || IsDestructible(unit.UnitKind)))) &&
-            !IsNonCombatResource(unit.UnitKind)).ToArray();
+        var enemyTargets = live.Where(unit => unit.Alliance == UnitAlliance.Enemy).ToArray();
+        // Neutral blockers are opportunistic only: a visible enemy always wins
+        // over a rock or debris target, so clearing terrain cannot derail combat.
+        var targets = enemyTargets.Length > 0
+            ? enemyTargets
+            : live.Where(unit => unit.Alliance == UnitAlliance.Neutral &&
+                (destructibleNeutralTags?.Contains(unit.Tag) == true || IsDestructible(unit.UnitKind)) &&
+                !IsNonCombatResource(unit.UnitKind)).ToArray();
+
+        var focusTarget = targets
+            .Where(candidate => marines.Any(marine =>
+                weaponsByUnitType.TryGetValue(marine.UnitTypeId, out var profile) &&
+                profile.IsUsable && profile.CanHit(candidate.IsFlying)))
+            .OrderByDescending(candidate =>
+                weaponsByUnitType.TryGetValue(candidate.UnitTypeId, out var threatProfile) &&
+                threatProfile.IsUsable && threatProfile.CanHit(false)
+                    ? threatProfile.GetDamagePerSecond(false) / MathF.Max(1f, candidate.Health + candidate.Shield)
+                    : 0f)
+            .ThenBy(candidate =>
+            {
+                var availableDps = marines
+                    .Where(ally => weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) &&
+                        profile.IsUsable && profile.CanHit(candidate.IsFlying) &&
+                        DistanceSquared(ally, candidate) <= profile.GetRange(candidate.IsFlying) * profile.GetRange(candidate.IsFlying))
+                    .Sum(ally => weaponsByUnitType[ally.UnitTypeId].GetDamagePerSecond(candidate.IsFlying));
+                return (candidate.Health + candidate.Shield) / MathF.Max(0.1f, availableDps);
+            })
+            .ThenBy(candidate => marines.Length == 0 ? 0 : DistanceSquared(candidate, marines[0]))
+            .ThenBy(candidate => candidate.Tag)
+            .FirstOrDefault();
 
         var decisions = new List<MarineTacticalDecision>(marines.Length);
         foreach (var marine in marines.OrderBy(unit => unit.Tag))
@@ -107,14 +132,11 @@ public static class MarineCombatPlanner
                 continue;
             }
 
-            // A destructible or structure may have no weapon profile of its own;
-            // it remains a valid opportunistic target. Only friendly/enemy DPS
-            // calculations require weapon metadata.
-            var target = targets
-                .Where(candidate => ownWeapon.CanHit(candidate.IsFlying))
-                .OrderBy(candidate => DistanceSquared(marine, candidate))
-                .ThenBy(candidate => candidate.Tag)
-                .FirstOrDefault();
+            // All Marines share one focus target. This prevents split fire and
+            // makes the kill-time estimate meaningful for the whole local force.
+            var target = focusTarget is not null && ownWeapon.CanHit(focusTarget.IsFlying)
+                ? focusTarget
+                : null;
             if (target is null)
             {
                 decisions.Add(new(marine.Tag, null, MarineTacticalAction.Hold, 0, 0,

@@ -271,11 +271,27 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             sprayAction = _openingSpray.TryCreateAction(normalized, _gameData, _workerAssignments);
             _openingSprayActionSubmitted = sprayAction is not null;
 
+            var supplementalWorkerTags = assignments.Values
+                .Where(assignment => assignment.IsSupplementalWorker)
+                .Select(assignment => assignment.WorkerTag)
+                .ToHashSet();
             var constructionCrewTags = _unitBehaviors.Contexts
                 .Where(context => context.IsWorker &&
-                                  context.Capabilities.Contains(UnitBehaviorCatalog.ConstructionFsm))
+                                  context.Capabilities.Contains(UnitBehaviorCatalog.ConstructionFsm) &&
+                                  supplementalWorkerTags.Contains(context.UnitTag))
                 .Select(context => context.UnitTag)
                 .ToHashSet();
+
+            // If the opening has not yet produced any supplemental mineral slots,
+            // retain a bootstrap crew rather than blocking the first construction.
+            if (constructionCrewTags.Count == 0)
+            {
+                constructionCrewTags = _unitBehaviors.Contexts
+                    .Where(context => context.IsWorker &&
+                                      context.Capabilities.Contains(UnitBehaviorCatalog.ConstructionFsm))
+                    .Select(context => context.UnitTag)
+                    .ToHashSet();
+            }
 
             builderAction = _openingBuilder.TryCreateAction(
                 normalized,

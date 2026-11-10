@@ -45,6 +45,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private RequestQuery _pendingQuery;
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
     private readonly Sc2OpeningMarineController _openingMarine = new();
+    private readonly Sc2SecondBarracksController _secondBarracks = new();
+    private bool _secondBarracksActionSubmitted;
     private bool _openingMarineActionSubmitted;
     private readonly Sc2OpeningSprayController _openingSpray = new();
     private readonly Sc2OrbitalSupportController _orbitalSupport = new();
@@ -221,6 +223,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         SC2APIProtocol.Action builderAction = null;
         SC2APIProtocol.Action marineAction = null;
         SC2APIProtocol.Action orbitalSupportAction = null;
+        SC2APIProtocol.Action secondBarracksAction = null;
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
         // Opening production and mineral routing are independent commands: the
@@ -341,6 +344,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarineActionSubmitted = false;
             }
 
+            if (_openingMarine.BarracksComplete && marineAction is null)
+            {
+                secondBarracksAction = _secondBarracks.TryCreateAction(
+                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags);
+                _secondBarracksActionSubmitted = secondBarracksAction is not null;
+            }
+            else
+            {
+                _secondBarracksActionSubmitted = false;
+            }
+
             // Orbital upgrades/MULEs are lower priority than SCV, construction,
             // and Marine actions. This avoids spending the same minerals twice.
             if (builderAction is null && marineAction is null && sprayAction is null)
@@ -357,7 +371,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var marinePlacementQuery = _openingBuilder.IsCompleted
                 ? _openingMarine.TakePlacementQuery(_gameData)
                 : null;
-            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null)
+            var secondBarracksPlacementQuery = _secondBarracks.TakePlacementQuery(_gameData);
+            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null || secondBarracksPlacementQuery is not null)
             {
                 _pendingQuery = new RequestQuery();
                 if (sprayQuery is not null)
@@ -366,6 +381,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _pendingQuery.Placements.Add(placementQuery.Placements);
                 if (marinePlacementQuery is not null)
                     _pendingQuery.Placements.Add(marinePlacementQuery.Placements);
+                if (secondBarracksPlacementQuery is not null)
+                    _pendingQuery.Placements.Add(secondBarracksPlacementQuery.Placements);
             }
             else
             {
@@ -377,6 +394,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
             _openingMarineActionSubmitted = false;
+            _secondBarracksActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
         }
 
@@ -412,6 +430,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             actions.Add(builderAction);
         if (marineAction is not null)
             actions.Add(marineAction);
+        if (secondBarracksAction is not null)
+            actions.Add(secondBarracksAction);
         if (orbitalSupportAction is not null)
             actions.Add(orbitalSupportAction);
 
@@ -472,6 +492,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingBuilder.OnActionResult(null);
             if (_openingMarineActionSubmitted)
                 _openingMarine.OnActionResult(null);
+            if (_secondBarracksActionSubmitted)
+                _secondBarracks.OnActionResult(null);
             if (_orbitalSupportActionSubmitted)
                 _orbitalSupport.OnActionResult(null);
             _openingRallyActionSubmitted = false;
@@ -479,6 +501,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
             _openingMarineActionSubmitted = false;
+            _secondBarracksActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
             return;
         }
@@ -518,6 +541,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
             resultIndex++;
         }
+        if (_secondBarracksActionSubmitted)
+        {
+            _secondBarracks.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
         if (_orbitalSupportActionSubmitted)
         {
             _orbitalSupport.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
@@ -528,6 +556,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingSprayActionSubmitted = false;
         _openingBuilderActionSubmitted = false;
         _openingMarineActionSubmitted = false;
+        _secondBarracksActionSubmitted = false;
         _orbitalSupportActionSubmitted = false;
     }
 

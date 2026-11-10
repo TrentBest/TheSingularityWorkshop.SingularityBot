@@ -74,6 +74,82 @@ public sealed class MarineCombatPlannerTests
         Assert.Equal(MarineTacticalAction.Hold, Assert.Single(result).Action);
     }
 
+
+    [Fact]
+    public void TranslatorEmitsAttackAgainstCurrentVisibleTarget()
+    {
+        var catalog = CombatCatalog();
+        var observation = Snapshot(Marine(1, 0, 0, 0), Enemy(2, 4, 0));
+        var decisions = MarineCombatPlanner.Plan(observation, CombatWeaponProfile.FromCatalog(catalog));
+
+        var action = Assert.Single(Sc2MarineCombatActionTranslator.Translate(
+            decisions, observation, catalog, CombatWeaponProfile.FromCatalog(catalog)));
+        var command = action.ActionRaw.UnitCommand;
+        Assert.Equal(23, command.AbilityId);
+        Assert.Equal(2UL, command.TargetUnitTag);
+        Assert.Contains(1UL, command.UnitTags);
+    }
+
+    [Fact]
+    public void TranslatorMovesMarineDuringWeaponCooldown()
+    {
+        var catalog = CombatCatalog();
+        var observation = Snapshot(Marine(1, 0, 0, 3), Enemy(2, 4, 0));
+        var decisions = MarineCombatPlanner.Plan(observation, CombatWeaponProfile.FromCatalog(catalog));
+
+        var action = Assert.Single(Sc2MarineCombatActionTranslator.Translate(
+            decisions, observation, catalog, CombatWeaponProfile.FromCatalog(catalog)));
+        var command = action.ActionRaw.UnitCommand;
+        Assert.Equal(16, command.AbilityId);
+        Assert.NotNull(command.TargetWorldSpacePos);
+    }
+
+    [Fact]
+    public void CatalogRetainsAuthoritativeWeaponEnvelopeAndAttackAbility()
+    {
+        var catalog = CombatCatalog();
+        Assert.Equal((uint)23, catalog.AttackAbilityId);
+        var weapon = Assert.Single(catalog.WeaponsByUnitType[48]);
+        Assert.Equal(Weapon.Types.TargetType.Any, weapon.TargetType);
+        Assert.Equal(5f, weapon.Range);
+        Assert.Equal(6f, weapon.Damage);
+        Assert.Equal(1u, weapon.Attacks);
+        Assert.Equal(1f, weapon.AttackPeriodSeconds);
+    }
+
+    private static Sc2GameDataCatalog CombatCatalog()
+    {
+        var data = new SC2APIProtocol.ResponseData();
+        data.Units.Add(new SC2APIProtocol.UnitTypeData
+        {
+            UnitId = 48,
+            Name = "Marine",
+            Weapons = { new SC2APIProtocol.Weapon
+            {
+                Type = SC2APIProtocol.Weapon.Types.TargetType.Any,
+                Range = 5,
+                Damage = 6,
+                Attacks = 1,
+                Speed = 1
+            } }
+        });
+        data.Abilities.Add(new SC2APIProtocol.AbilityData
+        {
+            AbilityId = 23,
+            LinkName = "Attack",
+            LinkIndex = 0,
+            Target = SC2APIProtocol.AbilityData.Types.Target.Unit
+        });
+        data.Abilities.Add(new SC2APIProtocol.AbilityData
+        {
+            AbilityId = 16,
+            LinkName = "move",
+            LinkIndex = 0,
+            ButtonName = "Move"
+        });
+        return Sc2GameDataCatalog.Create(data);
+    }
+
     private static IReadOnlyList<MarineTacticalDecision> Plan(
         UnitObservationFacts marine,
         UnitObservationFacts enemy,

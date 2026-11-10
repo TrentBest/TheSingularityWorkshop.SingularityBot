@@ -30,6 +30,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     }
     private readonly WorkerResourceAssignmentPlanner _workerAssignments = new();
     private Sc2GameDataCatalog _gameData;
+    private IReadOnlyDictionary<uint, CombatWeaponProfile> _combatWeapons = new Dictionary<uint, CombatWeaponProfile>();
     private uint _playerId;
     private bool _behaviorCatalogRegistered;
     private bool _spatialDiagnosticsReported;
@@ -83,6 +84,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
+        _combatWeapons = CombatWeaponProfile.FromCatalog(_gameData);
 
         if (Sc2SpatialTerrainFactory.TryCreate(gameInfo, out var spatialTerrain))
         {
@@ -392,6 +394,25 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 normalized,
                 _gameData.SmartAbilityId,
                 assignments));
+        }
+
+        // The opening controller owns the first Marine's cross-map deployment.
+        // Once that milestone is observed, tactical control transfers to the
+        // deterministic combat planner for every visible friendly Marine.
+        if (_openingMarine.MarineDeployed)
+        {
+            var combatDecisions = MarineCombatPlanner.Plan(normalized, _combatWeapons);
+            actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
+                combatDecisions, normalized, _gameData, _combatWeapons));
+            if (_writeDiagnostics && combatDecisions.Count > 0)
+            {
+                var firing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Fire);
+                var repositioning = combatDecisions.Count(item =>
+                    item.Action == MarineTacticalAction.RepositionDuringCooldown);
+                var withdrawing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Withdraw);
+                _openingTrace.RecordEvent("MarineCombat", normalized.GameLoop,
+                    $"marines={combatDecisions.Count};fire={firing};reposition={repositioning};withdraw={withdrawing}");
+            }
         }
 
         if (_writeDiagnostics)

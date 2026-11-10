@@ -19,7 +19,7 @@ The spatial foundation now includes two additional reusable services. They retur
 
 Continuous features are normalized to [0,1]. `PlatformReasoning.Assess` combines them using caller-supplied doctrine weights. The included defensive Terran weights are an initial policy, not a claim that one weighting is universally optimal.
 
-Direct approach is a weighted prior, not a guaranteed opponent behavior. The service does not discover routes, measure terrain, infer elevation, or identify choke points itself. Those measurements must come from map/pathing/terrain analysis and can later be cached in a map platform catalogue.
+Direct approach is a weighted prior, not a guaranteed opponent behavior. The service does not discover routes, measure terrain, infer elevation, or identify choke points itself. SC2 pathing, placement, and terrain-height grids are now cached as `SpatialTerrain` from `OnStart`, providing the source data for those future measurements. Route connectivity, choke extraction, elevation comparisons, and platform cataloguing are still unimplemented.
 
 ## Bridge doctrine and seven-layer composition
 

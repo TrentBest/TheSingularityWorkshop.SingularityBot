@@ -1,3 +1,5 @@
+using SingularityBot.Observation;
+
 namespace SingularityBot.Behavior;
 
 public enum MarineTacticalAction

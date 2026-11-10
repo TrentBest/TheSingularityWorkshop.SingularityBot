@@ -55,8 +55,8 @@ public sealed class Sc2OrbitalSupportController
         var orbitalTechReady =
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "SupplyDepot") && unit.BuildProgress >= 1f) &&
-            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && IsKind(unit, "Barracks"));
+            observation.Units.Count(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f) >= 2;
 
         if (orbitalTechReady && gameData.OrbitalUpgradeAbilityId is > 0 &&
             gameData.OrbitalUpgradeMineralCost > 0)

@@ -59,4 +59,43 @@ public sealed class SpatialTopologyTests
         Assert.Equal((byte)4, region.MinimumTerrainHeight);
         Assert.Equal((byte)9, region.MaximumTerrainHeight);
     }
+    [Fact]
+    public void DiagonalPinchWithinOneConnectedRegionKeepsContoursClosedAndAreaConserved()
+    {
+        // The perimeter connects two interior cells that touch only at one vertex.
+        // This creates a diagonal pinch without making the pathing region disconnected.
+        var cells = new byte[]
+        {
+            1, 1, 1, 1,
+            1, 1, 0, 1,
+            1, 0, 1, 1,
+            1, 1, 1, 1
+        };
+        var pathing = new SpatialGridSnapshot(4, 4, 4, 4, cells);
+        var topology = SpatialTopology.Build(new SpatialTerrain(pathing, null, null));
+        var region = Assert.Single(topology.Regions);
+
+        Assert.Equal(14, region.CellCount);
+        Assert.NotEmpty(region.Contours);
+        Assert.All(region.Contours, contour =>
+        {
+            Assert.True(contour.IsClosed);
+            Assert.Equal(contour.Points[0], contour.Points[^1]);
+        });
+
+        var signedArea = region.Contours.Sum(contour =>
+        {
+            double area = 0;
+            for (var i = 0; i < contour.Points.Count - 1; i++)
+            {
+                var a = contour.Points[i];
+                var b = contour.Points[i + 1];
+                area += (double)a.X * b.Y - (double)b.X * a.Y;
+            }
+            return area / 2;
+        });
+
+        Assert.Equal(14, signedArea, 5);
+    }
+
 }

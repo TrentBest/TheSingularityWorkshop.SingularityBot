@@ -52,6 +52,7 @@ public static class Sc2ObservationNormalizer
                     unit.IsHallucination,
                     observation.GameLoop)
                 {
+                    WeaponCooldownRemaining = unit.WeaponCooldown,
                     Orders = unit.Orders.Select(order => new UnitOrderObservationFacts(
                         order.AbilityId,
                         order.TargetCase == UnitOrder.TargetOneofCase.TargetUnitTag ? order.TargetUnitTag : null,

@@ -150,10 +150,12 @@ public sealed class WorkerResourceAssignmentPlanner
                     Distance = DistanceSquared(worker, mineral)
                 })
                 .OrderBy(item => occupancy.GetValueOrDefault(item.Mineral.Tag))
-                // Fill every patch once before assigning second workers. Within
-                // the same saturation tier, prefer the longest mineral-to-town-hall
-                // route so the far patches receive their second worker first.
-                .ThenByDescending(item => DistanceSquared(item.Mineral, item.TownHall))
+                // With a small two-patch base, keep the second worker on the
+                // closest route. Larger mineral lines spread second workers
+                // toward the farthest patches after every patch has one worker.
+                .ThenBy(item => minerals.Count > 2
+                    ? -DistanceSquared(item.Mineral, item.TownHall)
+                    : item.Distance)
                 .ThenBy(item => item.Distance)
                 .ThenBy(item => item.Mineral.Tag)
                 .FirstOrDefault();

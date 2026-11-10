@@ -349,6 +349,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 secondBarracksAction = _secondBarracks.TryCreateAction(
                     normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
+                // Refresh assignments so the newly reserved builder cannot receive a stale gather intent.
+                assignments = _workerAssignments.Reconcile(normalized);
             }
             else
             {

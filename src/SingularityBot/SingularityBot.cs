@@ -582,6 +582,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingBuilder.OnPlacementQueryResult(response);
         if (_openingBuilder.IsCompleted)
             _openingMarine.OnPlacementQueryResult(response);
+        if (_openingMarine.BarracksComplete)
+            _secondBarracks.OnPlacementQueryResult(response);
         _openingSpray.OnQueryResult(response, _workerAssignments);
     }
 

@@ -479,11 +479,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnQueryResult(ResponseQuery response)
     {
+        var validPathingDistances = response?.Pathing
+            .Select(item => item.Distance)
+            .Where(distance => float.IsFinite(distance) && distance > 0)
+            .ToArray() ?? Array.Empty<float>();
         if (_writeDiagnostics)
             _openingTrace.RecordEvent("QueryResult", 0,
                 response is null
                     ? "response=null"
-                    : $"pathingCount={response.Pathing.Count};abilityCount={response.Abilities.Count};placementCount={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
+                    : $"pathingCount={response.Pathing.Count};pathingValidCount={validPathingDistances.Length};pathingMin={validPathingDistances.DefaultIfEmpty().Min():F2};pathingMax={validPathingDistances.DefaultIfEmpty().Max():F2};abilityCount={response.Abilities.Count};placementCount={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
         _workerAssignments.OnInitialPathingQueryResult(response);
         _openingBuilder.OnPlacementQueryResult(response);
         if (_openingBuilder.IsCompleted)

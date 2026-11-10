@@ -280,7 +280,8 @@ public sealed class WorkerResourceAssignmentPlanner
                         .OrderBy(hall => DistanceSquared(worker, hall))
                         .ThenBy(hall => hall.Tag)
                         .First(),
-                    Distance = DistanceSquared(worker, mineral)
+                    Distance = DistanceSquared(worker, mineral),
+                    IsSupplementalWorker = occupancy.GetValueOrDefault(mineral.Tag) > 0
                 })
                 .OrderBy(item => occupancy.GetValueOrDefault(item.Mineral.Tag))
                 // With a small two-patch base, keep the second worker on the
@@ -307,7 +308,10 @@ public sealed class WorkerResourceAssignmentPlanner
                 candidate.Mineral.PositionX,
                 candidate.Mineral.PositionY,
                 candidate.TownHall.PositionX,
-                candidate.TownHall.PositionY);
+                candidate.TownHall.PositionY)
+            {
+                IsSupplementalWorker = candidate.IsSupplementalWorker
+            };
 
             _assignments.Add(worker.Tag, assignment);
             occupancy[candidate.Mineral.Tag] = occupancy.GetValueOrDefault(candidate.Mineral.Tag) + 1;
@@ -322,7 +326,8 @@ public sealed class WorkerResourceAssignmentPlanner
         UnitObservationFacts[] townHalls,
         int mineralSaturation,
         uint gameLoop,
-        Dictionary<ulong, int> occupancy)
+        Dictionary<ulong, int> occupancy,
+        bool isSupplementalWorker)
     {
         if (workers.Length == 0 || minerals.Length == 0 || townHalls.Length == 0)
             return;
@@ -376,7 +381,8 @@ public sealed class WorkerResourceAssignmentPlanner
                     var slotIndex = matching[workerIndex];
                     if (slotIndex >= 0)
                         AddAssignment(baseWorkers[workerIndex], slots[slotIndex],
-                            townHall, gameLoop, occupancy);
+                            townHall, gameLoop, occupancy,
+                            slotIndex >= baseMinerals.Length);
                 }
             }
             else
@@ -395,7 +401,8 @@ public sealed class WorkerResourceAssignmentPlanner
                     var workerIndex = matching[slotIndex];
                     if (workerIndex >= 0)
                         AddAssignment(baseWorkers[workerIndex], slots[slotIndex],
-                            townHall, gameLoop, occupancy);
+                            townHall, gameLoop, occupancy,
+                            slotIndex >= baseMinerals.Length);
                 }
             }
         }
@@ -419,7 +426,10 @@ public sealed class WorkerResourceAssignmentPlanner
             mineral.PositionX,
             mineral.PositionY,
             townHall.PositionX,
-            townHall.PositionY);
+            townHall.PositionY)
+        {
+            IsSupplementalWorker = isSupplementalWorker
+        };
         _assignments[worker.Tag] = assignment;
         occupancy[mineral.Tag] = occupancy.GetValueOrDefault(mineral.Tag) + 1;
     }
@@ -617,4 +627,8 @@ public sealed record WorkerResourceAssignment(
     float MineralX,
     float MineralY,
     float TownHallX,
-    float TownHallY);
+    float TownHallY)
+{
+    /// <summary>True when this worker occupies a second-or-later mineral slot and can be drawn from the flexible construction crew.</summary>
+    public bool IsSupplementalWorker { get; init; }
+}

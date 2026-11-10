@@ -5,12 +5,12 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Builds one Barracks with an available SCV, trains one Marine, and sends the
-/// observed Marine to the map's authoritative enemy-start anchor.
+/// Builds one Barracks with an available SCV and trains the first Marine.
+/// The Marine remains on the friendly side; combat control reacts to nearby contacts.
 /// </summary>
 public sealed class Sc2OpeningMarineController
 {
-    private enum PendingAction { None, MoveBuilder, BuildBarracks, TrainMarine, MoveMarine }
+    private enum PendingAction { None, MoveBuilder, BuildBarracks, TrainMarine }
 
     private readonly List<MapPoint> _candidatePoints = new();
     private ulong? _builderTag;
@@ -23,8 +23,6 @@ public sealed class Sc2OpeningMarineController
     private bool _barracksComplete;
     private bool _marineTrainingRequested;
     private uint _marineTrainingRequestGameLoop;
-    private bool _marineMoveSubmitted;
-    private uint _marineMoveRequestGameLoop;
     private bool _deployed;
     private PendingAction _pendingAction;
 
@@ -174,35 +172,15 @@ public sealed class Sc2OpeningMarineController
             if (!MarineObserved)
                 Console.WriteLine($"[Opening] OBSERVED: Marine {marines[0].Tag} produced.");
             MarineObserved = true;
-            var marine = marines[0];
-            var target = map.Side.EnemyStart;
-            var distanceSquared = DistanceSquared(marine.PositionX, marine.PositionY, target.X, target.Y);
-            if (distanceSquared <= 4f)
-            {
-                if (!_deployed)
-                    Console.WriteLine($"[Opening] OBSERVED: Marine {marine.Tag} reached enemy-start anchor ({target.X:F1},{target.Y:F1}).");
-                _deployed = true;
-                return null;
-            }
 
-            var alreadyMovingThere = marine.Orders.Any(order =>
-                order.AbilityId == gameData.MoveAbilityId.Value &&
-                order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
-                DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value, target.X, target.Y) <= 1f);
-            if (alreadyMovingThere)
-            {
-                _marineMoveSubmitted = false;
-                return null;
-            }
-
-            if (_marineMoveSubmitted && observation.GameLoop <= _marineMoveRequestGameLoop + 22)
-                return null;
-
-            _marineMoveSubmitted = true;
-            _marineMoveRequestGameLoop = observation.GameLoop;
-            Console.WriteLine($"[Opening] Sending Marine {marine.Tag} to enemy start ({target.X:F1},{target.Y:F1}); distance²={distanceSquared:F1}.");
-            _pendingAction = PendingAction.MoveMarine;
-            return PositionCommand(marine.Tag, checked((int)gameData.MoveAbilityId.Value), target);
+            // Production is the opening objective. Do not send a lone Marine
+            // across the map or up an unknown enemy ramp. Hand it to the
+            // defensive combat controller immediately; it will engage only
+            // contacts that enter its bounded local pursuit envelope.
+            if (!_deployed)
+                Console.WriteLine($"[Opening] Marine {marines[0].Tag} remains on the friendly side; defensive control is active.");
+            _deployed = true;
+            return null;
         }
 
         var trainingOrderObserved = barracks.Orders.Any(order =>
@@ -287,9 +265,6 @@ public sealed class Sc2OpeningMarineController
                     break;
                 case PendingAction.TrainMarine:
                     _marineTrainingRequested = false;
-                    break;
-                case PendingAction.MoveMarine:
-                    _marineMoveSubmitted = false;
                     break;
             }
         }

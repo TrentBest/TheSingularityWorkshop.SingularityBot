@@ -105,7 +105,7 @@ public sealed class Sc2OrbitalSupportControllerTests
         Snapshot(minerals, new[] { first, second, third }, loop);
 
     private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts[] units, uint loop) =>
-        new(gameLoop, 1, units, new HashSet<ulong>()) { Minerals = minerals };
+        new(loop, 1, units, new HashSet<ulong>()) { Minerals = minerals };
 
     private static UnitObservationFacts Fact(ulong tag, string kind, float x = 10, float y = 10) =>
         new(tag, 1, kind, 1, UnitAlliance.Self, UnitVisibility.Visible,

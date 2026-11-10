@@ -77,7 +77,7 @@ Before training a Marine:
 4. confirm queue capacity and no conflicting order;
 5. submit and record the action result.
 
-Four Barracks is the target production footprint. The controller must not assume all four should start simultaneously if doing so starves SCV production, supply or the first structure. The schedule is measured and versioned.
+Four Barracks is the first production milestone, not the ceiling. The long-term configurable target is eight Barracks with three Tech Labs and five Reactors, subject to economy, technology, threat and measured match performance. The controller must not assume all eight should start simultaneously if doing so starves SCV production, supply, expansion or the Marine engine. Reactor queues, Tech Lab unit eligibility, add-on attachment, gas demand, supply and production-time reservations must be modeled explicitly. Marines remain the dominant army component; Marauders, Reapers and later Ghosts are bounded support allocations. Medivacs are produced through Starports and support healing, drops, extraction and repositioning. The schedule is declarative, measured and versioned.
 
 ## Replay contract
 
@@ -123,3 +123,12 @@ A build request should eventually carry a desired start game loop/time window, i
 
 After the Depot-to-Barracks chain is proven, generalize this into a queue. If another request is ready, keep the builder reserved and dispatch it to the next site; otherwise release the worker to the mining scheduler. Mining then reconciles the returning worker with current patch saturation and can expose the next construction opportunity (for example, a Refinery when the economy can support it). Prediction may schedule a request, but observed resources, prerequisites, placement responses and action results remain the execution gates.
 
+
+
+## Scalable Marine-centered production doctrine
+
+The first playable target remains four Barracks producing Marines. Once that engine is stable, the strategy may expand toward eight Barracks with a reference allocation of three Tech Labs and five Reactors. This is not a rigid opening sequence: the production planner must choose when to expand, when to attach add-ons, and when to invest in gas / Starports based on observed income, supply, technology, map and enemy composition.
+
+The composition policy must keep Marines visibly dominant. Marauders provide specialized durability and anti-armor support; Reapers provide reconnaissance and disruption; Ghosts are a later technology investment for specialized tactical effects. Medivacs add healing and tactical mobility. Their drops must be complete transport workflows with confirmed load, route, unload, healing / extraction and return observations.
+
+The scheduler must never allow optional support production to starve Marine production, worker economy, supply or essential infrastructure. When the economy cannot sustain the requested composition, it should expose the unmet target and continue the highest-priority affordable Marine-centered plan.

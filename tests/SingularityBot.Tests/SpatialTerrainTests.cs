@@ -102,6 +102,75 @@ public sealed class Sc2SpatialTerrainFactoryTests
     }
 
     [Fact]
+    public void MalformedLayersRemainUnavailableWhenAnotherLayerIsValid()
+    {
+        var gameInfo = new SC2APIProtocol.ResponseGameInfo
+        {
+            StartRaw = new SC2APIProtocol.StartRaw
+            {
+                MapSize = new SC2APIProtocol.Size2DI { X = 4, Y = 4 },
+                PathingGrid = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 1,
+                    Size = new SC2APIProtocol.Size2DI { X = 2, Y = 2 },
+                    Data = Google.Protobuf.ByteString.Empty
+                },
+                PlacementGrid = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 2,
+                    Size = new SC2APIProtocol.Size2DI { X = 2, Y = 2 },
+                    Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 1 })
+                },
+                TerrainHeight = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 8,
+                    Size = new SC2APIProtocol.Size2DI { X = 2, Y = 2 },
+                    Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 10, 20, 30, 40 })
+                }
+            }
+        };
+
+        Assert.True(Sc2SpatialTerrainFactory.TryCreate(gameInfo, out var terrain));
+        Assert.False(terrain.TryIsPathable(new MapPoint(1, 1), out _));
+        Assert.False(terrain.TryIsBuildable(new MapPoint(1, 1), out _));
+        Assert.True(terrain.TryGetTerrainHeight(new MapPoint(1, 1), out var height));
+        Assert.Equal((byte)10, height);
+    }
+
+    [Fact]
+    public void FactoryRejectsGameInfoWhenEveryTerrainLayerIsMalformed()
+    {
+        var gameInfo = new SC2APIProtocol.ResponseGameInfo
+        {
+            StartRaw = new SC2APIProtocol.StartRaw
+            {
+                MapSize = new SC2APIProtocol.Size2DI { X = 4, Y = 4 },
+                PathingGrid = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 1,
+                    Size = new SC2APIProtocol.Size2DI { X = 2, Y = 2 },
+                    Data = Google.Protobuf.ByteString.Empty
+                },
+                PlacementGrid = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 2,
+                    Size = new SC2APIProtocol.Size2DI { X = 2, Y = 2 },
+                    Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 1 })
+                },
+                TerrainHeight = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 8,
+                    Size = new SC2APIProtocol.Size2DI { X = 2, Y = 2 },
+                    Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 10, 20, 30 })
+                }
+            }
+        };
+
+        Assert.False(Sc2SpatialTerrainFactory.TryCreate(gameInfo, out var terrain));
+        Assert.Null(terrain);
+    }
+
+    [Fact]
     public void LayersKeepIndependentResolutionAndUseFullMapOrigin()
     {
         var gameInfo = new SC2APIProtocol.ResponseGameInfo

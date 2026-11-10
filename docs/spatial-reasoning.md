@@ -27,6 +27,15 @@ Boolean pathing and placement samples are normalized to 0/1 whether the source i
 ### Terrain encoding evidence
 The Blizzard raw protocol defines `StartRaw.terrain_height` as a one-byte bitmap, but does not specify its world-unit conversion. Two independent community implementations (`python-sc2` and `sc2ai`) decode raw samples with `height = -16 + (sample * 32 / 255)`, placing the represented terrain range at approximately -16 to +16 world units. This is stronger corroboration than a single example, but it is still implementation evidence rather than an explicit Blizzard raw-protocol guarantee. The separate feature-layer `height_map` is explicitly documented as [-200, 200] encoded to [0, 255]; that range must not be applied to `StartRaw.terrain_height`. Accordingly, the snapshot continues to preserve raw bytes and topology currently compares them only as encoded relative samples. A future calibrated conversion should be checked against live map samples and the in-game `TerrainHeight` query before it becomes a gameplay invariant.
 
+### Local terrain calibration capture
+Every local run already enables diagnostics. At match start, the runner now writes two additional files into the existing repository `extracted/` folder:
+
+- `terrain-calibration-<UTC timestamp>.json` preserves the raw `StartRaw.terrain_height` bytes as Base64, image and map dimensions, bits-per-pixel, byte counts, row-order/mapping notes, and the candidate conversion formula.
+- `terrain-calibration-<UTC timestamp>.csv` contains one row per source cell: image indices, linear byte index, mapped world-space cell center, original byte, and the candidate world-unit value.
+
+The CSV is emitted only when the source is a structurally valid 8-bit grid. The JSON is retained even when metadata is malformed, so the original payload can still be inspected. No conversion is applied to runtime terrain data. This capture gives us the complete raw sample set and exact coordinate mapping needed for calibration; it does not pretend that the candidate formula is an independent live `TerrainHeight(point)` measurement. The existing `on-start-*.json` snapshot is also retained as the complete protocol record.
+
+To collect it, launch the normal local runner from the repository as usual, let the match reach its start screen/first observation, then exit normally. Commit the generated `terrain-calibration-*.json` and `terrain-calibration-*.csv` files from `extracted/` alongside the other session captures. No ladder run or special command-line switch is required.
 The packed one-bit pathing/placement decoder currently reads bits most-significant-first within each byte. A community raw-image example uses the same ordering; the protocol comment specifies one-bit packing but does not itself state bit order. Keep this as a tested compatibility assumption until checked against a live map or the reference implementation.
 
 ## Implemented pathing topology

@@ -74,7 +74,6 @@ public sealed record MarineTacticalDecision(
 /// </summary>
 public static class MarineCombatPlanner
 {
-    private const float SupportRadius = 9f;
     private const float SafetyMargin = 1.15f;
 
     public static IReadOnlyList<MarineTacticalDecision> Plan(
@@ -127,7 +126,7 @@ public static class MarineCombatPlanner
                 .Where(ally => weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) &&
                     profile.IsUsable && profile.CanHit(target.IsFlying) &&
                     DistanceSquared(ally, target) <= profile.GetRange(target.IsFlying) * profile.GetRange(target.IsFlying))
-                .Sum(ally => weaponsByUnitType[ally.UnitTypeId].DamagePerSecond);
+                .Sum(ally => weaponsByUnitType[ally.UnitTypeId].GetDamagePerSecond(target.IsFlying));
 
             var threatDps = live
                 .Where(enemy => enemy.Alliance == UnitAlliance.Enemy &&

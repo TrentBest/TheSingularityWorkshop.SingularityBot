@@ -45,7 +45,18 @@ public sealed class SpatialTopologyTests
 
         Assert.Equal(8, region.CellCount);
         Assert.Equal(2, region.Contours.Count);
-        Assert.All(region.Contours, contour => Assert.True(contour.IsClosed));
+        Assert.All(region.Contours, contour =>
+        {
+            Assert.True(contour.IsClosed);
+            Assert.Equal(contour.Points[0], contour.Points[^1]);
+            AssertNoDegenerateGridEdges(contour);
+        });
+
+        // With the SC2 bottom-left origin, the walkable exterior is counter-clockwise
+        // and the boundary around the blocked hole is clockwise.
+        var signedAreas = region.Contours.Select(SignedArea).OrderBy(area => area).ToArray();
+        Assert.Equal(-1, signedAreas[0], 5);
+        Assert.Equal(9, signedAreas[1], 5);
     }
 
     [Fact]
@@ -81,21 +92,33 @@ public sealed class SpatialTopologyTests
         {
             Assert.True(contour.IsClosed);
             Assert.Equal(contour.Points[0], contour.Points[^1]);
+            AssertNoDegenerateGridEdges(contour);
         });
 
-        var signedArea = region.Contours.Sum(contour =>
-        {
-            double area = 0;
-            for (var i = 0; i < contour.Points.Count - 1; i++)
-            {
-                var a = contour.Points[i];
-                var b = contour.Points[i + 1];
-                area += (double)a.X * b.Y - (double)b.X * a.Y;
-            }
-            return area / 2;
-        });
-
-        Assert.Equal(14, signedArea, 5);
+        Assert.Equal(14, region.Contours.Sum(SignedArea), 5);
     }
 
+    private static double SignedArea(SpatialBoundaryContour contour)
+    {
+        double twiceArea = 0;
+        for (var i = 0; i < contour.Points.Count - 1; i++)
+        {
+            var a = contour.Points[i];
+            var b = contour.Points[i + 1];
+            twiceArea += (double)a.X * b.Y - (double)b.X * a.Y;
+        }
+
+        return twiceArea / 2;
+    }
+
+    private static void AssertNoDegenerateGridEdges(SpatialBoundaryContour contour)
+    {
+        for (var i = 0; i < contour.Points.Count - 1; i++)
+        {
+            var a = contour.Points[i];
+            var b = contour.Points[i + 1];
+            Assert.NotEqual(a, b);
+            Assert.True(a.X == b.X || a.Y == b.Y);
+        }
+    }
 }

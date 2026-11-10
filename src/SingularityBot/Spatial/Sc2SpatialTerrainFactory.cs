@@ -16,9 +16,9 @@ public static class Sc2SpatialTerrainFactory
 
         var worldWidth = (float)mapSize.X;
         var worldHeight = (float)mapSize.Y;
-        var pathing = TryDecode(startRaw.PathingGrid, worldWidth, worldHeight);
-        var placement = TryDecode(startRaw.PlacementGrid, worldWidth, worldHeight);
-        var height = TryDecode(startRaw.TerrainHeight, worldWidth, worldHeight);
+        var pathing = TryDecodeBooleanGrid(startRaw.PathingGrid, worldWidth, worldHeight);
+        var placement = TryDecodeBooleanGrid(startRaw.PlacementGrid, worldWidth, worldHeight);
+        var height = TryDecodeByteGrid(startRaw.TerrainHeight, worldWidth, worldHeight);
 
         if (pathing == null && placement == null && height == null)
             return false;
@@ -27,7 +27,50 @@ public static class Sc2SpatialTerrainFactory
         return true;
     }
 
-    private static SpatialGridSnapshot TryDecode(ImageData image, float worldWidth, float worldHeight)
+    // StartRaw pathing and placement images are protocol-defined as 1-bit bitmaps.
+    // Accept 8-bit variants as well for compatibility with producers that expand the bits.
+    private static SpatialGridSnapshot TryDecodeBooleanGrid(ImageData image, float worldWidth, float worldHeight)
+    {
+        if (image?.Size == null || image.Size.X <= 0 || image.Size.Y <= 0)
+            return null;
+
+        var cellCount = (long)image.Size.X * image.Size.Y;
+        if (cellCount > int.MaxValue)
+            return null;
+
+        var data = image.Data;
+        var decoded = new byte[(int)cellCount];
+        if (image.BitsPerPixel == 1)
+        {
+            var expectedLength = (cellCount + 7) / 8;
+            if (data.Length != expectedLength)
+                return null;
+
+            for (var index = 0; index < decoded.Length; index++)
+            {
+                var packed = data[index >> 3];
+                var mask = 1 << (7 - (index & 7));
+                decoded[index] = (packed & mask) != 0 ? (byte)1 : (byte)0;
+            }
+        }
+        else if (image.BitsPerPixel == 8)
+        {
+            if (data.Length != cellCount)
+                return null;
+
+            for (var index = 0; index < decoded.Length; index++)
+                decoded[index] = data[index] == 0 ? (byte)0 : (byte)1;
+        }
+        else
+        {
+            return null;
+        }
+
+        return new SpatialGridSnapshot(
+            image.Size.X, image.Size.Y, worldWidth, worldHeight, decoded);
+    }
+
+    private static SpatialGridSnapshot TryDecodeByteGrid(ImageData image, float worldWidth, float worldHeight)
     {
         if (image?.Size == null || image.BitsPerPixel != 8 ||
             image.Size.X <= 0 || image.Size.Y <= 0)

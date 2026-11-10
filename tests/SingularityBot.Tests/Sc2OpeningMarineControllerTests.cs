@@ -61,6 +61,7 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Equal(560, trainMarine.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(200UL, trainMarine.ActionRaw.UnitCommand.UnitTags[0]);
         controller.OnActionResult(ActionResult.Success);
+        Assert.False(assignments.IsReserved(10));
 
         var trainingBarracks = Fact(200, "Barracks", site.X, site.Y) with
         {

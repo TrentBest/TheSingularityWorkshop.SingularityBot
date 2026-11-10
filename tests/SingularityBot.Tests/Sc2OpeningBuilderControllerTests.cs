@@ -9,26 +9,23 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OpeningBuilderControllerTests
 {
     [Fact]
-    public void SelectsClosestConstructionCrewMemberBeforeDepotIsAffordable()
+    public void DoesNotReserveOrPullAnScvBeforeDepotIsAffordable()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
 
-        var move = controller.TryCreateAction(Snapshot(50, 12, 15,
+        var action = controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
-        Assert.NotNull(move);
-        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.False(move.ActionRaw.UnitCommand.QueueCommand);
-        Assert.Equal(11UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(11));
+        Assert.Null(action);
+        Assert.Null(controller.BuilderTag);
         Assert.False(assignments.IsReserved(10));
-        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        Assert.False(assignments.IsReserved(11));
+        Assert.Null(controller.TakePlacementQuery(gameData));
     }
 
     [Fact]
@@ -46,13 +43,45 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
-        // The cargo-bearing worker is already close enough to the town hall that
-        // its return, unload and staging estimate beats the distant empty worker.
-        // It remains reserved and finishes its return before receiving Move.
-        Assert.Null(action);
+        // A worker already carrying its completed mineral load is dispatched
+        // directly to the site; it must not return to the Command Center first.
+        Assert.NotNull(action);
+        Assert.Equal(16, action.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(10UL, action.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.Equal(10UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(10));
         Assert.False(assignments.IsReserved(11));
+    }
+
+    [Fact]
+    public void LetsAnActiveMineralTripFinishThenDispatchesWithoutReturningToTownHall()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var gameData = GameData();
+        var miningOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
+        var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
+
+        var waiting = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            assignments, Crew(10, 11));
+
+        Assert.Null(waiting);
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
+
+        var dispatch = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5, hasCargo: true, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            assignments, Crew(10, 11));
+
+        Assert.NotNull(dispatch);
+        Assert.Equal(16, dispatch.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, dispatch.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]
@@ -202,7 +231,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         SpatialMap map,
         Sc2GameDataCatalog gameData)
     {
-        var selection = controller.TryCreateAction(Snapshot(50, 12, 15,
+        var selection = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));

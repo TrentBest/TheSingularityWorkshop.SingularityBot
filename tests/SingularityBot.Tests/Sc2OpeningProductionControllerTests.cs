@@ -22,6 +22,19 @@ public sealed class Sc2OpeningProductionControllerTests
     }
 
     [Fact]
+    public void PreservesReservedMineralsForTheOpeningSupplyDepot()
+    {
+        var controller = new Sc2OpeningProductionController();
+        Assert.Null(controller.TryCreateScvTrainingAction(
+            Snapshot(100, 12, 15, Fact(100, "CommandCenter")),
+            GameData(), reservedMinerals: 100));
+
+        Assert.NotNull(controller.TryCreateScvTrainingAction(
+            Snapshot(150, 12, 15, Fact(100, "CommandCenter")),
+            GameData(), reservedMinerals: 100));
+    }
+
+    [Fact]
     public void DoesNotTrainWithoutMineralsOrFreeSupply()
     {
         var controller = new Sc2OpeningProductionController();

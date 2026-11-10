@@ -10,6 +10,9 @@ public readonly record struct SpatialPoint(float X, float Y)
     public float Dot(SpatialPoint other) => X*other.X+Y*other.Y;
     public float DistanceTo(SpatialPoint other) => (this-other).Length;
     public SpatialPoint Normalized => Length <= 1e-6f ? default : new(X/Length,Y/Length);
+
+    // Avoid recursive record formatting through the computed Normalized property.
+    public override string ToString() => $"({X}, {Y})";
 }
 public enum BattlefieldSide { OwnSide, DividingLine, OpponentSide }
 public enum RelativeBearing { Front, Back, Left, Right, CoincidentOrUnknown }

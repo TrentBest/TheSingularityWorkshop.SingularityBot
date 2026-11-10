@@ -45,6 +45,9 @@ public sealed record UnitObservationFacts(
     /// <summary>Remaining weapon cooldown in game-loop units, as reported by SC2.</summary>
     public float WeaponCooldownRemaining { get; init; }
 
+    /// <summary>Current unit energy as reported by the SC2 observation.</summary>
+    public float Energy { get; init; }
+
     public IReadOnlyList<UnitOrderObservationFacts> Orders { get; init; } = Array.Empty<UnitOrderObservationFacts>();
 
     public bool IsLiveVisible => Visibility == UnitVisibility.Visible;

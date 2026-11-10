@@ -20,9 +20,9 @@ public sealed class Sc2OpeningMarineControllerTests
 
         Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments));
-        Assert.Equal(11UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(11));
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, preferredBuilderTag: 10));
+        Assert.Equal(10UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(10));
 
         var query = controller.TakePlacementQuery(gameData);
         Assert.NotNull(query);
@@ -37,23 +37,24 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments);
         Assert.NotNull(moveBuilder);
         Assert.Equal(16, moveBuilder.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, moveBuilder.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.Equal(10UL, moveBuilder.ActionRaw.UnitCommand.UnitTags[0]);
         controller.OnActionResult(ActionResult.Success);
 
         var buildBarracks = controller.TryCreateAction(Snapshot(150, 12, 15,
-            Fact(10, "SCV", 10, 10), Fact(11, "SCV", site.X, site.Y),
+            Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments);
         Assert.NotNull(buildBarracks);
         Assert.Equal(321, buildBarracks.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(10UL, buildBarracks.ActionRaw.UnitCommand.UnitTags[0]);
         controller.OnActionResult(ActionResult.Success);
 
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
-            Fact(10, "SCV", 10, 10), Fact(11, "SCV", site.X, site.Y),
+            Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y, 0.5f)),
             map, gameData, assignments));
 
         var trainMarine = controller.TryCreateAction(Snapshot(50, 12, 15,
-            Fact(10, "SCV", 10, 10), Fact(11, "SCV", site.X, site.Y),
+            Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y)),
             map, gameData, assignments);
         Assert.NotNull(trainMarine);
@@ -67,10 +68,10 @@ public sealed class Sc2OpeningMarineControllerTests
             Orders = new[] { new UnitOrderObservationFacts(560, null, null, null) }
         };
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
-            Fact(10, "SCV", 10, 10), trainingBarracks), map, gameData, assignments));
+            Fact(10, "SCV", site.X, site.Y), trainingBarracks), map, gameData, assignments));
 
         var moveMarine = controller.TryCreateAction(Snapshot(0, 13, 15,
-            Fact(10, "SCV", 10, 10), Fact(200, "Barracks", site.X, site.Y),
+            Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
             Fact(300, "Marine", 20, 20)), map, gameData, assignments);
         Assert.NotNull(moveMarine);
         Assert.Equal(16, moveMarine.ActionRaw.UnitCommand.AbilityId);

@@ -22,9 +22,16 @@ This is a shared spatial capability, not an eighth strategic layer. A high-level
 ## SC2 terrain snapshot
 `Sc2SpatialTerrainFactory` decodes the `StartRaw` pathing, placement, and terrain-height image layers supplied in `OnStart`. The resulting immutable `SpatialTerrain` is cached by the bot for the match. Each layer retains its own dimensions and is sampled in world coordinates, so differing image resolutions do not require resampling. Missing or malformed layers remain unavailable; they are never silently interpreted as blocked terrain.
 
-`TryIsPathable`, `TryIsBuildable`, and `TryGetTerrainHeight` distinguish an unavailable sample from a valid zero-valued cell. The byte values are exposed as SC2-provided cell facts; this layer does not yet calculate connected components, route counts, choke widths, height advantage, or safe movement paths.
+Boolean pathing and placement samples are normalized to 0/1 whether the source image arrives as packed one-bit data or expanded eight-bit values. Terrain-height samples remain their original byte values. The factory maps each image across the full `MapSize` world extent; playable bounds remain a separate concept owned by `SpatialMap`.
+
+## Implemented pathing topology
+`SpatialTopology.Build` consumes the cached pathing layer and extracts deterministic four-connected walkable regions. Diagonal-only contact does not connect regions. Each region reports its cell count, optional minimum/maximum raw height sample, and directed grid-edge contours. Contours are expressed in world coordinates, retain closure state, and are oriented with the region interior on the left. Enclosed blocked areas produce inner contours.
+
+A pathing region is **not yet a platform**. Ramps, bridges and other elevation transitions can connect different surfaces inside one pathing component. Raw height bytes are useful as encoded relative samples, but this implementation does not assign world-unit elevations or invent a platform-height threshold. Platform segmentation, transition discovery, route counts, choke widths, safe movement paths and calibrated elevation advantage remain future work.
+
+`TryIsPathable`, `TryIsBuildable`, and `TryGetTerrainHeight` distinguish an unavailable sample from a valid zero-valued cell. Grid layers are sampled independently, so differing image resolutions do not require resampling.
 
 ## Integration boundary
 These utilities are additive and protocol-independent except for the narrow `Sc2SpatialTerrainFactory` adapter. Existing sector behavior is untouched. Splash-aware formation spacing and doctrine-weighted platform assessment are documented in [Tactical spatial reasoning](tactical-spatial-reasoning.md). The longer-term model for connected platforms, real boundary contours, persistent place state machines, role-specific tracks and contingency maneuvers is documented in [World model, platform doctrine and contingency planning](world-model-and-maneuver-planning.md).
 
-Terrain images are cached at match start, but connected-component extraction, real platform boundaries, transition discovery, route measurements, place FSMs, vision revisit scheduling and contingency execution are future implementation work. These capabilities can add fog-aware influence maps, path costs, collision, weapon ranges and threat fields without changing the basic spatial vocabulary.
+Terrain snapshots and first-stage pathing topology are cached/derivable at match start. Platform segmentation, transition discovery, route measurements, place FSMs, vision revisit scheduling and contingency execution are not yet implemented. These capabilities can add fog-aware influence maps, path costs, collision, weapon ranges and threat fields without changing the basic spatial vocabulary.

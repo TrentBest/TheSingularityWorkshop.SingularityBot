@@ -9,7 +9,7 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OpeningMarineControllerTests
 {
     [Fact]
-    public void BuildsBarracksTrainsOneMarineAndMovesObservedMarineToEnemyStart()
+    public void BuildsBarracksTrainsMarineAndKeepsItOnFriendlySide()
     {
         var controller = new Sc2OpeningMarineController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -71,20 +71,11 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
             Fact(10, "SCV", site.X, site.Y), trainingBarracks), map, gameData, assignments));
 
-        var moveMarine = controller.TryCreateAction(Snapshot(0, 13, 15,
+        var observedMarine = controller.TryCreateAction(Snapshot(0, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
             Fact(300, "Marine", 20, 20)), map, gameData, assignments);
-        Assert.NotNull(moveMarine);
-        Assert.Equal(16, moveMarine.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(300UL, moveMarine.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.Equal(map.Side.EnemyStart.X, moveMarine.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
-        Assert.Equal(map.Side.EnemyStart.Y, moveMarine.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
-        controller.OnActionResult(ActionResult.Success);
 
-        Assert.Null(controller.TryCreateAction(Snapshot(0, 13, 15,
-            Fact(10, "SCV", 10, 10), Fact(200, "Barracks", site.X, site.Y),
-            Fact(300, "Marine", map.Side.EnemyStart.X, map.Side.EnemyStart.Y)),
-            map, gameData, assignments));
+        Assert.Null(observedMarine);
         Assert.True(controller.MarineObserved);
         Assert.True(controller.MarineDeployed);
     }

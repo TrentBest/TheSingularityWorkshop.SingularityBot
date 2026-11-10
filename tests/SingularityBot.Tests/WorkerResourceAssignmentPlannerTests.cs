@@ -293,6 +293,17 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void ReservedBuilderMayReturnCargoButCannotResumeMining()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        planner.Reserve(10);
+
+        Assert.False(planner.ShouldSuppressIntent(10, BehaviorCommand.ReturnCarriedResources));
+        Assert.True(planner.ShouldSuppressIntent(10, BehaviorCommand.AssignWorkerToMinerals));
+        Assert.False(planner.ShouldSuppressIntent(11, BehaviorCommand.AssignWorkerToMinerals));
+    }
+
+    [Fact]
     public void KeepsReservationAndGenerationWhenWorkerTemporarilyDisappears()
     {
         var planner = new WorkerResourceAssignmentPlanner();

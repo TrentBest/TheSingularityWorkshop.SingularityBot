@@ -100,4 +100,55 @@ public sealed class Sc2SpatialTerrainFactoryTests
         Assert.True(terrain.TryGetTerrainHeight(new MapPoint(1.5f, 1.5f), out var height));
         Assert.Equal((byte)6, height);
     }
+
+    [Fact]
+    public void LayersKeepIndependentResolutionAndUseFullMapOrigin()
+    {
+        var gameInfo = new SC2APIProtocol.ResponseGameInfo
+        {
+            StartRaw = new SC2APIProtocol.StartRaw
+            {
+                MapSize = new SC2APIProtocol.Size2DI { X = 8, Y = 6 },
+                PlayableArea = new SC2APIProtocol.RectangleI
+                {
+                    P0 = new SC2APIProtocol.PointI { X = 2, Y = 1 },
+                    P1 = new SC2APIProtocol.PointI { X = 7, Y = 5 }
+                },
+                PathingGrid = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 8,
+                    Size = new SC2APIProtocol.Size2DI { X = 4, Y = 2 },
+                    Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 1, 0, 0, 1, 0, 1, 1, 0 })
+                },
+                PlacementGrid = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 8,
+                    Size = new SC2APIProtocol.Size2DI { X = 2, Y = 4 },
+                    Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 1, 0, 0, 1, 1, 0, 0, 1 })
+                },
+                TerrainHeight = new SC2APIProtocol.ImageData
+                {
+                    BitsPerPixel = 8,
+                    Size = new SC2APIProtocol.Size2DI { X = 1, Y = 1 },
+                    Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 173 })
+                }
+            }
+        };
+
+        Assert.True(Sc2SpatialTerrainFactory.TryCreate(gameInfo, out var terrain));
+
+        Assert.True(terrain.Pathing.TryGetValue(new MapPoint(1, 1), out var southWestPathing));
+        Assert.Equal((byte)1, southWestPathing);
+        Assert.True(terrain.Pathing.TryGetValue(new MapPoint(7, 5), out var northEastPathing));
+        Assert.Equal((byte)0, northEastPathing);
+
+        Assert.True(terrain.Placement.TryGetValue(new MapPoint(1, 1), out var southWestPlacement));
+        Assert.Equal((byte)1, southWestPlacement);
+        Assert.True(terrain.Placement.TryGetValue(new MapPoint(7, 5), out var northEastPlacement));
+        Assert.Equal((byte)1, northEastPlacement);
+
+        Assert.True(terrain.TryGetTerrainHeight(new MapPoint(1, 1), out var height));
+        Assert.Equal((byte)173, height);
+        Assert.False(terrain.TryGetTerrainHeight(new MapPoint(8, 3), out _));
+    }
 }

@@ -50,6 +50,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public SpatialMap SpatialMap { get; private set; }
     public SpatialIntelligence SpatialIntelligence { get; private set; }
+    /// <summary>Immutable pathing, placement and elevation layers cached from SC2 OnStart data.</summary>
+    public SpatialTerrain SpatialTerrain { get; private set; }
     public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
 
     /// <summary>Sets the user-authored goal plan before or during a match.</summary>
@@ -75,6 +77,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _baselineRecorder.Start();
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
+
+        if (Sc2SpatialTerrainFactory.TryCreate(gameInfo, out var spatialTerrain))
+        {
+            SpatialTerrain = spatialTerrain;
+            Console.WriteLine($"[Spatial] Terrain layers: pathing={spatialTerrain.Pathing != null}, placement={spatialTerrain.Placement != null}, height={spatialTerrain.TerrainHeight != null}.");
+        }
+        else
+        {
+            SpatialTerrain = null;
+            Console.WriteLine("[Spatial] SC2 terrain image layers unavailable or invalid; terrain-dependent reasoning remains disabled.");
+        }
 
         if (SpatialMapFactory.TryCreate(gameInfo, observation, out var spatialMap))
         {

@@ -72,7 +72,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         string opponentId)
     {
         if (_writeDiagnostics)
+        {
             WriteOnStartSnapshot(gameInfo, data, pingResponse, observation, playerId, opponentId);
+            Sc2Diagnostics.WriteTerrainCalibration(gameInfo);
+        }
         if (_passiveBaseline || _writeDiagnostics)
             _baselineRecorder.Start();
         _playerId = playerId;

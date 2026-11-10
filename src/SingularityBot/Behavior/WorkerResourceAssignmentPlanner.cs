@@ -1,3 +1,4 @@
+using SC2APIProtocol;
 using SingularityBot.Observation;
 
 namespace SingularityBot.Behavior;
@@ -14,8 +15,119 @@ public sealed class WorkerResourceAssignmentPlanner
     private readonly Dictionary<ulong, WorkerResourceAssignment> _assignments = new();
     private uint _nextGeneration;
     private readonly HashSet<ulong> _reservedWorkers = new();
+    private readonly Dictionary<(ulong StartTag, ulong MineralTag), double> _pathingDistances = new();
+    private readonly List<(ulong StartTag, ulong MineralTag)> _pendingPathingPairs = new();
+    private bool _initialPathingQueryIssued;
+    private bool _initialPathingPending;
+    private uint _initialPathingQueryGameLoop;
 
     public int Count => _assignments.Count;
+
+    /// <summary>
+    /// Requests SC2's own pathing distance for every initial worker/mineral pair.
+    /// The result is used for the one-time global opening assignment; later
+    /// assignments fall back to current geometric distance until queried.
+    /// </summary>
+    public RequestQuery PrepareInitialPathingQuery(NormalizedObservation observation)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+
+        if (_initialPathingPending)
+        {
+            if (observation.GameLoop <= _initialPathingQueryGameLoop + 22)
+                return null;
+
+            // A missing query response must not stall the economy. Reconcile
+            // with straight-line distance after one second of game time.
+            _initialPathingPending = false;
+            _pendingPathingPairs.Clear();
+        }
+
+        if (_initialPathingQueryIssued || _nextGeneration != 0 || _assignments.Count != 0)
+            return null;
+
+        var workers = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                           unit.HasPosition && IsWorker(unit.UnitKind) &&
+                           !_reservedWorkers.Contains(unit.Tag) &&
+                           !observation.DeadUnitTags.Contains(unit.Tag) &&
+                           (!unit.HasOrders ||
+                            (unit.Orders.FirstOrDefault()?.TargetUnitTag is ulong targetTag &&
+                             observation.Units.Any(candidate => candidate.Tag == targetTag &&
+                                 candidate.Alliance == UnitAlliance.Neutral &&
+                                 IsMineral(candidate.UnitKind)))))
+            .OrderBy(unit => unit.Tag)
+            .ToArray();
+        var minerals = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Neutral && unit.IsLiveVisible &&
+                           unit.HasPosition && IsMineral(unit.UnitKind) &&
+                           !observation.DeadUnitTags.Contains(unit.Tag))
+            .OrderBy(unit => unit.Tag)
+            .ToArray();
+        var townHalls = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                           unit.HasPosition && IsTownHall(unit.UnitKind) &&
+                           !observation.DeadUnitTags.Contains(unit.Tag))
+            .OrderBy(unit => unit.Tag)
+            .ToArray();
+
+        if (workers.Length == 0 || minerals.Length == 0 || townHalls.Length == 0)
+            return null;
+
+        var query = new RequestQuery();
+        _pendingPathingPairs.Clear();
+
+        foreach (var worker in workers)
+        foreach (var mineral in minerals)
+        {
+            query.Pathing.Add(new RequestQueryPathing
+            {
+                StartPos = new Point2D { X = worker.PositionX, Y = worker.PositionY },
+                EndPos = new Point2D { X = mineral.PositionX, Y = mineral.PositionY }
+            });
+            _pendingPathingPairs.Add((worker.Tag, mineral.Tag));
+        }
+
+        foreach (var townHall in townHalls)
+        foreach (var mineral in minerals)
+        {
+            query.Pathing.Add(new RequestQueryPathing
+            {
+                StartPos = new Point2D { X = townHall.PositionX, Y = townHall.PositionY },
+                EndPos = new Point2D { X = mineral.PositionX, Y = mineral.PositionY }
+            });
+            _pendingPathingPairs.Add((townHall.Tag, mineral.Tag));
+        }
+
+        _initialPathingQueryIssued = true;
+        _initialPathingPending = true;
+        _initialPathingQueryGameLoop = observation.GameLoop;
+        return query;
+    }
+
+    /// <summary>Stores the pathing distances returned for the pending initial query.</summary>
+    public void OnInitialPathingQueryResult(ResponseQuery response)
+    {
+        if (!_initialPathingPending)
+            return;
+
+        if (response is null || response.Pathing.Count != _pendingPathingPairs.Count)
+        {
+            _initialPathingPending = false;
+            _pendingPathingPairs.Clear();
+            return;
+        }
+
+        for (var index = 0; index < _pendingPathingPairs.Count; index++)
+        {
+            var distance = response.Pathing[index].Distance;
+            if (float.IsFinite(distance) && distance > 0)
+                _pathingDistances[_pendingPathingPairs[index]] = distance;
+        }
+
+        _initialPathingPending = false;
+        _pendingPathingPairs.Clear();
+    }
 
     public IReadOnlyDictionary<ulong, WorkerResourceAssignment> Reconcile(
         NormalizedObservation observation,
@@ -84,7 +196,7 @@ public sealed class WorkerResourceAssignmentPlanner
                 _assignments.Remove(pair.Key);
         }
 
-        if (townHalls.Length == 0 || minerals.Count == 0)
+        if (townHalls.Length == 0 || minerals.Count == 0 || _initialPathingPending)
             return Snapshot();
 
         var occupancy = _assignments.Values
@@ -233,7 +345,7 @@ public sealed class WorkerResourceAssignmentPlanner
             // created from the farthest patch inward, one per patch per round.
             var slots = new List<UnitObservationFacts>(baseMinerals);
             var farthestFirst = baseMinerals
-                .OrderByDescending(mineral => DistanceSquared(mineral, townHall))
+                .OrderByDescending(mineral => TownHallRouteDistance(townHall, mineral))
                 .ThenBy(mineral => mineral.Tag)
                 .ToArray();
             for (var round = 1;
@@ -256,7 +368,7 @@ public sealed class WorkerResourceAssignmentPlanner
                 for (var workerIndex = 0; workerIndex < baseWorkers.Length; workerIndex++)
                 for (var slotIndex = 0; slotIndex < slots.Count; slotIndex++)
                     costs[workerIndex, slotIndex] =
-                        Distance(baseWorkers[workerIndex], slots[slotIndex]);
+                        RouteDistance(baseWorkers[workerIndex], slots[slotIndex]);
 
                 var matching = SolveMinimumCostAssignment(costs);
                 for (var workerIndex = 0; workerIndex < matching.Length; workerIndex++)
@@ -275,7 +387,7 @@ public sealed class WorkerResourceAssignmentPlanner
                 for (var slotIndex = 0; slotIndex < slots.Count; slotIndex++)
                 for (var workerIndex = 0; workerIndex < baseWorkers.Length; workerIndex++)
                     costs[slotIndex, workerIndex] =
-                        Distance(slots[slotIndex], baseWorkers[workerIndex]);
+                        RouteDistance(baseWorkers[workerIndex], slots[slotIndex]);
 
                 var matching = SolveMinimumCostAssignment(costs);
                 for (var slotIndex = 0; slotIndex < matching.Length; slotIndex++)
@@ -403,6 +515,16 @@ public sealed class WorkerResourceAssignmentPlanner
         return result;
     }
 
+    private double RouteDistance(UnitObservationFacts worker, UnitObservationFacts mineral) =>
+        _pathingDistances.TryGetValue((worker.Tag, mineral.Tag), out var distance)
+            ? distance
+            : Distance(worker, mineral);
+
+    private double TownHallRouteDistance(UnitObservationFacts townHall, UnitObservationFacts mineral) =>
+        _pathingDistances.TryGetValue((townHall.Tag, mineral.Tag), out var distance)
+            ? distance
+            : Distance(townHall, mineral);
+
     private static double Distance(UnitObservationFacts left, UnitObservationFacts right) =>
         Math.Sqrt(DistanceSquared(left, right));
 
@@ -435,6 +557,11 @@ public sealed class WorkerResourceAssignmentPlanner
     {
         _assignments.Clear();
         _reservedWorkers.Clear();
+        _pathingDistances.Clear();
+        _pendingPathingPairs.Clear();
+        _initialPathingQueryIssued = false;
+        _initialPathingPending = false;
+        _initialPathingQueryGameLoop = 0;
         _nextGeneration = 0;
     }
 

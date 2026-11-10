@@ -158,6 +158,77 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void AcolyteOpeningMatchingReducesInitialWorkerToMineralDistanceAgainstCapturedBaseline()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var initialGather = new[] { new UnitOrderObservationFacts(3666, 4296540161UL, null, null) };
+        var workers = new[]
+        {
+            Fact(4346085377UL, "SCV", UnitAlliance.Self, 141.5f, 165.5f, true, orders: initialGather),
+            Fact(4346347521UL, "SCV", UnitAlliance.Self, 141.5f, 164.5f, true, orders: initialGather),
+            Fact(4346609665UL, "SCV", UnitAlliance.Self, 140.5f, 165.5f, true, orders: initialGather),
+            Fact(4346871809UL, "SCV", UnitAlliance.Self, 141.5f, 163.5f, true, orders: initialGather),
+            Fact(4347133953UL, "SCV", UnitAlliance.Self, 139.5f, 165.5f, true, orders: initialGather),
+            Fact(4347396097UL, "SCV", UnitAlliance.Self, 141.5f, 162.5f, true, orders: initialGather),
+            Fact(4347658241UL, "SCV", UnitAlliance.Self, 138.5f, 165.5f, true, orders: initialGather),
+            Fact(4347920385UL, "SCV", UnitAlliance.Self, 141.5f, 161.5f, true, orders: initialGather),
+            Fact(4348182529UL, "SCV", UnitAlliance.Self, 137.5f, 165.5f, true, orders: initialGather),
+            Fact(4348444673UL, "SCV", UnitAlliance.Self, 141.5f, 160.5f, true, orders: initialGather),
+            Fact(4348706817UL, "SCV", UnitAlliance.Self, 136.5f, 165.5f, true, orders: initialGather),
+            Fact(4348968961UL, "SCV", UnitAlliance.Self, 141.5f, 159.5f, true, orders: initialGather)
+        };
+        var minerals = new[]
+        {
+            Fact(4294967297UL, "MineralField750", UnitAlliance.Neutral, 140, 168.5f),
+            Fact(4295491585UL, "MineralField750", UnitAlliance.Neutral, 141, 169.5f),
+            Fact(4296015873UL, "MineralField750", UnitAlliance.Neutral, 143, 168.5f),
+            Fact(4296540161UL, "MineralField750", UnitAlliance.Neutral, 144, 167.5f),
+            Fact(4297064449UL, "MineralField750", UnitAlliance.Neutral, 145, 166.5f),
+            Fact(4297588737UL, "MineralField750", UnitAlliance.Neutral, 145, 164.5f),
+            Fact(4298113025UL, "MineralField750", UnitAlliance.Neutral, 146, 163.5f),
+            Fact(4298637313UL, "MineralField750", UnitAlliance.Neutral, 145, 162.5f)
+        };
+        var oldLoopTwentyTwoTargets = new Dictionary<ulong, ulong>
+        {
+            [4346085377UL] = 4296540161UL,
+            [4346347521UL] = 4297064449UL,
+            [4346609665UL] = 4298113025UL,
+            [4346871809UL] = 4296015873UL,
+            [4347133953UL] = 4295491585UL,
+            [4347396097UL] = 4297588737UL,
+            [4347658241UL] = 4298637313UL,
+            [4347920385UL] = 4294967297UL,
+            [4348182529UL] = 4297064449UL,
+            [4348444673UL] = 4298113025UL,
+            [4348706817UL] = 4296015873UL,
+            [4348968961UL] = 4296540161UL
+        };
+
+        var assignments = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 138.5f, 162.5f),
+            workers.Concat(minerals).ToArray()));
+
+        var mineralByTag = minerals.ToDictionary(mineral => mineral.Tag);
+        var oldDistance = workers.Sum(worker =>
+        {
+            var mineral = mineralByTag[oldLoopTwentyTwoTargets[worker.Tag]];
+            return Math.Sqrt(
+                Math.Pow(worker.PositionX - mineral.PositionX, 2) +
+                Math.Pow(worker.PositionY - mineral.PositionY, 2));
+        });
+        var matchedDistance = assignments.Values.Sum(assignment =>
+            Math.Sqrt(
+                Math.Pow(assignment.WorkerX - assignment.MineralX, 2) +
+                Math.Pow(assignment.WorkerY - assignment.MineralY, 2)));
+
+        Assert.Equal(12, assignments.Count);
+        Assert.Equal(8, assignments.Values.Select(item => item.MineralTag).Distinct().Count());
+        Assert.InRange(oldDistance, 69.43, 69.45);
+        Assert.InRange(matchedDistance, 53.96, 53.98);
+        Assert.True(matchedDistance < oldDistance);
+    }
+
+    [Fact]
     public void ReservedBuilderIsExcludedUntilExplicitlyUnreserved()
     {
         var planner = new WorkerResourceAssignmentPlanner();

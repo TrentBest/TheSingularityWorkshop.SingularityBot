@@ -38,6 +38,33 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ResolvesGenericMoveInsteadOfAmbiguousMoveVariants()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "move", LinkIndex = 0, ButtonName = "Move", RemapsToAbilityId = 3794 });
+        data.Abilities.Add(new AbilityData { AbilityId = 17, LinkName = "move", LinkIndex = 1, ButtonName = "MovePatrol", RemapsToAbilityId = 3795 });
+        data.Abilities.Add(new AbilityData { AbilityId = 18, LinkName = "move", LinkIndex = 2, ButtonName = "MoveHoldPosition", RemapsToAbilityId = 3793 });
+        data.Abilities.Add(new AbilityData { AbilityId = 19, LinkName = "move", LinkIndex = 3, ButtonName = "AcquireMove", RemapsToAbilityId = 3674 });
+        data.Abilities.Add(new AbilityData { AbilityId = 20, LinkName = "move", LinkIndex = 4, ButtonName = "Turn" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3794, LinkName = "GeneralMove", ButtonName = "Move" });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)16, catalog.MoveAbilityId);
+    }
+
+    [Fact]
+    public void Create_ResolvesCanonicalMoveWhenGenericAliasIsUnavailable()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData { AbilityId = 3794, LinkName = "GeneralMove", ButtonName = "Move" });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)3794, catalog.MoveAbilityId);
+    }
+
+    [Fact]
     public void Create_ResolvesGenericStopInsteadOfAmbiguousStopVariants()
     {
         var data = new ResponseData();

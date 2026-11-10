@@ -37,7 +37,8 @@ public sealed class Sc2OpeningMarineController
         NormalizedObservation observation,
         SpatialMap map,
         Sc2GameDataCatalog gameData,
-        WorkerResourceAssignmentPlanner assignments)
+        WorkerResourceAssignmentPlanner assignments,
+        ulong? preferredBuilderTag = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -78,7 +79,22 @@ public sealed class Sc2OpeningMarineController
 
             if (_builderTag is null)
             {
-                var builder = observation.Units
+                UnitObservationFacts? builder = null;
+                if (preferredBuilderTag is ulong preferredTag)
+                {
+                    var preferredWorker = observation.Units.FirstOrDefault(unit =>
+                        unit.Tag == preferredTag && IsLiveScv(unit));
+                    if (preferredWorker is not null)
+                    {
+                        // The Depot builder remains reserved by the construction
+                        // crew. Wait for its unload rather than stealing a second SCV.
+                        if (preferredWorker.HasCargo)
+                            return null;
+                        builder = preferredWorker;
+                    }
+                }
+
+                builder ??= observation.Units
                     .Where(IsLiveScv)
                     .Where(unit => !unit.HasCargo && !assignments.IsReserved(unit.Tag))
                     .OrderBy(unit => unit.Tag)
@@ -96,7 +112,9 @@ public sealed class Sc2OpeningMarineController
                 assignments.Reserve(builder.Tag);
                 _candidatePoints.AddRange(CreateCandidates(townHall, map));
                 _placementQueryPending = _candidatePoints.Count > 0;
-                Console.WriteLine($"[Opening] SCV {_builderTag} reserved to construct the first Barracks.");
+                Console.WriteLine(preferredBuilderTag == builder.Tag
+                    ? $"[Opening] Construction-crew SCV {_builderTag} continues from the Supply Depot to the Barracks."
+                    : $"[Opening] SCV {_builderTag} reserved to construct the first Barracks.");
             }
 
             if (_placement is null || _builderTag is null)

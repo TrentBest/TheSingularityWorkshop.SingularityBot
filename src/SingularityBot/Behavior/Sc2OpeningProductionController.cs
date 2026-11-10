@@ -14,7 +14,8 @@ public sealed class Sc2OpeningProductionController
 
     public SC2APIProtocol.Action TryCreateScvTrainingAction(
         NormalizedObservation observation,
-        Sc2GameDataCatalog gameData)
+        Sc2GameDataCatalog gameData,
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -49,6 +50,7 @@ public sealed class Sc2OpeningProductionController
         _awaitingObservedOrder = false;
 
         if (observation.Minerals < gameData.ScvMineralCost ||
+            observation.Minerals - gameData.ScvMineralCost < reservedMinerals ||
             observation.FoodCap < observation.FoodUsed ||
             observation.FoodCap - observation.FoodUsed < gameData.ScvFoodRequired)
             return null;

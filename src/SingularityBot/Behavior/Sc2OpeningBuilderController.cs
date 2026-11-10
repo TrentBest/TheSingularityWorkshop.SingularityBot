@@ -106,16 +106,9 @@ public sealed class Sc2OpeningBuilderController
                 .Select(worker => new
                 {
                     Worker = worker,
-                    EstimatedArrivalDistance = worker.HasCargo
-                        ? Math.Sqrt(DistanceSquared(
-                              worker.PositionX, worker.PositionY,
-                              townHall.PositionX, townHall.PositionY)) +
-                          Math.Sqrt(DistanceSquared(
-                              townHall.PositionX, townHall.PositionY,
-                              stagingPoint.X, stagingPoint.Y)) + 2.0
-                        : Math.Sqrt(DistanceSquared(
-                              worker.PositionX, worker.PositionY,
-                              stagingPoint.X, stagingPoint.Y))
+                    EstimatedArrivalDistance = Math.Sqrt(DistanceSquared(
+                        worker.PositionX, worker.PositionY,
+                        stagingPoint.X, stagingPoint.Y))
                 })
                 .OrderBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
@@ -130,7 +123,7 @@ public sealed class Sc2OpeningBuilderController
             Console.WriteLine(
                 $"[Opening] Construction-crew SCV {_builderTag.Value} reserved for the Supply Depot; " +
                 $"estimated staging distance={selected.EstimatedArrivalDistance:F2}. " +
-                "The worker is dispatched before the mineral-cost gate.");
+                "The worker stays on its current harvest until it has a load.");
         }
 
         var builder = observation.Units.FirstOrDefault(unit =>

@@ -62,8 +62,8 @@ public static class Sc2MarineCombatActionTranslator
             var destination = decision.Action switch
             {
                 MarineTacticalAction.Withdraw => RetreatPoint(marine, target, marines),
-                MarineTacticalAction.CloseToWeaponRange => ApproachPoint(marine, target, ownWeapon.Range),
-                _ => CooldownPoint(marine, target, ownWeapon, weapons)
+                MarineTacticalAction.CloseToWeaponRange => ApproachPoint(marine, target, ownWeapon.GetRange(target.IsFlying)),
+                _ => CooldownPoint(marine, target, ownWeapon.GetRange(target.IsFlying), weapons)
             };
 
             if (!float.IsFinite(destination.X) || !float.IsFinite(destination.Y))
@@ -91,17 +91,17 @@ public static class Sc2MarineCombatActionTranslator
     private static (float X, float Y) CooldownPoint(
         UnitObservationFacts marine,
         UnitObservationFacts target,
-        CombatWeaponProfile ownWeapon,
+        float ownWeaponRange,
         IReadOnlyDictionary<uint, CombatWeaponProfile> weapons)
     {
         var (dx, dy, distance) = Direction(marine, target);
         if (target.Alliance == UnitAlliance.Enemy &&
             weapons.TryGetValue(target.UnitTypeId, out var enemyWeapon) &&
-            enemyWeapon.IsUsable && enemyWeapon.Range >= ownWeapon.Range)
+            enemyWeapon.IsUsable && enemyWeapon.GetRange(marine.IsFlying) >= ownWeaponRange)
         {
             // Step beyond the enemy envelope. On the next observation the
             // approach decision naturally brings the Marine back to firing range.
-            var desiredDistance = enemyWeapon.Range + 0.5f;
+            var desiredDistance = enemyWeapon.GetRange(marine.IsFlying) + 0.5f;
             var travel = MathF.Max(0.75f, desiredDistance - distance);
             return (marine.PositionX + dx * travel, marine.PositionY + dy * travel);
         }

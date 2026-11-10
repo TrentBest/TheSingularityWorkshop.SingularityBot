@@ -196,8 +196,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (_writeDiagnostics)
             _baselineRecorder.Record(normalized);
 
-        _openingBuilder.ObserveWorkers(normalized);
-
         foreach (var actionError in observation.ActionErrors)
             Console.WriteLine($"[SC2 API] Action error: unit={actionError.UnitTag}, ability={actionError.AbilityId}, result={actionError.Result}.");
 
@@ -272,12 +270,18 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             sprayAction = _openingSpray.TryCreateAction(normalized, _gameData, _workerAssignments);
             _openingSprayActionSubmitted = sprayAction is not null;
 
+            var constructionCrewTags = _unitBehaviors.Contexts
+                .Where(context => context.IsWorker &&
+                                  context.Capabilities.Contains(UnitBehaviorCatalog.ConstructionFsm))
+                .Select(context => context.UnitTag)
+                .ToHashSet();
+
             builderAction = _openingBuilder.TryCreateAction(
                 normalized,
                 SpatialMap,
                 _gameData,
-                _initialScvProductionObserved,
-                _workerAssignments);
+                _workerAssignments,
+                constructionCrewTags);
             _openingBuilderActionSubmitted = builderAction is not null;
             if (builderAction is not null)
             {
@@ -293,7 +297,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             assignments = _workerAssignments.Reconcile(normalized);
             if (builderAction is null && _openingBuilder.IsCompleted)
             {
-                marineAction = _openingMarine.TryCreateAction(normalized, SpatialMap, _gameData, _workerAssignments);
+                marineAction = _openingMarine.TryCreateAction(
+                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag);
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else

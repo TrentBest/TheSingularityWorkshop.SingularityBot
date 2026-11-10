@@ -61,7 +61,12 @@ public static class Sc2MarineCombatActionTranslator
 
             var destination = decision.Action switch
             {
-                MarineTacticalAction.Withdraw => RetreatPoint(marine, target, marines),
+                MarineTacticalAction.Withdraw => RetreatPoint(
+                    marine,
+                    units.Values.Where(unit => unit.Alliance == UnitAlliance.Enemy)
+                        .OrderBy(unit => DistanceSquared(marine.PositionX, marine.PositionY, unit.PositionX, unit.PositionY))
+                        .FirstOrDefault() ?? target,
+                    marines),
                 MarineTacticalAction.CloseToWeaponRange => ApproachPoint(marine, target, ownWeapon.GetRange(target.IsFlying)),
                 _ => CooldownPoint(marine, target, ownWeapon.GetRange(target.IsFlying), weapons)
             };
@@ -156,6 +161,12 @@ public static class Sc2MarineCombatActionTranslator
             DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value, x, y) <= 1f);
 
     private static float DistanceSquared(float x1, float y1, float x2, float y2)
+    {
+        var dx = x1 - x2;
+        var dy = y1 - y2;
+        return dx * dx + dy * dy;
+    }
+
     {
         var dx = x1 - x2;
         var dy = y1 - y2;

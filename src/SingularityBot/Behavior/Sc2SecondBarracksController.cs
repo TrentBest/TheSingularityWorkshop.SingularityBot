@@ -41,7 +41,7 @@ public sealed class Sc2SecondBarracksController
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
-        if (barracks.Length >= 2)
+        if (barracks.Count(unit => unit.BuildProgress >= 1f) >= 2)
         {
             IsComplete = true;
             ReleaseBuilder(assignments);
@@ -49,7 +49,7 @@ public sealed class Sc2SecondBarracksController
             return null;
         }
 
-        if (barracks.Length == 0)
+        if (barracks.Length >= 2 || barracks.Length == 0)
             return null;
 
         if (_builderTag is ulong current &&

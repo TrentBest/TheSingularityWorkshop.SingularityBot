@@ -99,6 +99,7 @@ public static class MarineCombatPlanner
                 (destructibleNeutralTags?.Contains(unit.Tag) == true || IsDestructible(unit.UnitKind)) &&
                 !IsNonCombatResource(unit.UnitKind)).ToArray();
 
+        var anchorMarine = marines.OrderBy(marine => marine.Tag).FirstOrDefault();
         var focusTarget = targets
             .Where(candidate => marines.Any(marine =>
                 weaponsByUnitType.TryGetValue(marine.UnitTypeId, out var profile) &&
@@ -117,7 +118,7 @@ public static class MarineCombatPlanner
                     .Sum(ally => weaponsByUnitType[ally.UnitTypeId].GetDamagePerSecond(candidate.IsFlying));
                 return (candidate.Health + candidate.Shield) / MathF.Max(0.1f, availableDps);
             })
-            .ThenBy(candidate => marines.Length == 0 ? 0 : DistanceSquared(candidate, marines[0]))
+            .ThenBy(candidate => anchorMarine is null ? 0 : DistanceSquared(candidate, anchorMarine))
             .ThenBy(candidate => candidate.Tag)
             .FirstOrDefault();
 

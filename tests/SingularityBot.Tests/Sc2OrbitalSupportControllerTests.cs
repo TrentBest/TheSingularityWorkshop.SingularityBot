@@ -14,7 +14,7 @@ public sealed class Sc2OrbitalSupportControllerTests
         var data = GameData();
         var commandCenter = Fact(1, "CommandCenter");
 
-        Assert.Null(controller.TryCreateAction(Snapshot(299, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data));
+        Assert.Null(controller.TryCreateAction(Snapshot(149, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data));
         Assert.Null(controller.TryCreateAction(Snapshot(350, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data, reservedMinerals: 201));
 
         var action = controller.TryCreateAction(Snapshot(350, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data, reservedMinerals: 150);

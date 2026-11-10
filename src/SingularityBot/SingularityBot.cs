@@ -47,6 +47,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OpeningMarineController _openingMarine = new();
     private bool _openingMarineActionSubmitted;
     private readonly Sc2OpeningSprayController _openingSpray = new();
+    private readonly Sc2OrbitalSupportController _orbitalSupport = new();
+    private bool _orbitalSupportActionSubmitted;
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
@@ -218,6 +220,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         SC2APIProtocol.Action sprayAction = null;
         SC2APIProtocol.Action builderAction = null;
         SC2APIProtocol.Action marineAction = null;
+        SC2APIProtocol.Action orbitalSupportAction = null;
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
         // Opening production and mineral routing are independent commands: the
@@ -338,6 +341,18 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarineActionSubmitted = false;
             }
 
+            // Orbital upgrades/MULEs are lower priority than SCV, construction,
+            // and Marine actions. This avoids spending the same minerals twice.
+            if (builderAction is null && marineAction is null && sprayAction is null)
+            {
+                orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData);
+                _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
+            }
+            else
+            {
+                _orbitalSupportActionSubmitted = false;
+            }
+
             var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
             var marinePlacementQuery = _openingBuilder.IsCompleted
                 ? _openingMarine.TakePlacementQuery(_gameData)
@@ -362,6 +377,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
             _openingMarineActionSubmitted = false;
+            _orbitalSupportActionSubmitted = false;
         }
 
         if (initialWorkerPathingQuery is not null)
@@ -396,6 +412,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             actions.Add(builderAction);
         if (marineAction is not null)
             actions.Add(marineAction);
+        if (orbitalSupportAction is not null)
+            actions.Add(orbitalSupportAction);
 
         if (allowWorkerBehaviorActions)
         {
@@ -454,11 +472,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingBuilder.OnActionResult(null);
             if (_openingMarineActionSubmitted)
                 _openingMarine.OnActionResult(null);
+            if (_orbitalSupportActionSubmitted)
+                _orbitalSupport.OnActionResult(null);
             _openingRallyActionSubmitted = false;
             _openingProductionActionSubmitted = false;
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
             _openingMarineActionSubmitted = false;
+            _orbitalSupportActionSubmitted = false;
             return;
         }
 
@@ -497,11 +518,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
             resultIndex++;
         }
+        if (_orbitalSupportActionSubmitted)
+        {
+            _orbitalSupport.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
         _openingRallyActionSubmitted = false;
         _openingProductionActionSubmitted = false;
         _openingSprayActionSubmitted = false;
         _openingBuilderActionSubmitted = false;
         _openingMarineActionSubmitted = false;
+        _orbitalSupportActionSubmitted = false;
     }
 
     public RequestQuery TakeQueryRequest()

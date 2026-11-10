@@ -1,3 +1,4 @@
+using SC2APIProtocol;
 using SingularityBot.Behavior;
 using SingularityBot.Observation;
 using Xunit;
@@ -155,6 +156,37 @@ public sealed class WorkerResourceAssignmentPlannerTests
         Assert.Equal(22UL, assignments[12].MineralTag);
         Assert.Equal(22UL, assignments[13].MineralTag);
         Assert.Equal(21UL, assignments[14].MineralTag);
+    }
+
+    [Fact]
+    public void UsesSc2PathingDistancesForTheInitialGlobalWorkerMatching()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 1, 0),
+            Fact(11, "SCV", UnitAlliance.Self, 10, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 2, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 9, 0));
+
+        var query = planner.PrepareInitialPathingQuery(observation);
+        Assert.NotNull(query);
+        Assert.Equal(6, query.Pathing.Count);
+        Assert.Empty(planner.Reconcile(observation));
+
+        var response = new ResponseQuery();
+        response.Pathing.Add(new ResponseQueryPathing { Distance = 100 }); // SCV 10 -> mineral 20
+        response.Pathing.Add(new ResponseQueryPathing { Distance = 1 });   // SCV 10 -> mineral 21
+        response.Pathing.Add(new ResponseQueryPathing { Distance = 1 });   // SCV 11 -> mineral 20
+        response.Pathing.Add(new ResponseQueryPathing { Distance = 100 }); // SCV 11 -> mineral 21
+        response.Pathing.Add(new ResponseQueryPathing { Distance = 1 });   // Command Center -> mineral 20
+        response.Pathing.Add(new ResponseQueryPathing { Distance = 2 });   // Command Center -> mineral 21
+        planner.OnInitialPathingQueryResult(response);
+
+        var assignments = planner.Reconcile(observation);
+
+        Assert.Equal(21UL, assignments[10].MineralTag);
+        Assert.Equal(20UL, assignments[11].MineralTag);
     }
 
     [Fact]

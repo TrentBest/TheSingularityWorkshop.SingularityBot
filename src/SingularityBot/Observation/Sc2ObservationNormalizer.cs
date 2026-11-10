@@ -53,6 +53,7 @@ public static class Sc2ObservationNormalizer
                     observation.GameLoop)
                 {
                     WeaponCooldownRemaining = unit.WeaponCooldown,
+                    Energy = unit.Energy,
                     Orders = unit.Orders.Select(order => new UnitOrderObservationFacts(
                         order.AbilityId,
                         order.TargetCase == UnitOrder.TargetOneofCase.TargetUnitTag ? order.TargetUnitTag : null,

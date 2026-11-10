@@ -75,6 +75,22 @@ public sealed class MarineCombatPlannerTests
     }
 
 
+
+    [Fact]
+    public void MarinesShareOneFocusTargetAndPrioritizeThreatsOverNeutralBlockers()
+    {
+        var observation = Snapshot(
+            Marine(1, 0, 0, 0),
+            Marine(4, 1, 0, 0),
+            Enemy(2, 3, 0),
+            ArmedEnemy(3, 5, 0),
+            Fact(5, EnemyType, "DestructibleRock", UnitAlliance.Neutral, 1, 1));
+        var decisions = MarineCombatPlanner.Plan(observation, Weapons);
+
+        Assert.Equal(2, decisions.Count);
+        Assert.All(decisions, decision => Assert.Equal(3UL, decision.TargetTag));
+    }
+
     [Fact]
     public void TranslatorEmitsAttackAgainstCurrentVisibleTarget()
     {

@@ -11,8 +11,32 @@ public enum MarineTacticalAction
     Withdraw
 }
 
-public sealed record CombatWeaponProfile(float Range, float DamagePerSecond)
+public sealed record CombatWeaponProfile(
+    float Range,
+    float DamagePerSecond,
+    bool TargetsGround = true,
+    bool TargetsAir = true)
 {
+    public bool CanHit(bool targetIsFlying) => targetIsFlying ? TargetsAir : TargetsGround;
+
+    public static IReadOnlyDictionary<uint, CombatWeaponProfile> FromCatalog(Sc2GameDataCatalog catalog)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        var result = new Dictionary<uint, CombatWeaponProfile>();
+        foreach (var entry in catalog.WeaponsByUnitType)
+        {
+            var ground = entry.Value.Where(weapon =>
+                weapon.TargetType is SC2APIProtocol.Weapon.Types.TargetType.Ground or SC2APIProtocol.Weapon.Types.TargetType.Any).ToArray();
+            var air = entry.Value.Where(weapon =>
+                weapon.TargetType is SC2APIProtocol.Weapon.Types.TargetType.Air or SC2APIProtocol.Weapon.Types.TargetType.Any).ToArray();
+            var applicable = entry.Value;
+            var range = applicable.Max(weapon => weapon.Range);
+            var dps = applicable.Sum(weapon => weapon.DamagePerSecond);
+            result[entry.Key] = new CombatWeaponProfile(range, dps, ground.Length > 0, air.Length > 0);
+        }
+        return result;
+    }
+
     public bool IsUsable => float.IsFinite(Range) && Range > 0 &&
                             float.IsFinite(DamagePerSecond) && DamagePerSecond > 0;
 }
@@ -82,13 +106,13 @@ public static class MarineCombatPlanner
 
             var friendlyDps = marines
                 .Where(ally => DistanceSquared(ally, target) <= SupportRadius * SupportRadius &&
-                    weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) && profile.IsUsable)
+                    weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) && profile.IsUsable && profile.CanHit(target.IsFlying))
                 .Sum(ally => weaponsByUnitType[ally.UnitTypeId].DamagePerSecond);
 
             var threatDps = live
                 .Where(enemy => enemy.Alliance == UnitAlliance.Enemy &&
                     DistanceSquared(enemy, marine) <= SupportRadius * SupportRadius &&
-                    weaponsByUnitType.TryGetValue(enemy.UnitTypeId, out var profile) && profile.IsUsable)
+                    weaponsByUnitType.TryGetValue(enemy.UnitTypeId, out var profile) && profile.IsUsable && profile.CanHit(marine.IsFlying))
                 .Sum(enemy => weaponsByUnitType[enemy.UnitTypeId].DamagePerSecond);
 
             var distance = MathF.Sqrt((float)DistanceSquared(marine, target));

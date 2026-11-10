@@ -11,7 +11,7 @@ public sealed class MarineCombatPlannerTests
         {
             [48] = new(5, 9),
             [MarineCombatPlannerTests.EnemyType] = new(6, 0),
-            [MarineCombatPlannerTests.ArmedEnemyType] = new(6, 12)
+            [MarineCombatPlannerTests.ArmedEnemyType] = new(6, 9)
         };
 
     private const uint EnemyType = 100;
@@ -38,6 +38,20 @@ public sealed class MarineCombatPlannerTests
     {
         var result = Plan(Marine(1, 0, 0, 0), Enemy(2, 8, 0));
         Assert.Equal(MarineTacticalAction.CloseToWeaponRange, Assert.Single(result).Action);
+    }
+
+    [Fact]
+    public void HoldsInsteadOfChasingAContactAcrossTheMap()
+    {
+        var result = Plan(Marine(1, 0, 0, 0), Enemy(2, 30, 0));
+        Assert.Equal(MarineTacticalAction.Hold, Assert.Single(result).Action);
+    }
+
+    [Fact]
+    public void StutterStepsAgainstOneEqualStrengthMarineInsteadOfAutomaticallyRetreating()
+    {
+        var result = Plan(Marine(1, 0, 0, 3), ArmedEnemy(2, 4, 0));
+        Assert.Equal(MarineTacticalAction.RepositionDuringCooldown, Assert.Single(result).Action);
     }
 
     [Fact]

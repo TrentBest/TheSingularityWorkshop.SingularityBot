@@ -19,5 +19,10 @@ The enemy-behind score is geometric only. It does not imply line-of-sight, patha
 ## Seven-layer composition
 This is a shared spatial capability, not an eighth strategic layer. A high-level objective expresses intent; tactical planning asks spatial questions; a movement variant executes the chosen destination; the existing action pipeline validates and submits commands.
 
+## SC2 terrain snapshot
+`Sc2SpatialTerrainFactory` decodes the `StartRaw` pathing, placement, and terrain-height image layers supplied in `OnStart`. The resulting immutable `SpatialTerrain` is cached by the bot for the match. Each layer retains its own dimensions and is sampled in world coordinates, so differing image resolutions do not require resampling. Missing or malformed layers remain unavailable; they are never silently interpreted as blocked terrain.
+
+`TryIsPathable`, `TryIsBuildable`, and `TryGetTerrainHeight` distinguish an unavailable sample from a valid zero-valued cell. The byte values are exposed as SC2-provided cell facts; this layer does not yet calculate connected components, route counts, choke widths, height advantage, or safe movement paths.
+
 ## Integration boundary
-These utilities are additive and protocol-independent. Existing sector behavior is untouched. Splash-aware formation spacing and doctrine-weighted platform assessment are documented in [Tactical spatial reasoning](tactical-spatial-reasoning.md). Neither the original geometric queries nor these new utilities are yet wired into live movement FSMs or the action translator. Future work can add fog-aware influence maps, terrain/elevation extraction, path costs, collision, weapon ranges and threat fields without changing the basic vocabulary.
+These utilities are additive and protocol-independent except for the narrow `Sc2SpatialTerrainFactory` adapter. Existing sector behavior is untouched. Splash-aware formation spacing and doctrine-weighted platform assessment are documented in [Tactical spatial reasoning](tactical-spatial-reasoning.md). Terrain images are now cached at match start, but the new measurements are not yet wired into live movement FSMs, platform scoring, route selection, or the action translator. Future work can add fog-aware influence maps, path costs, collision, weapon ranges and threat fields without changing the basic vocabulary.

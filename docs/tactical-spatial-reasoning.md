@@ -1,6 +1,12 @@
 # Tactical spatial reasoning: spacing and platforms
 
-The spatial foundation now includes two additional reusable services. They return geometric measurements and scores; they do not issue SC2 commands or choose strategic intent.
+The spatial foundation now includes reusable terrain topology, formation-spacing measurements and doctrine-weighted platform scoring. These services return facts and scores; they do not issue SC2 commands or choose strategic intent.
+
+## Pathing regions and boundaries
+
+`SpatialTopology.Build` extracts four-connected walkable regions from the cached SC2 pathing grid. Diagonal-only contact does not create a connection. Each region includes a cell count, optional raw terrain-height range, and ordered directed grid-edge contours in world coordinates. Contours are oriented with walkable space on the left; enclosed blocked areas are represented by inner contours.
+
+These are actual pathing-cell boundaries, not the rectangular sector perimeter. They are suitable as geometric source data for later edge-following and platform analysis. They are not yet calibrated cliff edges or platform boundaries: a connected pathing region may contain multiple elevations joined by a ramp, and no transition or platform segmentation is inferred yet. Raw height bytes remain encoded values; do not treat their difference as world-unit elevation without a verified conversion.
 
 ## Formation spacing against area damage
 
@@ -19,7 +25,7 @@ The spatial foundation now includes two additional reusable services. They retur
 
 Continuous features are normalized to [0,1]. `PlatformReasoning.Assess` combines them using caller-supplied doctrine weights. The included defensive Terran weights are an initial policy, not a claim that one weighting is universally optimal.
 
-Direct approach is a weighted prior, not a guaranteed opponent behavior. The service does not discover routes, measure terrain, infer elevation, or identify choke points itself. SC2 pathing, placement, and terrain-height grids are now cached as `SpatialTerrain` from `OnStart`, providing the source data for those future measurements. Route connectivity, choke extraction, elevation comparisons, and platform cataloguing are still unimplemented.
+Direct approach is a weighted prior, not a guaranteed opponent behavior. The service does not discover routes, measure terrain, infer elevation, or identify choke points itself. SC2 pathing, placement, and terrain-height grids are cached as `SpatialTerrain`; `SpatialTopology` now provides connected pathing regions and contours as an initial derived layer. Route connectivity between platforms, choke extraction, calibrated elevation comparisons, and platform cataloguing are still unimplemented.
 
 ## Bridge doctrine and seven-layer composition
 
@@ -29,4 +35,4 @@ Damage distribution and target selection are separate combat concerns. Spacing r
 
 ## Boundaries
 
-These are pure utilities with unit tests. They are not yet wired into live movement FSMs, terrain extraction, pathing, target selection, or SC2 action translation. No in-game behavior is claimed until those integrations are tested in CI and replayed in SC2.
+These are pure utilities with unit tests. Terrain topology is not yet wired into live movement FSMs, platform segmentation, route planning, target selection, or SC2 action translation. No in-game behavior is claimed until those integrations are tested in CI and replayed in SC2.

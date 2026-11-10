@@ -552,6 +552,10 @@ public sealed class WorkerResourceAssignmentPlanner
 
     public bool IsReserved(ulong workerTag) => _reservedWorkers.Contains(workerTag);
 
+    /// <summary>Reserved workers may finish returning carried resources, but cannot resume mining.</summary>
+    public bool ShouldSuppressIntent(ulong workerTag, BehaviorCommand command) =>
+        IsReserved(workerTag) && command != BehaviorCommand.ReturnCarriedResources;
+
     public bool Unreserve(ulong workerTag) => _reservedWorkers.Remove(workerTag);
 
     /// <summary>Restore a previously reserved worker to its exact mineral route.</summary>

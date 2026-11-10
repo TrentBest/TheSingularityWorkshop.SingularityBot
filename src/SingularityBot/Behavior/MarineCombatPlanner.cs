@@ -17,7 +17,15 @@ public sealed record CombatWeaponProfile(
     bool TargetsGround = true,
     bool TargetsAir = true)
 {
+    public float GroundRange { get; init; } = Range;
+    public float GroundDamagePerSecond { get; init; } = DamagePerSecond;
+    public float AirRange { get; init; } = Range;
+    public float AirDamagePerSecond { get; init; } = DamagePerSecond;
+
     public bool CanHit(bool targetIsFlying) => targetIsFlying ? TargetsAir : TargetsGround;
+    public float GetRange(bool targetIsFlying) => targetIsFlying ? AirRange : GroundRange;
+    public float GetDamagePerSecond(bool targetIsFlying) =>
+        targetIsFlying ? AirDamagePerSecond : GroundDamagePerSecond;
 
     public static IReadOnlyDictionary<uint, CombatWeaponProfile> FromCatalog(Sc2GameDataCatalog catalog)
     {
@@ -29,10 +37,21 @@ public sealed record CombatWeaponProfile(
                 weapon.TargetType is SC2APIProtocol.Weapon.Types.TargetType.Ground or SC2APIProtocol.Weapon.Types.TargetType.Any).ToArray();
             var air = entry.Value.Where(weapon =>
                 weapon.TargetType is SC2APIProtocol.Weapon.Types.TargetType.Air or SC2APIProtocol.Weapon.Types.TargetType.Any).ToArray();
-            var applicable = entry.Value;
-            var range = applicable.Max(weapon => weapon.Range);
-            var dps = applicable.Sum(weapon => weapon.DamagePerSecond);
-            result[entry.Key] = new CombatWeaponProfile(range, dps, ground.Length > 0, air.Length > 0);
+            var groundRange = ground.Length == 0 ? 0 : ground.Max(weapon => weapon.Range);
+            var airRange = air.Length == 0 ? 0 : air.Max(weapon => weapon.Range);
+            var groundDps = ground.Sum(weapon => weapon.DamagePerSecond);
+            var airDps = air.Sum(weapon => weapon.DamagePerSecond);
+            result[entry.Key] = new CombatWeaponProfile(
+                MathF.Max(groundRange, airRange),
+                MathF.Max(groundDps, airDps),
+                ground.Length > 0,
+                air.Length > 0)
+            {
+                GroundRange = groundRange,
+                GroundDamagePerSecond = groundDps,
+                AirRange = airRange,
+                AirDamagePerSecond = airDps
+            };
         }
         return result;
     }
@@ -40,7 +59,6 @@ public sealed record CombatWeaponProfile(
     public bool IsUsable => float.IsFinite(Range) && Range > 0 &&
                             float.IsFinite(DamagePerSecond) && DamagePerSecond > 0;
 }
-
 public sealed record MarineTacticalDecision(
     ulong MarineTag,
     ulong? TargetTag,
@@ -108,15 +126,15 @@ public static class MarineCombatPlanner
             var friendlyDps = marines
                 .Where(ally => weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) &&
                     profile.IsUsable && profile.CanHit(target.IsFlying) &&
-                    DistanceSquared(ally, target) <= profile.Range * profile.Range)
+                    DistanceSquared(ally, target) <= profile.GetRange(target.IsFlying) * profile.GetRange(target.IsFlying))
                 .Sum(ally => weaponsByUnitType[ally.UnitTypeId].DamagePerSecond);
 
             var threatDps = live
                 .Where(enemy => enemy.Alliance == UnitAlliance.Enemy &&
                     weaponsByUnitType.TryGetValue(enemy.UnitTypeId, out var profile) &&
                     profile.IsUsable && profile.CanHit(marine.IsFlying) &&
-                    DistanceSquared(enemy, marine) <= profile.Range * profile.Range)
-                .Sum(enemy => weaponsByUnitType[enemy.UnitTypeId].DamagePerSecond);
+                    DistanceSquared(enemy, marine) <= profile.GetRange(marine.IsFlying) * profile.GetRange(marine.IsFlying))
+                .Sum(enemy => weaponsByUnitType[enemy.UnitTypeId].GetDamagePerSecond(marine.IsFlying));
 
             var distance = MathF.Sqrt((float)DistanceSquared(marine, target));
             MarineTacticalAction action;
@@ -127,7 +145,7 @@ public static class MarineCombatPlanner
                 action = MarineTacticalAction.Withdraw;
                 reason = "Local friendly damage output does not cover nearby threat";
             }
-            else if (distance <= ownWeapon.Range)
+            else if (distance <= ownWeapon.GetRange(target.IsFlying))
             {
                 if (marine.WeaponCooldownRemaining <= 0)
                 {

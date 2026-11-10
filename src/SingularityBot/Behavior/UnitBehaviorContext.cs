@@ -142,6 +142,7 @@ public sealed class UnitBehaviorContext : IStateContext
             PositionY = facts.PositionY;
             HasPosition = facts.HasPosition;
             HasCargo = facts.HasCargo;
+            WeaponCooldownRemaining = facts.WeaponCooldownRemaining;
             HasAssignedWork = facts.HasOrders;
             ObservedOrders = facts.Orders;
             IsFlying = facts.IsFlying;

@@ -167,12 +167,6 @@ public static class Sc2MarineCombatActionTranslator
         return dx * dx + dy * dy;
     }
 
-    {
-        var dx = x1 - x2;
-        var dy = y1 - y2;
-        return dx * dx + dy * dy;
-    }
-
     private static SC2APIProtocol.Action CreateUnitCommand(ulong unitTag, int abilityId, ulong targetTag) =>
         new()
         {

@@ -23,7 +23,7 @@ public sealed class WorkerResourceAssignmentPlannerTests
         Assert.Equal(3, assignments.Count);
         Assert.Equal(20UL, assignments[10].MineralTag);
         Assert.Equal(21UL, assignments[11].MineralTag);
-        Assert.Equal(20UL, assignments[12].MineralTag);
+        Assert.Equal(21UL, assignments[12].MineralTag);
         Assert.Equal(1u, assignments[10].Generation);
         Assert.Equal(2u, assignments[11].Generation);
         Assert.Equal(3u, assignments[12].Generation);
@@ -65,9 +65,9 @@ public sealed class WorkerResourceAssignmentPlannerTests
 
         Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 20));
         Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 21));
-        Assert.Equal(21UL, assignments[11].MineralTag);
+        Assert.Equal(20UL, assignments[11].MineralTag);
         Assert.Equal(21UL, assignments[12].MineralTag);
-        Assert.Equal(20UL, assignments[13].MineralTag);
+        Assert.Equal(21UL, assignments[13].MineralTag);
     }
 
     [Fact]
@@ -90,12 +90,12 @@ public sealed class WorkerResourceAssignmentPlannerTests
         Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 20));
         Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 21));
         Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 22));
-        Assert.Equal(22UL, assignments[11].MineralTag);
+        Assert.Equal(20UL, assignments[11].MineralTag);
         Assert.Equal(21UL, assignments[12].MineralTag);
     }
 
     [Fact]
-    public void AdoptsExistingRoutesBeforeFillingRemainingMineralCapacity()
+    public void GloballyMatchesStartingWorkersBeforeFillingRemainingMineralCapacity()
     {
         var planner = new WorkerResourceAssignmentPlanner();
         var assignments = planner.Reconcile(Snapshot(
@@ -109,7 +109,52 @@ public sealed class WorkerResourceAssignmentPlannerTests
 
         Assert.Equal(20UL, assignments[10].MineralTag);
         Assert.Equal(21UL, assignments[11].MineralTag);
-        Assert.Equal(20UL, assignments[12].MineralTag);
+        Assert.Equal(21UL, assignments[12].MineralTag);
+    }
+
+    [Fact]
+    public void GloballyMatchesEachMineralToItsClosestStartingWorkerInsteadOfFollowingTagOrder()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var initialGather = new[] { new UnitOrderObservationFacts(3666, 20, null, null) };
+        var assignments = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 10, 0, hasOrders: true, orders: initialGather),
+            Fact(11, "SCV", UnitAlliance.Self, 0, 0, hasOrders: true, orders: initialGather),
+            Fact(12, "SCV", UnitAlliance.Self, 0, 10, hasOrders: true, orders: initialGather),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 0, 1),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 10, 1),
+            Fact(22, "MineralField750", UnitAlliance.Neutral, 0, 11)));
+
+        Assert.Equal(21UL, assignments[10].MineralTag);
+        Assert.Equal(20UL, assignments[11].MineralTag);
+        Assert.Equal(22UL, assignments[12].MineralTag);
+    }
+
+    [Fact]
+    public void AssignsExtraWorkersToTheFarthestMineralPatchesAfterPrimaryCoverage()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var initialGather = new[] { new UnitOrderObservationFacts(3666, 20, null, null) };
+        var assignments = planner.Reconcile(Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 4, 0, hasOrders: true, orders: initialGather),
+            Fact(11, "SCV", UnitAlliance.Self, 7, 0, hasOrders: true, orders: initialGather),
+            Fact(12, "SCV", UnitAlliance.Self, 10, 0, hasOrders: true, orders: initialGather),
+            Fact(13, "SCV", UnitAlliance.Self, 9, 0, hasOrders: true, orders: initialGather),
+            Fact(14, "SCV", UnitAlliance.Self, 6, 0, hasOrders: true, orders: initialGather),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0),
+            Fact(22, "MineralField750", UnitAlliance.Neutral, 11, 0)));
+
+        Assert.Equal(1, assignments.Values.Count(item => item.MineralTag == 20));
+        Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 21));
+        Assert.Equal(2, assignments.Values.Count(item => item.MineralTag == 22));
+        Assert.Equal(20UL, assignments[10].MineralTag);
+        Assert.Equal(21UL, assignments[11].MineralTag);
+        Assert.Equal(22UL, assignments[12].MineralTag);
+        Assert.Equal(22UL, assignments[13].MineralTag);
+        Assert.Equal(21UL, assignments[14].MineralTag);
     }
 
     [Fact]

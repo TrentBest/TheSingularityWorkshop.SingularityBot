@@ -160,7 +160,7 @@ public sealed class Sc2GameDataCatalog
             ResolveSprayAbility(data.Abilities),
             ResolveAbility(data.Abilities, "Rally_Workers"),
             ResolveAbility(data.Abilities, "UpgradeToOrbitalCommand", "UpgradeToOrbital"),
-            orbitalCommand?.MineralCost ?? 150,
+            orbitalCommand?.MineralCost ?? 0,
             ResolveAbility(data.Abilities, "CalldownMULE", "CallDownMULE"));
     }
 

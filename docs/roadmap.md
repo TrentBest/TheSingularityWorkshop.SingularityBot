@@ -46,6 +46,12 @@ The shortest path to a bot that actually plays a local StarCraft II match is the
 - [ ] Derive candidate expansion landing sites from map pathing/buildability grids and mineral/geyser clusters, not fixed offsets from the main Command Center.
 - [ ] Score sites for resource value, worker travel, approach connectivity, landing clearance, and enemy exposure; query SC2 for final placement legality.
 - [ ] Build Command Centers in the protected main, load a configurable SCV crew, lift, fly, land, unload, and verify the landed structure before transferring workers.
+- [ ] Add an Orbital fleet manager with stable role assignments: protected home anchors, expansion anchors, mobile MULE tenders and bounded scouts / reserves.
+- [ ] Preserve a configurable minimum of grounded town halls and SCV production at active bases before authorizing takeoff; bound concurrent airborne Orbitals.
+- [ ] Route mobile Orbitals to safe operating positions near mineral lines, verify landing, then call MULEs only on visible mineral fields within authoritative cast range; verify result and observed MULE before moving on.
+- [ ] Add hysteresis, safe route / landing scoring, energy opportunity-cost policy and fleet telemetry to prevent wasteful lift/land oscillation.
+- [ ] Prove emergency recovery: after catastrophic SCV losses, route flying Command Centers / Orbitals to safe friendly landing sites, land and verify them, then restart SCV production before resuming mobile MULE operations.
+- [ ] Evaluate a large Orbital fleet (eventually dozens) as a late-game experiment against its mineral / upgrade cost, flight risk, landing space and measured MULE return; do not assume the maximum fleet is always optimal.
 - [ ] Keep a minimum home defense and production reserve while assigning the expansion crew; recover safely if a landing query or action is rejected.
 - [ ] Add expansion saturation, transfer, and return-trip telemetry; compare candidate-site scores with actual mining throughput.
 

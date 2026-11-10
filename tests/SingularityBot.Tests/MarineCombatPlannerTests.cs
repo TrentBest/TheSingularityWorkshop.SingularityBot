@@ -106,6 +106,22 @@ public sealed class MarineCombatPlannerTests
         Assert.Contains(1UL, command.UnitTags);
     }
 
+
+    [Fact]
+    public void TranslatorDoesNotResubmitAnExistingAttackOrder()
+    {
+        var catalog = CombatCatalog();
+        var marine = Marine(1, 0, 0, 0) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(23, 2, null, null) }
+        };
+        var observation = Snapshot(marine, Enemy(2, 4, 0));
+        var decisions = MarineCombatPlanner.Plan(observation, CombatWeaponProfile.FromCatalog(catalog));
+
+        Assert.Empty(Sc2MarineCombatActionTranslator.Translate(
+            decisions, observation, catalog, CombatWeaponProfile.FromCatalog(catalog)));
+    }
+
     [Fact]
     public void TranslatorMovesMarineDuringWeaponCooldown()
     {

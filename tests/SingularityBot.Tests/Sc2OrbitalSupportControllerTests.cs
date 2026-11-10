@@ -30,10 +30,10 @@ public sealed class Sc2OrbitalSupportControllerTests
         var controller = new Sc2OrbitalSupportController();
         var data = GameData();
         Assert.NotNull(controller.TryCreateAction(Snapshot(150, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data));
-        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), gameLoop: 101), data));
+        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), loop: 101), data));
 
         controller.OnActionResult(ActionResult.Success);
-        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), gameLoop: 102), data));
+        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), loop: 102), data));
     }
 
     [Fact]
@@ -95,16 +95,16 @@ public sealed class Sc2OrbitalSupportControllerTests
     private static NormalizedObservation Snapshot(uint minerals, params UnitObservationFacts[] units) =>
         Snapshot(minerals, units, 100);
 
-    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts unit, uint gameLoop) =>
-        Snapshot(minerals, new[] { unit }, gameLoop);
+    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts unit, uint loop) =>
+        Snapshot(minerals, new[] { unit }, loop);
 
-    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, uint gameLoop) =>
-        Snapshot(minerals, new[] { first, second }, gameLoop);
+    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, uint loop) =>
+        Snapshot(minerals, new[] { first, second }, loop);
 
-    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, UnitObservationFacts third, uint gameLoop) =>
-        Snapshot(minerals, new[] { first, second, third }, gameLoop);
+    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, UnitObservationFacts third, uint loop) =>
+        Snapshot(minerals, new[] { first, second, third }, loop);
 
-    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts[] units, uint gameLoop) =>
+    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts[] units, uint loop) =>
         new(gameLoop, 1, units, new HashSet<ulong>()) { Minerals = minerals };
 
     private static UnitObservationFacts Fact(ulong tag, string kind, float x = 10, float y = 10) =>

@@ -142,7 +142,7 @@ public sealed class MarineCombatPlannerTests
         var catalog = CombatCatalog();
         Assert.Equal((uint)23, catalog.AttackAbilityId);
         var weapon = Assert.Single(catalog.WeaponsByUnitType[48]);
-        Assert.Equal(Weapon.Types.TargetType.Any, weapon.TargetType);
+        Assert.Equal(SC2APIProtocol.Weapon.Types.TargetType.Any, weapon.TargetType);
         Assert.Equal(5f, weapon.Range);
         Assert.Equal(6f, weapon.Damage);
         Assert.Equal(1u, weapon.Attacks);

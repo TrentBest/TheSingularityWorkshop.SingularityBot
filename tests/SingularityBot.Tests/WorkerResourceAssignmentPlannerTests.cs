@@ -156,6 +156,12 @@ public sealed class WorkerResourceAssignmentPlannerTests
         Assert.Equal(22UL, assignments[12].MineralTag);
         Assert.Equal(22UL, assignments[13].MineralTag);
         Assert.Equal(21UL, assignments[14].MineralTag);
+        Assert.Equal(2, assignments.Values.Count(item => item.IsSupplementalWorker));
+        Assert.False(assignments[10].IsSupplementalWorker);
+        Assert.False(assignments[11].IsSupplementalWorker);
+        Assert.False(assignments[12].IsSupplementalWorker);
+        Assert.True(assignments[13].IsSupplementalWorker);
+        Assert.True(assignments[14].IsSupplementalWorker);
     }
 
     [Fact]
@@ -257,6 +263,11 @@ public sealed class WorkerResourceAssignmentPlannerTests
 
         Assert.Equal(12, assignments.Count);
         Assert.Equal(8, assignments.Values.Select(item => item.MineralTag).Distinct().Count());
+        Assert.Equal(4, assignments.Values.Count(item => item.IsSupplementalWorker));
+        Assert.Equal(
+            new ulong[] { 4295491585UL, 4296015873UL, 4297064449UL, 4298113025UL },
+            assignments.Values.Where(item => item.IsSupplementalWorker)
+                .Select(item => item.MineralTag).OrderBy(tag => tag).ToArray());
         Assert.InRange(oldDistance, 69.43, 69.45);
         Assert.InRange(matchedDistance, 53.96, 53.98);
         Assert.True(matchedDistance < oldDistance);
@@ -472,6 +483,11 @@ public sealed class WorkerResourceAssignmentPlannerTests
         Assert.All(assignments.Values.GroupBy(item => item.MineralTag),
             group => Assert.InRange(group.Count(), 1, WorkerResourceAssignmentPlanner.DefaultMineralSaturation));
         Assert.Equal(8, assignments.Values.Select(item => item.MineralTag).Distinct().Count());
+        Assert.Equal(4, assignments.Values.Count(item => item.IsSupplementalWorker));
+        Assert.Equal(
+            new ulong[] { 204, 205, 206, 207 },
+            assignments.Values.Where(item => item.IsSupplementalWorker)
+                .Select(item => item.MineralTag).OrderBy(tag => tag).ToArray());
     }
 
     private static NormalizedObservation Snapshot(params UnitObservationFacts[] units) =>

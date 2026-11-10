@@ -74,7 +74,8 @@ public sealed record MarineTacticalDecision(
 /// </summary>
 public static class MarineCombatPlanner
 {
-    private const float SafetyMargin = 1.15f;
+    private const float SafetyMargin = 0.85f;
+    private const float MaxPursuitBeyondWeaponRange = 6f;
 
     public static IReadOnlyList<MarineTacticalDecision> Plan(
         NormalizedObservation observation,
@@ -162,7 +163,14 @@ public static class MarineCombatPlanner
             MarineTacticalAction action;
             string reason;
 
-            if (threatDps > 0 && friendlyDps < threatDps * SafetyMargin)
+            // Vision is not an instruction to invade. A contact far outside
+            // the Marine's local defensive envelope is observed, not pursued.
+            if (distance > ownWeapon.GetRange(target.IsFlying) + MaxPursuitBeyondWeaponRange)
+            {
+                action = MarineTacticalAction.Hold;
+                reason = "Visible contact is outside the bounded local defense envelope";
+            }
+            else if (threatDps > 0 && friendlyDps < threatDps * SafetyMargin)
             {
                 action = MarineTacticalAction.Withdraw;
                 reason = "Local friendly damage output does not cover nearby threat";

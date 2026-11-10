@@ -153,7 +153,7 @@ public sealed class WorkerResourceAssignmentPlanner
                 // With a small two-patch base, keep the second worker on the
                 // closest route. Larger mineral lines spread second workers
                 // toward the farthest patches after every patch has one worker.
-                .ThenBy(item => minerals.Count > 2
+                .ThenBy(item => worker.HasOrders && minerals.Count > 1
                     ? -DistanceSquared(item.Mineral, item.TownHall)
                     : item.Distance)
                 .ThenBy(item => item.Distance)

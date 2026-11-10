@@ -30,6 +30,28 @@ public sealed class Sc2ActionTranslatorTests
     }
 
     [Fact]
+    public void RecoversAnIdleAssignedWorkerWithoutInterruptingActiveWorkers()
+    {
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 2, 2),
+            Fact(11, "SCV", UnitAlliance.Self, 3, 2, hasCargo: true),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 8, 2));
+        var assignments = new WorkerResourceAssignmentPlanner().Reconcile(observation);
+
+        var actions = Sc2ActionTranslator.Translate(
+            Array.Empty<KeyValuePair<ulong, BehaviorCommand>>(),
+            observation,
+            1,
+            workerAssignments: assignments);
+
+        var command = Assert.Single(actions).ActionRaw.UnitCommand;
+        Assert.Equal(10UL, command.UnitTags.Single());
+        Assert.Equal(20UL, command.TargetUnitTag);
+        Assert.Equal(1, command.AbilityId);
+    }
+
+    [Fact]
     public void ReturnCargoIntentTargetsNearestVisibleFriendlyTownHall()
     {
         var observation = Snapshot(

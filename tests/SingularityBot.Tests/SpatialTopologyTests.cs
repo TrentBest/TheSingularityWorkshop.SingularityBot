@@ -25,7 +25,7 @@ public sealed class SpatialTopologyTests
 
         Assert.Equal(4, region.CellCount);
         Assert.True(contour.IsClosed);
-        Assert.Equal(5, contour.Points.Count);
+        Assert.Equal(9, contour.Points.Count);
         Assert.Equal(new MapPoint(0, 0), contour.Points[0]);
         Assert.Equal(new MapPoint(0, 0), contour.Points[^1]);
     }

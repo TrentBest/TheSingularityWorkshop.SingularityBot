@@ -246,11 +246,20 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // must still produce its first SCV and continue toward construction.
         if (allowWorkerActions)
         {
-            var reservedDepotMinerals = !_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null
-                ? _gameData.SupplyDepotMineralCost
-                : 0u;
+            var reservedProductionMinerals = 0u;
+            if (!_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null)
+                reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
+            else if (_openingBuilder.IsCompleted && !_openingMarine.BarracksComplete)
+                reservedProductionMinerals = _gameData.BarracksMineralCost;
+            else if (_openingMarine.BarracksComplete &&
+                     normalized.Units.Any(unit =>
+                         unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                         unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                         !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)))
+                reservedProductionMinerals = _gameData.MarineMineralCost;
+
             var productionAction = _openingProduction.TryCreateScvTrainingAction(
-                normalized, _gameData, reservedDepotMinerals);
+                normalized, _gameData, reservedProductionMinerals);
             _openingProductionActionSubmitted = productionAction is not null;
             if (productionAction is not null)
             {

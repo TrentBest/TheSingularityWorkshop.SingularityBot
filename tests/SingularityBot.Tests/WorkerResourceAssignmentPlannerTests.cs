@@ -205,8 +205,10 @@ public sealed class WorkerResourceAssignmentPlannerTests
         };
 
         var assignments = planner.Reconcile(Snapshot(
-            Fact(1, "CommandCenter", UnitAlliance.Self, 138.5f, 162.5f),
-            workers.Concat(minerals).ToArray()));
+            new[] { Fact(1, "CommandCenter", UnitAlliance.Self, 138.5f, 162.5f) }
+                .Concat(workers)
+                .Concat(minerals)
+                .ToArray()));
 
         var mineralByTag = minerals.ToDictionary(mineral => mineral.Tag);
         var oldDistance = workers.Sum(worker =>

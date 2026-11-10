@@ -108,10 +108,10 @@ public sealed class WorkerResourceAssignmentPlanner
     /// <summary>Stores the pathing distances returned for the pending initial query.</summary>
     public void OnInitialPathingQueryResult(ResponseQuery response)
     {
-        if (!_initialPathingPending)
+        if (!_initialPathingPending || response is null || response.Pathing.Count == 0)
             return;
 
-        if (response is null || response.Pathing.Count != _pendingPathingPairs.Count)
+        if (response.Pathing.Count != _pendingPathingPairs.Count)
         {
             _initialPathingPending = false;
             _pendingPathingPairs.Clear();

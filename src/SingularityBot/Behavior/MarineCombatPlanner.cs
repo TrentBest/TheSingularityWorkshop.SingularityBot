@@ -94,6 +94,7 @@ public static class MarineCombatPlanner
             // it remains a valid opportunistic target. Only friendly/enemy DPS
             // calculations require weapon metadata.
             var target = targets
+                .Where(candidate => ownWeapon.CanHit(candidate.IsFlying))
                 .OrderBy(candidate => DistanceSquared(marine, candidate))
                 .ThenBy(candidate => candidate.Tag)
                 .FirstOrDefault();

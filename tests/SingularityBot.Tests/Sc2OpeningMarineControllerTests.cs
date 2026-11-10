@@ -81,7 +81,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         // The first Marine is now controlled defensively, but the Barracks must
         // continue filling its queue rather than stopping at one Marine.
-        var nextMarine = controller.TryCreateAction(Snapshot(50, 13, 15,
+        var nextMarine = controller.TryCreateAction(SnapshotAt(101, 50, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
             Fact(300, "Marine", 20, 20)), map, gameData, assignments);
         Assert.NotNull(nextMarine);
@@ -100,7 +100,11 @@ public sealed class Sc2OpeningMarineControllerTests
     }
 
     private static NormalizedObservation Snapshot(uint minerals, uint used, uint cap, params UnitObservationFacts[] units) =>
-        new(100, 1, units, new HashSet<ulong>())
+        SnapshotAt(100, minerals, used, cap, units);
+
+    private static NormalizedObservation SnapshotAt(
+        uint gameLoop, uint minerals, uint used, uint cap, params UnitObservationFacts[] units) =>
+        new(gameLoop, 1, units, new HashSet<ulong>())
         {
             Minerals = minerals,
             FoodUsed = used,

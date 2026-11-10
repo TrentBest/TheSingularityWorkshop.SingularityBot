@@ -180,7 +180,8 @@ public sealed class Sc2OpeningMarineController
             if (!_deployed)
                 Console.WriteLine($"[Opening] Marine {marines[0].Tag} remains on the friendly side; defensive control is active.");
             _deployed = true;
-            return null;
+            // Do not return here: the Barracks must keep producing Marines while
+            // the existing force is being controlled by the combat planner.
         }
 
         var trainingOrderObserved = barracks.Orders.Any(order =>

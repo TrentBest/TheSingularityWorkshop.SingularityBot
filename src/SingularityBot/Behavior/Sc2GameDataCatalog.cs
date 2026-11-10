@@ -114,7 +114,7 @@ public sealed class Sc2GameDataCatalog
             scv?.AbilityId is > 0 ? scv.AbilityId : null,
             scv?.MineralCost ?? 0,
             scv?.FoodRequired ?? 0,
-            ResolveAbility(data.Abilities, "Move") ?? ResolveAbility(data.Abilities, "Move_Move"),
+            ResolveMoveAbility(data.Abilities),
             ResolveStopAbility(data.Abilities),
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
             supplyDepot?.MineralCost ?? 0,
@@ -154,6 +154,24 @@ public sealed class Sc2GameDataCatalog
             .ToArray();
 
         return candidates.Length == 1 ? candidates[0] : null;
+    }
+
+    private static uint? ResolveMoveAbility(IEnumerable<AbilityData> abilities)
+    {
+        // SC2 exposes several lowercase "move" variants (patrol, hold-position,
+        // acquire-move, and turn). LinkIndex=0 identifies the generic player command.
+        var genericMove = abilities
+            .Where(ability => ability.AbilityId != 0 &&
+                string.Equals(ability.LinkName, "move", StringComparison.OrdinalIgnoreCase) &&
+                ability.LinkIndex == 0)
+            .Select(ability => ability.AbilityId)
+            .Distinct()
+            .ToArray();
+
+        if (genericMove.Length == 1)
+            return genericMove[0];
+
+        return ResolveAbility(abilities, "GeneralMove", "Move_Move");
     }
 
     private static uint? ResolveStopAbility(IEnumerable<AbilityData> abilities)

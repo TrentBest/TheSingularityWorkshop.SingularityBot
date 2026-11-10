@@ -14,10 +14,10 @@ public sealed class Sc2OrbitalSupportControllerTests
         var data = GameData();
         var commandCenter = Fact(1, "CommandCenter");
 
-        Assert.Null(controller.TryCreateAction(Snapshot(149, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data));
-        Assert.Null(controller.TryCreateAction(Snapshot(350, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data, reservedMinerals: 201));
+        Assert.Null(controller.TryCreateAction(Snapshot(149, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks"), Fact(4, "Barracks")), data));
+        Assert.Null(controller.TryCreateAction(Snapshot(350, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks"), Fact(4, "Barracks")), data, reservedMinerals: 201));
 
-        var action = controller.TryCreateAction(Snapshot(350, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data, reservedMinerals: 150);
+        var action = controller.TryCreateAction(Snapshot(350, commandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks"), Fact(4, "Barracks")), data, reservedMinerals: 150);
         Assert.NotNull(action);
         Assert.Equal(1516, action.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(new[] { 1UL }, action.ActionRaw.UnitCommand.UnitTags);
@@ -29,11 +29,11 @@ public sealed class Sc2OrbitalSupportControllerTests
     {
         var controller = new Sc2OrbitalSupportController();
         var data = GameData();
-        Assert.NotNull(controller.TryCreateAction(Snapshot(150, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks")), data));
-        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), loop: 101), data));
+        Assert.NotNull(controller.TryCreateAction(Snapshot(150, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), Fact(4, "Barracks")), data));
+        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), Fact(4, "Barracks"), loop: 101), data));
 
         controller.OnActionResult(ActionResult.Success);
-        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), loop: 102), data));
+        Assert.Null(controller.TryCreateAction(Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks"), Fact(4, "Barracks"), loop: 102), data));
     }
 
     [Fact]
@@ -103,6 +103,9 @@ public sealed class Sc2OrbitalSupportControllerTests
 
     private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, UnitObservationFacts third, uint loop) =>
         Snapshot(minerals, new[] { first, second, third }, loop);
+
+    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, UnitObservationFacts third, UnitObservationFacts fourth, uint loop) =>
+        Snapshot(minerals, new[] { first, second, third, fourth }, loop);
 
     private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts[] units, uint loop) =>
         new(loop, 1, units, new HashSet<ulong>()) { Minerals = minerals };

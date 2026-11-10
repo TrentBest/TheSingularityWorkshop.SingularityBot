@@ -91,7 +91,28 @@ public sealed class WorkerResourceAssignmentPlanner
             .GroupBy(assignment => assignment.MineralTag)
             .ToDictionary(group => group.Key, group => group.Count());
 
-        // Adopt the game's initial mineral orders before assigning idle workers.
+        // At match start, existing gather orders are only hints. Solve the
+        // complete first distribution together so a low unit tag cannot pin a
+        // distant worker to a patch that another SCV can reach much sooner.
+        if (_nextGeneration == 0 && _assignments.Count == 0)
+        {
+            var initialWorkers = liveSelf.Values
+                .Where(unit => IsWorker(unit.UnitKind) &&
+                               !_reservedWorkers.Contains(unit.Tag) &&
+                               (!unit.HasOrders ||
+                                workersWithStaleMineralOrders.Contains(unit.Tag) ||
+                                (unit.Orders.FirstOrDefault()?.TargetUnitTag is ulong targetTag &&
+                                 minerals.ContainsKey(targetTag))))
+                .OrderBy(unit => unit.Tag)
+                .ToArray();
+
+            AllocateInitialWorkers(
+                initialWorkers, minerals.Values.OrderBy(unit => unit.Tag).ToArray(),
+                townHalls, mineralSaturation, observation.GameLoop, occupancy);
+        }
+
+        // Adopt gather orders only for workers that become eligible after the
+        // initial global allocation; their already-stable assignments are kept.
         // Starting SCVs commonly arrive with active gather orders; ignoring them
         // leaves the planner blind to the very routes it is supposed to manage.
         foreach (var worker in liveSelf.Values
@@ -182,6 +203,208 @@ public sealed class WorkerResourceAssignmentPlanner
 
         return Snapshot();
     }
+
+    private void AllocateInitialWorkers(
+        UnitObservationFacts[] workers,
+        UnitObservationFacts[] minerals,
+        UnitObservationFacts[] townHalls,
+        int mineralSaturation,
+        uint gameLoop,
+        Dictionary<ulong, int> occupancy)
+    {
+        if (workers.Length == 0 || minerals.Length == 0 || townHalls.Length == 0)
+            return;
+
+        foreach (var townHall in townHalls)
+        {
+            var baseWorkers = workers
+                .Where(worker => NearestTownHall(worker, townHalls).Tag == townHall.Tag)
+                .OrderBy(worker => worker.Tag)
+                .ToArray();
+            var baseMinerals = minerals
+                .Where(mineral => NearestTownHall(mineral, townHalls).Tag == townHall.Tag)
+                .OrderBy(mineral => mineral.Tag)
+                .ToArray();
+
+            if (baseWorkers.Length == 0 || baseMinerals.Length == 0)
+                continue;
+
+            // Every mineral receives one slot first. Additional slots are
+            // created from the farthest patch inward, one per patch per round.
+            var slots = new List<UnitObservationFacts>(baseMinerals);
+            var farthestFirst = baseMinerals
+                .OrderByDescending(mineral => DistanceSquared(mineral, townHall))
+                .ThenBy(mineral => mineral.Tag)
+                .ToArray();
+            for (var round = 1;
+                 round < mineralSaturation && slots.Count < baseWorkers.Length;
+                 round++)
+            {
+                foreach (var mineral in farthestFirst)
+                {
+                    if (slots.Count >= baseWorkers.Length)
+                        break;
+                    slots.Add(mineral);
+                }
+            }
+
+            if (baseWorkers.Length <= slots.Count)
+            {
+                // Rows are workers and columns are mineral slots. Every worker
+                // gets its minimum-total-distance slot; excess patches stay open.
+                var costs = new double[baseWorkers.Length, slots.Count];
+                for (var workerIndex = 0; workerIndex < baseWorkers.Length; workerIndex++)
+                for (var slotIndex = 0; slotIndex < slots.Count; slotIndex++)
+                    costs[workerIndex, slotIndex] =
+                        Distance(baseWorkers[workerIndex], slots[slotIndex]);
+
+                var matching = SolveMinimumCostAssignment(costs);
+                for (var workerIndex = 0; workerIndex < matching.Length; workerIndex++)
+                {
+                    var slotIndex = matching[workerIndex];
+                    if (slotIndex >= 0)
+                        AddAssignment(baseWorkers[workerIndex], slots[slotIndex],
+                            townHall, gameLoop, occupancy);
+                }
+            }
+            else
+            {
+                // Rows are mineral slots and columns are workers. Every slot
+                // receives its globally best worker; surplus workers remain free.
+                var costs = new double[slots.Count, baseWorkers.Length];
+                for (var slotIndex = 0; slotIndex < slots.Count; slotIndex++)
+                for (var workerIndex = 0; workerIndex < baseWorkers.Length; workerIndex++)
+                    costs[slotIndex, workerIndex] =
+                        Distance(slots[slotIndex], baseWorkers[workerIndex]);
+
+                var matching = SolveMinimumCostAssignment(costs);
+                for (var slotIndex = 0; slotIndex < matching.Length; slotIndex++)
+                {
+                    var workerIndex = matching[slotIndex];
+                    if (workerIndex >= 0)
+                        AddAssignment(baseWorkers[workerIndex], slots[slotIndex],
+                            townHall, gameLoop, occupancy);
+                }
+            }
+        }
+    }
+
+    private void AddAssignment(
+        UnitObservationFacts worker,
+        UnitObservationFacts mineral,
+        UnitObservationFacts townHall,
+        uint gameLoop,
+        Dictionary<ulong, int> occupancy)
+    {
+        var assignment = new WorkerResourceAssignment(
+            worker.Tag,
+            mineral.Tag,
+            townHall.Tag,
+            NextGeneration(),
+            gameLoop,
+            worker.PositionX,
+            worker.PositionY,
+            mineral.PositionX,
+            mineral.PositionY,
+            townHall.PositionX,
+            townHall.PositionY);
+        _assignments[worker.Tag] = assignment;
+        occupancy[mineral.Tag] = occupancy.GetValueOrDefault(mineral.Tag) + 1;
+    }
+
+    private static UnitObservationFacts NearestTownHall(
+        UnitObservationFacts unit,
+        UnitObservationFacts[] townHalls) =>
+        townHalls
+            .OrderBy(hall => DistanceSquared(unit, hall))
+            .ThenBy(hall => hall.Tag)
+            .First();
+
+    private static int[] SolveMinimumCostAssignment(double[,] costs)
+    {
+        var rowCount = costs.GetLength(0);
+        var columnCount = costs.GetLength(1);
+        if (rowCount > columnCount)
+            throw new ArgumentException("The assignment matrix must have no more rows than columns.", nameof(costs));
+
+        var rowPotential = new double[rowCount + 1];
+        var columnPotential = new double[columnCount + 1];
+        var matchedRow = new int[columnCount + 1];
+        var previousColumn = new int[columnCount + 1];
+
+        for (var row = 1; row <= rowCount; row++)
+        {
+            matchedRow[0] = row;
+            var currentColumn = 0;
+            var minimumReducedCost = Enumerable.Repeat(double.PositiveInfinity, columnCount + 1).ToArray();
+            var used = new bool[columnCount + 1];
+
+            do
+            {
+                used[currentColumn] = true;
+                var currentRow = matchedRow[currentColumn];
+                var delta = double.PositiveInfinity;
+                var nextColumn = 0;
+
+                for (var column = 1; column <= columnCount; column++)
+                {
+                    if (used[column])
+                        continue;
+
+                    var reducedCost = costs[currentRow - 1, column - 1] -
+                                      rowPotential[currentRow] - columnPotential[column];
+                    if (reducedCost < minimumReducedCost[column])
+                    {
+                        minimumReducedCost[column] = reducedCost;
+                        previousColumn[column] = currentColumn;
+                    }
+
+                    if (minimumReducedCost[column] < delta)
+                    {
+                        delta = minimumReducedCost[column];
+                        nextColumn = column;
+                    }
+                }
+
+                for (var column = 0; column <= columnCount; column++)
+                {
+                    if (used[column])
+                    {
+                        rowPotential[matchedRow[column]] += delta;
+                        columnPotential[column] -= delta;
+                    }
+                    else
+                    {
+                        minimumReducedCost[column] -= delta;
+                    }
+                }
+
+                currentColumn = nextColumn;
+            }
+            while (matchedRow[currentColumn] != 0);
+
+            do
+            {
+                var priorColumn = previousColumn[currentColumn];
+                matchedRow[currentColumn] = matchedRow[priorColumn];
+                currentColumn = priorColumn;
+            }
+            while (currentColumn != 0);
+        }
+
+        var result = new int[rowCount];
+        Array.Fill(result, -1);
+        for (var column = 1; column <= columnCount; column++)
+        {
+            if (matchedRow[column] > 0)
+                result[matchedRow[column] - 1] = column - 1;
+        }
+
+        return result;
+    }
+
+    private static double Distance(UnitObservationFacts left, UnitObservationFacts right) =>
+        Math.Sqrt(DistanceSquared(left, right));
 
     public bool TryGet(ulong workerTag, out WorkerResourceAssignment assignment) =>
         _assignments.TryGetValue(workerTag, out assignment);

@@ -385,7 +385,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (allowWorkerBehaviorActions)
         {
             var workerIntents = intents.Drain()
-                .Where(intent => !_workerAssignments.IsReserved(intent.Key))
+                .Where(intent => !_workerAssignments.ShouldSuppressIntent(intent.Key, intent.Value))
                 .ToArray();
             actions.AddRange(Sc2ActionTranslator.Translate(
                 workerIntents,

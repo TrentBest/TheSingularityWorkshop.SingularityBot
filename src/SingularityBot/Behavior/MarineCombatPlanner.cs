@@ -64,9 +64,10 @@ public static class MarineCombatPlanner
                 continue;
             }
 
+            // A destructible or structure may have no weapon profile of its own;
+            // it remains a valid opportunistic target. Only friendly/enemy DPS
+            // calculations require weapon metadata.
             var target = targets
-                .Where(candidate => weaponsByUnitType.TryGetValue(candidate.UnitTypeId, out var profile) &&
-                                    profile.IsUsable)
                 .OrderBy(candidate => DistanceSquared(marine, candidate))
                 .ThenBy(candidate => candidate.Tag)
                 .FirstOrDefault();

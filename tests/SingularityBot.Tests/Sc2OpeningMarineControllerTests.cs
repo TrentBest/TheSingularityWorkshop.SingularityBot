@@ -78,6 +78,15 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Null(observedMarine);
         Assert.True(controller.MarineObserved);
         Assert.True(controller.MarineDeployed);
+
+        // The first Marine is now controlled defensively, but the Barracks must
+        // continue filling its queue rather than stopping at one Marine.
+        var nextMarine = controller.TryCreateAction(Snapshot(50, 13, 15,
+            Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
+            Fact(300, "Marine", 20, 20)), map, gameData, assignments);
+        Assert.NotNull(nextMarine);
+        Assert.Equal(560, nextMarine.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(200UL, nextMarine.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     private static Sc2GameDataCatalog GameData()

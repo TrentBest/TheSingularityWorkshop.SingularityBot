@@ -49,3 +49,7 @@ A pathing region is **not yet a platform**. Ramps, bridges and other elevation t
 These utilities are additive and protocol-independent except for the narrow `Sc2SpatialTerrainFactory` adapter. Existing sector behavior is untouched. Splash-aware formation spacing and doctrine-weighted platform assessment are documented in [Tactical spatial reasoning](tactical-spatial-reasoning.md). The longer-term model for connected platforms, real boundary contours, persistent place state machines, role-specific tracks and contingency maneuvers is documented in [World model, platform doctrine and contingency planning](world-model-and-maneuver-planning.md).
 
 Terrain snapshots and first-stage pathing topology are cached/derivable at match start. Platform segmentation, transition discovery, route measurements, place FSMs, vision revisit scheduling and contingency execution are not yet implemented. These capabilities can add fog-aware influence maps, path costs, collision, weapon ranges and threat fields without changing the basic spatial vocabulary.
+
+### Opening build-order trace
+
+A local diagnostic run also writes `opening-trace-<timestamp>.csv` into `extracted/`. It records the per-frame SCV, Command Center, builder, placement-query, movement, build-submission, Depot, Barracks, and Marine state. Query and action outcomes are appended as `#event` rows. The trace is observational and does not alter opening decisions. Commit this file with the terrain and OnStart captures when reporting a stalled opening.

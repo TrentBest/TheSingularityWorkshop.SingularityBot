@@ -12,6 +12,7 @@ public sealed class Sc2GameDataCatalog
         IReadOnlyDictionary<uint, string> unitNames,
         IReadOnlyDictionary<uint, string> buffNames,
         IReadOnlyDictionary<uint, Sc2AbilityFacts> abilitiesById,
+        IReadOnlyDictionary<uint, IReadOnlyList<Sc2WeaponFacts>> weaponsByUnitType,
         uint? smartAbilityId,
         uint? scvTrainAbilityId,
         uint scvMineralCost,
@@ -31,6 +32,7 @@ public sealed class Sc2GameDataCatalog
         UnitNames = unitNames;
         BuffNames = buffNames;
         AbilitiesById = abilitiesById;
+        WeaponsByUnitType = weaponsByUnitType;
         SmartAbilityId = smartAbilityId;
         ScvTrainAbilityId = scvTrainAbilityId;
         ScvMineralCost = scvMineralCost;
@@ -52,6 +54,7 @@ public sealed class Sc2GameDataCatalog
     public IReadOnlyDictionary<uint, string> BuffNames { get; }
     /// <summary>All non-zero abilities supplied by the match's authoritative ResponseData.</summary>
     public IReadOnlyDictionary<uint, Sc2AbilityFacts> AbilitiesById { get; }
+    public IReadOnlyDictionary<uint, IReadOnlyList<Sc2WeaponFacts>> WeaponsByUnitType { get; }
     public bool TryGetAbility(uint abilityId, out Sc2AbilityFacts ability) =>
         AbilitiesById.TryGetValue(abilityId, out ability);
     public IReadOnlyList<Sc2AbilityFacts> FindAbilities(string name) =>
@@ -87,6 +90,21 @@ public sealed class Sc2GameDataCatalog
             .GroupBy(unit => unit.UnitId)
             .ToDictionary(group => group.Key, group => group.First().Name);
 
+        var weaponsByUnitType = data.Units
+            .Where(unit => unit.UnitId != 0 && unit.Weapons.Count > 0)
+            .GroupBy(unit => unit.UnitId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<Sc2WeaponFacts>)group.First().Weapons
+                    .Where(weapon => weapon.Range > 0 && weapon.Speed > 0 && weapon.Damage > 0 && weapon.Attacks > 0)
+                    .Select(weapon => new Sc2WeaponFacts(
+                        weapon.Type,
+                        weapon.Range,
+                        weapon.Damage,
+                        weapon.Attacks,
+                        weapon.Speed))
+                    .ToArray());
+
         var buffNames = data.Buffs
             .Where(buff => buff.BuffId != 0 && !string.IsNullOrWhiteSpace(buff.Name))
             .GroupBy(buff => buff.BuffId)
@@ -110,6 +128,7 @@ public sealed class Sc2GameDataCatalog
             unitNames,
             buffNames,
             abilitiesById,
+            weaponsByUnitType,
             ResolveSmartAbility(data.Abilities),
             scv?.AbilityId is > 0 ? scv.AbilityId : null,
             scv?.MineralCost ?? 0,
@@ -236,4 +255,16 @@ public sealed record Sc2AbilityFacts(
         ability.IsInstantPlacement,
         ability.FootprintRadius,
         ability.CastRange);
+}
+
+
+/// <summary>Weapon facts copied directly from SC2 ResponseData.</summary>
+public sealed record Sc2WeaponFacts(
+    Weapon.Types.TargetType TargetType,
+    float Range,
+    float Damage,
+    uint Attacks,
+    float AttackPeriodSeconds)
+{
+    public float DamagePerSecond => Damage * Attacks / AttackPeriodSeconds;
 }

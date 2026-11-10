@@ -101,6 +101,9 @@ public sealed class Sc2OrbitalSupportControllerTests
     private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, uint gameLoop) =>
         Snapshot(minerals, new[] { first, second }, gameLoop);
 
+    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, UnitObservationFacts third, uint gameLoop) =>
+        Snapshot(minerals, new[] { first, second, third }, gameLoop);
+
     private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts[] units, uint gameLoop) =>
         new(gameLoop, 1, units, new HashSet<ulong>()) { Minerals = minerals };
 

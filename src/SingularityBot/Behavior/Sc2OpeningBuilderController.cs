@@ -5,8 +5,8 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Reserves the first SCV produced after the opening begins, stages it at a
-/// queried Supply Depot site, and constructs when the Depot is affordable.
+/// Keeps starting SCVs mining until the Supply Depot is affordable, then reserves
+/// a worker and lets an active mineral trip finish before dispatching it to build.
 /// </summary>
 public sealed class Sc2OpeningBuilderController
 {
@@ -81,6 +81,11 @@ public sealed class Sc2OpeningBuilderController
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
+        // Never pull an SCV merely because the opening has started. Keep the
+        // whole worker line gathering until the actual structure cost is available.
+        if (_builderTag is null && observation.Minerals < gameData.SupplyDepotMineralCost)
+            return null;
+
         if (_builderTag is null)
         {
             var townHall = observation.Units.FirstOrDefault(unit =>
@@ -133,12 +138,17 @@ public sealed class Sc2OpeningBuilderController
             unit.Alliance == UnitAlliance.Self &&
             unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag));
-        if (builder is null || builder.HasCargo)
+        if (builder is null)
             return null;
 
-        // Do not leave the selected construction-crew SCV's current mining order
-        // in place while placement is queried. Immediately replace it with a direct,
-        // non-queued Move to the opening's staging point.
+        // If the selected worker is already mining and has not collected its load,
+        // let that trip finish. Once it is carrying minerals, dispatch it directly
+        // to construction: do not waste the trip returning to the Command Center.
+        if (!builder.HasCargo && IsGatheringMinerals(builder, observation))
+            return null;
+
+        // Replace the worker's mining order only after its current harvest is
+        // complete (or immediately when it was idle).
         var movementTarget = _placement ?? _candidatePoints[0];
         if (_moveTarget is null ||
             DistanceSquared(_moveTarget.Value.X, _moveTarget.Value.Y, movementTarget.X, movementTarget.Y) > 0.01f)
@@ -290,6 +300,19 @@ public sealed class Sc2OpeningBuilderController
         }
 
         _pendingAction = PendingAction.None;
+    }
+
+    private static bool IsGatheringMinerals(
+        UnitObservationFacts worker,
+        NormalizedObservation observation)
+    {
+        var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
+        return targetTag is ulong mineralTag && observation.Units.Any(unit =>
+            unit.Tag == mineralTag &&
+            unit.Alliance == UnitAlliance.Neutral &&
+            unit.IsLiveVisible &&
+            (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase)));
     }
 
     private static bool IsLiveScv(UnitObservationFacts unit) =>

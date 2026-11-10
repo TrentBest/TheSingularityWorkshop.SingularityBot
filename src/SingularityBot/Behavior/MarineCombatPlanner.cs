@@ -76,7 +76,7 @@ public static class MarineCombatPlanner
         var targets = live.Where(unit =>
             (unit.Alliance == UnitAlliance.Enemy ||
              (unit.Alliance == UnitAlliance.Neutral &&
-              destructibleNeutralTags?.Contains(unit.Tag) == true)) &&
+              (destructibleNeutralTags?.Contains(unit.Tag) == true || IsDestructible(unit.UnitKind)))) &&
             !IsNonCombatResource(unit.UnitKind)).ToArray();
 
         var decisions = new List<MarineTacticalDecision>(marines.Length);
@@ -106,14 +106,16 @@ public static class MarineCombatPlanner
             }
 
             var friendlyDps = marines
-                .Where(ally => DistanceSquared(ally, target) <= SupportRadius * SupportRadius &&
-                    weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) && profile.IsUsable && profile.CanHit(target.IsFlying))
+                .Where(ally => weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) &&
+                    profile.IsUsable && profile.CanHit(target.IsFlying) &&
+                    DistanceSquared(ally, target) <= profile.Range * profile.Range)
                 .Sum(ally => weaponsByUnitType[ally.UnitTypeId].DamagePerSecond);
 
             var threatDps = live
                 .Where(enemy => enemy.Alliance == UnitAlliance.Enemy &&
-                    DistanceSquared(enemy, marine) <= SupportRadius * SupportRadius &&
-                    weaponsByUnitType.TryGetValue(enemy.UnitTypeId, out var profile) && profile.IsUsable && profile.CanHit(marine.IsFlying))
+                    weaponsByUnitType.TryGetValue(enemy.UnitTypeId, out var profile) &&
+                    profile.IsUsable && profile.CanHit(marine.IsFlying) &&
+                    DistanceSquared(enemy, marine) <= profile.Range * profile.Range)
                 .Sum(enemy => weaponsByUnitType[enemy.UnitTypeId].DamagePerSecond);
 
             var distance = MathF.Sqrt((float)DistanceSquared(marine, target));
@@ -149,6 +151,12 @@ public static class MarineCombatPlanner
 
         return decisions;
     }
+
+    private static bool IsDestructible(string kind) =>
+        kind.Contains("Destructible", StringComparison.OrdinalIgnoreCase) ||
+        kind.Contains("Debris", StringComparison.OrdinalIgnoreCase) ||
+        kind.Contains("Rock", StringComparison.OrdinalIgnoreCase) ||
+        kind.Contains("Blocker", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsNonCombatResource(string kind) =>
         kind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||

@@ -42,6 +42,6 @@ public static class Sc2SpatialTerrainFactory
             image.Size.Y,
             worldWidth,
             worldHeight,
-            image.Data.Span);
+            image.Data.ToByteArray());
     }
 }

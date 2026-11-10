@@ -158,7 +158,7 @@ public static class Sc2MarineCombatActionTranslator
         UnitObservationFacts unit, int abilityId, float x, float y) =>
         unit.Orders.Any(order => order.AbilityId == abilityId &&
             order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
-            DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value, x, y) <= 1f);
+            DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value, x, y) <= 9f);
 
     private static float DistanceSquared(float x1, float y1, float x2, float y2)
     {

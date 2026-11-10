@@ -210,6 +210,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _scvTrainingOrderObserved = scvTrainingOrderObserved;
         _initialScvProductionObserved |= scvTrainingOrderObserved;
 
+        var initialWorkerPathingQuery = _workerAssignments.PrepareInitialPathingQuery(normalized);
         var assignments = _workerAssignments.Reconcile(normalized);
         var actions = new List<SC2APIProtocol.Action>();
         SC2APIProtocol.Action sprayAction = null;
@@ -330,6 +331,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingSprayActionSubmitted = false;
             _openingBuilderActionSubmitted = false;
             _openingMarineActionSubmitted = false;
+        }
+
+        if (initialWorkerPathingQuery is not null)
+        {
+            _pendingQuery ??= new RequestQuery();
+            _pendingQuery.Pathing.Add(initialWorkerPathingQuery.Pathing);
         }
 
         foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
@@ -457,10 +464,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public void OnQueryResult(ResponseQuery response)
     {
         if (_writeDiagnostics)
-            _openingTrace.RecordEvent("PlacementQueryResult", 0,
+            _openingTrace.RecordEvent("QueryResult", 0,
                 response is null
                     ? "response=null"
-                    : $"placementCount={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
+                    : $"pathingCount={response.Pathing.Count};abilityCount={response.Abilities.Count};placementCount={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
+        _workerAssignments.OnInitialPathingQueryResult(response);
         _openingBuilder.OnPlacementQueryResult(response);
         if (_openingBuilder.IsCompleted)
             _openingMarine.OnPlacementQueryResult(response);

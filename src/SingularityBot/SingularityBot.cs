@@ -21,6 +21,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly bool _passiveBaseline;
     private readonly bool _writeDiagnostics;
     private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
+    private readonly Sc2OpeningTraceRecorder _openingTrace = new();
 
     public SingularityBot(bool passiveBaseline = false, bool writeDiagnostics = false)
     {
@@ -78,6 +79,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
         if (_passiveBaseline || _writeDiagnostics)
             _baselineRecorder.Start();
+        if (_writeDiagnostics)
+            _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
 
@@ -363,6 +366,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 assignments));
         }
 
+        if (_writeDiagnostics)
+            _openingTrace.RecordFrame(
+                normalized,
+                _openingBuilder,
+                builderAction,
+                marineAction is not null,
+                SpatialMap is not null);
+
         return actions;
     }
 
@@ -395,6 +406,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var command = index < submittedActions.Count ? submittedActions[index].ActionRaw?.UnitCommand : null;
             var unitTags = command is null ? string.Empty : string.Join(",", command.UnitTags);
             Console.WriteLine($"[SC2 API] Action {index}: ability={command?.AbilityId.ToString() ?? "unknown"}, units=[{unitTags}], result={result}.");
+            if (_writeDiagnostics)
+                _openingTrace.RecordEvent("ActionResult", 0, $"index={index};ability={command?.AbilityId};units={unitTags};result={result}");
         }
         var resultIndex = 0;
         if (_openingRallyActionSubmitted)
@@ -438,6 +451,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnQueryResult(ResponseQuery response)
     {
+        if (_writeDiagnostics)
+            _openingTrace.RecordEvent("PlacementQueryResult", 0,
+                response is null
+                    ? "response=null"
+                    : $"placementCount={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
         _openingBuilder.OnPlacementQueryResult(response);
         if (_openingBuilder.IsCompleted)
             _openingMarine.OnPlacementQueryResult(response);
@@ -508,5 +526,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.RemoveAll();
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();
+        _openingTrace.Dispose();
     }
 }

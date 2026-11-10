@@ -28,7 +28,10 @@ public sealed class Sc2GameDataCatalog
         uint marineMineralCost,
         float marineFoodRequired,
         uint? sprayAbilityId,
-        uint? rallyWorkersAbilityId)
+        uint? rallyWorkersAbilityId,
+        uint? orbitalUpgradeAbilityId,
+        uint orbitalUpgradeMineralCost,
+        uint? muleCallDownAbilityId)
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
@@ -50,6 +53,9 @@ public sealed class Sc2GameDataCatalog
         MarineFoodRequired = marineFoodRequired;
         SprayAbilityId = sprayAbilityId;
         RallyWorkersAbilityId = rallyWorkersAbilityId;
+        OrbitalUpgradeAbilityId = orbitalUpgradeAbilityId;
+        OrbitalUpgradeMineralCost = orbitalUpgradeMineralCost;
+        MuleCallDownAbilityId = muleCallDownAbilityId;
     }
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
@@ -83,6 +89,9 @@ public sealed class Sc2GameDataCatalog
     public float MarineFoodRequired { get; }
     public uint? SprayAbilityId { get; }
     public uint? RallyWorkersAbilityId { get; }
+    public uint? OrbitalUpgradeAbilityId { get; }
+    public uint OrbitalUpgradeMineralCost { get; }
+    public uint? MuleCallDownAbilityId { get; }
 
     public static Sc2GameDataCatalog Create(ResponseData data)
     {
@@ -126,6 +135,8 @@ public sealed class Sc2GameDataCatalog
             string.Equals(unit.Name, "Barracks", StringComparison.OrdinalIgnoreCase));
         var marine = data.Units.FirstOrDefault(unit =>
             string.Equals(unit.Name, "Marine", StringComparison.OrdinalIgnoreCase));
+        var orbitalCommand = data.Units.FirstOrDefault(unit =>
+            string.Equals(unit.Name, "OrbitalCommand", StringComparison.OrdinalIgnoreCase));
 
         return new Sc2GameDataCatalog(
             unitNames,
@@ -147,7 +158,10 @@ public sealed class Sc2GameDataCatalog
             marine?.MineralCost ?? 0,
             marine?.FoodRequired ?? 0,
             ResolveSprayAbility(data.Abilities),
-            ResolveAbility(data.Abilities, "Rally_Workers"));
+            ResolveAbility(data.Abilities, "Rally_Workers"),
+            ResolveAbility(data.Abilities, "UpgradeToOrbitalCommand", "UpgradeToOrbital"),
+            orbitalCommand?.MineralCost ?? 150,
+            ResolveAbility(data.Abilities, "CalldownMULE", "CallDownMULE"));
     }
 
 

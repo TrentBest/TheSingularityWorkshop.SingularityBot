@@ -47,7 +47,7 @@ public sealed class Sc2OpeningProductionControllerTests
 
 
     [Fact]
-    public void DoesNotStartAnotherScvAfterTheFirstTrainingOrderCompletes()
+    public void StartsAnotherScvWhenThePreviousTrainingOrderCompletes()
     {
         var controller = new Sc2OpeningProductionController();
         var commandCenter = Fact(100, "CommandCenter") with
@@ -59,8 +59,10 @@ public sealed class Sc2OpeningProductionControllerTests
         Assert.Null(controller.TryCreateScvTrainingAction(
             Snapshot(100, 12, 15, commandCenter), GameData()));
 
-        Assert.Null(controller.TryCreateScvTrainingAction(
-            Snapshot(100, 12, 15, Fact(100, "CommandCenter"), gameLoop: 200), GameData()));
+        var next = controller.TryCreateScvTrainingAction(
+            Snapshot(100, 12, 15, Fact(100, "CommandCenter"), gameLoop: 200), GameData());
+        Assert.NotNull(next);
+        Assert.Equal(524, next.ActionRaw.UnitCommand.AbilityId);
     }
 
     [Fact]

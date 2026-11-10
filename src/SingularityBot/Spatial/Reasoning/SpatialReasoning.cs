@@ -64,7 +64,20 @@ public static class SpatialReasoning
     public static int CountEnemiesBehind(SpatialPoint destination,SpatialPoint movementDirection,IReadOnlyList<SpatialPoint> enemies) {
         ArgumentNullException.ThrowIfNull(enemies); var forward=movementDirection.Normalized;
         if(forward.LengthSquared<=1e-12f)return 0;
-        var count=0; foreach(var enemy in enemies)if((enemy-destination).Dot(forward)<-1e-4f)count++; return count;
+        var left = new SpatialPoint(-forward.Y, forward.X);
+        var count = 0;
+        foreach (var enemy in enemies)
+        {
+            var offset = enemy - destination;
+            var longitudinal = offset.Dot(forward);
+            var lateral = MathF.Abs(offset.Dot(left));
+
+            // "Behind" is the rear 90-degree cone, not the entire rear
+            // hemisphere; distant lateral enemies do not count as screened.
+            if (longitudinal < -1e-4f && lateral <= -longitudinal + 1e-4f)
+                count++;
+        }
+        return count;
     }
     public static SpatialCandidate? FindPositionWithMostEnemiesBehind(SpatialPoint current,IReadOnlyList<SpatialPoint> candidates,IReadOnlyList<SpatialPoint> enemies) {
         ArgumentNullException.ThrowIfNull(candidates); ArgumentNullException.ThrowIfNull(enemies);

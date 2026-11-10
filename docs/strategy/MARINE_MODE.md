@@ -3,14 +3,14 @@
 **Status:** Strategy doctrine / implementation target  
 **Execution model:** Deterministic, observation-driven policy. No LLM is required for the default mode.
 
-Marine Mode optimizes for sustained map pressure and the fastest reliable delivery of a growing Marine force to useful positions. A single Marine reaching the enemy start is a waypoint, not the objective. The objective is continuous production, survivable control, distributed information, and repeatable damage against exposed assets.
+Marine Mode optimizes for sustained map pressure and the fastest reliable delivery of a growing Marine force to useful positions. A lone Marine reaching the enemy start is not an objective. Against an opponent who may field Marines first, it is an avoidable donation. The objective is continuous production, survivable control, distributed information, and repeatable damage against exposed assets.
 
 ## Strategic invariants
 
 1. **Keep the economy alive.** Every Command Center/Orbital Command should train an SCV whenever minerals, supply, and production availability permit. Construction temporarily reserves a worker; it must not permanently remove that worker from the economy.
-2. **Build in parallel when affordable.** Use distinct workers for concurrent construction. The next Supply Depot and production structure should be scheduled from resource/supply forecasts, not by waiting for the previous builder to become idle.
+2. **Keep every starting SCV mining until a build is affordable.** Do not reserve or stage a worker before the mineral threshold. If the selected SCV is actively mining, let it finish that harvest; once it carries the load, dispatch it directly to construction rather than sending it back to the Command Center first. After construction, release it to mining unless another affordable build is ready.
 3. **Return builders to mining.** Release a construction reservation as soon as the assigned structure is observed complete, then restore the worker to an appropriate mineral route.
-4. **Never trade Marines needlessly.** Do not issue blind attack-moves through unknown territory. Use visible targets, weapon cooldown, weapon ranges, health, and friendly support to decide whether to fire, kite, advance, or retreat.
+4. **Never trade Marines needlessly.** Do not issue blind attack-moves through unknown territory or chase a visible contact across the map. The first Marine holds on the friendly side and watches the approach; only nearby contacts inside a bounded local-defense envelope may trigger pursuit. Use visible targets, weapon cooldown, weapon ranges, health, and friendly support to decide whether to fire, kite, advance, or retreat.
 5. **Preserve a recoverable force.** Dispersion is useful only while squads can withdraw and reinforce one another. Enemy contact should cause nearby elements to converge toward a survivable critical mass.
 6. **Fail closed on missing information.** Unknown enemy capability, stale vision, invalid pathing, or uncertain command acceptance must not be treated as proof of safety.
 
@@ -29,9 +29,10 @@ Marine Mode optimizes for sustained map pressure and the fastest reliable delive
 
 A Marine is controlled from current observations, not a one-time move order.
 
-- Maintain a target and a safe firing position.
+- Maintain a target and a safe firing position on the friendly side during the opening.
+- Observe the enemy natural/second-base area and likely approaches from safe vision positions; do not send a lone Marine up the enemy ramp to obtain that vision.
 - Fire when the weapon is ready and the target is in range.
-- During weapon cooldown, stutter-step to a better position rather than standing idle.
+- During weapon cooldown, stutter-step to a better position rather than standing idle. Equal-strength local engagements are not automatic retreat conditions; retreat only when incoming local threat materially exceeds the force's effective damage potential or the Marine is otherwise unsafe.
 - Estimate the threat envelope of visible enemy units and defensive structures from authoritative game data.
 - Do not step into a known outranging weapon envelope merely to acquire a target.
 - Prefer exposed, undefended structures and isolated units when they can be attacked without losing the Marine.
@@ -50,7 +51,7 @@ These counts are strategic targets, not unconditional build commands. The planne
 
 ### 4. Distribute pressure and vision
 
-- Begin with a cohesive force and establish a safe rally/reinforcement route.
+- Begin with a cohesive force on the friendly side and establish a safe rally/reinforcement route. The initial Marine is a defensive observer, not an enemy-base scout.
 - As the central force grows, release small probing elements—initially pairs—into adjacent sectors around the enemy start.
 - Assign sectors so patrols cover likely traversal routes without duplicating the same lane.
 - Maintain a central reserve. Do not split below the minimum force needed to survive contact.
@@ -100,7 +101,7 @@ Every phase should be tuned from match traces and replays. Track at minimum:
 - Probe coverage, duplicate sector coverage, and regroup time
 - Upgrade timing relative to production downtime and resource float
 
-Do not tune thresholds from a single match. Compare multiple maps, opponents, and starting conditions. A faster arrival that loses the force is not an improvement.
+Do not tune thresholds from a single match. Compare multiple maps, opponents, and starting conditions. A faster arrival that loses the force is not an improvement. A contact seen at distance is information, not permission to advance.
 
 ## Implementation boundary
 

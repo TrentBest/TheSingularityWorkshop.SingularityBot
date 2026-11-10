@@ -4,8 +4,9 @@ using SingularityBot.Observation;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Stable worker-to-resource reservations for one match. Existing observed gather orders are adopted; new assignments survive
-/// observations and are replaced only when their worker or resource is retired.
+/// Stable worker-to-resource reservations for one match. The opening distribution
+/// is globally matched; later assignments survive observations and are replaced
+/// only when their worker or resource is retired.
 /// The planner does not issue commands; worker FSMs remain the execution owner.
 /// </summary>
 public sealed class WorkerResourceAssignmentPlanner
@@ -223,10 +224,8 @@ public sealed class WorkerResourceAssignmentPlanner
                 townHalls, mineralSaturation, observation.GameLoop, occupancy);
         }
 
-        // Adopt gather orders only for workers that become eligible after the
-        // initial global allocation; their already-stable assignments are kept.
-        // Starting SCVs commonly arrive with active gather orders; ignoring them
-        // leaves the planner blind to the very routes it is supposed to manage.
+        // Adopt a gather order only for a worker that becomes eligible after the
+        // initial global allocation; established routes are never recomputed.
         foreach (var worker in liveSelf.Values
                      .Where(unit => IsWorker(unit.UnitKind) && !_reservedWorkers.Contains(unit.Tag) && !_assignments.ContainsKey(unit.Tag))
                      .OrderBy(unit => unit.Tag))
@@ -284,9 +283,9 @@ public sealed class WorkerResourceAssignmentPlanner
                     IsSupplementalWorker = occupancy.GetValueOrDefault(mineral.Tag) > 0
                 })
                 .OrderBy(item => occupancy.GetValueOrDefault(item.Mineral.Tag))
-                // With a small two-patch base, keep the second worker on the
-                // closest route. Larger mineral lines spread second workers
-                // toward the farthest patches after every patch has one worker.
+                // For workers arriving after the opening allocation, fill the
+                // least-saturated patch first; second slots bias toward the farthest
+                // patches when the worker already has an observed mineral order.
                 .ThenBy(item => worker.HasOrders && minerals.Count > 1
                     ? -DistanceSquared(item.Mineral, item.TownHall)
                     : item.Distance)

@@ -18,6 +18,7 @@ public sealed class Sc2GameDataCatalog
         uint scvMineralCost,
         float scvFoodRequired,
         uint? moveAbilityId,
+        uint? attackAbilityId,
         uint? stopAbilityId,
         uint? supplyDepotBuildAbilityId,
         uint supplyDepotMineralCost,
@@ -38,6 +39,7 @@ public sealed class Sc2GameDataCatalog
         ScvMineralCost = scvMineralCost;
         ScvFoodRequired = scvFoodRequired;
         MoveAbilityId = moveAbilityId;
+        AttackAbilityId = attackAbilityId;
         StopAbilityId = stopAbilityId;
         SupplyDepotBuildAbilityId = supplyDepotBuildAbilityId;
         SupplyDepotMineralCost = supplyDepotMineralCost;
@@ -70,6 +72,7 @@ public sealed class Sc2GameDataCatalog
     public uint ScvMineralCost { get; }
     public float ScvFoodRequired { get; }
     public uint? MoveAbilityId { get; }
+    public uint? AttackAbilityId { get; }
     public uint? StopAbilityId { get; }
     public uint? SupplyDepotBuildAbilityId { get; }
     public uint SupplyDepotMineralCost { get; }
@@ -134,6 +137,7 @@ public sealed class Sc2GameDataCatalog
             scv?.MineralCost ?? 0,
             scv?.FoodRequired ?? 0,
             ResolveMoveAbility(data.Abilities),
+            ResolveAttackAbility(data.Abilities),
             ResolveStopAbility(data.Abilities),
             supplyDepot?.AbilityId is > 0 ? supplyDepot.AbilityId : null,
             supplyDepot?.MineralCost ?? 0,
@@ -191,6 +195,18 @@ public sealed class Sc2GameDataCatalog
             return genericMove[0];
 
         return ResolveAbility(abilities, "GeneralMove", "Move_Move");
+    }
+
+    private static uint? ResolveAttackAbility(IEnumerable<AbilityData> abilities)
+    {
+        var candidates = abilities
+            .Where(ability => ability.AbilityId != 0 &&
+                string.Equals(ability.LinkName, "Attack", StringComparison.OrdinalIgnoreCase) &&
+                ability.LinkIndex == 0)
+            .Select(ability => ability.AbilityId)
+            .Distinct()
+            .ToArray();
+        return candidates.Length == 1 ? candidates[0] : null;
     }
 
     private static uint? ResolveStopAbility(IEnumerable<AbilityData> abilities)

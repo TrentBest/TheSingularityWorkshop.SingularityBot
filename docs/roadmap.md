@@ -31,9 +31,15 @@ The shortest path to a bot that actually plays a local StarCraft II match is the
 - [ ] Replace the single-Depot builder with a persistent construction sequence: 80-mineral return-event trigger, raised Depot, then Barracks using the same SCV.
 - [ ] Detect the actual ramp and evaluate legal Depot/Barracks placement pairs as a wall; validate ground-unit passage in a live match.
 - [ ] Keep Command Center SCV production running while construction is scheduled against a resource budget.
-- [ ] Establish four Barracks with supply-depot forecasting and no avoidable supply blocks.
+- [ ] Establish four Barracks as the first production milestone, with supply-depot forecasting and no avoidable supply blocks.
 - [ ] Train pure Marines from every completed Barracks while protecting SCV production and expansion reserves.
+- [ ] Generalize the production scheduler beyond four Barracks toward a configurable eight-Barracks target; reference add-on layout is three Tech Labs and five Reactors.
+- [ ] Model add-on construction/attachment, Reactor dual-queue throughput, Tech Lab unit eligibility, production reservations and technology prerequisites from authoritative game data.
+- [ ] Preserve Marine dominance while introducing economically justified Marauder, Reaper and later Ghost support.
+- [ ] Add Starport / Medivac production, healing groups, confirmed passenger loading, threat-aware drops, unload, extraction and return.
+- [ ] Compare four-Barracks and eight-Barracks profiles with repeatable local-match metrics; do not treat the eight-Barracks target as a mandatory blind build order.
 - [ ] Prove the opening repeatedly in local matches from controlled starting conditions and retain game-loop telemetry.
+- [ ] Prove first-Marine scouting to a map-derived safe observation point at the bottom of the enemy ramp, maintaining vision of the ramp entrance and enemy Town Hall without ascending the ramp.
 
 ## 4. Expand and sustain the Terran economy
 

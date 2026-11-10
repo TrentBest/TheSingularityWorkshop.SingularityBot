@@ -21,7 +21,9 @@ All costs, prerequisites, build times, supply effects and abilities must come fr
 
 The economy controller is the sole owner of worker-to-resource assignments and reservations. It evaluates candidate mineral routes and assigns each worker deliberately. Unit FSMs execute their assigned work; they do not race each other to select patches.
 
-The planner uses deterministic saturation-aware allocation (two workers per mineral by default), stable assignment generations and explicit death-event invalidation. It adopts one existing gather order per mineral before filling the remaining capacity, retains reservations through temporary worker or target occlusion, and requires a currently visible mineral before issuing a new gather command. Each visible worker FSM context receives its assigned mineral/town-hall tags, generation and observed route phase.
+The planner uses deterministic saturation-aware allocation (two workers per mineral by default), stable assignment generations and explicit death-event invalidation. On the initial allocation it treats SC2's existing gather orders as replaceable hints and solves a minimum-total-distance matching across the primary slot at every mineral patch. It then adds second-worker slots from the patches farthest from the Command Center inward and matches the remaining workers to those slots. Later workers are assigned without disturbing stable routes. Reservations survive temporary worker or target occlusion; the action translator still requires a currently visible mineral before issuing a new gather command. Each visible worker FSM context receives its assigned mineral/town-hall tags, generation and observed route phase.
+
+The latest Acolyte trace is the pre-change baseline: all 12 starting SCVs initially pointed at one mineral patch. By game loop 22 the old sequential allocator had spread workers across all eight patches and doubled four of them, but it did not globally match the closest SCV to each patch. For example, a worker was assigned to the patch at (140,168.5) from roughly 5 units away while another SCV was only about 1.5 units away but had been assigned elsewhere. The new initial matching addresses that class of mismatch while preserving the four-extra-workers-on-the-farthest-patches policy. Its cost is still straight-line distance; the next refinement is pathing-aware route distance so the mineral-line approach and its two side routes are represented rather than assuming the hypotenuse is the path.
 
 The latest Acolyte opening trace shows all 12 starting SCVs initially pointed at one mineral patch. The planner spreads them across all eight patches and then fills four second-worker slots on the patches farthest from the Command Center. However, it assigns workers sequentially and does not globally match each patch's first worker to the closest available SCV: at game loop 22, for example, a worker was assigned to the patch at (140,168.5) from roughly 5 units away while another SCV was only about 1.5 units away but had been assigned elsewhere. The next mining optimization is a global nearest-worker/patch matching for the first slot at each patch, followed by the four extra workers on the farthest-back patches. The eventual cost should use pathing-aware route distance, not just straight-line distance, so the mineral-line approach and its two side routes are represented rather than assuming the hypotenuse is the path.
 
@@ -84,7 +86,9 @@ Every decision records game-loop identity, normalized facts, relevant assignment
 ## Experiments
 
 Once the baseline works, compare one scheduling change at a time:
-- nearest eligible mineral assignment;
+- global minimum-distance matching for primary mineral slots;
+- extra workers assigned to the farthest-back mineral slots;
+- pathing-aware distance instead of straight-line distance;
 - saturation-aware distribution;
 - arrival-aware service-window scheduling;
 - cached route geometry versus recomputation.

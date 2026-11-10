@@ -33,7 +33,7 @@ For the first Supply Depot, wait for the first Command Center SCV-training order
 
 ## First playable proof
 
-The first target is deliberately narrow: Terran, no gas, four Barracks, pure Marines. It is not a generalized multi-race optimizer.
+The first target is deliberately narrow: Terran, no gas, four Barracks, pure Marines. Four Barracks is the first hurdle, not the strategic ceiling. The production and economy contracts must remain scalable toward eight or more Barracks, combined-arms support and an eventual MULE-backed Orbital fleet. It is not a generalized multi-race optimizer.
 
 - Maintain SCV production and deterministic mineral assignments.
 - Build the first Supply Depot and Barracks with validated placement, costs and prerequisites.
@@ -92,3 +92,14 @@ Each new capability is an explicit FSM_API graph with Dormant and Executing stat
 The new capability tests exercise real FSM_API processing-group updates and assert emitted Follow, Attack Target, and target-gated Flank intents. These tests do not prove that the SC2 adapter translates those intents: movement/pathfinding and the new action translations remain follow-on work. Flank remains a strategic target-relative route objective, never a local lateral offset.
 
 This expanded section supersedes the earlier capability-count/status bullets above where they conflict. The broader ownership hierarchy, worker-route design, action-safety contract, and GUI contract remain in force.
+
+
+## Late-game Orbital fleet doctrine
+
+The initial Orbital controller is only an early utility: it upgrades eligible Command Centers and calls a MULE from a landed Orbital to a nearby visible mineral field. It does not yet lift, navigate, land, scout, manage multiple roles or recover a destroyed worker economy. Do not describe those behaviors as implemented.
+
+The long-term fleet is managed by one strategic controller, not independent Orbital scripts. It assigns stable roles (home anchor, expansion anchor, mobile MULE tender, scout, emergency reserve), preserves a minimum grounded production / mining core, limits airborne concurrency, scores safe destinations and validates every flight / landing transition from observations. MULE casts require a visible legal mineral target within actual ability range; landing on open ground alone does not make a MULE cast legal.
+
+An emergency worker-collapse policy may redirect flying town halls to safe friendly landing sites, confirm they are grounded, and restart SCV production where affordable and legal. This recovery policy takes precedence over opportunistic MULE touring. A fleet of dozens is an eventual scale experiment whose value must be demonstrated against its cost, flight risk, base coverage and actual MULE income.
+
+The first controller currently uses nearest-visible-mineral Euclidean distance and a simple pending-order timeout. It does not validate cast range, select a safe landing point, observe MULE spawn, or model multiple Orbital roles. These are explicit implementation gaps.

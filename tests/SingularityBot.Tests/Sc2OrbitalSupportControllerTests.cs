@@ -95,6 +95,9 @@ public sealed class Sc2OrbitalSupportControllerTests
     private static NormalizedObservation Snapshot(uint minerals, params UnitObservationFacts[] units) =>
         Snapshot(minerals, units, 100);
 
+    private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts unit, uint gameLoop) =>
+        Snapshot(minerals, new[] { unit }, gameLoop);
+
     private static NormalizedObservation Snapshot(uint minerals, UnitObservationFacts first, UnitObservationFacts second, uint gameLoop = 100) =>
         Snapshot(minerals, new[] { first, second }, gameLoop);
 

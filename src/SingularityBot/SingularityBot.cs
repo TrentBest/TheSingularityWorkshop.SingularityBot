@@ -370,13 +370,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 !normalized.DeadUnitTags.Contains(unit.Tag));
             var secondBarracksComplete = observedBarracks.Length >= 2 &&
                 observedBarracks.All(unit => unit.BuildProgress >= 1f);
-            var expansionCommandCenterPending = _secondBarracks.RequiresCommandCenter ||
-                (secondBarracksComplete && observedDepotCount >= 2 &&
-                 !_expansionCommandCenter.IsStarted &&
-                 normalized.Units.Count(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-                     (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
-                      unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
-                      unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase))) < 2);
+            var friendlyTownHallCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase)) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag));
+            // Four completed Barracks is the explicit expansion trigger. The
+            // second Command Center is funded before optional Marine spending.
+            var expansionCommandCenterPending = _secondBarracks.IsComplete &&
+                !_expansionCommandCenter.IsStarted && friendlyTownHallCount < 2;
 
             var reservedProductionMinerals = _economyAdvisor.GetReservedMinerals(
                 new EconomyAdvisorFrame(
@@ -511,7 +514,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _supplyDepotExpansionActionSubmitted = false;
                 }
 
-                if (_secondBarracks.RequiresCommandCenter)
+                if (_secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
@@ -564,7 +567,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var supplyDepotExpansionPlacementQuery = _secondBarracks.RequiresSupplyDepot
                 ? _supplyDepotExpansion.TakePlacementQuery(_gameData)
                 : null;
-            var expansionCommandCenterPlacementQuery = _secondBarracks.RequiresCommandCenter
+            var expansionCommandCenterPlacementQuery = _secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete
                 ? _expansionCommandCenter.TakePlacementQuery(_gameData)
                 : null;
             _openingBuilderPlacementCount = placementQuery?.Placements.Count ?? 0;

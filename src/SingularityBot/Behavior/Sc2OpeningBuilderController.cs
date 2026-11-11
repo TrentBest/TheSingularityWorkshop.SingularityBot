@@ -107,7 +107,7 @@ public sealed class Sc2OpeningBuilderController
             if (townHall is null)
                 return null;
 
-            _candidatePoints = CreatePlacementCandidates(townHall, spatialMap);
+            _candidatePoints = CreatePlacementCandidates(townHall, observation, spatialMap);
             if (_candidatePoints.Count == 0)
                 return null;
 
@@ -376,20 +376,48 @@ public sealed class Sc2OpeningBuilderController
 
     private static IReadOnlyList<MapPoint> CreatePlacementCandidates(
         UnitObservationFacts townHall,
+        NormalizedObservation observation,
         SpatialMap map)
     {
         var origin = new MapPoint(townHall.PositionX, townHall.PositionY);
-        var forward = (map.Center - origin).Normalize();
+        var mineralLine = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Neutral && unit.IsLiveVisible &&
+                unit.HasPosition && !observation.DeadUnitTags.Contains(unit.Tag) &&
+                (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase)))
+            .Select(unit => new
+            {
+                Unit = unit,
+                Distance = DistanceSquared(unit.PositionX, unit.PositionY, origin.X, origin.Y)
+            })
+            .Where(item => item.Distance <= 30f * 30f)
+            .ToArray();
+
+        // Use the observed mineral line as the geometric anchor. The Depot sits
+        // just behind the patches on the town-hall side, rather than on a generic
+        // map-center arc. SC2 still decides which candidate is actually legal.
+        var mineralAnchor = mineralLine.Length >= 4
+            ? new MapPoint(
+                mineralLine.Average(item => item.Unit.PositionX),
+                mineralLine.Average(item => item.Unit.PositionY))
+            : (MapPoint?)null;
+        var forward = mineralAnchor is MapPoint minerals
+            ? (minerals - origin).Normalize()
+            : (map.Center - origin).Normalize();
         var lateral = new MapPoint(-forward.Y, forward.X);
+        var anchor = mineralAnchor is MapPoint line
+            ? line - forward * 4.5f
+            : origin + forward * 4.5f;
         var offsets = new (float Forward, float Lateral)[]
         {
-            (4.5f, 0), (4.5f, 2), (4.5f, -2), (4.5f, 4), (4.5f, -4),
-            (6.5f, 0), (6.5f, 2), (6.5f, -2), (6.5f, 4), (6.5f, -4),
-            (8.5f, 0), (8.5f, 2), (8.5f, -2), (8.5f, 4), (8.5f, -4)
+            (0, 0), (0, 2), (0, -2), (0, 4), (0, -4),
+            (-1.5f, 1), (-1.5f, -1), (1.5f, 1), (1.5f, -1),
+            (-3f, 0), (-3f, 2), (-3f, -2),
+            (3f, 0), (3f, 2), (3f, -2)
         };
 
         return offsets
-            .Select(offset => origin + forward * offset.Forward + lateral * offset.Lateral)
+            .Select(offset => anchor + forward * offset.Forward + lateral * offset.Lateral)
             .Where(map.Bounds.Contains)
             .ToArray();
     }

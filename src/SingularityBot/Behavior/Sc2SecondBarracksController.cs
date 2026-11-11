@@ -21,6 +21,9 @@ public sealed class Sc2SecondBarracksController
     private long? _buildJobId;
     private ulong? _preferredBuilderTag;
     private bool _supplyDepotGateSatisfied;
+    private bool _commandCenterGateSatisfied;
+    public bool RequiresCommandCenter { get; private set; }
+    public ulong? PreferredBuilderTag => _preferredBuilderTag;
     public bool RequiresSupplyDepot { get; private set; }
 
     public ulong? BuilderTag => _builderTag;
@@ -70,13 +73,19 @@ public sealed class Sc2SecondBarracksController
                 return null;
             }
             _supplyDepotGateSatisfied = false;
+            if (_targetBarracksCount == 3 && !_commandCenterGateSatisfied)
+            {
+                RequiresCommandCenter = true;
+                Console.WriteLine("[Opening] Pausing before Barracks three until the expansion Command Center has started.");
+                return null;
+            }
             Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
             return null;
         }
 
         // Keep reconciling the in-progress Barracks while the Depot controller
         // runs, but do not dispatch another Barracks until the Depot is complete.
-        if (RequiresSupplyDepot)
+        if (RequiresSupplyDepot || RequiresCommandCenter)
             return null;
 
         // As soon as Barracks two is observed under construction, use the
@@ -178,6 +187,14 @@ public sealed class Sc2SecondBarracksController
                 PlacingUnitTag = _builderTag.Value
             });
         return query;
+    }
+
+    public void NotifyCommandCenterStarted()
+    {
+        if (!RequiresCommandCenter) return;
+        _commandCenterGateSatisfied = true;
+        RequiresCommandCenter = false;
+        Console.WriteLine("[Opening] Expansion Command Center construction observed; Barracks three may proceed.");
     }
 
     public void NotifySupplyDepotCompleted(ulong? recycledBuilderTag)

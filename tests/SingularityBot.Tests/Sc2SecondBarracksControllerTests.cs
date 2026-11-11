@@ -75,6 +75,27 @@ public sealed class Sc2SecondBarracksControllerTests
     }
 
     [Fact]
+    public void StartsSecondBarracksWhileTheFirstBarracksIsStillBuilding()
+    {
+        var controller = new Sc2SecondBarracksController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var crew = new HashSet<ulong> { 10, 11 };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15, 0.4f)),
+            map, GameData(), assignments, crew));
+
+        Assert.Equal(2, controller.TargetBarracksCount);
+        Assert.Equal(10UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(10));
+        Assert.NotNull(controller.TakePlacementQuery(GameData()));
+    }
+
+    [Fact]
     public void StartsSecondDepotWhileBarracksTwoIsStillBuilding()
     {
         var controller = new Sc2SecondBarracksController();

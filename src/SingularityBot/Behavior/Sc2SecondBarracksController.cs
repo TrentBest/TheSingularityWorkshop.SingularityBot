@@ -164,7 +164,10 @@ public sealed class Sc2SecondBarracksController
         if (worker is null)
             return null;
 
-        if (DistanceSquared(worker.PositionX, worker.PositionY, _site.Value.X, _site.Value.Y) > 2.25f)
+        // SC2's Build command pathfinds the SCV to the site. Use a wider
+        // arrival envelope so a worker a couple of tiles away starts the job
+        // instead of oscillating around an arbitrary Move threshold.
+        if (DistanceSquared(worker.PositionX, worker.PositionY, _site.Value.X, _site.Value.Y) > 9f)
         {
             if (_moveSubmitted && observation.GameLoop <= _moveLoop + 22)
                 return null;

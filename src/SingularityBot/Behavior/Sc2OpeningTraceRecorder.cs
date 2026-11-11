@@ -19,7 +19,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         Directory.CreateDirectory(directory);
         _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
         _writer = new StreamWriter(_path, false);
-        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable");
+        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete");
         _writer.Flush();
         Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
     }
@@ -30,7 +30,8 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         SC2APIProtocol.Action builderAction,
         bool marineActionSubmitted,
         bool spatialMapAvailable,
-        int activeBuildJobs = 0)
+        int activeBuildJobs = 0,
+        Sc2ExpansionCommandCenterController expansion = null)
     {
         if (_writer is null)
             return;
@@ -68,7 +69,10 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             command?.AbilityId.ToString(CultureInfo.InvariantCulture) ?? "",
             target?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             target?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
-            B(marineActionSubmitted), B(spatialMapAvailable)
+            B(marineActionSubmitted), B(spatialMapAvailable),
+            expansion?.ExpansionLocation?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            expansion?.ExpansionLocation?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            B(expansion?.IsStarted ?? false), B(expansion?.IsComplete ?? false)
         };
         _writer.WriteLine(string.Join(",", row));
     }

@@ -46,6 +46,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
     private readonly Sc2OpeningMarineController _openingMarine = new();
     private readonly Sc2SecondBarracksController _secondBarracks = new();
+    private readonly BuildJobRuntime _buildJobs = new();
     private readonly Sc2BarracksProductionController _barracksProduction = new();
     private bool _barracksProductionActionSubmitted;
     private bool _secondBarracksActionSubmitted;
@@ -350,7 +351,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (_openingMarine.BarracksComplete && marineAction is null)
             {
                 secondBarracksAction = _secondBarracks.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags);
+                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 // Refresh assignments so the newly reserved builder cannot receive a stale gather intent.
                 assignments = _workerAssignments.Reconcile(normalized);

@@ -43,7 +43,8 @@ public sealed class Sc2OpeningMarineController
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
         ulong? preferredBuilderTag = null,
-        BuildJobRuntime buildJobs = null)
+        BuildJobRuntime buildJobs = null,
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -226,6 +227,7 @@ public sealed class Sc2OpeningMarineController
         _marineTrainingRequested = false;
 
         if (observation.Minerals < gameData.MarineMineralCost ||
+            observation.Minerals - gameData.MarineMineralCost < reservedMinerals ||
             observation.FoodCap < observation.FoodUsed ||
             observation.FoodCap - observation.FoodUsed < gameData.MarineFoodRequired ||
             barracks.HasOrders)

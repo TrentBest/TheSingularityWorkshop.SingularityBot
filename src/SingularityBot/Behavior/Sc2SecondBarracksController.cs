@@ -18,6 +18,7 @@ public sealed class Sc2SecondBarracksController
     private uint _buildLoop;
     private Pending _pending;
     private int _targetBarracksCount = 2;
+    private long? _buildJobId;
 
     public ulong? BuilderTag => _builderTag;
     public bool IsComplete { get; private set; }
@@ -27,12 +28,15 @@ public sealed class Sc2SecondBarracksController
         SpatialMap map,
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
-        IReadOnlySet<ulong> constructionCrewTags)
+        IReadOnlySet<ulong> constructionCrewTags,
+        BuildJobRuntime buildJobs)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(constructionCrewTags);
+        ArgumentNullException.ThrowIfNull(buildJobs);
+        buildJobs.ReconcileBarracks(observation);
 
         if (IsComplete || map is null || gameData.BarracksBuildAbilityId is not > 0 ||
             gameData.BarracksMineralCost == 0 || gameData.MoveAbilityId is not > 0)
@@ -47,6 +51,7 @@ public sealed class Sc2SecondBarracksController
         {
             ReleaseBuilder(assignments);
             ResetPlacement();
+            _buildJobId = null;
             if (_targetBarracksCount >= 4)
             {
                 IsComplete = true;
@@ -68,6 +73,9 @@ public sealed class Sc2SecondBarracksController
             (observation.DeadUnitTags.Contains(current) ||
              !observation.Units.Any(unit => unit.Tag == current && IsLiveScv(unit))))
         {
+            if (_buildJobId is long failedJob && buildJobs.TryGet(failedJob, out var failed))
+                failed.Fail("Assigned SCV died or was lost from live observation.", observation.GameLoop);
+            _buildJobId = null;
             ReleaseBuilder(assignments);
             ResetPlacement();
         }
@@ -91,6 +99,7 @@ public sealed class Sc2SecondBarracksController
 
             _builderTag = builder.Tag;
             assignments.Reserve(builder.Tag);
+            _buildJobId = buildJobs.CreateBarracksConstruction(observation.GameLoop, builder.Tag).Id;
             _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
             _queryPending = _candidates.Count > 0;
             Console.WriteLine($"[Opening] SCV {_builderTag} reserved for Barracks {_targetBarracksCount}.");

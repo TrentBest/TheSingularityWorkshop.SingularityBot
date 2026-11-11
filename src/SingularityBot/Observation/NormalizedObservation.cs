@@ -48,6 +48,9 @@ public sealed record UnitObservationFacts(
     /// <summary>Current unit energy as reported by the SC2 observation.</summary>
     public float Energy { get; init; }
 
+    /// <summary>Remaining Vespene in a geyser or Refinery, as reported by SC2 raw unit data.</summary>
+    public uint VespeneContents { get; init; }
+
     public IReadOnlyList<UnitOrderObservationFacts> Orders { get; init; } = Array.Empty<UnitOrderObservationFacts>();
 
     public bool IsLiveVisible => Visibility == UnitVisibility.Visible;

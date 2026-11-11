@@ -39,3 +39,6 @@ No NuGet publication or ladder release is part of this integration. The serializ
 ## Disable capture
 
 Local runs capture diagnostics by default. Pass `--no-diagnostics` to opt out for a specific local run. Ladder runs do not enable local file capture. Once the bot's decisions are validated and the diagnostic evidence is no longer needed, we can change the development default deliberately.
+
+
+The opening trace now includes independent state for the first Supply Depot, first Barracks, second Barracks, follow-up Supply Depot, and expansion Command Center controllers. It records the assigned/recycled SCV tags, placement coordinates, construction gates, and completion flags so worker reuse and overlapping construction can be measured directly.

@@ -1,3 +1,5 @@
+#nullable enable annotations
+
 using SingularityBot.Behavior;
 using SingularityBot.Observation;
 using Xunit;

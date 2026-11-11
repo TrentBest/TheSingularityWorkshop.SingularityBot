@@ -42,7 +42,7 @@ public sealed class Sc2BarracksProductionController
             {
                 ClearPending();
             }
-            else if (observation.GameLoop <= _pendingGameLoop)
+            else if (observation.GameLoop <= _pendingGameLoop + 8)
             {
                 return null;
             }

@@ -1,5 +1,13 @@
 # Strategic intent and composition goals
 
+## Execution model: synchronous in-game planning
+
+The words **job**, **task**, **posting** and **planner** refer only to SingularityBot's internal model of strategic game work. They do not refer to operating-system jobs, worker threads, thread pools, background services or asynchronous execution.
+
+The ladder runner is synchronous. The bot evaluates observations and advances its own FSM processing groups through the existing frame/update path. Advisors synchronously create, update, renew or withdraw logical game-task postings; the Strategic Planner synchronously reads those postings and produces planning decisions for the bot's existing execution/action pipeline. The planner does not launch work on another thread, and a posting is not a queued OS task.
+
+Phase-weighted evaluation slots are deterministic opportunities to advance internal advisor FSMs, not concurrent workers or parallel CPU allocations. All strategy and task evaluation must remain compatible with the ladder runner's synchronous frame contract.
+
 ## Two authoring models, one planning system
 
 SingularityBot should accept two complementary forms of intent:

@@ -23,6 +23,10 @@ public sealed class Sc2SecondBarracksController
     private bool _supplyDepotGateSatisfied;
     public ulong? PreferredBuilderTag => _preferredBuilderTag;
     public bool RequiresSupplyDepot { get; private set; }
+    // Retained for the orchestration boundary; production no longer waits on town-hall expansion.
+    public bool RequiresCommandCenter => false;
+
+    public void NotifyCommandCenterStarted() { }
 
     public ulong? BuilderTag => _builderTag;
     public bool IsComplete { get; private set; }

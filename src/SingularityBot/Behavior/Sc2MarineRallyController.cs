@@ -5,8 +5,8 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Gathers Marines at a conservative friendly-side staging point when no
-/// attackable contact is visible. It never sends a lone Marine across the map.
+/// Sends Marines without a tactical target across the map to an enemy-side
+/// reconnaissance waypoint near the opponent's natural approach.
 /// </summary>
 public sealed class Sc2MarineRallyController
 {
@@ -28,8 +28,8 @@ public sealed class Sc2MarineRallyController
             return Array.Empty<SC2APIProtocol.Action>();
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
-        var rallyPoint = map.Side.FriendlyStart + direction * RallyOffset;
-        if (!map.Bounds.Contains(rallyPoint) || map.Side.Assess(rallyPoint) != MapSide.Friendly)
+        var rallyPoint = map.Side.EnemyStart - direction * RallyOffset;
+        if (!map.Bounds.Contains(rallyPoint) || map.Side.Assess(rallyPoint) != MapSide.Enemy)
             return Array.Empty<SC2APIProtocol.Action>();
 
         var actions = new List<SC2APIProtocol.Action>();

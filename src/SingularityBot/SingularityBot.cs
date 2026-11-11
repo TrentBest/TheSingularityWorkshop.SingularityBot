@@ -32,6 +32,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _writeDiagnostics = writeDiagnostics;
     }
     private readonly WorkerResourceAssignmentPlanner _workerAssignments = new();
+    private readonly Sc2WorkerProgressWatchdog _workerProgressWatchdog = new();
     private Sc2GameDataCatalog _gameData;
     private IReadOnlyDictionary<uint, CombatWeaponProfile> _combatWeapons = new Dictionary<uint, CombatWeaponProfile>();
     private uint _playerId;
@@ -626,6 +627,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     $"marines={combatDecisions.Count};fire={firing};reposition={repositioning};withdraw={withdrawing};rally={marineRallyActions.Count}");
             }
         }
+
+        // Verify that live SCVs are physically progressing toward their current
+        // Move destinations. Do not issue a second command for a worker already
+        // commanded by another controller this frame.
+        var commandedUnitTags = actions
+            .Where(action => action.ActionRaw?.UnitCommand is not null)
+            .SelectMany(action => action.ActionRaw.UnitCommand.UnitTags)
+            .ToHashSet();
+        actions.AddRange(_workerProgressWatchdog.TryCreateActions(
+            normalized, _gameData.MoveAbilityId, commandedUnitTags));
 
         if (_writeDiagnostics)
         {

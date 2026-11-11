@@ -51,6 +51,23 @@ public sealed class Sc2OpeningBuilderController
     /// harmless; if the Barracks used a different SCV it prevents the Depot
     /// worker from remaining reserved and idle for the rest of the match.
     /// </summary>
+    /// <summary>
+    /// Returns the original Depot builder to the worker pool as soon as its Depot
+    /// is complete, unless that exact SCV is currently committed to the first Barracks.
+    /// </summary>
+    public void ReleaseBuilderIfNotAssignedToBarracks(
+        WorkerResourceAssignmentPlanner assignments,
+        ulong? barracksBuilderTag)
+    {
+        ArgumentNullException.ThrowIfNull(assignments);
+        if (!_completed || _builderTag is not ulong tag || tag == barracksBuilderTag)
+            return;
+
+        assignments.Unreserve(tag);
+        Console.WriteLine($"[Opening] Released original Depot builder SCV {tag} to resume mining; first Barracks uses {(barracksBuilderTag?.ToString() ?? "a different worker")}.");
+        _builderTag = null;
+    }
+
     public void ReleaseBuilderAfterBarracksHandoff(WorkerResourceAssignmentPlanner assignments)
     {
         ArgumentNullException.ThrowIfNull(assignments);

@@ -34,6 +34,7 @@ public sealed class Sc2OpeningMarineController
     public ulong? ReleasedBuilderTag { get; private set; }
     public bool BarracksComplete => _barracksComplete;
     public bool MarineObserved { get; private set; }
+    public bool MarineTrainingStarted => _marineTrainingRequested || MarineObserved;
     public bool MarineDeployed => _deployed;
     public int CandidateCount => _candidatePoints.Count;
 

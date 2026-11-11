@@ -118,6 +118,26 @@ public sealed class Sc2SecondBarracksControllerTests
             map, data, assignments, crew));
         Assert.False(controller.RequiresSupplyDepot);
         Assert.Equal(11UL, controller.BuilderTag);
+
+        // Once Barracks two finishes, its own builder is released to the
+        // mining pool and the first-Barracks SCV is recycled for Barracks three.
+        Assert.Null(controller.TryCreateAction(Snapshot(0,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
+            Fact(12, "SCV", 12, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, crew));
+        Assert.False(assignments.IsReserved(11));
+        Assert.Null(controller.BuilderTag);
+
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
+            Fact(12, "SCV", 12, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, crew));
+        Assert.Equal(12UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(12));
     }
 
     [Fact]

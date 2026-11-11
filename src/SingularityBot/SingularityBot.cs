@@ -49,6 +49,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
     private readonly Sc2OpeningMarineController _openingMarine = new();
     private readonly Sc2SecondBarracksController _secondBarracks = new();
+    private readonly Sc2ExpansionCommandCenterController _expansionCommandCenter = new();
+    private bool _expansionCommandCenterActionSubmitted;
+    private int _expansionCommandCenterPlacementCount;
     private readonly Sc2OpeningBuilderController _supplyDepotExpansion = new();
     private bool _supplyDepotExpansionActionSubmitted;
     private int _supplyDepotExpansionPlacementCount;
@@ -241,9 +244,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         SC2APIProtocol.Action orbitalSupportAction = null;
         SC2APIProtocol.Action secondBarracksAction = null;
         SC2APIProtocol.Action supplyDepotExpansionAction = null;
+        SC2APIProtocol.Action expansionCommandCenterAction = null;
         SC2APIProtocol.Action barracksProductionAction = null;
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
+        var reservedInfrastructureMinerals = 0u;
         // Opening production and mineral routing are independent commands: the
         // first SCV request must not suppress the starting workers' first-frame spread.
         var allowWorkerBehaviorActions = true;
@@ -277,7 +282,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 !normalized.DeadUnitTags.Contains(unit.Tag)).ToArray();
             var secondBarracksUnderConstruction = observedBarracks.Length >= 2 &&
                 observedBarracks.Any(unit => unit.BuildProgress < 1f);
-            if (_secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction)
+            if (_secondBarracks.RequiresCommandCenter)
+                reservedProductionMinerals = _gameData.CommandCenterMineralCost;
+            else if (_secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction)
                 reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
             else if (!_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null)
                 reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
@@ -290,6 +297,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                          !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)))
                 reservedProductionMinerals = _gameData.MarineMineralCost;
 
+            reservedInfrastructureMinerals = reservedProductionMinerals;
             var productionAction = _openingProduction.TryCreateScvTrainingAction(
                 normalized, _gameData, reservedProductionMinerals);
             _openingProductionActionSubmitted = productionAction is not null;
@@ -395,6 +403,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 {
                     _supplyDepotExpansionActionSubmitted = false;
                 }
+
+                if (_secondBarracks.RequiresCommandCenter)
+                {
+                    expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
+                        _buildJobs, _secondBarracks.PreferredBuilderTag);
+                    _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
+                    if (_expansionCommandCenter.IsStarted)
+                        _secondBarracks.NotifyCommandCenterStarted();
+                    assignments = _workerAssignments.Reconcile(normalized);
+                }
+                else
+                {
+                    _expansionCommandCenterActionSubmitted = false;
+                }
             }
             else
             {
@@ -403,9 +426,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             // Secondary Barracks are persistent Marine factories. Keep them ahead
             // of optional Orbital spending so the Marine economy gets first claim.
-            if (secondBarracksAction is null && builderAction is null && marineAction is null && sprayAction is null)
+            if (secondBarracksAction is null && expansionCommandCenterAction is null && builderAction is null && marineAction is null && sprayAction is null)
             {
-                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(normalized, _gameData, _buildJobs);
+                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(normalized, _gameData, _buildJobs, reservedInfrastructureMinerals);
                 _barracksProductionActionSubmitted = barracksProductionAction is not null;
             }
             else
@@ -415,9 +438,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             // Orbital upgrades/MULEs are lower priority than SCV, construction,
             // and Marine production. This avoids spending the same minerals twice.
-            if (builderAction is null && marineAction is null && sprayAction is null && barracksProductionAction is null)
+            if (builderAction is null && marineAction is null && sprayAction is null && barracksProductionAction is null && expansionCommandCenterAction is null)
             {
-                orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData);
+                orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData, reservedInfrastructureMinerals);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
             }
             else
@@ -433,11 +456,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var supplyDepotExpansionPlacementQuery = _secondBarracks.RequiresSupplyDepot
                 ? _supplyDepotExpansion.TakePlacementQuery(_gameData)
                 : null;
+            var expansionCommandCenterPlacementQuery = _secondBarracks.RequiresCommandCenter
+                ? _expansionCommandCenter.TakePlacementQuery(_gameData)
+                : null;
             _openingBuilderPlacementCount = placementQuery?.Placements.Count ?? 0;
             _openingMarinePlacementCount = marinePlacementQuery?.Placements.Count ?? 0;
             _secondBarracksPlacementCount = secondBarracksPlacementQuery?.Placements.Count ?? 0;
             _supplyDepotExpansionPlacementCount = supplyDepotExpansionPlacementQuery?.Placements.Count ?? 0;
-            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null || secondBarracksPlacementQuery is not null || supplyDepotExpansionPlacementQuery is not null)
+            _expansionCommandCenterPlacementCount = expansionCommandCenterPlacementQuery?.Placements.Count ?? 0;
+            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null || secondBarracksPlacementQuery is not null || supplyDepotExpansionPlacementQuery is not null || expansionCommandCenterPlacementQuery is not null)
             {
                 _pendingQuery = new RequestQuery();
                 if (sprayQuery is not null)
@@ -450,6 +477,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _pendingQuery.Placements.Add(secondBarracksPlacementQuery.Placements);
                 if (supplyDepotExpansionPlacementQuery is not null)
                     _pendingQuery.Placements.Add(supplyDepotExpansionPlacementQuery.Placements);
+                if (expansionCommandCenterPlacementQuery is not null)
+                    _pendingQuery.Placements.Add(expansionCommandCenterPlacementQuery.Placements);
             }
             else
             {
@@ -463,6 +492,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarineActionSubmitted = false;
             _secondBarracksActionSubmitted = false;
             _supplyDepotExpansionActionSubmitted = false;
+            _expansionCommandCenterActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
             _barracksProductionActionSubmitted = false;
         }
@@ -507,6 +537,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             actions.Add(supplyDepotExpansionAction);
         if (secondBarracksAction is not null)
             actions.Add(secondBarracksAction);
+        if (expansionCommandCenterAction is not null)
+            actions.Add(expansionCommandCenterAction);
         if (barracksProductionAction is not null)
             actions.Add(barracksProductionAction);
         if (orbitalSupportAction is not null)
@@ -583,6 +615,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarine.OnActionResult(null, _buildJobs);
             if (_supplyDepotExpansionActionSubmitted)
                 _supplyDepotExpansion.OnActionResult(null, _buildJobs);
+            if (_expansionCommandCenterActionSubmitted)
+                _expansionCommandCenter.OnActionResult(null, _lastGameLoop);
             if (_secondBarracksActionSubmitted)
                 _secondBarracks.OnActionResult(null);
             if (_barracksProductionActionSubmitted)
@@ -647,6 +681,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _secondBarracks.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
             resultIndex++;
         }
+        if (_expansionCommandCenterActionSubmitted)
+        {
+            _expansionCommandCenter.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _lastGameLoop);
+            resultIndex++;
+        }
         if (_barracksProductionActionSubmitted)
         {
             _barracksProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
@@ -664,6 +703,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingMarineActionSubmitted = false;
         _secondBarracksActionSubmitted = false;
         _supplyDepotExpansionActionSubmitted = false;
+        _expansionCommandCenterActionSubmitted = false;
         _barracksProductionActionSubmitted = false;
         _orbitalSupportActionSubmitted = false;
     }
@@ -708,10 +748,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _supplyDepotExpansion.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _supplyDepotExpansionPlacementCount));
             placementOffset += _supplyDepotExpansionPlacementCount;
         }
+        if (_expansionCommandCenterPlacementCount > 0)
+        {
+            _expansionCommandCenter.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _expansionCommandCenterPlacementCount));
+            placementOffset += _expansionCommandCenterPlacementCount;
+        }
         _openingBuilderPlacementCount = 0;
         _openingMarinePlacementCount = 0;
         _secondBarracksPlacementCount = 0;
         _supplyDepotExpansionPlacementCount = 0;
+        _expansionCommandCenterPlacementCount = 0;
         _openingSpray.OnQueryResult(response, _workerAssignments);
     }
 

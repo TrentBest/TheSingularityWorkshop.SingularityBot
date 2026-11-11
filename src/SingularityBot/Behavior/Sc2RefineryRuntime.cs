@@ -134,7 +134,7 @@ public sealed class Sc2RefineryRuntime
             .Transition("Available", "Building", ctx => ctx is RefinerySiteContext site && site.IsBuilding)
             .Transition("Available", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
             .Transition("Building", "Operational", ctx => ctx is RefinerySiteContext site && site.IsOperational)
-            .Transition("Building", "Available", ctx => ctx is RefinerySiteContext site && !site.IsBuilding && !site.IsDepleted)
+            .Transition("Building", "Available", ctx => ctx is RefinerySiteContext site && !site.IsBuilding && !site.IsDepleted && !site.IsDestroyed)
             .Transition("Building", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
             .Transition("Operational", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
             .Transition("Operational", "Destroyed", ctx => ctx is RefinerySiteContext site && site.IsDestroyed && !site.IsDepleted)

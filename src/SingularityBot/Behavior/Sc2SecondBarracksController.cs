@@ -99,7 +99,7 @@ public sealed class Sc2SecondBarracksController
 
             _builderTag = builder.Tag;
             assignments.Reserve(builder.Tag);
-            _buildJobId = buildJobs.CreateBarracksConstruction(observation.GameLoop, builder.Tag).Id;
+            _buildJobId = buildJobs.CreateBarracksConstruction(observation.GameLoop, builder.Tag, barracks.Select(unit => unit.Tag)).Id;
             _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
             _queryPending = _candidates.Count > 0;
             Console.WriteLine($"[Opening] SCV {_builderTag} reserved for Barracks {_targetBarracksCount}.");

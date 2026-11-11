@@ -1,3 +1,5 @@
+#nullable enable
+
 using System.Buffers.Binary;
 using System.Text;
 using TheSingularityWorkshop.FSM_Serialization;
@@ -48,7 +50,7 @@ internal sealed class Sc2BinaryEventRecord : IBinarySerializable
     {
         ArgumentNullException.ThrowIfNull(stream);
         Span<byte> fixedFields = stackalloc byte[46];
-        stream.ReadExactly(fixedFields);
+        ReadExactly(stream, fixedFields);
         Sequence = BinaryPrimitives.ReadUInt64LittleEndian(fixedFields[0..8]);
         UtcTicks = BinaryPrimitives.ReadInt64LittleEndian(fixedFields[8..16]);
         GameLoop = BinaryPrimitives.ReadUInt32LittleEndian(fixedFields[16..20]);
@@ -58,14 +60,27 @@ internal sealed class Sc2BinaryEventRecord : IBinarySerializable
         ValueB = BinaryPrimitives.ReadInt64LittleEndian(fixedFields[38..46]);
 
         Span<byte> length = stackalloc byte[4];
-        stream.ReadExactly(length);
+        ReadExactly(stream, length);
         var byteCount = BinaryPrimitives.ReadUInt32LittleEndian(length);
         if (byteCount > MaximumDetailsBytes)
             throw new InvalidDataException("Diagnostic event details exceed the 1 MiB record limit.");
         var details = new byte[(int)byteCount];
-        stream.ReadExactly(details);
+        ReadExactly(stream, details);
         Details = new UTF8Encoding(false, true).GetString(details);
     }
+    private static void ReadExactly(IBinaryStream stream, Span<byte> buffer)
+    {
+        while (!buffer.IsEmpty)
+        {
+            var bytesRead = stream.Read(buffer);
+            if (bytesRead == 0)
+                throw new EndOfStreamException("The binary event stream ended before a complete record field was read.");
+            if (bytesRead < 0 || bytesRead > buffer.Length)
+                throw new IOException($"The binary event stream returned an invalid read count ({bytesRead}).");
+            buffer = buffer[bytesRead..];
+        }
+    }
+
 }
 
 /// <summary>

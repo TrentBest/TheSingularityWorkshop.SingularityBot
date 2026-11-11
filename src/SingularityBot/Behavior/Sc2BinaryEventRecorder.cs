@@ -5,6 +5,7 @@
 using System.Buffers.Binary;
 using System.Text;
 using TheSingularityWorkshop.FSM_Serialization;
+using SingularityBot.Observation;
 
 namespace SingularityBot.Behavior;
 

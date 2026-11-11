@@ -57,8 +57,10 @@ public static class MarineFormationPlanner
     {
         var result = new (float X, float Y)[count];
         for (var index = 0; index < count; index++)
+            // Keep earlier slots stable as the squad grows. New Marines occupy
+            // successive rows instead of forcing the existing force to reshuffle.
             result[index] = (((index % 2 == 0) ? -0.5f : 0.5f) * SlotSpacing,
-                ((index / 2 == 0) ? -0.5f : 0.5f) * SlotSpacing);
+                (index / 2) * SlotSpacing);
         return result;
     }
 

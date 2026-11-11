@@ -16,11 +16,13 @@ public sealed class Sc2ExpansionCommandCenterControllerTests
             Fact(1, "CommandCenter", 10, 10),
             Mineral(100, 16, 8), Mineral(101, 17, 8), Mineral(102, 18, 8), Mineral(103, 19, 8),
             Mineral(200, 34, 19), Mineral(201, 35, 19), Mineral(202, 36, 19), Mineral(203, 37, 19),
+            Mineral(400, 55, 25), Mineral(401, 56, 25), Mineral(402, 57, 25), Mineral(403, 58, 25),
             Fact(300, "VespeneGeyser", 35, 25, alliance: UnitAlliance.Neutral));
 
         var candidates = ExpansionSitePlanner.FindCommandCenterCandidates(observation, map);
 
         Assert.NotEmpty(candidates);
+        Assert.True(candidates.Count >= 18, "The planner must retain fallback candidates from more than one friendly mineral expansion.");
         Assert.All(candidates, point => Assert.True(map.Bounds.Contains(point)));
         Assert.True(candidates[0].DistanceTo(new MapPoint(35.5f, 19f)) < 12f);
         Assert.Equal(MapSide.Friendly, map.Side.Assess(candidates[0]));

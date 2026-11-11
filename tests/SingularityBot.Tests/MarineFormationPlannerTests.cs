@@ -32,6 +32,16 @@ public sealed class MarineFormationPlannerTests
     }
 
     [Fact]
+    public void BoxKeepsExistingMarineSlotsStableWhenReinforcementsArrive()
+    {
+        var four = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4, 1, 0);
+        var six = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 6, 1, 0);
+
+        Assert.Equal(four, six.Take(4));
+        Assert.Equal(6, six.Distinct().Count());
+    }
+
+    [Fact]
     public void RotatesFormationWithTravelDirection()
     {
         var east = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4, 1, 0);

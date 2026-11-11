@@ -5,14 +5,14 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Sends Marines without a tactical target across the map to an enemy-side
-/// reconnaissance waypoint near the opponent's natural approach.
+/// Sends an assembled Marine force without a tactical target to a conservative
+/// enemy-side observation waypoint, then streams later reinforcements into formation.
 /// </summary>
 public sealed class Sc2MarineRallyController
 {
     private readonly Dictionary<ulong, uint> _lastRallyCommandLoops = new();
     private const uint RetryAfterGameLoops = 44;
-    private const float RallyOffset = 8f;
+    private const float RallyOffset = 20f;
     private const float ArrivalRadiusSquared = 4f;
     private const float RendezvousOffset = 5f;
     private bool _squadDispatched;
@@ -57,8 +57,10 @@ public sealed class Sc2MarineRallyController
         // producing Barracks. Early Marines occupy distinct box slots around it;
         // the squad does not begin its cross-map advance until all four have
         // reached their assigned slots.
-        var squadTags = liveMarineTags.OrderBy(tag => tag).Take(4).ToArray();
-        if (squadTags.Length < 4 && !fourthMarineInProduction)
+        var squadTags = _squadDispatched
+            ? liveMarineTags.OrderBy(tag => tag).ToArray()
+            : liveMarineTags.OrderBy(tag => tag).Take(4).ToArray();
+        if (squadTags.Length < 4 && !fourthMarineInProduction && !_squadDispatched)
             return Array.Empty<SC2APIProtocol.Action>();
 
         var producingBarracks = observation.Units.FirstOrDefault(unit =>

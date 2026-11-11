@@ -69,6 +69,7 @@ public static class ExpansionSitePlanner
             .Where(site => site.Distance >= 14f && map.Side.Assess(site.Center) == MapSide.Friendly)
             .Where(site => occupiedAnchors.All(anchor => anchor.DistanceSquaredTo(site.Center) >= 144f))
             .OrderBy(site => site.Distance)
+            .Take(4)
             .ToArray();
 
         var candidates = new List<MapPoint>();
@@ -89,7 +90,10 @@ public static class ExpansionSitePlanner
                 if (map.Bounds.Contains(point))
                     candidates.Add(point);
             }
-            if (candidates.Count >= 9)
+            // A single nearest mineral line may have no legal town-hall footprint.
+            // Include several ranked expansions in the same SC2 placement query
+            // so one blocked cluster cannot stall the entire production plan.
+            if (candidates.Count >= 36)
                 break;
         }
         return candidates;

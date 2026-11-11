@@ -9,7 +9,7 @@ namespace SingularityBot.Tests;
 public sealed class Sc2MarineRallyControllerTests
 {
     [Fact]
-    public void MovesFourMarineSquadAcrossTheMapToEnemySideReconAndStopsWhenItArrives()
+    public void MovesFourMarineSquadToConservativeEnemyObservationWaypointAndStopsWhenItArrives()
     {
         var controller = new Sc2MarineRallyController();
         var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
@@ -32,6 +32,9 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.Equal(4, targets.Select(point => (point.X, point.Y)).Distinct().Count());
         Assert.All(targets, point => Assert.Equal(MapSide.Enemy, map.Side.Assess(new MapPoint(point.X, point.Y))));
         Assert.All(targets, point => Assert.True(new MapPoint(11, 10).DistanceSquaredTo(new MapPoint(point.X, point.Y)) > 2500f));
+        Assert.All(targets, point => Assert.True(
+            new MapPoint(point.X, point.Y).DistanceTo(map.Side.EnemyStart) >= 18f,
+            "The observation waypoint must preserve a conservative stand-off from the enemy start."));
 
         var arrived = controller.TryCreateActions(
             Snapshot(Enumerable.Range(0, 4).Select(index =>
@@ -68,6 +71,41 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.Empty(controller.TryCreateActions(
             Snapshot(Fact(1, "Marine", 10, 10), Fact(2, "Marine", 11, 10),
                 Fact(3, "Marine", 12, 10), Fact(4, "Marine", 13, 10)), map, decisions, GameData()));
+    }
+
+    [Fact]
+    public void StreamsLaterMarinesIntoFormationWithoutReshufflingArrivedSquad()
+    {
+        var controller = new Sc2MarineRallyController();
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(10, 10), new MapPoint(90, 90));
+        var gameData = GameData();
+        var initialOffsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4,
+            map.Side.EnemyStart.X - map.Side.FriendlyStart.X,
+            map.Side.EnemyStart.Y - map.Side.FriendlyStart.Y);
+        var initial = initialOffsets.Select((offset, index) => Fact((ulong)(index + 1), "Marine",
+            map.Side.FriendlyStart.X + offset.X, map.Side.FriendlyStart.Y + offset.Y)).ToArray();
+        var firstDecisions = Enumerable.Range(1, 4).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "No visible attackable target")).ToArray();
+
+        var firstMoves = controller.TryCreateActions(Snapshot(initial), map, firstDecisions, gameData);
+        var firstTargets = firstMoves.ToDictionary(
+            move => move.ActionRaw.UnitCommand.UnitTags.Single(),
+            move => move.ActionRaw.UnitCommand.TargetWorldSpacePos);
+        var arrived = initialOffsets.Select((_, index) => Fact((ulong)(index + 1), "Marine",
+            firstTargets[(ulong)(index + 1)].X, firstTargets[(ulong)(index + 1)].Y)).ToList();
+        arrived.Add(Fact(5, "Marine", map.Side.FriendlyStart.X, map.Side.FriendlyStart.Y));
+
+        var decisions = Enumerable.Range(1, 5).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "No visible attackable target")).ToArray();
+        var reinforcementMoves = controller.TryCreateActions(
+            Snapshot(arrived.ToArray()), map, decisions, gameData);
+
+        var reinforcement = Assert.Single(reinforcementMoves);
+        Assert.Equal(5UL, Assert.Single(reinforcement.ActionRaw.UnitCommand.UnitTags));
+        Assert.Equal(16, reinforcement.ActionRaw.UnitCommand.AbilityId);
     }
 
     private static Sc2GameDataCatalog GameData()

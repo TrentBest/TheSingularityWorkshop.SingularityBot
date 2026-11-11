@@ -33,16 +33,33 @@ public sealed class Sc2MarineRallyControllerTests
     }
 
     [Fact]
+    public void WaitsForFourMarinesBeforeDispatchingTheCrossMapSquad()
+    {
+        var controller = new Sc2MarineRallyController();
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(10, 10), new MapPoint(90, 90));
+        var decisions = Enumerable.Range(1, 3).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "No visible attackable target")).ToArray();
+
+        Assert.Empty(controller.TryCreateActions(
+            Snapshot(Fact(1, "Marine", 10, 10), Fact(2, "Marine", 11, 10), Fact(3, "Marine", 12, 10)),
+            map, decisions, GameData()));
+    }
+
+    [Fact]
     public void DoesNotRallyMarineWhenCombatPlannerHasAssignedATarget()
     {
         var controller = new Sc2MarineRallyController();
         var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
             new MapPoint(10, 10), new MapPoint(90, 90));
-        var decision = new MarineTacticalDecision(1, 2, MarineTacticalAction.Hold, 0, 0,
-            "Contact outside local defense envelope");
+        var decisions = Enumerable.Range(1, 4).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, 2, MarineTacticalAction.Hold, 0, 0,
+                "Contact outside local defense envelope")).ToArray();
 
         Assert.Empty(controller.TryCreateActions(
-            Snapshot(Fact(1, "Marine", 10, 10)), map, new[] { decision }, GameData()));
+            Snapshot(Fact(1, "Marine", 10, 10), Fact(2, "Marine", 11, 10),
+                Fact(3, "Marine", 12, 10), Fact(4, "Marine", 13, 10)), map, decisions, GameData()));
     }
 
     private static Sc2GameDataCatalog GameData()

@@ -48,6 +48,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private RequestQuery _pendingQuery;
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
     private readonly Sc2OpeningMarineController _openingMarine = new();
+    private readonly Sc2MarineRallyController _marineRally = new();
     private readonly Sc2SecondBarracksController _secondBarracks = new();
     private readonly Sc2ExpansionCommandCenterController _expansionCommandCenter = new();
     private bool _expansionCommandCenterActionSubmitted;
@@ -587,6 +588,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var combatDecisions = MarineCombatPlanner.Plan(normalized, _combatWeapons);
             actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
                 combatDecisions, normalized, _gameData, _combatWeapons));
+            var marineRallyActions = _marineRally.TryCreateActions(normalized, SpatialMap, combatDecisions, _gameData);
+            actions.AddRange(marineRallyActions);
             if (_writeDiagnostics)
                 foreach (var decision in combatDecisions)
                     _binaryTrace.RecordMarineDecision(normalized.GameLoop, decision.MarineTag,
@@ -598,7 +601,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     item.Action == MarineTacticalAction.RepositionDuringCooldown);
                 var withdrawing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Withdraw);
                 _openingTrace.RecordEvent("MarineCombat", normalized.GameLoop,
-                    $"marines={combatDecisions.Count};fire={firing};reposition={repositioning};withdraw={withdrawing}");
+                    $"marines={combatDecisions.Count};fire={firing};reposition={repositioning};withdraw={withdrawing};rally={marineRallyActions.Count}");
             }
         }
 

@@ -49,6 +49,10 @@ The adapter owns protocol DTOs and protocol-specific details. The rest of the bo
 | GUI | Edit/version definitions; inspect states, facts, intents, maps and diagnostics | A second runtime or direct game authority |
 | Evaluation | Tests, recorded-observation replay, metrics and controlled match experiments | Unverified claims of competitive strength |
 
+## Strategic advisor layer
+
+A match-level Game State FSM classifies Early, Mid and Late game from observed milestones. Economy, Military, Science, Base Engineering and Intelligence advisors own their respective policy domains and receive phase-weighted processing opportunities. Advisors produce assessments and proposed jobs; the Task Master arbitrates assignments and reservations. Advisors do not issue protocol commands or bypass action validation. See [strategic advisors and game-phase scheduling](strategic-advisors-and-game-phases.md) for current phase evidence, compute weights and implementation boundaries.
+
 ## One observation cycle
 
 1. Receive the latest SC2 observation and game data.

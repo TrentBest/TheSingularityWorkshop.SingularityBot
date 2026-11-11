@@ -71,7 +71,9 @@ public sealed class Sc2OrbitalSupportController
             }
         }
 
-        if (gameData.MuleCallDownAbilityId is not > 0)
+        if (gameData.MuleCallDownAbilityId is not > 0 ||
+            !gameData.TryGetAbility(gameData.MuleCallDownAbilityId.Value, out var muleAbility) ||
+            !float.IsFinite(muleAbility.CastRange) || muleAbility.CastRange <= 0)
             return null;
 
         var mineralFields = observation.Units
@@ -91,12 +93,16 @@ public sealed class Sc2OrbitalSupportController
         if (orbital is null)
             return null;
 
+        var maximumRangeSquared = muleAbility.CastRange * muleAbility.CastRange;
         var mineral = mineralFields
+            .Where(unit => DistanceSquared(orbital, unit) <= maximumRangeSquared)
             .OrderBy(unit => DistanceSquared(orbital, unit))
             .ThenBy(unit => unit.Tag)
-            .First();
-        return Submit(orbital.Tag, gameData.MuleCallDownAbilityId.Value,
-            observation.GameLoop, mineral.Tag);
+            .FirstOrDefault();
+        return mineral is null
+            ? null
+            : Submit(orbital.Tag, gameData.MuleCallDownAbilityId.Value,
+                observation.GameLoop, mineral.Tag);
     }
 
     public void OnActionResult(ActionResult? result)

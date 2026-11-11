@@ -21,6 +21,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly EconomyAdvisor _economyAdvisor = new();
     private readonly AdvisorJobBoard _advisorJobBoard = new();
     private readonly StrategicPlanner _strategicPlanner = new();
+    private CompositionGoalDefinition? _compositionGoal;
     private readonly GameStateContext _gameState = new();
     private readonly bool _passiveBaseline;
     private readonly bool _writeDiagnostics;
@@ -121,6 +122,46 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         IReadOnlyDictionary<string, ProductionRecipe> recipes,
         int priority = 50) =>
         CompositionGoalCompiler.Compile(goal, recipes, _advisorJobBoard, _lastGameLoop, priority);
+
+    /// <summary>Current declarative composition target, if configured.</summary>
+    public CompositionGoalDefinition? CompositionGoal => _compositionGoal;
+
+    /// <summary>
+    /// JSON authoring surface for the development GUI. Recipe metadata is
+    /// explicit input until the normalized game-data tech graph is complete.
+    /// </summary>
+    public CompositionPlanResult ConfigureCompositionGoalJson(
+        string goalJson,
+        string recipesJson,
+        int priority = 50)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var goal = JsonSerializer.Deserialize<CompositionGoalDefinition>(goalJson, options)
+                ?? throw new JsonException("Composition goal JSON was empty.");
+            var recipes = JsonSerializer.Deserialize<Dictionary<string, ProductionRecipe>>(recipesJson, options)
+                ?? throw new JsonException("Production recipe JSON was empty.");
+            var result = CompositionGoalCompiler.Compile(goal, recipes, _advisorJobBoard, _lastGameLoop, priority);
+            if (result.Errors.Count == 0)
+                _compositionGoal = goal;
+            return result;
+        }
+        catch (JsonException exception)
+        {
+            return new CompositionPlanResult(Array.Empty<StrategicJobPosting>(),
+                new[] { "$: invalid composition configuration: " + exception.Message });
+        }
+    }
+
+    /// <summary>Withdraw every posting currently owned by the configured goal.</summary>
+    public int ClearCompositionGoal()
+    {
+        if (_compositionGoal is null) return 0;
+        var removed = _advisorJobBoard.WithdrawComposition(_compositionGoal.GoalId);
+        _compositionGoal = null;
+        return removed;
+    }
 
     public void OnStart(
         ResponseGameInfo gameInfo,

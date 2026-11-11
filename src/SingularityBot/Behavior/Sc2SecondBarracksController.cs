@@ -139,6 +139,9 @@ public sealed class Sc2SecondBarracksController
             // rather than selecting by tag or pulling a distant construction-role
             // worker while a closer mineral-line worker is available.
             _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
+            if (_candidates.Count == 0)
+                return null;
+
             var eligibleWorkers = observation.Units
                 .Where(IsLiveScv)
                 .Where(unit => !unit.HasCargo && !assignments.IsReserved(unit.Tag))

@@ -199,18 +199,17 @@ public sealed class Sc2OpeningBuilderController
         if (builder is null)
             return null;
 
-        // If the selected worker is already mining and has not collected its load,
-        // let that trip finish. Once it is carrying minerals, dispatch it directly
-        // to construction: do not waste the trip returning to the Command Center.
-        // The first Depot has priority over the next SCV: start it as soon as
-        // its 100-mineral cost is available. Waiting for a 150-mineral combined
-        // reserve caused the opening to hit 15/15 supply before construction.
-        if (!builder.HasCargo && IsGatheringMinerals(builder, observation))
+        // Finish the entire current mineral trip before diverting this worker.
+        // A loaded SCV must return its cargo to the town hall first; once the
+        // cargo is deposited, the worker can leave for construction.
+        if (IsCompletingMineralTrip(builder, observation))
             return null;
 
-        // Replace the worker's mining order only after its current harvest is
-        // complete (or immediately when it was idle).
-        var movementTarget = _placement ?? _candidatePoints[0];
+        // Do not send the builder to a speculative staging point. SC2's placement
+        // response is authoritative; move once, directly to the accepted site.
+        if (_placement is null)
+            return null;
+        var movementTarget = _placement.Value;
         if (_moveTarget is null ||
             DistanceSquared(_moveTarget.Value.X, _moveTarget.Value.Y, movementTarget.X, movementTarget.Y) > 0.01f)
         {
@@ -273,11 +272,6 @@ public sealed class Sc2OpeningBuilderController
                 checked((int)gameData.MoveAbilityId.Value),
                 movementTarget);
         }
-
-        // The placement query can complete after the staging Move. If the accepted
-        // build site differs from staging, the next pass issues a replacement Move.
-        if (_placement is null)
-            return null;
 
         if (observation.Minerals < gameData.SupplyDepotMineralCost)
             return null;
@@ -389,17 +383,20 @@ public sealed class Sc2OpeningBuilderController
         _pendingAction = PendingAction.None;
     }
 
-    private static bool IsGatheringMinerals(
+    private static bool IsCompletingMineralTrip(
         UnitObservationFacts worker,
         NormalizedObservation observation)
     {
         var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
-        return targetTag is ulong mineralTag && observation.Units.Any(unit =>
-            unit.Tag == mineralTag &&
-            unit.Alliance == UnitAlliance.Neutral &&
-            unit.IsLiveVisible &&
-            (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
-             unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase)));
+        if (targetTag is not ulong tag)
+            return false;
+
+        return observation.Units.Any(unit =>
+            unit.Tag == tag && unit.IsLiveVisible &&
+            ((unit.Alliance == UnitAlliance.Neutral &&
+              (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
+               unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase))) ||
+             (worker.HasCargo && unit.Alliance == UnitAlliance.Self && IsTownHall(unit.UnitKind))));
     }
 
     private static bool IsLiveScv(UnitObservationFacts unit) =>

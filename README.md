@@ -1,4 +1,4 @@
-<!-- The Singularity Workshop moniker -->
+<!-- The Singularity Workshop animated moniker -->
 <p align="center">
   <a href="https://github.com/TrentBest">
     <img src="https://raw.githubusercontent.com/TrentBest/TheSingularityWorkshop.Visualize/development/docs/assets/moniker.svg" alt="The Singularity Workshop — animated workshop moniker" width="720" />
@@ -11,21 +11,22 @@
 
 **An FSM-driven StarCraft II bot, built on The Singularity Workshop.**
 
-SingularityBot observes the game, maintains persistent entity contexts, evaluates hierarchical finite-state machines, arbitrates intents, validates commands, and submits actions through the SC2 protocol adapter. The first objective is a bot that actually plays a disciplined Terran opening—not a generalized strategy editor, a neural-policy experiment, or a ladder framework.
+SingularityBot observes StarCraft II, maintains persistent entity contexts, evaluates hierarchical finite-state machines, arbitrates intents, validates commands against current observations and game data, and submits actions through the SC2 protocol adapter. The first product goal is a disciplined, measurable Terran player—not a generalized strategy editor, a neural-policy experiment, or a ladder framework.
 
 ## Current objective
 
-Prove a deterministic, measurable Terran economy and production loop:
+Prove a sustainable Terran economy and production loop, then prove its tactical behavior in repeatable local matches:
 
-1. Reconcile each observation into stable player, worker, resource, structure, order, and game-loop facts.
-2. Assign starting SCVs to persistent mineral routes.
-3. At the 10-mineral bank crossing, pull the first SCV already returning to the Command Center and stage it for the first Supply Depot.
-4. Complete the Depot and first Barracks through validated construction actions.
-5. Establish four Barracks and sustain a pure-Marine production plan without gas.
-6. Preserve mining throughput while builders and production consume resources.
-7. Replay the same observations and reproduce the same decisions.
+1. Reconcile observations into stable player, worker, resource, structure, order, and game-loop facts.
+2. Assign workers to persistent mineral routes using deterministic, saturation-aware allocation and SC2 pathing distances where available.
+3. Produce SCVs while scheduling and verifying the first Depot/Barracks construction sequence.
+4. Expand the opening through follow-up supply, additional Barracks, and a resource-derived friendly expansion.
+5. Establish four Barracks and sustain Marine production without gas while protecting worker production and expansion reserves.
+6. Assemble Marines at the producing Barracks: existing Marines rendezvous with the fourth Marine before the squad is dispatched.
+7. Scout and hold a map-derived safe observation point at the bottom of the enemy ramp, preserving vision without climbing the ramp.
+8. Measure economy, production, movement, combat and outcomes from game-loop diagnostics; replay and compare controlled matches.
 
-This is an implementation target, not a claim that the full opening is already complete. The `development` branch connects observation normalization, persistent unit-context reconciliation, intent buffering, SC2 game-data lookup, and gather/return actions for SCV/Probe/Drone workers. The local runner uses SC2 real-time mode for human-readable playback; ladder sessions retain stepped mode. The adapter returns each submitted action's `ResponseAction.Result`, correlates results with unit tags and ability IDs, and logs observation-reported action errors. The first protocol action is isolated Command Center SCV production; ability, cost and supply are read from SC2 game data, and the next observation must show the training order. The mineral planner adopts existing SC2 gather orders instead of ignoring workers that already have orders, then retains stable saturation-aware assignments. When SC2 game data and a per-SCV available-ability query both confirm Spray, the bot issues Spray and then explicitly reissues that same SCV's original mineral target; if Spray is absent or unavailable, it restores the worker assignment without inventing a command. At the 10-mineral bank crossing, the opening controller reserves an SCV on its return leg, queries SC2 for a legal forward-side Depot placement, moves the worker to the selected site, and issues the Depot build command once the game-data mineral cost is available. These production, worker-control and Depot paths have automated controller tests, but none is claimed live-match proven yet. Barracks scheduling, Marine production, replay evidence, and complete strategy-level validation remain open. Consult CI for the current test result.
+The first worker, construction and production stages have progressed beyond the original single-Depot prototype and have controller regression coverage. The current `development` head also has a regression test for the four-Marine rendezvous gate. These are implementation and automated-test facts—not proof that SC2 pathing, ramp safety, the complete four-Barracks economy, or the full opening has succeeded in a live match. The latest recorded GitHub Actions Build and Sith Policy runs passed for commit [`42f943e14fcc2d85fb3b83ec01ae0f5f74729010`](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/commit/42f943e14fcc2d85fb3b83ec01ae0f5f74729010). Consult [the roadmap](docs/roadmap.md) and [CiAi evidence workflow](docs/ciai-evidence.md) for the exact proof boundaries.
 
 ## Architecture at a glance
 
@@ -38,9 +39,9 @@ This is an implementation target, not a claim that the full opening is already c
 | Distances, routes and spatial queries | Physics |
 | Authoring, inspection and map presentation | GUI / Renderer / Visualize |
 | Match history and durable experience | DataWarehouse |
-| Build, tests, replay evaluation and automation | CiAi / HeadlessAi |
+| Build, tests, replay evaluation and CI evidence | CiAi / HeadlessAi |
 
-The runtime is authoritative. GUI is an authoring and inspection client; it does not contain a second bot engine. SC2 protocol types stay at the adapter boundary. FSM_API remains game-independent.
+The runtime is authoritative. GUI is an authoring and inspection client; it does not contain a second bot engine. SC2 protocol types stay at the adapter boundary. FSM_API remains game-independent. CiAi observes and verifies CI-provider evidence; GitHub Actions remains the build/test executor. Neither a passing CI run nor an LLM assessment authorizes publication, deployment or release.
 
 ## Documentation
 
@@ -48,6 +49,8 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 - [Behavior and FSM model](docs/behavior-model.md)
 - [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)
 - [Terran opening and worker logistics](docs/opening-economy-logistics.md)
+- [Development diagnostics and trace format](docs/diagnostics.md)
+- [CiAi evidence observation and acceptance boundaries](docs/ciai-evidence.md)
 - [Strategy format](docs/strategy-format.md)
 - [Engagement service and operational picture](docs/engagement-service.md)
 - [Spatial reasoning foundation](docs/spatial-reasoning.md)
@@ -62,18 +65,17 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 ## Development rules
 
 - Exactly two long-lived branches: `master` and `development`.
-- `development` is the sole integration branch; short-lived feature branches are not part of the workflow.
+- `development` is the sole integration branch; do not create feature branches.
 - Keep changes small, tested, and continuously integrated into `development`.
 - Fail closed when observations, abilities, targets, prerequisites, or action legality are uncertain.
+- Distinguish source implementation, automated tests, CI evidence and live-match evidence.
 - Do not claim a behavior works until automated tests and a local SC2 match/replay demonstrate it.
-- NuGet publication and external release remain separately authorized actions.
+- NuGet publication, merge-to-master, external release and deployment require separate explicit authorization.
 
 ---
 
 <p align="center">
-  <a href="https://github.com/TrentBest/TheSingularityWorkshop" aria-label="The Singularity Workshop living avatar">
-    <img src="https://raw.githubusercontent.com/TrentBest/WebPage/development/TheSingularityWorkshop/wwwroot/Images/TheSingularityWorkshopLivingAvatar.svg" alt="The Singularity Workshop living avatar" width="112" />
-  </a><br />
+  <img src="https://raw.githubusercontent.com/TrentBest/FSM_API/master/Documentation/Branding/TheSingularityWorkshop.png" alt="The Singularity Workshop" width="112" /><br />
   <strong>The Singularity Workshop</strong><br />
   <em>If a picture is worth a thousand words, what is a living picture worth?</em><br />
   <a href="https://github.com/TrentBest">GitHub</a> · <a href="https://www.patreon.com/TheSingularityWorkshop">Support the Workshop</a>

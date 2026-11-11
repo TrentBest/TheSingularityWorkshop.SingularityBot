@@ -85,7 +85,6 @@ public static class UnitBehaviorCatalog
             .State("Mining", ctx => Emit(ctx, BehaviorCommand.AssignWorkerToMinerals), null, null)
             .State("AwaitingAssignment", null, null, null)
             .Transition("Assess", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("Assess", "Visible", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo)
             .Transition("Assess", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
             .Transition("Assess", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
             .Transition("Assess", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)

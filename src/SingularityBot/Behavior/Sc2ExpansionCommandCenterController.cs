@@ -36,14 +36,13 @@ public sealed class Sc2ExpansionCommandCenterController
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
-        BuildJobRuntime buildJobs,
+        BuildJobRuntime buildJobs = null,
         ulong? preferredBuilderTag = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(constructionCrewTags);
-        ArgumentNullException.ThrowIfNull(buildJobs);
 
         if (IsComplete || map is null || gameData.CommandCenterBuildAbilityId is not > 0 ||
             gameData.CommandCenterMineralCost == 0 || gameData.MoveAbilityId is not > 0)
@@ -157,7 +156,7 @@ public sealed class Sc2ExpansionCommandCenterController
         _buildSubmitted = true;
         _buildLoop = observation.GameLoop;
         _pending = PendingAction.Build;
-        _job ??= buildJobs.Create("CommandCenter", observation.GameLoop, workerTag: worker.Tag);
+        _job ??= buildJobs?.Create("CommandCenter", observation.GameLoop, workerTag: worker.Tag);
         Console.WriteLine($"[Expansion] Starting Command Center: SCV={worker.Tag}, minerals={observation.Minerals}, site=({_site.Value.X:F1},{_site.Value.Y:F1}).");
         return PositionCommand(worker.Tag, checked((int)gameData.CommandCenterBuildAbilityId.Value), _site.Value);
     }

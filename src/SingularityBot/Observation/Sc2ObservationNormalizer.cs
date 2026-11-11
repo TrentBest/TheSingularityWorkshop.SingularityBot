@@ -54,6 +54,7 @@ public static class Sc2ObservationNormalizer
                 {
                     WeaponCooldownRemaining = unit.WeaponCooldown,
                     Energy = unit.Energy,
+                    VespeneContents = checked((uint)Math.Max(0, unit.VespeneContents)),
                     Orders = unit.Orders.Select(order => new UnitOrderObservationFacts(
                         order.AbilityId,
                         order.TargetCase == UnitOrder.TargetOneofCase.TargetUnitTag ? order.TargetUnitTag : null,

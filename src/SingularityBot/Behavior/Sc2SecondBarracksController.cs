@@ -19,6 +19,8 @@ public sealed class Sc2SecondBarracksController
     private Pending _pending;
     private int _targetBarracksCount = 2;
     private long? _buildJobId;
+    private ulong? _preferredBuilderTag;
+    public bool RequiresSupplyDepot { get; private set; }
 
     public ulong? BuilderTag => _builderTag;
     public bool IsComplete { get; private set; }
@@ -38,7 +40,7 @@ public sealed class Sc2SecondBarracksController
         ArgumentNullException.ThrowIfNull(constructionCrewTags);
         buildJobs?.ReconcileBarracks(observation);
 
-        if (IsComplete || map is null || gameData.BarracksBuildAbilityId is not > 0 ||
+        if (IsComplete || RequiresSupplyDepot || map is null || gameData.BarracksBuildAbilityId is not > 0 ||
             gameData.BarracksMineralCost == 0 || gameData.MoveAbilityId is not > 0)
             return null;
 
@@ -60,6 +62,12 @@ public sealed class Sc2SecondBarracksController
             }
 
             _targetBarracksCount++;
+            if (_targetBarracksCount == 3)
+            {
+                RequiresSupplyDepot = true;
+                Console.WriteLine("[Opening] Pausing Barracks expansion after Barracks two; another Supply Depot is required before Barracks three.");
+                return null;
+            }
             Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
             return null;
         }
@@ -85,9 +93,11 @@ public sealed class Sc2SecondBarracksController
         {
             var builder = observation.Units
                 .Where(IsLiveScv)
-                .Where(unit => !unit.HasCargo && constructionCrewTags.Contains(unit.Tag) &&
+                .Where(unit => !unit.HasCargo &&
+                    (constructionCrewTags.Contains(unit.Tag) || unit.Tag == _preferredBuilderTag) &&
                     !assignments.IsReserved(unit.Tag))
-                .OrderBy(unit => unit.Tag)
+                .OrderBy(unit => unit.Tag == _preferredBuilderTag ? 0 : 1)
+                .ThenBy(unit => unit.Tag)
                 .FirstOrDefault();
             if (builder is null)
                 return null;
@@ -150,6 +160,14 @@ public sealed class Sc2SecondBarracksController
                 PlacingUnitTag = _builderTag.Value
             });
         return query;
+    }
+
+    public void NotifySupplyDepotCompleted(ulong? recycledBuilderTag)
+    {
+        if (!RequiresSupplyDepot) return;
+        _preferredBuilderTag = recycledBuilderTag;
+        RequiresSupplyDepot = false;
+        Console.WriteLine($"[Opening] Supply expansion confirmed; Barracks three may proceed, preferred recycled SCV={_preferredBuilderTag?.ToString() ?? "none"}.");
     }
 
     public void OnPlacementQueryResult(ResponseQuery response)

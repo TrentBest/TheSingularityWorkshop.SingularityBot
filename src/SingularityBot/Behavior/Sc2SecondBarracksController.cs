@@ -22,6 +22,7 @@ public sealed class Sc2SecondBarracksController
 
     public ulong? BuilderTag => _builderTag;
     public bool IsComplete { get; private set; }
+    public int CandidateCount => _candidates.Count;
 
     public SC2APIProtocol.Action TryCreateAction(
         NormalizedObservation observation,

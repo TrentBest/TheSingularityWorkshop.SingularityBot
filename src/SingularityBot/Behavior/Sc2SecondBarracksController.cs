@@ -20,6 +20,7 @@ public sealed class Sc2SecondBarracksController
     private int _targetBarracksCount = 2;
     private long? _buildJobId;
     private ulong? _preferredBuilderTag;
+    private bool _supplyDepotGateSatisfied;
     public bool RequiresSupplyDepot { get; private set; }
 
     public ulong? BuilderTag => _builderTag;
@@ -62,17 +63,29 @@ public sealed class Sc2SecondBarracksController
             }
 
             _targetBarracksCount++;
-            if (_targetBarracksCount == 3)
+            if (_targetBarracksCount == 3 && !_supplyDepotGateSatisfied)
             {
                 RequiresSupplyDepot = true;
                 Console.WriteLine("[Opening] Pausing Barracks expansion after Barracks two; another Supply Depot is required before Barracks three.");
                 return null;
             }
+            _supplyDepotGateSatisfied = false;
             Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
             return null;
         }
 
-        // Wait for the current structure to finish before reserving another SCV.
+        // As soon as Barracks two is observed under construction, use the
+        // released first-Barracks SCV to build the next Depot in parallel.
+        // Keep the second Barracks worker committed to its own structure and
+        // block Barracks three until the Depot is observed complete.
+        if (_targetBarracksCount == 2 && !_supplyDepotGateSatisfied &&
+            barracks.Length >= 2 && completedCount < 2)
+        {
+            RequiresSupplyDepot = true;
+            Console.WriteLine("[Opening] OBSERVED: Barracks two is under construction; starting the follow-up Supply Depot in parallel before Barracks three.");
+            return null;
+        }
+
         // The first Barracks is owned by the opening controller; this controller
         // grows the production line sequentially to the four-Barracks milestone.
         if (barracks.Length >= _targetBarracksCount || barracks.Length == 0)
@@ -166,6 +179,7 @@ public sealed class Sc2SecondBarracksController
     {
         if (!RequiresSupplyDepot) return;
         _preferredBuilderTag = recycledBuilderTag;
+        _supplyDepotGateSatisfied = true;
         RequiresSupplyDepot = false;
         Console.WriteLine($"[Opening] Supply expansion confirmed; Barracks three may proceed, preferred recycled SCV={_preferredBuilderTag?.ToString() ?? "none"}.");
     }

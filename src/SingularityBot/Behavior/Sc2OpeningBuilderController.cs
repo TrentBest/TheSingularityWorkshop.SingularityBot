@@ -45,6 +45,22 @@ public sealed class Sc2OpeningBuilderController
     public bool IsMoveSubmitted => _moveSubmitted;
     public bool IsBuildSubmitted => _buildSubmitted;
 
+    /// <summary>
+    /// Releases the opening Depot worker after the first Barracks builder has
+    /// completed its handoff. If the same SCV built both structures this is
+    /// harmless; if the Barracks used a different SCV it prevents the Depot
+    /// worker from remaining reserved and idle for the rest of the match.
+    /// </summary>
+    public void ReleaseBuilderAfterBarracksHandoff(WorkerResourceAssignmentPlanner assignments)
+    {
+        ArgumentNullException.ThrowIfNull(assignments);
+        if (!_completed || _builderTag is not ulong tag)
+            return;
+        assignments.Unreserve(tag);
+        Console.WriteLine($"[Opening] Released original Depot builder SCV {tag} after the first Barracks handoff.");
+        _builderTag = null;
+    }
+
     public SC2APIProtocol.Action TryCreateAction(
         NormalizedObservation observation,
         SpatialMap spatialMap,

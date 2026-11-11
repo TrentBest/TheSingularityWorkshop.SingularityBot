@@ -20,9 +20,9 @@ Marine Mode optimizes for sustained map pressure and the fastest reliable delive
 
 - Keep SCV production running.
 - Complete the first Depot without stranding its builder.
-- Construct the first Barracks with a separate available builder where possible.
-- Continue Depot production before supply blocks occur.
-- Add Barracks as mineral income and supply permit.
+- Construct the first Barracks, then dispatch Barracks two as soon as its 150-mineral cost is available while Barracks one is still building. Do not wait for the first Marine to enter production.
+- Choose the unreserved SCV with the shortest trip to the Barracks placement cluster; return the first Barracks builder to mineral mining as soon as its structure completes.
+- Start gas collection as soon as the production plan can sustain the worker and Refinery investment. Add Barracks as mineral income and supply permit.
 - Measure worker idle time, builder idle time, production downtime, supply-block duration, and time to first Marine.
 
 ### 2. Establish Marine control
@@ -44,7 +44,12 @@ A Marine is controlled from current observations, not a one-time move order.
 
 ### 3. Scale the Marine economy
 
-- Continue Marine production across available Barracks.
+- Continue Marine production across available Barracks and spend resource float on the next affordable, placement-validated infrastructure or production action instead of allowing minerals to accumulate.
+- Establish Refinery gas income early enough to support the Tech Lab, Marauders, and Marine upgrades; balance gas workers against the mineral income needed to sustain four Barracks.
+- Once four Marines are available, prioritize a Tech Lab on one Barracks, then add Reactors to the remaining production facilities as soon as the gas/mineral budget and add-on clearance allow. The initial production milestone is four Barracks, not an unconditional jump to eight.
+- Add a Reaper as a dedicated mobile scout when prerequisites and resource budget permit. Preserve it: avoid unfavorable fights, retreat from threats, and use safe alternate routes or another jump point rather than forcing a bad engagement.
+- Introduce a small Marauder contingent from the Tech Lab to absorb pressure and slow armored ground threats while Marines provide sustained DPS.
+- Use damage-aware focus fire: estimate allied damage over a short firing window, assign only enough attackers to finish a target, and allocate remaining damage to another viable target. Maintain focus on a chosen target until its predicted remaining health reaches the kill threshold; avoid wasting a full volley as overkill.
 - Treat the first few dozen Marines as the initial mass-building phase; do not let early add-on construction interrupt the force before the economy can sustain it.
 - Expand toward eight Barracks total as the resource and supply model supports it.
 - The intended add-on mix is one Tech Lab-capable Barracks and seven Reactor Barracks. The Tech Lab timing is a measured decision based on gas income, production saturation, and the value of adding Marauders; it is not a fixed opening timestamp.
@@ -93,7 +98,10 @@ The layout planner must preserve worker routes, building footprints, add-on sock
 
 Every phase should be tuned from match traces and replays. Track at minimum:
 
-- SCV production uptime and worker idle time
+- SCV production uptime and worker idle time, including idle workers with no active order
+- Mineral/gas float, Refinery uptime, and worker distribution between minerals and gas
+- Build-order spend decisions, placement-query success, and time from affordability to command submission
+- Barracks add-on state, Reactor/Tech Lab production utilization, Marauder/Reaper production, and upgrade progress
 - SCV positional progress toward active Move orders; distinguish a stalled worker from a valid gather/build order
 - Builder reservation duration and time from completion to mining resumption
 - Supply-block time and Depot lead time

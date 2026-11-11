@@ -14,7 +14,7 @@ public static class ProductionBehaviorCatalog
 
         FSM_API.Create.CreateFiniteStateMachine(
                 ProductionStepFsm,
-                processRate: 1,
+                processRate: -1,
                 processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
             .State("Waiting", null, null, null)
             .State("Issuing", ctx =>

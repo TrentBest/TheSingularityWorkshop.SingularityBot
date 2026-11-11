@@ -22,11 +22,11 @@ public static class Program
         if (passiveBaseline && !localRun)
             throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.");
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
-            throw new ArgumentException("--diagnostics is a local-run option, not a ladder argument.");
+            throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.");
 
         var bot = new SingularityBot(
             passiveBaseline: passiveBaseline,
-            writeDiagnostics: localRun && (diagnostics || passiveBaseline));
+            writeDiagnostics: localRun && diagnostics);
         var connection = new GameConnection();
         if (localRun)
             connection.RunSinglePlayer(bot, MapName, BotRace, OpponentRace, OpponentDifficulty).GetAwaiter().GetResult();

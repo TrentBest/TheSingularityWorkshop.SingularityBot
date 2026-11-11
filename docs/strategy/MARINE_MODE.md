@@ -39,6 +39,8 @@ A Marine is controlled from current observations, not a one-time move order.
 - Prefer exposed, undefended structures and isolated units when they can be attacked without losing the Marine.
 - Retreat toward friendly reinforcements when threatened; regroup before resuming pressure.
 - Re-evaluate every frame and cancel stale movement when threat, target, or support conditions change.
+- Treat destructible neutral blockers as obstacles to clear, not combat targets to camp: fire when ready, then advance during cooldown. Take another shot only if the Marine is still blocked and the weapon is ready; stop targeting the blocker once the formation has moved beyond it.
+- Move each formation member through short local waypoints (about seven world units at a time) toward its assigned slot. Do not issue a single distant move that lets pathfinding route the entire squad around the Marine ahead.
 
 ### 3. Scale the Marine economy
 
@@ -92,6 +94,7 @@ The layout planner must preserve worker routes, building footprints, add-on sock
 Every phase should be tuned from match traces and replays. Track at minimum:
 
 - SCV production uptime and worker idle time
+- SCV positional progress toward active Move orders; distinguish a stalled worker from a valid gather/build order
 - Builder reservation duration and time from completion to mining resumption
 - Supply-block time and Depot lead time
 - Barracks utilization and Marine production uptime

@@ -73,7 +73,7 @@ public sealed class Sc2MarineRallyControllerTests
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();
-        data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "Move" });
+        data.Units.Add(new UnitTypeData { UnitId = 48, Name = "Marine", AbilityId = 560, MineralCost = 50, FoodRequired = 1 });\n        data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "Move" });
         return Sc2GameDataCatalog.Create(data);
     }
 

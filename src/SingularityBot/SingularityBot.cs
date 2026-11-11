@@ -49,6 +49,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly BuildJobRuntime _buildJobs = new();
     private readonly Sc2BarracksProductionController _barracksProduction = new();
     private bool _barracksProductionActionSubmitted;
+    private int _openingBuilderPlacementCount;
+    private int _openingMarinePlacementCount;
+    private int _secondBarracksPlacementCount;
     private bool _secondBarracksActionSubmitted;
     private bool _openingMarineActionSubmitted;
     private readonly Sc2OpeningSprayController _openingSpray = new();
@@ -390,6 +393,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 ? _openingMarine.TakePlacementQuery(_gameData)
                 : null;
             var secondBarracksPlacementQuery = _secondBarracks.TakePlacementQuery(_gameData);
+            _openingBuilderPlacementCount = placementQuery?.Placements.Count ?? 0;
+            _openingMarinePlacementCount = marinePlacementQuery?.Placements.Count ?? 0;
+            _secondBarracksPlacementCount = secondBarracksPlacementQuery?.Placements.Count ?? 0;
             if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null || secondBarracksPlacementQuery is not null)
             {
                 _pendingQuery = new RequestQuery();
@@ -609,12 +615,35 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     ? "response=null"
                     : $"pathingCount={response.Pathing.Count};pathingValidCount={validPathingDistances.Length};pathingMin={validPathingDistances.DefaultIfEmpty().Min():F2};pathingMax={validPathingDistances.DefaultIfEmpty().Max():F2};abilityCount={response.Abilities.Count};placementCount={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
         _workerAssignments.OnInitialPathingQueryResult(response);
-        _openingBuilder.OnPlacementQueryResult(response);
-        if (_openingBuilder.IsCompleted)
-            _openingMarine.OnPlacementQueryResult(response);
-        if (_openingMarine.BarracksComplete)
-            _secondBarracks.OnPlacementQueryResult(response);
+        var placementOffset = 0;
+        if (_openingBuilderPlacementCount > 0)
+        {
+            _openingBuilder.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _openingBuilderPlacementCount));
+            placementOffset += _openingBuilderPlacementCount;
+        }
+        if (_openingMarinePlacementCount > 0)
+        {
+            _openingMarine.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _openingMarinePlacementCount));
+            placementOffset += _openingMarinePlacementCount;
+        }
+        if (_secondBarracksPlacementCount > 0)
+        {
+            _secondBarracks.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _secondBarracksPlacementCount));
+            placementOffset += _secondBarracksPlacementCount;
+        }
+        _openingBuilderPlacementCount = 0;
+        _openingMarinePlacementCount = 0;
+        _secondBarracksPlacementCount = 0;
         _openingSpray.OnQueryResult(response, _workerAssignments);
+    }
+
+    private static ResponseQuery SlicePlacementResults(ResponseQuery response, int offset, int count)
+    {
+        var slice = new ResponseQuery();
+        if (response is null || offset < 0 || count <= 0 || offset >= response.Placements.Count)
+            return slice;
+        slice.Placements.Add(response.Placements.Skip(offset).Take(count));
+        return slice;
     }
 
     private void UpdateSpatialIntelligence(ResponseObservation response)

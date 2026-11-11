@@ -41,7 +41,7 @@ public sealed class Sc2SecondBarracksController
         ArgumentNullException.ThrowIfNull(constructionCrewTags);
         buildJobs?.ReconcileBarracks(observation);
 
-        if (IsComplete || RequiresSupplyDepot || map is null || gameData.BarracksBuildAbilityId is not > 0 ||
+        if (IsComplete || map is null || gameData.BarracksBuildAbilityId is not > 0 ||
             gameData.BarracksMineralCost == 0 || gameData.MoveAbilityId is not > 0)
             return null;
 
@@ -73,6 +73,11 @@ public sealed class Sc2SecondBarracksController
             Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
             return null;
         }
+
+        // Keep reconciling the in-progress Barracks while the Depot controller
+        // runs, but do not dispatch another Barracks until the Depot is complete.
+        if (RequiresSupplyDepot)
+            return null;
 
         // As soon as Barracks two is observed under construction, use the
         // released first-Barracks SCV to build the next Depot in parallel.

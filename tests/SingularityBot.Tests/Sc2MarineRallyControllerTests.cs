@@ -9,26 +9,28 @@ namespace SingularityBot.Tests;
 public sealed class Sc2MarineRallyControllerTests
 {
     [Fact]
-    public void MovesIdleMarineAcrossTheMapToEnemySideReconAndStopsWhenItArrives()
+    public void MovesFourMarineSquadAcrossTheMapToEnemySideReconAndStopsWhenItArrives()
     {
         var controller = new Sc2MarineRallyController();
         var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
             new MapPoint(10, 10), new MapPoint(90, 90));
         var gameData = GameData();
-        var decision = new MarineTacticalDecision(1, null, MarineTacticalAction.Hold, 0, 0,
-            "No visible attackable target");
+        var marines = Enumerable.Range(1, 4).Select(tag => Fact((ulong)tag, "Marine", 10 + tag, 10)).ToArray();
+        var decisions = Enumerable.Range(1, 4).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "No visible attackable target")).ToArray();
 
-        var move = Assert.Single(controller.TryCreateActions(
-            Snapshot(Fact(1, "Marine", 10, 10)), map, new[] { decision }, gameData));
-
-        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(1UL, Assert.Single(move.ActionRaw.UnitCommand.UnitTags));
-        var rally = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
+        var moves = controller.TryCreateActions(Snapshot(marines), map, decisions, gameData);
+        Assert.Equal(4, moves.Count);
+        Assert.Equal(new ulong[] { 1, 2, 3, 4 }, moves.SelectMany(move => move.ActionRaw.UnitCommand.UnitTags));
+        Assert.All(moves, move => Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId));
+        var rally = moves[0].ActionRaw.UnitCommand.TargetWorldSpacePos;
         Assert.Equal(MapSide.Enemy, map.Side.Assess(new MapPoint(rally.X, rally.Y)));
-        Assert.True(new MapPoint(10, 10).DistanceSquaredTo(new MapPoint(rally.X, rally.Y)) > 2500f);
+        Assert.True(new MapPoint(11, 10).DistanceSquaredTo(new MapPoint(rally.X, rally.Y)) > 2500f);
 
         var arrived = controller.TryCreateActions(
-            Snapshot(Fact(1, "Marine", rally.X, rally.Y)), map, new[] { decision }, gameData);
+            Snapshot(Enumerable.Range(1, 4).Select(tag => Fact((ulong)tag, "Marine", rally.X, rally.Y)).ToArray()),
+            map, decisions, gameData);
         Assert.Empty(arrived);
     }
 

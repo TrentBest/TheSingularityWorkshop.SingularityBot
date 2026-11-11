@@ -39,8 +39,7 @@ public sealed class Sc2SecondBarracksController
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
-        BuildJobRuntime buildJobs = null,
-        bool firstMarineProductionStarted = true)
+        BuildJobRuntime buildJobs = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -50,12 +49,6 @@ public sealed class Sc2SecondBarracksController
 
         if (IsComplete || map is null || gameData.BarracksBuildAbilityId is not > 0 ||
             gameData.BarracksMineralCost == 0 || gameData.MoveAbilityId is not > 0)
-            return null;
-
-        // Do not pull a second worker off the mineral line while the first
-        // Barracks has not yet delivered its first Marine. The opening must
-        // establish its first combat unit before adding parallel construction.
-        if (_targetBarracksCount == 2 && !firstMarineProductionStarted)
             return null;
 
         var barracks = observation.Units.Where(unit =>
@@ -135,29 +128,43 @@ public sealed class Sc2SecondBarracksController
 
         if (_builderTag is null)
         {
-            var eligibleWorkers = observation.Units
-                .Where(IsLiveScv)
-                .Where(unit => !unit.HasCargo && !assignments.IsReserved(unit.Tag))
-                .ToArray();
-            var builder = eligibleWorkers
-                .Where(unit => constructionCrewTags.Contains(unit.Tag) || unit.Tag == _preferredBuilderTag)
-                .OrderBy(unit => unit.Tag == _preferredBuilderTag ? 0 : 1)
-                .ThenBy(unit => unit.Tag)
-                .FirstOrDefault()
-                ?? eligibleWorkers.OrderBy(unit => unit.Tag).FirstOrDefault();
-            if (builder is null)
-                return null;
-
             var townHall = observation.Units.FirstOrDefault(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
                 IsTownHall(unit.UnitKind));
             if (townHall is null)
                 return null;
 
+            // Build-site candidates are known before selecting the worker. Pick
+            // the unreserved SCV with the shortest trip to the candidate cluster,
+            // rather than selecting by tag or pulling a distant construction-role
+            // worker while a closer mineral-line worker is available.
+            _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
+            var eligibleWorkers = observation.Units
+                .Where(IsLiveScv)
+                .Where(unit => !unit.HasCargo && !assignments.IsReserved(unit.Tag))
+                .ToArray();
+            var builder = eligibleWorkers
+                .Select(worker => new
+                {
+                    Worker = worker,
+                    SiteDistanceSquared = _candidates.Count == 0
+                        ? float.MaxValue
+                        : _candidates.Min(point => DistanceSquared(
+                            worker.PositionX, worker.PositionY, point.X, point.Y)),
+                    IsConstructionCrew = constructionCrewTags.Contains(worker.Tag),
+                    IsPreferred = worker.Tag == _preferredBuilderTag
+                })
+                .OrderBy(candidate => candidate.SiteDistanceSquared)
+                .ThenBy(candidate => candidate.IsPreferred ? 0 : 1)
+                .ThenBy(candidate => candidate.IsConstructionCrew ? 0 : 1)
+                .ThenBy(candidate => candidate.Worker.Tag)
+                .FirstOrDefault()?.Worker;
+            if (builder is null)
+                return null;
+
             _builderTag = builder.Tag;
             assignments.Reserve(builder.Tag);
             _buildJobId = buildJobs?.CreateBarracksConstruction(observation.GameLoop, builder.Tag, barracks.Select(unit => unit.Tag)).Id;
-            _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
             _queryPending = _candidates.Count > 0;
             Console.WriteLine($"[Opening] SCV {_builderTag} reserved for Barracks {_targetBarracksCount}.");
             return null;

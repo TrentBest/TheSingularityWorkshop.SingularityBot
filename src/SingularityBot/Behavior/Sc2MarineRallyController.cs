@@ -56,7 +56,7 @@ public sealed class Sc2MarineRallyController
 
         var rendezvousPoint = map.Side.FriendlyStart + direction * RendezvousOffset;
         var formationPoint = rallyPoint;
-        var formationOffsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, squadTags.Length, direction);
+        var formationOffsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, squadTags.Length, direction.X, direction.Y);
         var targetsByTag = new Dictionary<ulong, (float X, float Y)>();
         if (rendezvousStarted)
         {

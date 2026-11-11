@@ -61,6 +61,7 @@ public sealed class Sc2SecondBarracksController
 
             _targetBarracksCount++;
             Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
+            return null;
         }
 
         // Wait for the current structure to finish before reserving another SCV.

@@ -40,7 +40,7 @@ public sealed class Sc2SecondBarracksController
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
         BuildJobRuntime buildJobs = null,
-        bool firstMarineObserved = true)
+        bool firstMarineProductionStarted = true)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -55,7 +55,7 @@ public sealed class Sc2SecondBarracksController
         // Do not pull a second worker off the mineral line while the first
         // Barracks has not yet delivered its first Marine. The opening must
         // establish its first combat unit before adding parallel construction.
-        if (_targetBarracksCount == 2 && !firstMarineObserved)
+        if (_targetBarracksCount == 2 && !firstMarineProductionStarted)
             return null;
 
         var barracks = observation.Units.Where(unit =>

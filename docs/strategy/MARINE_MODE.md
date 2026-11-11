@@ -10,7 +10,7 @@ Marine Mode optimizes for sustained map pressure and the fastest reliable delive
 1. **Keep the economy alive.** Every Command Center/Orbital Command should train an SCV whenever minerals, supply, and production availability permit. Construction temporarily reserves a worker; it must not permanently remove that worker from the economy.
 2. **Keep every starting SCV mining until a build is affordable.** Do not reserve or stage a worker before the mineral threshold. If the selected SCV is actively mining, let it finish that harvest; once it carries the load, dispatch it directly to construction rather than sending it back to the Command Center first. After construction, release it to mining unless another affordable build is ready.
 3. **Return builders to mining.** Release a construction reservation as soon as the assigned structure is observed complete, then restore the worker to an appropriate mineral route.
-4. **Never trade Marines needlessly.** Do not issue blind attack-moves through unknown territory or chase a visible contact across the map. The first Marine holds on the friendly side and watches the approach; only nearby contacts inside a bounded local-defense envelope may trigger pursuit. Use visible targets, weapon cooldown, weapon ranges, health, and friendly support to decide whether to fire, kite, advance, or retreat.
+4. **Never trade Marines needlessly.** Do not issue blind attack-moves through unknown territory or chase a visible contact across the map. The first Marine is a dedicated early-warning scout: move it to the farthest safe, non-enemy sector adjacent to our starting sector and watch for cannon rushes, proxy structures, worker rushes, and other cheese. Keep this scout separate from the first four-Marine pressure squad. Only nearby contacts inside a bounded local-defense envelope may trigger pursuit. Use visible targets, weapon cooldown, weapon ranges, health, and friendly support to decide whether to fire, kite, advance, or retreat.
 5. **Preserve a recoverable force.** Dispersion is useful only while squads can withdraw and reinforce one another. Enemy contact should cause nearby elements to converge toward a survivable critical mass.
 6. **Fail closed on missing information.** Unknown enemy capability, stale vision, invalid pathing, or uncertain command acceptance must not be treated as proof of safety.
 
@@ -29,8 +29,9 @@ Marine Mode optimizes for sustained map pressure and the fastest reliable delive
 
 A Marine is controlled from current observations, not a one-time move order.
 
-- Maintain a target and a safe firing position on the friendly side during the opening.
-- Observe the enemy natural/second-base area and likely approaches from safe vision positions; do not send a lone Marine up the enemy ramp to obtain that vision.
+- Assign the first produced Marine to the farthest safe, non-enemy sector adjacent to the friendly start sector. Hold there as an early-warning observer and report visible enemy structures/units through the normal observation pipeline.
+- Keep the scout out of the first four-Marine pressure formation. It is watching our approaches for cannon rushes, proxies, worker rushes, and other disruptive openings.
+- The next four Marines rendezvous as the first pressure squad. Their movement toward the enemy is governed by the force's current threat assessment; do not send a lone Marine up an unknown enemy ramp.
 - Fire when the weapon is ready and the target is in range.
 - During weapon cooldown, stutter-step to a better position rather than standing idle. Equal-strength local engagements are not automatic retreat conditions; retreat only when incoming local threat materially exceeds the force's effective damage potential or the Marine is otherwise unsafe.
 - Estimate the threat envelope of visible enemy units and defensive structures from authoritative game data.
@@ -51,7 +52,7 @@ These counts are strategic targets, not unconditional build commands. The planne
 
 ### 4. Distribute pressure and vision
 
-- Begin with a cohesive force on the friendly side and establish a safe rally/reinforcement route. The initial Marine is a defensive observer, not an enemy-base scout.
+- Begin with one dedicated early-warning Marine in the farthest safe adjacent sector. The next four Marines form the first pressure squad and establish a safe rally/reinforcement route.
 - As the central force grows, release small probing elements—initially pairs—into adjacent sectors around the enemy start.
 - Assign sectors so patrols cover likely traversal routes without duplicating the same lane.
 - Maintain a central reserve. Do not split below the minimum force needed to survive contact.
@@ -79,7 +80,7 @@ Threat evaluation must consider enemy weapon range, damage potential, target hea
 
 Use map-relative quadrants and terrain/pathing queries rather than fixed map coordinates:
 
-- **Mineral-line side:** Supply Depots positioned beyond/around the mineral line where they do not obstruct worker traffic or mining paths. Validate each placement with SC2 placement and pathing queries.
+- **Mineral-line side:** Place the first Supply Depot beyond the mineral patches, on the side away from the Command Center, where it does not obstruct worker traffic or mining paths. Validate each placement with SC2 placement and pathing queries.
 - **Ramp/production quadrant:** Barracks and Factories grouped near the ramp, with add-on clearance and defensible worker access.
 - **Expansion/air-mobility quadrant:** Pre-position additional Command Centers where practical. Lift, fly, and land at expansions when the route and landing zone are safe; upgrade to Orbital Commands when economically appropriate. Orbitals can provide scans and MULE income, and may serve as mobile vision assets, but airborne town halls are not assumed safe or invulnerable.
 - **Technology quadrant:** Engineering Bays and other upgrade/technology structures grouped with room for future additions and safe access.

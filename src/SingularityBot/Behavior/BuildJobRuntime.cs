@@ -141,6 +141,58 @@ public sealed class BuildJobRuntime
         return job;
     }
 
+    public BuildJobContext CreateSupplyDepotConstruction(uint gameLoop, ulong workerTag, IEnumerable<ulong> existingDepotTags)
+    {
+        var job = Create("SupplyDepot", gameLoop, workerTag: workerTag);
+        _excludedResultTags[job.Id] = existingDepotTags?.ToHashSet() ?? new HashSet<ulong>();
+        return job;
+    }
+
+    /// <summary>Associates observed Supply Depots with their reserved SCV and tracks authoritative progress.</summary>
+    public void ReconcileSupplyDepotConstruction(global::SingularityBot.Observation.NormalizedObservation observation)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        var structures = observation.Units.Where(unit =>
+            unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self && unit.IsLiveVisible &&
+            unit.HasPosition && (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+            !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
+
+        foreach (var job in _jobs.Values.Where(job => job.BuildableKind == "SupplyDepot" &&
+                     !job.IsCompleted && !job.IsFailed && job.WorkerTag.HasValue).ToArray())
+        {
+            if (job.ResultUnitTag is ulong resultTag)
+            {
+                var existing = structures.FirstOrDefault(unit => unit.Tag == resultTag);
+                if (existing is not null)
+                    job.ObserveResult(existing.Tag, existing.BuildProgress, observation.GameLoop);
+                else if (observation.DeadUnitTags.Contains(resultTag))
+                    job.Fail("Supply Depot was destroyed during construction.", observation.GameLoop);
+                continue;
+            }
+
+            var worker = observation.Units.FirstOrDefault(unit =>
+                unit.Tag == job.WorkerTag && unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self &&
+                unit.IsLiveVisible && unit.HasPosition && unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase));
+            if (worker is null) continue;
+
+            var excluded = _excludedResultTags.TryGetValue(job.Id, out var known) ? known : new HashSet<ulong>();
+            var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_jobs.Values.Any(other =>
+                    other.Id != job.Id && other.ResultUnitTag == unit.Tag))
+                .Select(unit => new
+                {
+                    Unit = unit,
+                    DistanceSquared = DistanceSquared(worker.PositionX, worker.PositionY, unit.PositionX, unit.PositionY)
+                })
+                .Where(item => item.DistanceSquared <= 36f)
+                .OrderBy(item => item.DistanceSquared)
+                .ThenBy(item => item.Unit.Tag)
+                .FirstOrDefault();
+            if (candidate is not null)
+                job.ObserveResult(candidate.Unit.Tag, candidate.Unit.BuildProgress, observation.GameLoop);
+        }
+    }
+
     public BuildJobContext CreateMarineProduction(uint gameLoop, ulong producerTag, IEnumerable<ulong> existingMarineTags)
     {
         var job = Create("Marine", gameLoop, producerTag: producerTag);

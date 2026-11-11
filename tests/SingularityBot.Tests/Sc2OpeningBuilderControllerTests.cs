@@ -312,6 +312,39 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.False(assignments.IsReserved(11));
     }
 
+    [Fact]
+    public void DoesNotMistakeAnExistingNearbyDepotForTheFollowUpDepot()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var data = GameData();
+        var existingDepot = Fact(200, "SupplyDepot", 13.18f, 13.18f, buildProgress: 1);
+
+        var select = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10), existingDepot), map, data,
+            assignments, Crew(10, 11), preferredBuilderTag: 11,
+            releaseBuilderOnCompletion: true);
+        Assert.NotNull(select);
+        Assert.NotNull(controller.TakePlacementQuery(data));
+
+        var placement = new ResponseQuery();
+        placement.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(placement);
+        var site = controller.Placement!.Value;
+
+        var build = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10), existingDepot), map, data,
+            assignments, Crew(10, 11), preferredBuilderTag: 11,
+            releaseBuilderOnCompletion: true);
+
+        Assert.NotNull(build);
+        Assert.Equal(319, build.ActionRaw.UnitCommand.AbilityId);
+        Assert.False(controller.IsCompleted);
+    }
+
     private static void SelectBuilder(
         Sc2OpeningBuilderController controller,
         WorkerResourceAssignmentPlanner assignments,

@@ -1,21 +1,27 @@
-# Task Master, scouting and military force allocation
+# Strategic Planner, scouting and military force allocation
 
 ## Purpose
 
-The Task Master is the central allocator for the bot's available work-capable entities. It serves both the economic workforce and the military force pool. It does not invent the strategy or directly execute SC2 commands: strategy and operational-picture services create typed jobs; the Task Master matches eligible units to those jobs; task and unit FSMs execute them through the validated action pipeline.
+The Strategic Planner is the central consumer and planner for the bot's available work and resources. It does not own strategic intent or job lifecycle. Each advisor owns its postings and may create, update, renew or withdraw them as its assessment changes. The Strategic Planner reads the combined live job market, resolves dependencies and conflicts, sequences work, and eventually reserves eligible units/resources. Task and unit FSMs execute assignments through the validated action pipeline.
 
 This document records the intended architecture and future direction. It is not a claim that military task allocation, base-site FSMs, force composition matching or the fluent authoring API are implemented.
 
-## 1. One allocator, distinct resource domains
+## 1. Advisor-owned postings, one planning system
 
-The Task Master coordinates at least two pools:
+Each advisor is authoritative for its own job postings. A posting has a stable identity, owner, job kind, target, quantity, priority, timestamps, optional expiry and constraints. Updating a posting preserves its creation time and refreshes its revision timestamp. Withdrawing a posting removes that advisor's demand; an advisor cannot edit or withdraw another advisor's work. Expired postings stop participating in planning without being confused with completed jobs.
+
+The planner does not manufacture advisor intent. It consumes the active postings and performs dependency analysis, priority ordering, conflict resolution, capacity planning and resource/unit allocation. This is a marketplace of current intent, not a one-shot command queue.
+
+## 2. One planner, distinct resource domains
+
+The Strategic Planner coordinates at least two pools:
 
 - **Worker pool:** SCVs available for mining, gas, construction, repair, scouting or other worker jobs.
 - **Military pool:** combat units available for defense, escort, patrol, scouting, attack, harassment, drops and other military operations.
 
 Both use the same lifecycle and reservation principles, but retain domain-specific eligibility and execution rules. A unit must never be simultaneously committed to incompatible tasks. Existing commitments, travel, cargo/passenger state, health, capability, location, command latency and return/recovery requirements affect availability.
 
-The Task Master owns assignment and reservation, not strategic intent. For example, the build strategy decides when a Refinery should be built; the Task Master chooses an eligible SCV and later returns it to the worker pool. Likewise, the strategy decides that an expansion needs scouting; the Task Master assigns an eligible scout and tracks the job.
+The Strategic Planner owns assignment and reservation, not strategic intent. For example, the build strategy decides when a Refinery should be built; the Strategic Planner chooses an eligible SCV and later returns it to the worker pool. Likewise, the strategy decides that an expansion needs scouting; the Strategic Planner assigns an eligible scout and tracks the job.
 
 ## 2. Jobs are first-class FSM-backed work
 
@@ -27,7 +33,7 @@ A job lifecycle may include:
 
 with explicit `Blocked`, `Expired`, `Cancelled` and `Failed` paths. The actual lifecycle should be modeled with FSMs and evidence-driven transitions. A task is not complete because an order was issued; completion is confirmed by observations or an explicitly defined result.
 
-The Task Master reevaluates assignments when relevant events occur: a unit is created or destroyed, a task is created or completed, a unit becomes available, a prerequisite changes, a reservation expires, or a strategic priority changes. It may also perform bounded periodic reconciliation for facts that cannot be evented reliably.
+The Strategic Planner reevaluates assignments when relevant events occur: a unit is created or destroyed, a task is created or completed, a unit becomes available, a prerequisite changes, a reservation expires, or a strategic priority changes. It may also perform bounded periodic reconciliation for facts that cannot be evented reliably.
 
 ## 3. Persistent base locations and scouting jobs
 
@@ -67,7 +73,7 @@ Examples:
 
 Requirements should be expressed as filterable constraints and role slots: unit kind/type, capabilities, minimum/maximum count, health/readiness thresholds, mobility, transport capacity, required upgrades, location/range, and whether a unit can be detached from its current assignment. Hard requirements must pass; preferences can rank eligible candidates. Never satisfy a task by silently weakening a hard requirement.
 
-A task reserves its selected units atomically as one assignment group. If the full requested composition is unavailable, the strategy may permit partial staging, waiting, resizing or cancellation—but that policy must be explicit. The Task Master must not dispatch an incomplete drop group simply because some Marines are available.
+A task reserves its selected units atomically as one assignment group. If the full requested composition is unavailable, the strategy may permit partial staging, waiting, resizing or cancellation—but that policy must be explicit. The Strategic Planner must not dispatch an incomplete drop group simply because some Marines are available.
 
 ## 5. Fluent, filterable military task API
 
@@ -97,7 +103,7 @@ The API should support filters, count ranges, capability predicates, roles, loca
 
 The drop example starts with one transport and eight Marines. A strategy may later request two dropships and their corresponding Marine groups, then four, as economy, production capacity, map knowledge, opponent defenses and strategic opportunity permit.
 
-That scaling factor is strategy-owned configuration or a runtime strategic decision—not a hidden constant inside the Task Master. The Task Master answers: "Can I assemble and reserve this requested force, and which eligible units best satisfy it?" Strategy answers: "How many operations should I attempt, when, and at what risk?"
+That scaling factor is strategy-owned configuration or a runtime strategic decision—not a hidden constant inside the Strategic Planner. The Strategic Planner answers: "Can I assemble and reserve this requested force, and which eligible units best satisfy it?" Strategy answers: "How many operations should I attempt, when, and at what risk?"
 
 Scale only when the force can be produced, supported, controlled and recovered. Account for transport capacity, loading/unloading, route safety, anti-air threats, target value, replacement cost, concurrent operations and the effect of detaching units from defense or the main army. A strategy can specify one, two, four or another progression; the runtime must not assume doubling is always correct.
 
@@ -109,9 +115,9 @@ Membership changes are explicit events: assigned, detached, destroyed, transport
 
 A drop group can therefore contain transport and passenger roles under one task while retaining individual unit execution FSMs. Loading and unloading are verified state transitions, not assumptions based on a submitted command.
 
-## 8. Task Master responsibilities and boundaries
+## 8. Strategic Planner responsibilities and boundaries
 
-The Task Master should:
+The Strategic Planner should:
 
 1. Register eligible entities as they are created or first observed, preserving identity across fog-of-war disappearance and reappearance.
 2. Maintain separate worker and military availability/reservation views over the shared entity registry.
@@ -147,7 +153,7 @@ Implement in vertical slices with tests for identity/reappearance, site revisit 
 1. Preserve and extend the existing persistent place model with separate visit/observation timestamps and base-site FSM identities.
 2. Introduce a typed job contract and common lifecycle semantics, without replacing working opening controllers prematurely.
 3. Integrate worker registration, construction completion and return-to-pool with the existing worker planner.
-4. Add Task Master assignment reconciliation and diagnostics for worker jobs.
+4. Add Strategic Planner assignment reconciliation and diagnostics for worker jobs.
 5. Add base scouting jobs for natural, third and fourth sites, initially using existing scout-capable units.
 6. Add a military availability/reservation pool and one simple force task (scout or defend).
 7. Add filterable composition requirements and atomic group reservation.

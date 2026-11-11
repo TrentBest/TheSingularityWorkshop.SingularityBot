@@ -4,7 +4,7 @@ using SingularityBot.Spatial;
 
 namespace SingularityBot.Behavior;
 
-/// <summary>Builds the second Barracks without stealing the first Barracks builder.</summary>
+/// <summary>Scales the production line from one to four Barracks without stealing reserved opening workers.</summary>
 public sealed class Sc2SecondBarracksController
 {
     private enum Pending { None, Move, Build }
@@ -93,7 +93,7 @@ public sealed class Sc2SecondBarracksController
             assignments.Reserve(builder.Tag);
             _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
             _queryPending = _candidates.Count > 0;
-            Console.WriteLine($"[Opening] SCV {_builderTag} reserved for the second Barracks.");
+            Console.WriteLine($"[Opening] SCV {_builderTag} reserved for Barracks {_targetBarracksCount}.");
             return null;
         }
 
@@ -122,7 +122,7 @@ public sealed class Sc2SecondBarracksController
         _buildSubmitted = true;
         _buildLoop = observation.GameLoop;
         _pending = Pending.Build;
-        Console.WriteLine($"[Opening] Requesting second Barracks: SCV={worker.Tag}, minerals={observation.Minerals}, site=({_site.Value.X:F1},{_site.Value.Y:F1}).");
+        Console.WriteLine($"[Opening] Requesting Barracks {_targetBarracksCount}: SCV={worker.Tag}, minerals={observation.Minerals}, site=({_site.Value.X:F1},{_site.Value.Y:F1}).");
         return PositionCommand(worker.Tag, checked((int)gameData.BarracksBuildAbilityId.Value), _site.Value);
     }
 

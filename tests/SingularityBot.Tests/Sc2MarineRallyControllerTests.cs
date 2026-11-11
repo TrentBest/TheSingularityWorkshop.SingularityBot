@@ -15,7 +15,11 @@ public sealed class Sc2MarineRallyControllerTests
         var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
             new MapPoint(10, 10), new MapPoint(90, 90));
         var gameData = GameData();
-        var marines = Enumerable.Range(1, 4).Select(tag => Fact((ulong)tag, "Marine", 10 + tag, 10)).ToArray();
+        var offsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4,
+            map.Side.EnemyStart.X - map.Side.FriendlyStart.X,
+            map.Side.EnemyStart.Y - map.Side.FriendlyStart.Y);
+        var marines = offsets.Select((offset, index) => Fact((ulong)(index + 1), "Marine",
+            map.Side.FriendlyStart.X + offset.X, map.Side.FriendlyStart.Y + offset.Y)).ToArray();
         var decisions = Enumerable.Range(1, 4).Select(tag =>
             new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
                 "No visible attackable target")).ToArray();

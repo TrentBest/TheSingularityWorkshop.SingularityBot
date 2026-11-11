@@ -43,7 +43,15 @@ public sealed class Sc2MarineRallyController
         foreach (var retired in _lastRallyCommandLoops.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
             _lastRallyCommandLoops.Remove(retired);
 
+        // The cross-map operation is a four-Marine squad, never a trickle of
+        // individual units. The first Marines remain available for local sector
+        // scouting until the complete squad exists.
+        var squadTags = liveMarineTags.OrderBy(tag => tag).Take(4).ToHashSet();
+        if (squadTags.Count < 4)
+            return Array.Empty<SC2APIProtocol.Action>();
+
         foreach (var decision in decisions.Where(item =>
+                     squadTags.Contains(item.MarineTag) &&
                      item.Action == MarineTacticalAction.Hold && item.TargetTag is null))
         {
             var marine = observation.Units.FirstOrDefault(unit =>

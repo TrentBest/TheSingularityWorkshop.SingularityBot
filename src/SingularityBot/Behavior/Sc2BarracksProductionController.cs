@@ -96,7 +96,7 @@ public sealed class Sc2BarracksProductionController
     private void FailPending(BuildJobRuntime buildJobs, uint gameLoop, string reason)
     {
         if (_pendingJobId is long id && buildJobs is not null && buildJobs.TryGet(id, out var job))
-            job.Fail(reason, gameLoop);
+            job.Fail(reason, gameLoop == 0 ? job.LastObservedGameLoop : gameLoop);
         _pendingJobId = null;
     }
 

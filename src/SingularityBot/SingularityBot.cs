@@ -72,6 +72,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private bool _openingMarineActionSubmitted;
     private readonly Sc2OpeningSprayController _openingSpray = new();
     private readonly Sc2OrbitalSupportController _orbitalSupport = new();
+    private readonly Sc2RefineryRuntime _refineries = new();
     private bool _orbitalSupportActionSubmitted;
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
@@ -328,6 +329,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         SC2APIProtocol.Action supplyDepotExpansionAction = null;
         SC2APIProtocol.Action expansionCommandCenterAction = null;
         SC2APIProtocol.Action barracksProductionAction = null;
+        IReadOnlyList<SC2APIProtocol.Action> refineryActions = Array.Empty<SC2APIProtocol.Action>();
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
         var reservedInfrastructureMinerals = 0u;
@@ -558,6 +560,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _orbitalSupportActionSubmitted = false;
             }
 
+            // Gas infrastructure starts once the first Barracks is complete.
+            // Each geyser owns an independent FSM; construction targets the geyser
+            // unit tag and completed Refineries receive up to three SCVs.
+            refineryActions = _refineries.ReconcileAndCreateActions(
+                normalized, _gameData, _workerAssignments, constructionCrewTags,
+                allowConstruction: _openingMarine.BarracksComplete);
+            assignments = _workerAssignments.Reconcile(normalized);
+
             // Secondary Barracks produce Marines whenever no higher-priority
             // infrastructure or Orbital action claimed this frame.
             if (orbitalSupportAction is null && secondBarracksAction is null &&
@@ -675,6 +685,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             actions.Add(barracksProductionAction);
         if (orbitalSupportAction is not null)
             actions.Add(orbitalSupportAction);
+        actions.AddRange(refineryActions);
 
         if (allowWorkerBehaviorActions)
         {

@@ -172,9 +172,7 @@ public sealed class Sc2OpeningBuilderController
         // The first Depot has priority over the next SCV: start it as soon as
         // its 100-mineral cost is available. Waiting for a 150-mineral combined
         // reserve caused the opening to hit 15/15 supply before construction.
-        var canFundStructure = observation.Minerals >= gameData.SupplyDepotMineralCost;
-        if (!builder.HasCargo && IsGatheringMinerals(builder, observation) &&
-            !canFundStructure)
+        if (!builder.HasCargo && IsGatheringMinerals(builder, observation))
             return null;
 
         // Replace the worker's mining order only after its current harvest is
@@ -397,8 +395,8 @@ public sealed class Sc2OpeningBuilderController
             .ToArray();
 
         // Use the observed mineral line as the geometric anchor. The Depot sits
-        // just behind the patches on the town-hall side, rather than on a generic
-        // map-center arc. SC2 still decides which candidate is actually legal.
+        // beyond the patches on the side away from the Command Center, as requested.
+        // SC2 still decides which candidate is actually legal.
         var mineralAnchor = mineralLine.Length >= 4
             ? new MapPoint(
                 mineralLine.Average(item => item.Unit.PositionX),
@@ -409,8 +407,8 @@ public sealed class Sc2OpeningBuilderController
             : (map.Center - origin).Normalize();
         var lateral = new MapPoint(-forward.Y, forward.X);
         var anchor = mineralAnchor is MapPoint line
-            ? line - forward * 4.5f
-            : origin + forward * 4.5f;
+            ? line + forward * 4.5f
+            : origin + forward * 9f;
         var offsets = new (float Forward, float Lateral)[]
         {
             (0, 0), (0, 2), (0, -2), (0, 4), (0, -4),

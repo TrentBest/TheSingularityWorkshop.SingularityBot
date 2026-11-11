@@ -31,7 +31,10 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         bool marineActionSubmitted,
         bool spatialMapAvailable,
         int activeBuildJobs = 0,
-        Sc2ExpansionCommandCenterController expansion = null,\n        Sc2OpeningMarineController openingMarine = null,\n        Sc2SecondBarracksController secondBarracks = null,\n        Sc2OpeningBuilderController supplyDepot = null)
+        Sc2ExpansionCommandCenterController expansion = null,
+        Sc2OpeningMarineController openingMarine = null,
+        Sc2SecondBarracksController secondBarracks = null,
+        Sc2OpeningBuilderController supplyDepot = null)
     {
         if (_writer is null)
             return;

@@ -241,7 +241,7 @@ public sealed class BuildJobRuntime
             if (!job.IsExecuting || !producer.HasPosition) continue;
             var excluded = _excludedMarineTags.TryGetValue(job.Id, out var known)
                 ? known : new HashSet<ulong>();
-            var candidate = marines.Where(unit => !excluded.Contains(unit.Tag) &&
+            var candidate = marines.Where(unit => !excluded.Contains(unit.Tag) && !_claimedResultTags.Contains(unit.Tag) &&
                     !_jobs.Values.Any(other => other.Id != job.Id && other.ResultUnitTag == unit.Tag))
                 .Select(unit => new
                 {
@@ -293,7 +293,7 @@ public sealed class BuildJobRuntime
             }
 
             var excluded = _excludedResultTags.TryGetValue(job.Id, out var known) ? known : new HashSet<ulong>();
-            var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_jobs.Values.Any(other =>
+            var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_claimedResultTags.Contains(unit.Tag) && !_jobs.Values.Any(other =>
                     other.Id != job.Id && other.ResultUnitTag == unit.Tag))
                 .Select(unit => new
                 {

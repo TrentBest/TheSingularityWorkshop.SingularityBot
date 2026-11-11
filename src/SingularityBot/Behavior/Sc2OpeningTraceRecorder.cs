@@ -19,7 +19,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         Directory.CreateDirectory(directory);
         _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
         _writer = new StreamWriter(_path, false);
-        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete");
+        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete");
         _writer.Flush();
         Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
     }
@@ -31,7 +31,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         bool marineActionSubmitted,
         bool spatialMapAvailable,
         int activeBuildJobs = 0,
-        Sc2ExpansionCommandCenterController expansion = null)
+        Sc2ExpansionCommandCenterController expansion = null,\n        Sc2OpeningMarineController openingMarine = null,\n        Sc2SecondBarracksController secondBarracks = null,\n        Sc2OpeningBuilderController supplyDepot = null)
     {
         if (_writer is null)
             return;

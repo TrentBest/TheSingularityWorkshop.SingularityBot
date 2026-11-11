@@ -31,7 +31,9 @@ public sealed class Sc2GameDataCatalog
         uint? rallyWorkersAbilityId,
         uint? orbitalUpgradeAbilityId,
         uint orbitalUpgradeMineralCost,
-        uint? muleCallDownAbilityId)
+        uint? muleCallDownAbilityId,
+        uint? commandCenterBuildAbilityId,
+        uint commandCenterMineralCost)
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
@@ -56,6 +58,8 @@ public sealed class Sc2GameDataCatalog
         OrbitalUpgradeAbilityId = orbitalUpgradeAbilityId;
         OrbitalUpgradeMineralCost = orbitalUpgradeMineralCost;
         MuleCallDownAbilityId = muleCallDownAbilityId;
+        CommandCenterBuildAbilityId = commandCenterBuildAbilityId;
+        CommandCenterMineralCost = commandCenterMineralCost;
     }
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
@@ -92,6 +96,8 @@ public sealed class Sc2GameDataCatalog
     public uint? OrbitalUpgradeAbilityId { get; }
     public uint OrbitalUpgradeMineralCost { get; }
     public uint? MuleCallDownAbilityId { get; }
+    public uint? CommandCenterBuildAbilityId { get; }
+    public uint CommandCenterMineralCost { get; }
 
     public static Sc2GameDataCatalog Create(ResponseData data)
     {
@@ -137,6 +143,8 @@ public sealed class Sc2GameDataCatalog
             string.Equals(unit.Name, "Marine", StringComparison.OrdinalIgnoreCase));
         var orbitalCommand = data.Units.FirstOrDefault(unit =>
             string.Equals(unit.Name, "OrbitalCommand", StringComparison.OrdinalIgnoreCase));
+        var commandCenter = data.Units.FirstOrDefault(unit =>
+            string.Equals(unit.Name, "CommandCenter", StringComparison.OrdinalIgnoreCase));
 
         return new Sc2GameDataCatalog(
             unitNames,
@@ -161,7 +169,9 @@ public sealed class Sc2GameDataCatalog
             ResolveAbility(data.Abilities, "Rally_Workers"),
             ResolveAbility(data.Abilities, "UpgradeToOrbitalCommand", "UpgradeToOrbital"),
             orbitalCommand?.MineralCost ?? 0,
-            ResolveAbility(data.Abilities, "CalldownMULE", "CallDownMULE"));
+            ResolveAbility(data.Abilities, "CalldownMULE", "CallDownMULE"),
+            commandCenter?.AbilityId is > 0 ? commandCenter.AbilityId : null,
+            commandCenter?.MineralCost ?? 0);
     }
 
 

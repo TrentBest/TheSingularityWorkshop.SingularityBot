@@ -139,7 +139,7 @@ public sealed class BuildJobRuntime
         return job;
     }
 
-    [NotNullWhen(true)]
+    //[NotNullWhen(true)]
     public bool TryGet(long id, out BuildJobContext? job) => _jobs.TryGetValue(id, out job);
 
     public BuildJobContext CreateBarracksConstruction(uint gameLoop, ulong workerTag, IEnumerable<ulong> existingBarracksTags)

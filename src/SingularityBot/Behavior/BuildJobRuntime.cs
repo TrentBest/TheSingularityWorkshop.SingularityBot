@@ -11,6 +11,7 @@ public sealed class BuildJobContext : IStateContext
         if (string.IsNullOrWhiteSpace(buildableKind)) throw new ArgumentException("A buildable kind is required.", nameof(buildableKind));
         Id = id;
         BuildableKind = buildableKind;
+        Name = $"BuildJob:{id}:{buildableKind}";
         WorkerTag = workerTag;
         ProducerTag = producerTag;
         CreatedAtGameLoop = createdAtGameLoop;

@@ -558,9 +558,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         try
         {
             foreach (var pg in ProcessGroupsThisFrame)
+            {
                 FSM_API.Interaction.Update(pg);
-            AdvisorWorkScheduler.Advance(_gameState.Phase);
-            _economyAdvisor.CurrentPhase = _gameState.Phase;
+                if (pg == UnitBehaviorCatalog.StrategyProcessingGroup)
+                {
+                    AdvisorWorkScheduler.Advance(_gameState.Phase);
+                    _economyAdvisor.CurrentPhase = _gameState.Phase;
+                }
+            }
             if (_writeDiagnostics)
                 foreach (var job in _buildJobs.Jobs)
                     _binaryTrace.RecordBuildJob(job, normalized.GameLoop);

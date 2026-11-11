@@ -17,6 +17,8 @@ public sealed class Sc2MarineRallyController
     private const float RendezvousOffset = 5f;
     private bool _squadDispatched;
     private MapPoint? _rendezvousAnchor;
+    private ulong? _scoutTag;
+    private MapPoint? _scoutTarget;
 
     public IReadOnlyList<SC2APIProtocol.Action> TryCreateActions(
         NormalizedObservation observation,
@@ -51,17 +53,53 @@ public sealed class Sc2MarineRallyController
         {
             _squadDispatched = false;
             _rendezvousAnchor = null;
+            _scoutTag = null;
+            _scoutTarget = null;
         }
 
+        if (_scoutTag is ulong existingScout && !liveMarineTags.Contains(existingScout))
+        {
+            _scoutTag = null;
+            _scoutTarget = null;
+        }
+
+        _scoutTag ??= liveMarineTags.OrderBy(tag => tag).Cast<ulong?>().FirstOrDefault();
+        var scoutActions = new List<SC2APIProtocol.Action>();
+        if (_scoutTag is ulong scoutTag)
+        {
+            _scoutTarget ??= FindFriendlyObservationSector(map);
+            var scoutDecision = decisions.FirstOrDefault(item => item.MarineTag == scoutTag);
+            var scout = observation.Units.FirstOrDefault(unit =>
+                unit.Tag == scoutTag && unit.IsLiveVisible && unit.HasPosition);
+            if (_scoutTarget is MapPoint scoutTarget && scout is not null &&
+                scoutDecision.Action == MarineTacticalAction.Hold && scoutDecision.TargetTag is null)
+            {
+                var scoutDistanceSquared = DistanceSquared(
+                    scout.PositionX, scout.PositionY, scoutTarget.X, scoutTarget.Y);
+                if (scoutDistanceSquared > ArrivalRadiusSquared &&
+                    (!_lastRallyCommandLoops.TryGetValue(scoutTag, out var scoutLastCommand) ||
+                     observation.GameLoop >= scoutLastCommand + RetryAfterGameLoops))
+                {
+                    _lastRallyCommandLoops[scoutTag] = observation.GameLoop;
+                    scoutActions.Add(MoveCommand(scoutTag, checked((int)gameData.MoveAbilityId.Value), scoutTarget));
+                }
+            }
+        }
+
+        // The first Marine is a dedicated early-warning observer. It moves to
+        // the farthest non-enemy sector adjacent to the friendly start sector.
+        // The remaining four Marines form the first mass-pressure squad.
         // Marine four entering production starts a real rendezvous at the
         // producing Barracks. Early Marines occupy distinct box slots around it;
         // the squad does not begin its cross-map advance until all four have
         // reached their assigned slots.
-        var squadTags = _squadDispatched
-            ? liveMarineTags.OrderBy(tag => tag).ToArray()
-            : liveMarineTags.OrderBy(tag => tag).Take(4).ToArray();
-        if (squadTags.Length < 4 && !fourthMarineInProduction && !_squadDispatched)
-            return Array.Empty<SC2APIProtocol.Action>();
+        var squadTags = liveMarineTags
+            .Where(tag => tag != _scoutTag)
+            .OrderBy(tag => tag)
+            .ToArray();
+        if (!_squadDispatched && squadTags.Length < 4 &&
+            !(squadTags.Length == 3 && fourthMarineInProduction))
+            return scoutActions;
 
         var producingBarracks = observation.Units.FirstOrDefault(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
@@ -150,6 +188,43 @@ public sealed class Sc2MarineRallyController
             });
         }
 
-        return actions;
+        scoutActions.AddRange(actions);
+        return scoutActions;
+    }
+
+    private static MapPoint? FindFriendlyObservationSector(SpatialMap map)
+    {
+        var homeSector = map.GetSector(map.Side.FriendlyStart);
+        return map.GetNeighbors(homeSector.Id)
+            .Select(sector => sector.Center)
+            .Where(map.Bounds.Contains)
+            .Where(point => map.Side.Assess(point) != MapSide.Enemy)
+            .OrderByDescending(point => point.DistanceSquaredTo(map.Side.FriendlyStart))
+            .ThenBy(point => point.X)
+            .ThenBy(point => point.Y)
+            .Cast<MapPoint?>()
+            .FirstOrDefault();
+    }
+
+    private static SC2APIProtocol.Action MoveCommand(ulong tag, int abilityId, MapPoint target) =>
+        new()
+        {
+            ActionRaw = new ActionRaw
+            {
+                UnitCommand = new ActionRawUnitCommand
+                {
+                    AbilityId = abilityId,
+                    UnitTags = { tag },
+                    TargetWorldSpacePos = new Point2D { X = target.X, Y = target.Y },
+                    QueueCommand = false
+                }
+            }
+        };
+
+    private static float DistanceSquared(float x1, float y1, float x2, float y2)
+    {
+        var dx = x1 - x2;
+        var dy = y1 - y2;
+        return dx * dx + dy * dy;
     }
 }

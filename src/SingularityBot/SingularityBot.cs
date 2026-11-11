@@ -366,6 +366,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             if (_openingMarine.BarracksComplete && marineAction is null)
             {
+                // Always reconcile the current Barracks job. The controller can
+                // discover Barracks two starting/finishing while the second Depot
+                // is being built by the recycled first-Barracks SCV.
+                secondBarracksAction = _secondBarracks.TryCreateAction(
+                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
+                _secondBarracksActionSubmitted = secondBarracksAction is not null;
+                assignments = _workerAssignments.Reconcile(normalized);
+
                 if (_secondBarracks.RequiresSupplyDepot)
                 {
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
@@ -379,19 +387,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 else
                 {
                     _supplyDepotExpansionActionSubmitted = false;
-                }
-
-                if (!_secondBarracks.RequiresSupplyDepot)
-                {
-                    secondBarracksAction = _secondBarracks.TryCreateAction(
-                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
-                    _secondBarracksActionSubmitted = secondBarracksAction is not null;
-                    // Refresh assignments so the newly reserved builder cannot receive a stale gather intent.
-                    assignments = _workerAssignments.Reconcile(normalized);
-                }
-                else
-                {
-                    _secondBarracksActionSubmitted = false;
                 }
             }
             else

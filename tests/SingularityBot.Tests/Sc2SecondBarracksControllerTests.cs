@@ -75,6 +75,52 @@ public sealed class Sc2SecondBarracksControllerTests
     }
 
     [Fact]
+    public void StartsSecondDepotWhileBarracksTwoIsStillBuilding()
+    {
+        var controller = new Sc2SecondBarracksController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var data = GameData();
+        var crew = new HashSet<ulong> { 10, 11 };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
+            map, data, assignments, crew));
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
+
+        // SC2 now reports Barracks two as an in-progress structure. The
+        // second builder remains assigned to it while the follow-up Depot
+        // is authorized for the first-Barracks builder.
+        Assert.Null(controller.TryCreateAction(Snapshot(250,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
+            Fact(12, "SCV", 12, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15),
+            Fact(201, "Barracks", 20, 20, 0.35f)),
+            map, data, assignments, crew));
+        Assert.True(controller.RequiresSupplyDepot);
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
+
+        controller.NotifySupplyDepotCompleted(12);
+        Assert.False(controller.RequiresSupplyDepot);
+
+        // Barracks two is still progressing: no third Barracks is dispatched.
+        Assert.Null(controller.TryCreateAction(Snapshot(0,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
+            Fact(12, "SCV", 12, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15),
+            Fact(201, "Barracks", 20, 20, 0.65f)),
+            map, data, assignments, crew));
+        Assert.False(controller.RequiresSupplyDepot);
+        Assert.Equal(11UL, controller.BuilderTag);
+    }
+
+    [Fact]
     public void PausesAfterSecondBarracksUntilSupplyDepotAndReusesFirstBarracksBuilder()
     {
         var controller = new Sc2SecondBarracksController();

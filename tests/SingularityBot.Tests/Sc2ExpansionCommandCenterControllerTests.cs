@@ -29,6 +29,29 @@ public sealed class Sc2ExpansionCommandCenterControllerTests
     }
 
     [Fact]
+    public void FallsBackToAnUnreservedScvWhenConstructionCrewAssignmentIsMissing()
+    {
+        var controller = new Sc2ExpansionCommandCenterController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var data = GameData();
+        var observation = Snapshot(400,
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(20, "SCV", 10, 10),
+            Fact(21, "SCV", 15, 15),
+            Mineral(200, 34, 19), Mineral(201, 35, 19),
+            Mineral(202, 36, 19), Mineral(203, 37, 19));
+
+        var action = controller.TryCreateAction(observation, map, data,
+            assignments, new HashSet<ulong>());
+
+        Assert.Null(action);
+        Assert.NotNull(controller.BuilderTag);
+        Assert.True(assignments.IsReserved(controller.BuilderTag.Value));
+        Assert.NotNull(controller.TakePlacementQuery(data));
+    }
+
+    [Fact]
     public void BuildsAndTracksExpansionCommandCenterAtPreservedSite()
     {
         var controller = new Sc2ExpansionCommandCenterController();

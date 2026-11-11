@@ -62,7 +62,7 @@ public sealed class GameStateContext : IStateContext
 
     private static bool IsLateGameTechStructure(string kind) =>
         kind.Equals("FusionCore", StringComparison.OrdinalIgnoreCase) ||
-        kind.Equals("FleetBeacon", StringComparison.OrdinalIgnoreCase);
+        kind.Equals("Battlecruiser", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

@@ -180,8 +180,17 @@ public sealed class Sc2SecondBarracksControllerTests
         var data = GameData();
         var crew = new HashSet<ulong> { 11, 12 };
 
-        // Completing Barracks two advances the target to three and independently
-        // requests the follow-up Depot; that request must not block Barracks three.
+        // Barracks two is under construction, so the follow-up Depot becomes
+        // an independent pending job.
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20, 0.5f)),
+            map, data, assignments, crew));
+        Assert.True(controller.RequiresSupplyDepot);
+
+        // Barracks two completes. Barracks three becomes the next target, but
+        // the follow-up Depot is deliberately still pending.
         Assert.Null(controller.TryCreateAction(Snapshot(300,
             Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),

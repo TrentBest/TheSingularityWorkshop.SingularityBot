@@ -106,6 +106,28 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void DispatchesAnActiveMineralWorkerWhenStructureAndNextScvAreFunded()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var gameData = GameData();
+        var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
+        var miningOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
+
+        var move = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            assignments, Crew(10, 11));
+
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.True(assignments.IsReserved(11));
+    }
+
+    [Fact]
     public void StagesBuilderAndWaitsUntilDepotIsAffordable()
     {
         var controller = new Sc2OpeningBuilderController();

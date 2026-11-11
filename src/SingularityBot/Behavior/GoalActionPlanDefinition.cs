@@ -14,7 +14,7 @@ public sealed class GoalActionPlanDefinition
     public string Id { get; init; } = "containment";
     public string Name { get; init; } = "Contain and observe";
     public GoalActionRole DefaultRole { get; init; } = GoalActionRole.Contain;
-    public int ScoutCount { get; init; } = 2;
+    public int ScoutCount { get; init; } = 4;
     public List<SectorId> ScoutSectors { get; init; } = new();
     public bool ExcludeEnemyStartSector { get; init; } = true;
     public bool StutterStepEnabled { get; init; } = true;
@@ -60,7 +60,9 @@ public static class GoalActionPlanner
         var enemySector = map.GetSector(map.Side.EnemyStart).Id;
         var sectors = (plan.ScoutSectors.Count > 0 ? plan.ScoutSectors : map.Sectors.Select(s => s.Id).ToList())
             .Where(id => !plan.ExcludeEnemyStartSector || id != enemySector)
-            .Distinct().OrderBy(id => id.Row).ThenBy(id => id.Column)
+            .Distinct()
+            .OrderBy(id => map.Sectors.Single(s => s.Id == id).Center.DistanceSquaredTo(map.Side.FriendlyStart))
+            .ThenBy(id => id.Row).ThenBy(id => id.Column)
             .Take(plan.ScoutCount).ToArray();
 
         var eligible = runtime.Contexts.Where(c => c.IsValid &&

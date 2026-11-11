@@ -393,7 +393,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                         unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
                         !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)),
-                    _initialScvProductionObserved && !_openingBuilder.IsCompleted),
+                    _initialScvProductionObserved && !_openingBuilder.IsBuildSubmitted && !_openingBuilder.IsCompleted),
                 new EconomyAdvisorCosts(
                     _gameData.CommandCenterMineralCost,
                     _gameData.SupplyDepotMineralCost,

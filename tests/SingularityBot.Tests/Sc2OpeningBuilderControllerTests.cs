@@ -70,6 +70,19 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.True(assignments.IsReserved(10));
         Assert.False(assignments.IsReserved(11));
         Assert.NotNull(controller.TakePlacementQuery(gameData));
+        SetValidPlacement(controller);
+
+        // After the cargo is deposited, SC2 may already have queued the next
+        // mineral order. The builder must recognize that delivery and depart.
+        var delivered = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5, orders: new[] { new UnitOrderObservationFacts(295, 20, null, null) }),
+            Fact(11, "SCV", 9, 9),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral }),
+            map, gameData, assignments, Crew(10, 11));
+        Assert.NotNull(delivered);
+        Assert.Equal(16, delivered.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(10UL, delivered.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]

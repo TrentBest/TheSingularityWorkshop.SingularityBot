@@ -185,11 +185,11 @@ public sealed class MarineCombatPlannerTests
         var observation = Snapshot(
             Marine(1, 0, 0, 3),
             ArmedEnemy(3, 8, 0));
-        var decisions = MarineCombatPlanner.Plan(
-            observation, CombatWeaponProfile.FromCatalog(catalog));
+        var decision = new MarineTacticalDecision(
+            1, 3, MarineTacticalAction.RepositionDuringCooldown, 0, 0, "cooldown spacing");
 
         var action = Assert.Single(Sc2MarineCombatActionTranslator.Translate(
-            decisions, observation, catalog,
+            new[] { decision }, observation, catalog,
             CombatWeaponProfile.FromCatalog(catalog)));
 
         Assert.Equal(0f, action.ActionRaw.UnitCommand.TargetWorldSpacePos.X);

@@ -46,9 +46,12 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.Equal(4, squadMoves.Length);
         Assert.All(squadMoves, move =>
         {
+            var marine = marines.Single(unit => unit.Tag == move.ActionRaw.UnitCommand.UnitTags.Single());
             var point = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
-            Assert.Equal(MapSide.Enemy, map.Side.Assess(new MapPoint(point.X, point.Y)));
-            Assert.True(new MapPoint(point.X, point.Y).DistanceTo(map.Side.EnemyStart) >= 28f);
+            var waypoint = new MapPoint(point.X, point.Y);
+            Assert.True(waypoint.DistanceTo(new MapPoint(marine.PositionX, marine.PositionY)) <= 7.01f);
+            Assert.True(waypoint.DistanceTo(map.Side.EnemyStart) <
+                new MapPoint(marine.PositionX, marine.PositionY).DistanceTo(map.Side.EnemyStart));
         });
 
         var targets = moves.ToDictionary(
@@ -59,7 +62,16 @@ public sealed class Sc2MarineRallyControllerTests
             var target = targets[marine.Tag];
             return Fact(marine.Tag, "Marine", target.X, target.Y);
         }).ToArray();
-        Assert.Empty(controller.TryCreateActions(Snapshot(arrived), map, decisions, gameData));
+        var nextWaypoints = controller.TryCreateActions(Snapshot(arrived), map, decisions, gameData);
+        Assert.Equal(4, nextWaypoints.Count);
+        Assert.DoesNotContain(nextWaypoints, move => move.ActionRaw.UnitCommand.UnitTags.Single() == 1);
+        Assert.All(nextWaypoints, move =>
+        {
+            var marine = arrived.Single(unit => unit.Tag == move.ActionRaw.UnitCommand.UnitTags.Single());
+            var point = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
+            Assert.True(new MapPoint(point.X, point.Y)
+                .DistanceTo(new MapPoint(marine.PositionX, marine.PositionY)) <= 7.01f);
+        });
     }
 
     [Fact]

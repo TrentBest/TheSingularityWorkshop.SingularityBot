@@ -6,6 +6,12 @@ The Strategic Planner is the central consumer and planner for the bot's availabl
 
 This document records the intended architecture and future direction. It is not a claim that military task allocation, base-site FSMs, force composition matching or the fluent authoring API are implemented.
 
+## Execution model: synchronous logical game tasks
+
+A **job** or **task** here means an internal StarCraft II game objective or unit assignment—not a system process, operating-system job, thread-pool item, background task or asynchronous operation.
+
+The ladder runner supports synchronous execution only. Advisors update logical task postings as part of the bot's normal frame processing. The Strategic Planner evaluates the current postings and produces decisions/assignments that flow through the existing synchronous FSM and action pipeline. No advisor or planner work is dispatched to threads, and no task posting implies concurrency.
+
 ## 1. Advisor-owned postings, one planning system
 
 Each advisor is authoritative for its own job postings. A posting has a stable identity, owner, job kind, target, quantity, priority, timestamps, optional expiry and constraints. Updating a posting preserves its creation time and refreshes its revision timestamp. Withdrawing a posting removes that advisor's demand; an advisor cannot edit or withdraw another advisor's work. Expired postings stop participating in planning without being confused with completed jobs.

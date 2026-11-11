@@ -107,28 +107,36 @@ public sealed class Sc2MarineRallyControllerTests
         var initialOffsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4,
             map.Side.EnemyStart.X - map.Side.FriendlyStart.X,
             map.Side.EnemyStart.Y - map.Side.FriendlyStart.Y);
-        var initial = initialOffsets.Select((offset, index) => Fact((ulong)(index + 1), "Marine",
-            map.Side.FriendlyStart.X + offset.X, map.Side.FriendlyStart.Y + offset.Y)).ToArray();
-        var firstDecisions = Enumerable.Range(1, 4).Select(tag =>
+        var initial = new List<UnitObservationFacts>
+        {
+            Fact(1, "Marine", map.Side.FriendlyStart.X, map.Side.FriendlyStart.Y)
+        };
+        initial.AddRange(initialOffsets.Select((offset, index) => Fact((ulong)(index + 2), "Marine",
+            map.Side.FriendlyStart.X + offset.X, map.Side.FriendlyStart.Y + offset.Y)));
+        var firstDecisions = Enumerable.Range(1, 5).Select(tag =>
             new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
                 "No visible attackable target")).ToArray();
 
-        var firstMoves = controller.TryCreateActions(Snapshot(initial), map, firstDecisions, gameData);
+        var firstMoves = controller.TryCreateActions(Snapshot(initial.ToArray()), map, firstDecisions, gameData);
+        Assert.Equal(5, firstMoves.Count);
         var firstTargets = firstMoves.ToDictionary(
             move => move.ActionRaw.UnitCommand.UnitTags.Single(),
             move => move.ActionRaw.UnitCommand.TargetWorldSpacePos);
-        var arrived = initialOffsets.Select((_, index) => Fact((ulong)(index + 1), "Marine",
-            firstTargets[(ulong)(index + 1)].X, firstTargets[(ulong)(index + 1)].Y)).ToList();
-        arrived.Add(Fact(5, "Marine", map.Side.FriendlyStart.X, map.Side.FriendlyStart.Y));
+        var arrived = initial.Select(marine =>
+        {
+            var target = firstTargets[marine.Tag];
+            return Fact(marine.Tag, "Marine", target.X, target.Y);
+        }).ToList();
+        arrived.Add(Fact(6, "Marine", map.Side.FriendlyStart.X, map.Side.FriendlyStart.Y));
 
-        var decisions = Enumerable.Range(1, 5).Select(tag =>
+        var decisions = Enumerable.Range(1, 6).Select(tag =>
             new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
                 "No visible attackable target")).ToArray();
         var reinforcementMoves = controller.TryCreateActions(
             Snapshot(arrived.ToArray()), map, decisions, gameData);
 
         var reinforcement = Assert.Single(reinforcementMoves);
-        Assert.Equal(5UL, Assert.Single(reinforcement.ActionRaw.UnitCommand.UnitTags));
+        Assert.Equal(6UL, Assert.Single(reinforcement.ActionRaw.UnitCommand.UnitTags));
         Assert.Equal(16, reinforcement.ActionRaw.UnitCommand.AbilityId);
     }
 

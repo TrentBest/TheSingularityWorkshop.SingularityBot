@@ -19,6 +19,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private GoalActionPlanDefinition _goalActionPlan = new();
     private readonly EconomyAdvisor _economyAdvisor = new();
+    private readonly AdvisorJobBoard _advisorJobBoard = new();
+    private readonly StrategicPlanner _strategicPlanner = new();
     private readonly GameStateContext _gameState = new();
     private readonly bool _passiveBaseline;
     private readonly bool _writeDiagnostics;
@@ -80,6 +82,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
     public GamePhase CurrentGamePhase => _gameState.Phase;
     public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
+    public IReadOnlyList<StrategicJobPosting> CurrentStrategicPlan => _strategicPlanner.GetPlan(_advisorJobBoard, _lastGameLoop);
 
     /// <summary>Sets the user-authored goal plan before or during a match.</summary>
     public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)
@@ -96,6 +99,28 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     /// <summary>Current economy policy exposed to the development GUI.</summary>
     public EconomyAdvisorSettings EconomySettings => _economyAdvisor.Settings;
+
+    /// <summary>Publish or replace an advisor-owned job posting.</summary>
+    public StrategicJobPosting PublishAdvisorJob(
+        AdvisorDomain owner, string id, StrategicJobKind kind, string target,
+        int quantity, int priority, uint? expiresAtGameLoop = null,
+        IReadOnlyDictionary<string, string>? constraints = null) =>
+        _advisorJobBoard.Upsert(owner, id, kind, target, quantity, priority,
+            _lastGameLoop, expiresAtGameLoop, constraints);
+
+    /// <summary>Withdraw one job posting owned by the specified advisor.</summary>
+    public bool WithdrawAdvisorJob(AdvisorDomain owner, string id) =>
+        _advisorJobBoard.Withdraw(owner, id);
+
+    /// <summary>
+    /// Compile a declarative force target into standing unit, producer, add-on
+    /// and prerequisite postings. Recipe metadata must be supplied explicitly.
+    /// </summary>
+    public CompositionPlanResult ConfigureCompositionGoal(
+        CompositionGoalDefinition goal,
+        IReadOnlyDictionary<string, ProductionRecipe> recipes,
+        int priority = 50) =>
+        CompositionGoalCompiler.Compile(goal, recipes, _advisorJobBoard, _lastGameLoop, priority);
 
     public void OnStart(
         ResponseGameInfo gameInfo,

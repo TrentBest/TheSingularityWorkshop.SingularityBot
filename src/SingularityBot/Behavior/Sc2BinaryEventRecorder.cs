@@ -108,7 +108,7 @@ internal sealed class Sc2BinaryEventRecorder : IDisposable
         }
     }
 
-    public void RecordFrame(uint gameLoop, int minerals, int foodUsed, int foodCap, int unitCount, int actionCount)
+    public void RecordFrame(uint gameLoop, uint minerals, uint foodUsed, uint foodCap, int unitCount, int actionCount)
     {
         Write(FrameSummary, 0, minerals, foodUsed,
             $"foodCap={foodCap};units={unitCount};actions={actionCount}", gameLoop);

@@ -30,8 +30,8 @@ public sealed class Sc2MarineRallyControllerTests
 
         var moves = controller.TryCreateActions(Snapshot(marines.ToArray()), map, decisions, gameData);
         Assert.Equal(5, moves.Count);
-        var scoutMove = Assert.Single(moves.Where(move =>
-            move.ActionRaw.UnitCommand.UnitTags.Single() == 1));
+        var scoutMove = Assert.Single(moves,
+            move => move.ActionRaw.UnitCommand.UnitTags.Single() == 1);
         var scoutPoint = scoutMove.ActionRaw.UnitCommand.TargetWorldSpacePos;
         var scoutTarget = new MapPoint(scoutPoint.X, scoutPoint.Y);
         Assert.Equal(new SectorId(1, 1), map.GetSector(scoutTarget).Id);

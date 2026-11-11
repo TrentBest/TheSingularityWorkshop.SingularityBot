@@ -20,6 +20,7 @@ SC2 protocol handling stays at the adapter boundary. FSM_API owns reusable lifec
 - [Behavior and FSM model](behavior-model.md)
 - [Terran FSM catalog and processing pipeline](terran-fsm-catalog.md)
 - [Terran opening and worker logistics](opening-economy-logistics.md)
+- [Terran economy and cohesive-force doctrine](terran-economy-force-cohesion.md)
 - [Development diagnostics and trace format](diagnostics.md)
 - [Acolyte LE match postmortem (2026-11-11)](match-postmortem-20261111.md)
 - [CiAi evidence observation and acceptance gates](ciai-evidence.md)

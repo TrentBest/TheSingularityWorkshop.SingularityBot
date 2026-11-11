@@ -46,6 +46,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
     private readonly Sc2OpeningMarineController _openingMarine = new();
     private readonly Sc2SecondBarracksController _secondBarracks = new();
+    private readonly Sc2BarracksProductionController _barracksProduction = new();
+    private bool _barracksProductionActionSubmitted;
     private bool _secondBarracksActionSubmitted;
     private bool _openingMarineActionSubmitted;
     private readonly Sc2OpeningSprayController _openingSpray = new();
@@ -224,6 +226,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         SC2APIProtocol.Action marineAction = null;
         SC2APIProtocol.Action orbitalSupportAction = null;
         SC2APIProtocol.Action secondBarracksAction = null;
+        SC2APIProtocol.Action barracksProductionAction = null;
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
         // Opening production and mineral routing are independent commands: the
@@ -357,9 +360,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _secondBarracksActionSubmitted = false;
             }
 
+            // Secondary Barracks are persistent Marine factories. Keep them ahead
+            // of optional Orbital spending so the Marine economy gets first claim.
+            if (secondBarracksAction is null && builderAction is null && marineAction is null && sprayAction is null)
+            {
+                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(normalized, _gameData);
+                _barracksProductionActionSubmitted = barracksProductionAction is not null;
+            }
+            else
+            {
+                _barracksProductionActionSubmitted = false;
+            }
+
             // Orbital upgrades/MULEs are lower priority than SCV, construction,
-            // and Marine actions. This avoids spending the same minerals twice.
-            if (builderAction is null && marineAction is null && sprayAction is null)
+            // and Marine production. This avoids spending the same minerals twice.
+            if (builderAction is null && marineAction is null && sprayAction is null && barracksProductionAction is null)
             {
                 orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
@@ -398,6 +413,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarineActionSubmitted = false;
             _secondBarracksActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
+            _barracksProductionActionSubmitted = false;
         }
 
         if (initialWorkerPathingQuery is not null)
@@ -434,6 +450,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             actions.Add(marineAction);
         if (secondBarracksAction is not null)
             actions.Add(secondBarracksAction);
+        if (barracksProductionAction is not null)
+            actions.Add(barracksProductionAction);
         if (orbitalSupportAction is not null)
             actions.Add(orbitalSupportAction);
 
@@ -496,6 +514,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarine.OnActionResult(null);
             if (_secondBarracksActionSubmitted)
                 _secondBarracks.OnActionResult(null);
+            if (_barracksProductionActionSubmitted)
+                _barracksProduction.OnActionResult(null);
             if (_orbitalSupportActionSubmitted)
                 _orbitalSupport.OnActionResult(null);
             _openingRallyActionSubmitted = false;
@@ -504,6 +524,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingBuilderActionSubmitted = false;
             _openingMarineActionSubmitted = false;
             _secondBarracksActionSubmitted = false;
+            _barracksProductionActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
             return;
         }
@@ -548,6 +569,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _secondBarracks.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
             resultIndex++;
         }
+        if (_barracksProductionActionSubmitted)
+        {
+            _barracksProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
         if (_orbitalSupportActionSubmitted)
         {
             _orbitalSupport.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
@@ -559,6 +585,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingBuilderActionSubmitted = false;
         _openingMarineActionSubmitted = false;
         _secondBarracksActionSubmitted = false;
+        _barracksProductionActionSubmitted = false;
         _orbitalSupportActionSubmitted = false;
     }
 

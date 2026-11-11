@@ -270,7 +270,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (allowWorkerActions)
         {
             var reservedProductionMinerals = 0u;
-            if (_secondBarracks.RequiresSupplyDepot)
+            var observedBarracks = normalized.Units.Where(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag)).ToArray();
+            var secondBarracksUnderConstruction = observedBarracks.Length >= 2 &&
+                observedBarracks.Any(unit => unit.BuildProgress < 1f);
+            if (_secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction)
                 reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
             else if (!_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null)
                 reservedProductionMinerals = _gameData.SupplyDepotMineralCost;

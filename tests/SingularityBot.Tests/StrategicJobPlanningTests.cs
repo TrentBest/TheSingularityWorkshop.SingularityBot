@@ -62,9 +62,9 @@ public sealed class StrategicJobPlanningTests
         var result = CompositionGoalCompiler.Compile(goal, recipes, board, 500);
 
         Assert.Empty(result.Errors);
-        Assert.Equal(3, result.Postings.Single(posting => posting.Target == "Marine").Quantity);
-        Assert.Equal(2, result.Postings.Single(posting => posting.Target == "Marauder").Quantity);
-        Assert.Equal(1, result.Postings.Single(posting => posting.Target == "Medivac").Quantity);
+        Assert.Equal(50, result.Postings.Single(posting => posting.Target == "Marine" && posting.Kind == StrategicJobKind.ProduceUnit).Quantity);
+        Assert.Equal(25, result.Postings.Single(posting => posting.Target == "Marauder" && posting.Kind == StrategicJobKind.ProduceUnit).Quantity);
+        Assert.Equal(10, result.Postings.Single(posting => posting.Target == "Medivac" && posting.Kind == StrategicJobKind.ProduceUnit).Quantity);
         Assert.Equal(4, result.Postings.Single(posting => posting.Target == "Barracks" &&
             posting.Kind == StrategicJobKind.BuildStructure).Quantity);
         Assert.Equal(1, result.Postings.Single(posting => posting.Target == "Starport").Quantity);

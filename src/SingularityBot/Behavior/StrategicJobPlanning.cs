@@ -201,6 +201,14 @@ public static class CompositionGoalCompiler
         }
         if (errors.Count > 0) return new CompositionPlanResult(Array.Empty<StrategicJobPosting>(), errors);
 
+        foreach (var target in goal.Units.Where(unit => unit.TargetCount > 0))
+        {
+            var recipe = recipes[target.UnitKind];
+            if (!double.IsFinite(recipe.ProductionSeconds) || recipe.ProductionSeconds <= 0)
+                errors.Add($"Recipe for {target.UnitKind} must have a finite production time greater than zero.");
+        }
+        if (errors.Count > 0) return new CompositionPlanResult(Array.Empty<StrategicJobPosting>(), errors);
+
         board.WithdrawComposition(goal.GoalId);
         var result = new List<StrategicJobPosting>();
         var producerDemand = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
@@ -210,10 +218,6 @@ public static class CompositionGoalCompiler
         foreach (var target in goal.Units.Where(unit => unit.TargetCount > 0))
         {
             var recipe = recipes[target.UnitKind];
-            if (!double.IsFinite(recipe.ProductionSeconds) || recipe.ProductionSeconds <= 0)
-                return new CompositionPlanResult(Array.Empty<StrategicJobPosting>(),
-                    new[] { $"Recipe for {target.UnitKind} must have a finite production time greater than zero." });
-
             var requiredUnitsPerMinute = target.TargetCount / goal.InitialBuildOutMinutes +
                                         target.ReplacementRatePerMinute;
             var facilities = requiredUnitsPerMinute * recipe.ProductionSeconds / 60d;
@@ -242,7 +246,7 @@ public static class CompositionGoalCompiler
             result.Add(board.UpsertComposition(goal.GoalId, $"goal:{goal.GoalId}:addon:{addon}",
                 StrategicJobKind.BuildStructure, addon, (int)Math.Ceiling(demand), priority, gameLoop));
 
-        foreach (var prerequisite in prerequisites)
+        foreach (var prerequisite in prerequisites.Where(name => !producerDemand.ContainsKey(name)))
             result.Add(board.UpsertComposition(goal.GoalId, $"goal:{goal.GoalId}:prerequisite:{prerequisite}",
                 StrategicJobKind.BuildStructure, prerequisite, 1, priority + 5, gameLoop));
 

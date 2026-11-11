@@ -145,7 +145,7 @@ public sealed class BuildJobRuntime
     {
         ArgumentNullException.ThrowIfNull(observation);
         var structures = observation.Units.Where(unit =>
-            unit.Alliance == SingularityBot.Observation.UnitAlliance.Self && unit.IsLiveVisible &&
+            unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self && unit.IsLiveVisible &&
             unit.HasPosition && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
 
@@ -163,7 +163,7 @@ public sealed class BuildJobRuntime
             }
 
             var worker = observation.Units.FirstOrDefault(unit =>
-                unit.Tag == job.WorkerTag && unit.Alliance == SingularityBot.Observation.UnitAlliance.Self &&
+                unit.Tag == job.WorkerTag && unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self &&
                 unit.IsLiveVisible && unit.HasPosition && unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase));
             if (worker is null) continue;
 

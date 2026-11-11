@@ -376,7 +376,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             assignments, Crew(10, 11));
         Assert.Null(selection);
         Assert.Equal(11UL, controller.BuilderTag);
-        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        Assert.True(controller.IsPlacementQueryPending);
     }
 
     private static HashSet<ulong> Crew(params ulong[] tags) => new(tags);

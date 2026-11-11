@@ -97,13 +97,17 @@ public sealed class Sc2OpeningMarineController
                 {
                     var preferredWorker = observation.Units.FirstOrDefault(unit =>
                         unit.Tag == preferredTag && IsLiveScv(unit));
-                    if (preferredWorker is not null)
+                    if (preferredWorker is not null && !preferredWorker.HasCargo)
                     {
-                        // The Depot builder remains reserved by the construction
-                        // crew. Wait for its unload rather than stealing a second SCV.
-                        if (preferredWorker.HasCargo)
-                            return null;
+                        // Reuse the Depot builder when it is immediately available.
+                        // A cargo-bearing preferred worker must not block the next job:
+                        // it remains reserved for its existing route while the Advisor
+                        // assigns another eligible SCV if one is available.
                         builder = preferredWorker;
+                    }
+                    else if (preferredWorker is not null)
+                    {
+                        Console.WriteLine($"[Opening] Preferred Depot builder SCV {preferredTag} is still carrying resources; selecting another available SCV for Barracks construction.");
                     }
                 }
 

@@ -561,7 +561,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             Console.WriteLine($"[SC2 API] Action {index}: ability={command?.AbilityId.ToString() ?? "unknown"}, units=[{unitTags}], result={result}.");
             if (_writeDiagnostics)
                 _openingTrace.RecordEvent("ActionResult", _lastGameLoop, $"index={index};ability={command?.AbilityId};units={unitTags};result={result}");
-                _binaryTrace.RecordActionResult(_lastGameLoop, index, command?.AbilityId ?? 0, result.ToString());
+                _binaryTrace.RecordActionResult(_lastGameLoop, index, unchecked((uint)(command?.AbilityId ?? 0)), result.ToString());
         }
         var resultIndex = 0;
         if (_openingRallyActionSubmitted)

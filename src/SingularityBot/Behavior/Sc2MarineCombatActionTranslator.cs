@@ -39,11 +39,26 @@ public static class Sc2MarineCombatActionTranslator
                 marine.Alliance != UnitAlliance.Self ||
                 !string.Equals(marine.UnitKind, "Marine", StringComparison.OrdinalIgnoreCase) ||
                 !decision.TargetTag.HasValue ||
-                !units.TryGetValue(decision.TargetTag.Value, out var target))
+                !units.TryGetValue(decision.TargetTag.Value, out var target) ||
+                target.Alliance is UnitAlliance.Self or UnitAlliance.Ally ||
+                !weapons.TryGetValue(marine.UnitTypeId, out var ownWeapon) ||
+                !ownWeapon.IsUsable ||
+                !ownWeapon.CanHit(target.IsFlying))
+                continue;
+
+            var weaponRange = ownWeapon.GetRange(target.IsFlying);
+            if (!float.IsFinite(weaponRange) || weaponRange <= 0)
                 continue;
 
             if (decision.Action == MarineTacticalAction.Fire)
             {
+                // Revalidate the lethal command at the protocol boundary. A
+                // malformed/stale decision must never become an out-of-range
+                // or friendly-fire attack order.
+                if (DistanceSquared(marine.PositionX, marine.PositionY,
+                        target.PositionX, target.PositionY) > weaponRange * weaponRange)
+                    continue;
+
                 var attackId = (int)gameData.AttackAbilityId.Value;
                 if (HasUnitTargetOrder(marine, attackId, target.Tag))
                     continue;
@@ -54,9 +69,6 @@ public static class Sc2MarineCombatActionTranslator
 
             if (decision.Action is not (MarineTacticalAction.RepositionDuringCooldown or
                 MarineTacticalAction.CloseToWeaponRange or MarineTacticalAction.Withdraw))
-                continue;
-
-            if (!weapons.TryGetValue(marine.UnitTypeId, out var ownWeapon) || !ownWeapon.IsUsable)
                 continue;
 
             var destination = decision.Action switch

@@ -63,7 +63,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterEntityExistence()
     {
-        FSM_API.Create.CreateFiniteStateMachine(EntityExistenceFsm, processRate: 1, processingGroup: DataSyncProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(EntityExistenceFsm, processRate: -1, processingGroup: DataSyncProcessingGroup)
             .State("FirstSeen", null, null, null)
             .State("AliveVisible", null, null, null)
             .State("AliveRemembered", null, null, null)
@@ -77,21 +77,36 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterWorker()
     {
-        FSM_API.Create.CreateFiniteStateMachine(WorkerFsm, processRate: 1, processingGroup: MiningProcessingGroup)
-            .State("Assess", null, ctx =>
-            {
-                if (ctx is not UnitBehaviorContext unit || !unit.IsCurrentlyVisible) return;
-                if (unit.HasCargo) unit.Emit(BehaviorCommand.ReturnCarriedResources);
-                else if (unit.AssignedMineralTag is not null)
-                    unit.Emit(BehaviorCommand.AssignWorkerToMinerals);
-            }, null)
+        FSM_API.Create.CreateFiniteStateMachine(WorkerFsm, processRate: -1, processingGroup: MiningProcessingGroup)
+            .State("Assess", null, null, null)
+            .State("NotVisible", null, null, null)
+            .State("Visible", null, null, null)
+            .State("ReturningResources", ctx => Emit(ctx, BehaviorCommand.ReturnCarriedResources), null, null)
+            .State("Mining", ctx => Emit(ctx, BehaviorCommand.AssignWorkerToMinerals), null, null)
+            .State("AwaitingAssignment", null, null, null)
+            .Transition("Assess", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
+            .Transition("Assess", "Visible", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible)
+            .Transition("NotVisible", "Visible", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible)
+            .Transition("Visible", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
+            .Transition("Visible", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
+            .Transition("Visible", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
+            .Transition("Visible", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)
+            .Transition("ReturningResources", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
+            .Transition("ReturningResources", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
+            .Transition("ReturningResources", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)
+            .Transition("Mining", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
+            .Transition("Mining", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
+            .Transition("Mining", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)
+            .Transition("AwaitingAssignment", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
+            .Transition("AwaitingAssignment", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
+            .Transition("AwaitingAssignment", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
             .WithInitialState("Assess")
             .BuildDefinition();
     }
 
     private static void RegisterConstruction()
     {
-        FSM_API.Create.CreateFiniteStateMachine(ConstructionFsm, processRate: 1, processingGroup: ConstructionProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(ConstructionFsm, processRate: -1, processingGroup: ConstructionProcessingGroup)
             .State("Waiting", null, ctx =>
             {
                 if (ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.BuildOrderAvailable)
@@ -147,7 +162,7 @@ public static class UnitBehaviorCatalog
         Func<UnitBehaviorContext, bool> requested,
         BehaviorCommand command)
     {
-        FSM_API.Create.CreateFiniteStateMachine(fsmName, processRate: 1, processingGroup: processingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(fsmName, processRate: -1, processingGroup: processingGroup)
             .State("Dormant", null, null, null)
             .State("Executing", ctx =>
             {
@@ -165,7 +180,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterGoalActions()
     {
-        var graph = FSM_API.Create.CreateFiniteStateMachine(GoalActionFsm, processRate: 1, processingGroup: GoalActionProcessingGroup)
+        var graph = FSM_API.Create.CreateFiniteStateMachine(GoalActionFsm, processRate: -1, processingGroup: GoalActionProcessingGroup)
             .State("Unassigned", null, null, null)
             .State("Rallying", ctx => Emit(ctx, BehaviorCommand.HoldRallyPoint), null, null)
             .State("Scouting", null, null, null)
@@ -189,7 +204,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterStutterStep()
     {
-        FSM_API.Create.CreateFiniteStateMachine(StutterStepFsm, processRate: 1, processingGroup: HighDpsProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(StutterStepFsm, processRate: -1, processingGroup: HighDpsProcessingGroup)
             .State("Disabled", null, null, null)
             .State("WeaponReady", ctx => Emit(ctx, BehaviorCommand.AttackTarget), null, null)
             .State("WeaponCooldown", ctx => Emit(ctx, BehaviorCommand.StutterStepMove), null, null)
@@ -214,7 +229,7 @@ public static class UnitBehaviorCatalog
     /// <summary>Tactical selection is represented by guarded FSM transitions, not an if/else chain.</summary>
     private static void RegisterCombatUnit()
     {
-        FSM_API.Create.CreateFiniteStateMachine(CombatFsm, processRate: 1, processingGroup: CombatProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(CombatFsm, processRate: -1, processingGroup: CombatProcessingGroup)
             .State("Assess", null, null, null)
             .State("Retreating", ctx => Emit(ctx, BehaviorCommand.RetreatToSafety), null, null)
             .State("Regrouping", ctx => Emit(ctx, BehaviorCommand.RegroupWithArmy), null, null)

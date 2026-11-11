@@ -385,7 +385,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (builderAction is null && _openingBuilder.IsCompleted)
             {
                 marineAction = _openingMarine.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag, _buildJobs);
+                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag, _buildJobs, reservedInfrastructureMinerals);
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else

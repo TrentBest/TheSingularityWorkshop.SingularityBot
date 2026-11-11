@@ -1,6 +1,18 @@
 # Roadmap
 
-The shortest path to a bot that actually plays a local StarCraft II match is the priority. Do not let editor polish, generalized strategy tooling, neural policy, ladder operations or additional races displace the first playable Terran economy.
+The shortest path to a bot that actually completes a local StarCraft II match remains the priority. Do not let editor polish, generalized strategy tooling, neural policy, ladder operations or additional races displace the first playable Terran economy.
+
+## Evidence status (2026-11-11)
+
+The current `development` head is `42f943e14fcc2d85fb3b83ec01ae0f5f74729010`. GitHub Actions Build and Sith Policy both completed successfully for that exact SHA. The Build workflow completed documentation validation, restore, build and test; the test suite reported 166 passed, 0 failed, 0 skipped. This is CI evidence only. No live SC2 match was run as part of that CI execution.
+
+Evidence levels must remain distinct:
+
+1. **Implemented** — source contains the behavior.
+2. **Regression-tested** — automated tests exercise the behavior and its failure boundaries.
+3. **CI-verified** — the exact candidate SHA has complete, successful required workflow evidence, observable through [CiAi](ciai-evidence.md).
+4. **Match-verified** — a local SC2 match/replay demonstrates observed state transitions, action results, movement and arrival, and the intended outcome.
+5. **Release-authorized** — the owner explicitly authorizes promotion/publication/deployment for the exact candidate. CI or model output never supplies this authorization.
 
 ## 1. Observation-to-action foundation
 
@@ -10,27 +22,27 @@ The shortest path to a bot that actually plays a local StarCraft II match is the
 - [x] Buffer FSM intents per observation and add initial gather/return-cargo translation.
 - [x] Add regression tests for normalization, context lifecycle, morphs and initial worker action translation.
 - [x] Wire the test project into the GitHub Actions build workflow.
-- [ ] Obtain a current green CI run for the integrated `development` head; fix every failure.
+- [x] Obtain a green CI run for the integrated `development` head (latest recorded run: [Build #696](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42977688888)).
 - [ ] Validate gather/return ability semantics and action results in a local SC2 match/replay.
-- [ ] Add per-unit available-ability checks and explicit rejection/result diagnostics.
+- [ ] Extend per-unit available-ability checks and verify all rejection/result paths in a local match.
 
 ## 2. Make workers productive
 
-- [ ] Normalize the economy facts needed by the scheduler: minerals/gas, supply, worker orders, cargo, mineral fields, town halls and construction state.
-- [ ] Assign each starting SCV to a persistent worker-to-mineral route.
+- [x] Normalize the economy facts currently consumed by worker assignment and opening construction: resources, supply, worker orders/cargo, mineral fields, town halls and construction state.
+- [x] Assign starting SCVs to persistent worker-to-mineral routes.
 - [ ] Cache outbound/return geometry and invalidate only when route inputs change.
 - [ ] Use game-loop deltas for cheap phase reevaluation; confirm every transition from observations.
-- [ ] Coordinate node reservations and saturation centrally; prevent duplicate/conflicting assignments.
-- [ ] Select the closest eligible non-mining SCV for the first Depot builder.
-- [ ] Measure delivered minerals, worker idle/travel/queue/gather/return time and assignment churn.
+- [x] Coordinate node reservations and saturation centrally; prevent duplicate/conflicting assignments.
+- [x] Select and reserve an eligible SCV for the first Depot builder, including the returning-worker opening gate.
+- [ ] Measure delivered minerals, worker idle/travel/queue/gather/return time and assignment churn in repeatable local matches.
 
 ## 3. Complete the first playable Terran opening
 
-- [ ] Queue Command Center SCV production and assign starting workers in the intended order.
-- [ ] Validate placement, prerequisites, affordability and builder selection for the first Supply Depot.
-- [ ] Replace the single-Depot builder with a persistent construction sequence: 80-mineral return-event trigger, raised Depot, then Barracks using the same SCV.
+- [x] Queue Command Center SCV production and assign starting workers in the intended order.
+- [x] Validate placement, prerequisites, affordability and builder selection for the first Supply Depot.
+- [x] Implement the first Supply Depot-to-Barracks construction sequence and recycle the builder.
 - [ ] Detect the actual ramp and evaluate legal Depot/Barracks placement pairs as a wall; validate ground-unit passage in a live match.
-- [ ] Keep Command Center SCV production running while construction is scheduled against a resource budget.
+- [x] Keep Command Center SCV production active while construction is scheduled against a resource budget.
 - [x] Add a follow-up Supply Depot gate after Barracks two and recycle the first-Barracks builder into that Depot and then Barracks three; this is a fixed opening milestone, not yet full supply forecasting.
 - [x] Gate Barracks three on starting a second Command Center at a resource-derived friendly expansion; preserve the accepted expansion coordinate for later Orbital routing.
 - [ ] Add Refinery and Engineering Bay construction jobs, gas-aware tech scheduling, and validate the second Command Center/Orbital timing in local matches.
@@ -70,18 +82,17 @@ The shortest path to a bot that actually plays a local StarCraft II match is the
 
 ## 6. Make behavior measurable and reproducible
 
-## 7. Make behavior measurable and reproducible
+- [x] Capture match-start protocol inputs, terrain calibration, economy/opening CSV traces and compact SC2 event timelines in local development runs.
+- [x] Record frame summaries, build-job snapshots, Marine decisions, submitted actions, action results, unit snapshots and economy snapshots in the diagnostic event stream.
+- [ ] Add deterministic replay of normalized observations and decisions.
+- [ ] Report invalid actions, idle time, delivered resources, structure timing, production uptime and Marine output in repeatable match summaries.
+- [ ] Add a regression fixture for every discovered live-match failure.
 
-- [ ] Record normalized observations, assignments, intents, arbitration, validation, submissions and outcomes by game loop.
-- [ ] Replay the same observation sequence deterministically.
-- [ ] Report invalid actions, idle time, delivered resources, structure timing, production uptime and Marine output.
-- [ ] Add a regression fixture for every discovered failure.
-
-## 8. Add supporting surfaces after the runtime works
+## 7. Add supporting surfaces after the runtime works
 
 - [ ] Expose the same versioned runtime contracts to GUI for authoring and inspection.
 - [ ] Add spatial overlays and route timelines where they help diagnose measured behavior.
-- [ ] Use CiAi/HeadlessAi for repeatable build, test and replay evaluation.
+- [ ] Use CiAi/HeadlessAi for repeatable build, test and replay evaluation. CiAi currently provides read-only GitHub Actions evidence observation; automated bot-specific dispatch/replay evaluation is not yet integrated.
 - [ ] Consider neural policies only as optional advisors against a deterministic baseline.
 - [ ] Generalize to Protoss/Zerg and tactical play only after the Terran opening is reliable.
 

@@ -171,43 +171,51 @@ public sealed class Sc2SecondBarracksControllerTests
     }
 
     [Fact]
-    public void PausesAfterSecondBarracksUntilSupplyDepotAndReusesFirstBarracksBuilder()
+    public void StartsThirdBarracksWhileFollowupDepotIsStillPending()
     {
         var controller = new Sc2SecondBarracksController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
             new MapPoint(10, 10), new MapPoint(54, 54));
         var data = GameData();
+        var crew = new HashSet<ulong> { 11, 12 };
 
-        // The second Barracks is now complete. Expansion must pause before
-        // reserving another worker for Barracks three.
+        // Completing Barracks two advances the target to three and independently
+        // requests the follow-up Depot; that request must not block Barracks three.
         Assert.Null(controller.TryCreateAction(Snapshot(300,
             Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
-            map, data, assignments, new HashSet<ulong> { 11, 12 }));
+            map, data, assignments, crew));
         Assert.True(controller.RequiresSupplyDepot);
-        Assert.Null(controller.BuilderTag);
 
-        // The SCV that built the first Barracks is no longer in the
-        // supplemental construction-crew set, but is explicitly recycled
-        // after the follow-up Depot completes.
-        controller.NotifySupplyDepotCompleted(12);
-        Assert.False(controller.RequiresSupplyDepot);
+        // A separate SCV is reserved for Barracks three while the Depot remains pending.
         Assert.Null(controller.TryCreateAction(Snapshot(300,
             Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
-            map, data, assignments, new HashSet<ulong> { 11 }));
-        // Once the follow-up Depot is confirmed, Barracks three starts directly;
-        // an expansion Command Center is no longer a production prerequisite.
-        Assert.Null(controller.TryCreateAction(Snapshot(300,
-            Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
-            Fact(1, "CommandCenter", 10, 10),
-            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
-            map, data, assignments, new HashSet<ulong> { 11 }));
+            map, data, assignments, crew));
+        Assert.True(controller.RequiresSupplyDepot);
         Assert.Equal(12UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(12));
+
+        var query = controller.TakePlacementQuery(data);
+        Assert.NotNull(query);
+        var placementResult = new ResponseQuery();
+        placementResult.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(placementResult);
+        var site = new MapPoint(query.Placements[0].TargetPos.X, query.Placements[0].TargetPos.Y);
+
+        var build = controller.TryCreateAction(Snapshot(150,
+            Fact(11, "SCV", 10, 10), Fact(12, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, crew);
+
+        Assert.NotNull(build);
+        Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(12UL, build.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.True(controller.RequiresSupplyDepot);
     }
 
     [Fact]

@@ -32,6 +32,7 @@ public sealed class Sc2OpeningBuilderController
     private PendingAction _pendingAction;
     private bool _completed;
     private long? _buildJobId;
+    private HashSet<ulong> _preexistingDepotTags;
 
     public Sc2OpeningBuilderController() { }
 
@@ -59,6 +60,12 @@ public sealed class Sc2OpeningBuilderController
         ArgumentNullException.ThrowIfNull(assignments);
 
         buildJobs?.ReconcileSupplyDepotConstruction(observation);
+        _preexistingDepotTags ??= observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)))
+            .Select(unit => unit.Tag)
+            .ToHashSet();
 
         if (_completed ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
@@ -163,10 +170,9 @@ public sealed class Sc2OpeningBuilderController
         // mineral trip when the bank can already fund both the structure and
         // another worker. The diagnostics showed this harvest wait delaying
         // the first Depot despite a healthy mineral bank.
-        var canFundStructureAndNextScv =
-            observation.Minerals >= gameData.SupplyDepotMineralCost + gameData.ScvMineralCost;
+        var canFundStructure = observation.Minerals >= gameData.SupplyDepotMineralCost;
         if (!builder.HasCargo && IsGatheringMinerals(builder, observation) &&
-            !canFundStructureAndNextScv)
+            !canFundStructure)
             return null;
 
         // Replace the worker's mining order only after its current harvest is
@@ -186,6 +192,7 @@ public sealed class Sc2OpeningBuilderController
                                unit.IsLiveVisible &&
                                (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
                                 unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+                               !_preexistingDepotTags.Contains(unit.Tag) &&
                                unit.HasPosition)
                 .OrderBy(unit => DistanceSquared(unit.PositionX, unit.PositionY, _placement.Value.X, _placement.Value.Y))
                 .FirstOrDefault();
@@ -214,7 +221,7 @@ public sealed class Sc2OpeningBuilderController
         var distanceSquared = DistanceSquared(
             builder.PositionX, builder.PositionY, movementTarget.X, movementTarget.Y);
 
-        if (distanceSquared > 2.25f)
+        if (distanceSquared > 9f)
         {
             // An accepted Move is not proof that the SCV reached the site.
             // Retry after a bounded travel window so pathing interruptions cannot stall the opening.

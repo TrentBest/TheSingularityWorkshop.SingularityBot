@@ -189,7 +189,7 @@ public sealed class Sc2MarineRallyController
                 continue;
 
             var waypoint = StepToward(
-                marine.PositionX, marine.PositionY, destination.X, destination.Y, 7f);
+                marine.PositionX, marine.PositionY, destination.X, destination.Y, 4f);
             _lastRallyCommandLoops[marine.Tag] = observation.GameLoop;
             _lastRallyTargets[marine.Tag] = waypoint;
             actions.Add(new SC2APIProtocol.Action

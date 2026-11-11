@@ -125,6 +125,9 @@ public sealed class Sc2OpeningBuilderController
                         stagingPoint.X, stagingPoint.Y))
                 })
                 .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag ? 0 : 1)
+                // Prefer a worker that has already completed a mineral trip:
+                // construction consumes the cargo trip as an intentional opening cost.
+                .ThenBy(candidate => candidate.Worker.HasCargo ? 0 : 1)
                 .ThenBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
                 .FirstOrDefault();

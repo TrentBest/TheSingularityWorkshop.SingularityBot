@@ -14,6 +14,12 @@ The five advisor domains are:
 
 These advisors are peers. No advisor directly steals units, spends resources or submits SC2 commands. Each publishes typed assessments and proposed jobs. The Strategic Planner consumes current postings, resolves competing requests, and eventually reserves actors/resources and assigns executable work. The action pipeline remains the final legality boundary.
 
+## Execution model: synchronous advisor evaluation
+
+Advisor processing groups, weighted work slots and job postings are all internal game-strategy concepts. They are not operating-system jobs, background workers, threads, thread-pool work items or asynchronous tasks.
+
+The ladder runner is synchronous. The bot advances its FSM processing groups through the existing frame/update path. Advisors synchronously assess the current normalized game state and maintain their logical game-task postings; the Strategic Planner synchronously consumes those postings. The scheduler's phase weights determine deterministic FSM update opportunities, not parallel execution or CPU-thread allocation.
+
 ## Game State FSM
 
 The match-level `SingularityBot.GameState` FSM owns three strategic states:

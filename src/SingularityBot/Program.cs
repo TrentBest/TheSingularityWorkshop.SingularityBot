@@ -13,14 +13,15 @@ public static class Program
     public static void Run(string[] args)
     {
         var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
-        var diagnostics = args.Contains("--diagnostics", StringComparer.Ordinal);
+        var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
         var connectionArgs = args.Where(argument =>
             !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal) &&
-            !string.Equals(argument, "--diagnostics", StringComparison.Ordinal)).ToArray();
+            !string.Equals(argument, "--diagnostics", StringComparison.Ordinal) &&
+            !string.Equals(argument, "--no-diagnostics", StringComparison.Ordinal)).ToArray();
         var localRun = connectionArgs.Length == 0;
         if (passiveBaseline && !localRun)
             throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.");
-        if (diagnostics && !localRun)
+        if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
             throw new ArgumentException("--diagnostics is a local-run option, not a ladder argument.");
 
         var bot = new SingularityBot(

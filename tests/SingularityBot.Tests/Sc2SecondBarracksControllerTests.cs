@@ -230,6 +230,36 @@ public sealed class Sc2SecondBarracksControllerTests
         Assert.Null(controller.BuilderTag);
     }
 
+
+    [Fact]
+    public void DoesNotPullSecondBarracksBuilderBeforeFirstMarineIsObserved()
+    {
+        var controller = new Sc2SecondBarracksController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var crew = new HashSet<ulong> { 10, 11 };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15, 0.4f)),
+            map, GameData(), assignments, crew, firstMarineObserved: false));
+
+        Assert.Null(controller.BuilderTag);
+        Assert.False(assignments.IsReserved(10));
+        Assert.False(assignments.IsReserved(11));
+
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15, 0.4f)),
+            map, GameData(), assignments, crew, firstMarineObserved: true));
+
+        Assert.NotNull(controller.BuilderTag);
+        Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

@@ -22,6 +22,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly bool _writeDiagnostics;
     private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
     private readonly Sc2OpeningTraceRecorder _openingTrace = new();
+    private readonly Sc2BinaryEventRecorder _binaryTrace = new();
+    private uint _lastGameLoop;
 
     public SingularityBot(bool passiveBaseline = false, bool writeDiagnostics = false)
     {
@@ -91,7 +93,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (_passiveBaseline || _writeDiagnostics)
             _baselineRecorder.Start();
         if (_writeDiagnostics)
+        {
             _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
+            _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
+        }
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
         _combatWeapons = CombatWeaponProfile.FromCatalog(_gameData);
@@ -199,6 +204,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _playerId,
             _gameData.UnitNames,
             _gameData.BuffNames);
+        _lastGameLoop = normalized.GameLoop;
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
         UpdateSpatialIntelligence(observation);
@@ -444,6 +450,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             foreach (var pg in ProcessGroupsThisFrame)
                 FSM_API.Interaction.Update(pg);
+            if (_writeDiagnostics)
+                foreach (var job in _buildJobs.Jobs)
+                    _binaryTrace.RecordBuildJob(job, normalized.GameLoop);
             _buildJobs.RetireTerminalJobs();
         }
         finally
@@ -484,6 +493,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var combatDecisions = MarineCombatPlanner.Plan(normalized, _combatWeapons);
             actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
                 combatDecisions, normalized, _gameData, _combatWeapons));
+            if (_writeDiagnostics)
+                foreach (var decision in combatDecisions)
+                    _binaryTrace.RecordMarineDecision(normalized.GameLoop, decision.MarineTag,
+                        decision.TargetTag, decision.Action.ToString());
             if (_writeDiagnostics && combatDecisions.Count > 0)
             {
                 var firing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Fire);
@@ -496,12 +509,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
 
         if (_writeDiagnostics)
-            _openingTrace.RecordFrame(
-                normalized,
-                _openingBuilder,
-                builderAction,
-                marineAction is not null,
-                SpatialMap is not null);
+        {
+            _openingTrace.RecordFrame(normalized, _openingBuilder, builderAction,
+                marineAction is not null, SpatialMap is not null);
+            _binaryTrace.RecordFrame(normalized.GameLoop, normalized.Minerals,
+                normalized.FoodUsed, normalized.FoodCap, normalized.Units.Count, actions.Count);
+            foreach (var action in actions)
+                _binaryTrace.RecordAction(normalized.GameLoop, action);
+        }
 
         return actions;
     }
@@ -545,7 +560,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var unitTags = command is null ? string.Empty : string.Join(",", command.UnitTags);
             Console.WriteLine($"[SC2 API] Action {index}: ability={command?.AbilityId.ToString() ?? "unknown"}, units=[{unitTags}], result={result}.");
             if (_writeDiagnostics)
-                _openingTrace.RecordEvent("ActionResult", 0, $"index={index};ability={command?.AbilityId};units={unitTags};result={result}");
+                _openingTrace.RecordEvent("ActionResult", _lastGameLoop, $"index={index};ability={command?.AbilityId};units={unitTags};result={result}");
+                _binaryTrace.RecordActionResult(_lastGameLoop, index, command?.AbilityId ?? 0, result.ToString());
         }
         var resultIndex = 0;
         if (_openingRallyActionSubmitted)

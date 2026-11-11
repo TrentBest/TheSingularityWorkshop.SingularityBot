@@ -137,6 +137,16 @@ public sealed class Sc2SecondBarracksControllerTests
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
             map, data, assignments, crew));
+        Assert.True(controller.RequiresCommandCenter);
+        Assert.Null(controller.BuilderTag);
+        controller.NotifyCommandCenterStarted();
+        Assert.False(controller.RequiresCommandCenter);
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
+            Fact(12, "SCV", 12, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, crew));
         Assert.Equal(12UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(12));
     }
@@ -165,6 +175,14 @@ public sealed class Sc2SecondBarracksControllerTests
         // after the follow-up Depot completes.
         controller.NotifySupplyDepotCompleted(12);
         Assert.False(controller.RequiresSupplyDepot);
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, new HashSet<ulong> { 11 }));
+        Assert.True(controller.RequiresCommandCenter);
+        Assert.Null(controller.BuilderTag);
+        controller.NotifyCommandCenterStarted();
         Assert.Null(controller.TryCreateAction(Snapshot(300,
             Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),

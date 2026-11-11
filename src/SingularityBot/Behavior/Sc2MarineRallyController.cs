@@ -16,6 +16,7 @@ public sealed class Sc2MarineRallyController
     private const float ArrivalRadiusSquared = 4f;
     private const float RendezvousOffset = 5f;
     private bool _squadDispatched;
+    private MapPoint? _rendezvousAnchor;
 
     public IReadOnlyList<SC2APIProtocol.Action> TryCreateActions(
         NormalizedObservation observation,
@@ -47,7 +48,10 @@ public sealed class Sc2MarineRallyController
             _lastRallyCommandLoops.Remove(retired);
 
         if (liveMarineTags.Count == 0)
+        {
             _squadDispatched = false;
+            _rendezvousAnchor = null;
+        }
 
         // Marine four entering production starts a real rendezvous at the
         // producing Barracks. Early Marines occupy distinct box slots around it;
@@ -61,9 +65,10 @@ public sealed class Sc2MarineRallyController
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
             unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             unit.Orders.Any(order => order.AbilityId == gameData.MarineTrainAbilityId));
-        var rendezvousAnchor = producingBarracks is null
+        _rendezvousAnchor ??= producingBarracks is null
             ? map.Side.FriendlyStart
             : new MapPoint(producingBarracks.PositionX, producingBarracks.PositionY);
+        var rendezvousAnchor = _rendezvousAnchor.Value;
         var rendezvousOffsets = MarineFormationPlanner.GetOffsets(
             MarineFormation.Box, squadTags.Length, direction.X, direction.Y);
         var rendezvousTargets = squadTags.Select((tag, index) => (

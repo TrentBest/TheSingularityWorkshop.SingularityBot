@@ -32,6 +32,8 @@ public sealed class UnitBehaviorContext : IStateContext
     public string Name { get; set; }
     public string UnitKind { get; }
     public bool IsWorker { get; }
+    /// <summary>True when this persistent entity context represents a mineral-field resource node.</summary>
+    public bool IsMineralResource => UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase);
     public bool IsValid { get; set; }
 
     public uint UnitTypeId { get; private set; }
@@ -58,6 +60,8 @@ public sealed class UnitBehaviorContext : IStateContext
     public UnitOrderObservationFacts? CurrentOrder => ObservedOrders.Count == 0 ? null : ObservedOrders[0];
 
     public ulong? AssignedMineralTag { get; private set; }
+    /// <summary>The persistent mineral-node context currently backing this worker's mining assignment.</summary>
+    public UnitBehaviorContext? AssignedMineralContext { get; private set; }
     public ulong? AssignedTownHallTag { get; private set; }
     public uint WorkerAssignmentGeneration { get; private set; }
     public WorkerRoutePhase WorkerRoutePhase { get; private set; }
@@ -171,11 +175,15 @@ public sealed class UnitBehaviorContext : IStateContext
         IsValid = true;
     }
 
-    public void ApplyWorkerAssignment(WorkerResourceAssignment? assignment, uint gameLoop)
+    public void ApplyWorkerAssignment(
+        WorkerResourceAssignment? assignment,
+        uint gameLoop,
+        UnitBehaviorContext? mineralContext = null)
     {
         if (assignment is null)
         {
             AssignedMineralTag = null;
+            AssignedMineralContext = null;
             AssignedTownHallTag = null;
             WorkerAssignmentGeneration = 0;
             SetRoutePhase(WorkerRoutePhase.Unassigned, gameLoop);
@@ -186,6 +194,10 @@ public sealed class UnitBehaviorContext : IStateContext
                       AssignedMineralTag != assignment.MineralTag ||
                       AssignedTownHallTag != assignment.TownHallTag;
         AssignedMineralTag = assignment.MineralTag;
+        AssignedMineralContext = mineralContext is { IsValid: true, IsMineralResource: true } &&
+                                 mineralContext.UnitTag == assignment.MineralTag
+            ? mineralContext
+            : null;
         AssignedTownHallTag = assignment.TownHallTag;
         WorkerAssignmentGeneration = assignment.Generation;
 

@@ -17,6 +17,7 @@ public sealed class Sc2SecondBarracksController
     private bool _buildSubmitted;
     private uint _buildLoop;
     private Pending _pending;
+    private int _targetBarracksCount = 2;
 
     public ulong? BuilderTag => _builderTag;
     public bool IsComplete { get; private set; }
@@ -41,15 +42,26 @@ public sealed class Sc2SecondBarracksController
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
-        if (barracks.Count(unit => unit.BuildProgress >= 1f) >= 2)
+        var completedCount = barracks.Count(unit => unit.BuildProgress >= 1f);
+        if (completedCount >= _targetBarracksCount)
         {
-            IsComplete = true;
             ReleaseBuilder(assignments);
-            Console.WriteLine("[Opening] OBSERVED: second Barracks completed; construction SCV released.");
-            return null;
+            ResetPlacement();
+            if (_targetBarracksCount >= 4)
+            {
+                IsComplete = true;
+                Console.WriteLine("[Opening] OBSERVED: four-Barracks production milestone completed.");
+                return null;
+            }
+
+            _targetBarracksCount++;
+            Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
         }
 
-        if (barracks.Length >= 2 || barracks.Length == 0)
+        // Wait for the current structure to finish before reserving another SCV.
+        // The first Barracks is owned by the opening controller; this controller
+        // grows the production line sequentially to the four-Barracks milestone.
+        if (barracks.Length >= _targetBarracksCount || barracks.Length == 0)
             return null;
 
         if (_builderTag is ulong current &&
@@ -79,7 +91,7 @@ public sealed class Sc2SecondBarracksController
 
             _builderTag = builder.Tag;
             assignments.Reserve(builder.Tag);
-            _candidates.AddRange(CreateCandidates(townHall, map));
+            _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
             _queryPending = _candidates.Count > 0;
             Console.WriteLine($"[Opening] SCV {_builderTag} reserved for the second Barracks.");
             return null;
@@ -183,15 +195,19 @@ public sealed class Sc2SecondBarracksController
         kind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
         kind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase);
 
-    private static IReadOnlyList<MapPoint> CreateCandidates(UnitObservationFacts townHall, SpatialMap map)
+    private static IReadOnlyList<MapPoint> CreateCandidates(UnitObservationFacts townHall, SpatialMap map, int targetBarracksCount)
     {
         var origin = new MapPoint(townHall.PositionX, townHall.PositionY);
         var forward = (map.Center - origin).Normalize();
         var lateral = new MapPoint(-forward.Y, forward.X);
+        var ring = Math.Max(0, targetBarracksCount - 2);
+        var start = 9f + ring * 12f;
         var offsets = new (float Forward, float Lateral)[]
         {
-            (9, 0), (9, 3), (9, -3), (12, 0), (12, 3), (12, -3),
-            (15, 0), (15, 3), (15, -3), (18, 0), (18, 3), (18, -3)
+            (start, 0), (start, 3), (start, -3),
+            (start + 3, 0), (start + 3, 3), (start + 3, -3),
+            (start + 6, 0), (start + 6, 3), (start + 6, -3),
+            (start + 9, 0), (start + 9, 3), (start + 9, -3)
         };
         return offsets.Select(offset => origin + forward * offset.Forward + lateral * offset.Lateral)
             .Where(map.Bounds.Contains).ToArray();

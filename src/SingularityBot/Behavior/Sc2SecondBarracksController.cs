@@ -275,7 +275,7 @@ public sealed class Sc2SecondBarracksController
         var forward = (map.Center - origin).Normalize();
         var lateral = new MapPoint(-forward.Y, forward.X);
         var ring = Math.Max(0, targetBarracksCount - 2);
-        var start = 9f + ring * 12f;
+        // Keep successive Barracks close to the production line. A 12-tile jump\n        // made Barracks three much farther away than necessary and could leave\n        // too few legal placement candidates near the base.\n        var start = 9f + ring * 3f;
         var offsets = new (float Forward, float Lateral)[]
         {
             (start, 0), (start, 3), (start, -3),

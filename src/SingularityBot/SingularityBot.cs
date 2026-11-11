@@ -496,7 +496,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (_writeDiagnostics)
                 foreach (var decision in combatDecisions)
                     _binaryTrace.RecordMarineDecision(normalized.GameLoop, decision.MarineTag,
-                        decision.TargetTag, decision.Action.ToString());
+                        decision.TargetTag ?? 0, decision.Action.ToString());
             if (_writeDiagnostics && combatDecisions.Count > 0)
             {
                 var firing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Fire);
@@ -730,5 +730,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();
         _openingTrace.Dispose();
+        _binaryTrace.Dispose();
     }
 }

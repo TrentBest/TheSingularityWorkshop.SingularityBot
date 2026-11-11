@@ -101,7 +101,12 @@ public sealed class UnitBehaviorRuntime
             var exists = _contexts.TryGetValue(facts.Tag, out var context);
             if (!exists)
             {
-                if (facts.HealthMax <= 0)
+                // Mineral fields are persistent economic entities even though
+                // their resource amount is not represented as unit health on every
+                // protocol observation. Keep their tag-backed context alive so
+                // worker jobs can bind to the actual resource node.
+                if (facts.HealthMax <= 0 &&
+                    !facts.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase))
                     continue;
                 context = AttachEntity(facts);
             }
@@ -126,7 +131,12 @@ public sealed class UnitBehaviorRuntime
         {
             if (!context.IsWorker || !context.IsCurrentlyVisible) continue;
             assignments.TryGetValue(context.UnitTag, out var assignment);
-            context.ApplyWorkerAssignment(assignment, gameLoop);
+            UnitBehaviorContext mineralContext = null;
+            if (assignment is not null &&
+                _contexts.TryGetValue(assignment.MineralTag, out var resource) &&
+                resource.IsMineralResource)
+                mineralContext = resource;
+            context.ApplyWorkerAssignment(assignment, gameLoop, mineralContext);
         }
     }
 

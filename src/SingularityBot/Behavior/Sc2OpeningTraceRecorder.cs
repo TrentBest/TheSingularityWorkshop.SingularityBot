@@ -19,7 +19,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         Directory.CreateDirectory(directory);
         _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
         _writer = new StreamWriter(_path, false);
-        _writer.WriteLine("gameLoop,minerals,foodUsed,foodCap,scvCount,commandCenterCount,commandCentersWithOrders,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,depotCount,barracksCount,marineCount,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable");
+        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,depotCount,barracksCount,marineCount,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable");
         _writer.Flush();
         Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
     }
@@ -29,7 +29,8 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         Sc2OpeningBuilderController builder,
         SC2APIProtocol.Action builderAction,
         bool marineActionSubmitted,
-        bool spatialMapAvailable)
+        bool spatialMapAvailable,
+        int activeBuildJobs = 0)
     {
         if (_writer is null)
             return;
@@ -37,6 +38,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         var units = observation.Units;
         var scvs = units.Where(unit => Is(unit, "SCV")).ToArray();
         var commandCenters = units.Where(unit => Is(unit, "CommandCenter") || Is(unit, "OrbitalCommand")).ToArray();
+        var enemies = units.Where(unit => unit.Alliance == UnitAlliance.Enemy && unit.IsLiveVisible).ToArray();
         var builderUnit = builder.BuilderTag is ulong tag
             ? units.FirstOrDefault(unit => unit.Tag == tag)
             : null;
@@ -45,8 +47,17 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         var target = command?.TargetWorldSpacePos;
         var row = new[]
         {
-            N(observation.GameLoop), N(observation.Minerals), N(observation.FoodUsed), N(observation.FoodCap),
-            N(scvs.Length), N(commandCenters.Length), N(commandCenters.Count(unit => unit.HasOrders)),
+            N(observation.GameLoop), N(observation.Minerals), N(observation.Vespene), N(observation.FoodUsed), N(observation.FoodCap),
+            N(scvs.Length), N(units.Count(unit => Is(unit, "Marine"))), N(commandCenters.Length),
+            N(units.Count(unit => Is(unit, "OrbitalCommand"))), N(units.Count(unit => Is(unit, "Refinery"))),
+            N(units.Count(unit => Is(unit, "EngineeringBay"))), N(units.Count(unit => Is(unit, "Barracks"))),
+            N(units.Count(unit => Is(unit, "SupplyDepot") || Is(unit, "SupplyDepotLowered"))),
+            N(enemies.Length), N(enemies.Count(unit => unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase))),
+            N(enemies.Count(unit => unit.UnitKind.Contains("Marauder", StringComparison.OrdinalIgnoreCase) ||
+                unit.UnitKind.Contains("Stalker", StringComparison.OrdinalIgnoreCase) ||
+                unit.UnitKind.Contains("Roach", StringComparison.OrdinalIgnoreCase) ||
+                unit.UnitKind.Contains("Hydralisk", StringComparison.OrdinalIgnoreCase))),
+            N(activeBuildJobs),
             builder.BuilderTag?.ToString(CultureInfo.InvariantCulture) ?? "",
             builderUnit?.PositionX.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             builderUnit?.PositionY.ToString("F3", CultureInfo.InvariantCulture) ?? "",
@@ -54,9 +65,6 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             placement?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             placement?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             B(builder.IsMoveSubmitted), B(builder.IsDispatched), B(builder.IsBuildSubmitted), B(builder.IsCompleted),
-            N(units.Count(unit => Is(unit, "SupplyDepot") || Is(unit, "SupplyDepotLowered"))),
-            N(units.Count(unit => Is(unit, "Barracks"))),
-            N(units.Count(unit => Is(unit, "Marine"))),
             command?.AbilityId.ToString(CultureInfo.InvariantCulture) ?? "",
             target?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             target?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",

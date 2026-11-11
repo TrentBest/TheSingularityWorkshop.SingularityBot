@@ -24,6 +24,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OpeningTraceRecorder _openingTrace = new();
     private readonly Sc2BinaryEventRecorder _binaryTrace = new();
     private uint _lastGameLoop;
+    private uint _lastUnitSnapshotGameLoop;
 
     public SingularityBot(bool passiveBaseline = false, bool writeDiagnostics = false)
     {
@@ -549,9 +550,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (_writeDiagnostics)
         {
             _openingTrace.RecordFrame(normalized, _openingBuilder, builderAction,
-                marineAction is not null, SpatialMap is not null);
+                marineAction is not null, SpatialMap is not null, _buildJobs.ActiveCount);
             _binaryTrace.RecordFrame(normalized.GameLoop, normalized.Minerals,
                 normalized.FoodUsed, normalized.FoodCap, normalized.Units.Count, actions.Count);
+            _binaryTrace.RecordEconomySnapshot(normalized, _buildJobs.ActiveCount);
+            if (_lastUnitSnapshotGameLoop == 0 || normalized.GameLoop >= _lastUnitSnapshotGameLoop + 8)
+            {
+                _binaryTrace.RecordUnitSnapshots(normalized);
+                _lastUnitSnapshotGameLoop = normalized.GameLoop;
+            }
             foreach (var action in actions)
                 _binaryTrace.RecordAction(normalized.GameLoop, action);
         }

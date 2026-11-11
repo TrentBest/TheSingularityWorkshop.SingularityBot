@@ -35,6 +35,15 @@ public sealed class Sc2OpeningProductionControllerTests
     }
 
     [Fact]
+    public void CanHoldAllFurtherScvProductionUntilTheFirstDepotCompletes()
+    {
+        var controller = new Sc2OpeningProductionController();
+        Assert.Null(controller.TryCreateScvTrainingAction(
+            Snapshot(500, 12, 15, Fact(100, "CommandCenter")),
+            GameData(), reservedMinerals: uint.MaxValue));
+    }
+
+    [Fact]
     public void DoesNotTrainWithoutMineralsOrFreeSupply()
     {
         var controller = new Sc2OpeningProductionController();

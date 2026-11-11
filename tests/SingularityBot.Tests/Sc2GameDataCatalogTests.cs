@@ -162,6 +162,24 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ResolvesRefineryBuildAbilityAndCostFromAuthoritativeUnitData()
+    {
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData
+        {
+            UnitId = 20,
+            Name = "Refinery",
+            AbilityId = 320,
+            MineralCost = 75
+        });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)320, catalog.RefineryBuildAbilityId);
+        Assert.Equal((uint)75, catalog.RefineryMineralCost);
+    }
+
+    [Fact]
     public void Create_LeavesMissingAbilityMetadataUnavailable()
     {
         var catalog = Sc2GameDataCatalog.Create(new ResponseData());

@@ -131,6 +131,59 @@ public sealed class BuildJobRuntime
 
     public bool TryGet(long id, out BuildJobContext job) => _jobs.TryGetValue(id, out job);
 
+    public BuildJobContext CreateBarracksConstruction(uint gameLoop, ulong workerTag) =>
+        Create("Barracks", gameLoop, workerTag: workerTag);
+
+    /// <summary>Associates observed Barracks with their reserved SCV and tracks authoritative build progress.</summary>
+    public void ReconcileBarracks(SingularityBot.Observation.NormalizedObservation observation)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        var structures = observation.Units.Where(unit =>
+            unit.Alliance == SingularityBot.Observation.UnitAlliance.Self && unit.IsLiveVisible &&
+            unit.HasPosition && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+            !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
+
+        foreach (var job in _jobs.Values.Where(job => job.BuildableKind == "Barracks" &&
+                     !job.IsCompleted && !job.IsFailed && job.WorkerTag.HasValue).ToArray())
+        {
+            if (job.ResultUnitTag is ulong resultTag)
+            {
+                var existing = structures.FirstOrDefault(unit => unit.Tag == resultTag);
+                if (existing is not null)
+                    job.ObserveResult(existing.Tag, existing.BuildProgress, observation.GameLoop);
+                else if (observation.DeadUnitTags.Contains(resultTag))
+                    job.Fail("Construction structure was destroyed.", observation.GameLoop);
+                continue;
+            }
+
+            var worker = observation.Units.FirstOrDefault(unit =>
+                unit.Tag == job.WorkerTag && unit.Alliance == SingularityBot.Observation.UnitAlliance.Self &&
+                unit.IsLiveVisible && unit.HasPosition && unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase));
+            if (worker is null) continue;
+
+            var candidate = structures.Where(unit => !_jobs.Values.Any(other =>
+                    other.Id != job.Id && other.ResultUnitTag == unit.Tag))
+                .Select(unit => new
+                {
+                    Unit = unit,
+                    DistanceSquared = DistanceSquared(worker.PositionX, worker.PositionY, unit.PositionX, unit.PositionY)
+                })
+                .Where(item => item.DistanceSquared <= 36f)
+                .OrderBy(item => item.DistanceSquared)
+                .ThenBy(item => item.Unit.Tag)
+                .FirstOrDefault();
+            if (candidate is not null)
+                job.ObserveResult(candidate.Unit.Tag, candidate.Unit.BuildProgress, observation.GameLoop);
+        }
+    }
+
+    private static float DistanceSquared(float x1, float y1, float x2, float y2)
+    {
+        var dx = x1 - x2;
+        var dy = y1 - y2;
+        return dx * dx + dy * dy;
+    }
+
     public bool Retire(long id)
     {
         if (!_jobs.Remove(id, out var job)) return false;

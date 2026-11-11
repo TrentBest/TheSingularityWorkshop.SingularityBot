@@ -31,6 +31,24 @@ Example intent:
 
 The goal can be authored independently of the current army, production queue, minerals, gas, supply or tech state. The planner must compare the target with current owned units, units already in production, reserved production capacity, losses and current resources before turning the standing demand into immediate jobs.
 
+The bot-facing JSON configuration shape is:
+
+```json
+{
+  "version": 1,
+  "goalId": "main-army",
+  "name": "Primary Marine-Marauder-Medivac force",
+  "initialBuildOutMinutes": 10,
+  "units": [
+    { "unitKind": "Marine", "targetCount": 50, "replacementRatePerMinute": 2 },
+    { "unitKind": "Marauder", "targetCount": 25, "replacementRatePerMinute": 1 },
+    { "unitKind": "Medivac", "targetCount": 10, "replacementRatePerMinute": 0.5 }
+  ]
+}
+```
+
+The recipe JSON is a separate, explicit input to `ConfigureCompositionGoalJson`. It supplies production seconds, producer structures, optional add-ons and prerequisite structures. Use reviewed values from the current game-data/tech-tree catalog; the compiler does not treat illustrative timings as authoritative.
+
 The target does not mean "queue 50 Marines right now." It means "maintain this force composition, and plan the work needed to reach and sustain it."
 
 ## Deriving production capacity

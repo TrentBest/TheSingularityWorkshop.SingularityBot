@@ -49,7 +49,7 @@ public static class MarineFormationPlanner
         };
 
         return local.Select(point => (
-            X: sideX * point.X + forwardX * point.Y,
+            X: sideX * point.Item1 + forwardX * point.Item2,
             Y: sideY * point.X + forwardY * point.Y)).ToArray();
     }
 

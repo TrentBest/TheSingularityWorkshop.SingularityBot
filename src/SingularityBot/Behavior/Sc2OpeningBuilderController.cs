@@ -28,6 +28,7 @@ public sealed class Sc2OpeningBuilderController
     private MapPoint? _moveTarget;
     private int _placementQueryAttempts;
     private bool _buildSubmitted;
+    private bool _builderHasCarriedMinerals;
     private uint _buildRequestGameLoop;
     private PendingAction _pendingAction;
     private bool _completed;
@@ -200,10 +201,16 @@ public sealed class Sc2OpeningBuilderController
             return null;
 
         // Finish the entire current mineral trip before diverting this worker.
-        // A loaded SCV must return its cargo to the town hall first; once the
-        // cargo is deposited, the worker can leave for construction.
-        if (IsCompletingMineralTrip(builder, observation))
+        // Remember the loaded state so that the first cargo-free observation
+        // after a delivery is recognized as the completed return, even if SC2
+        // has already queued the worker's next trip back to a mineral patch.
+        if (builder.HasCargo)
+            _builderHasCarriedMinerals = true;
+        var cargoWasJustDelivered = _builderHasCarriedMinerals && !builder.HasCargo;
+        if (!cargoWasJustDelivered && IsCompletingMineralTrip(builder, observation))
             return null;
+        if (cargoWasJustDelivered)
+            _builderHasCarriedMinerals = false;
 
         // Do not send the builder to a speculative staging point. SC2's placement
         // response is authoritative; move once, directly to the accepted site.

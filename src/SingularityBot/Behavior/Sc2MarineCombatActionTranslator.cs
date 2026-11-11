@@ -119,11 +119,25 @@ public static class Sc2MarineCombatActionTranslator
             // Step beyond the enemy envelope. On the next observation the
             // approach decision naturally brings the Marine back to firing range.
             var desiredDistance = enemyWeapon.GetRange(marine.IsFlying) + 0.5f;
-            var travel = MathF.Max(0.75f, desiredDistance - distance);
-            return (marine.PositionX + dx * travel, marine.PositionY + dy * travel);
+            if (distance < desiredDistance)
+            {
+                var travel = desiredDistance - distance;
+                return (marine.PositionX + dx * travel, marine.PositionY + dy * travel);
+            }
+
+            // Once outside the enemy's range, keep spacing laterally. Repeated
+            // outward steps would make the Marine drift away for the whole
+            // cooldown and then waste time chasing back into its own range.
+            return OrbitPoint(marine, dx, dy);
         }
 
         // Otherwise orbit the target during cooldown instead of standing idle.
+        return OrbitPoint(marine, dx, dy);
+    }
+
+    private static (float X, float Y) OrbitPoint(
+        UnitObservationFacts marine, float dx, float dy)
+    {
         var sign = (marine.Tag & 1) == 0 ? 1f : -1f;
         const float orbitStep = 1.25f;
         return (marine.PositionX - dy * orbitStep * sign,

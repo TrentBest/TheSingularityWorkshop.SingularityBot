@@ -24,12 +24,14 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.Equal(4, moves.Count);
         Assert.Equal(new ulong[] { 1, 2, 3, 4 }, moves.SelectMany(move => move.ActionRaw.UnitCommand.UnitTags));
         Assert.All(moves, move => Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId));
-        var rally = moves[0].ActionRaw.UnitCommand.TargetWorldSpacePos;
-        Assert.Equal(MapSide.Enemy, map.Side.Assess(new MapPoint(rally.X, rally.Y)));
-        Assert.True(new MapPoint(11, 10).DistanceSquaredTo(new MapPoint(rally.X, rally.Y)) > 2500f);
+        var targets = moves.Select(move => move.ActionRaw.UnitCommand.TargetWorldSpacePos).ToArray();
+        Assert.Equal(4, targets.Select(point => (point.X, point.Y)).Distinct().Count());
+        Assert.All(targets, point => Assert.Equal(MapSide.Enemy, map.Side.Assess(new MapPoint(point.X, point.Y))));
+        Assert.All(targets, point => Assert.True(new MapPoint(11, 10).DistanceSquaredTo(new MapPoint(point.X, point.Y)) > 2500f));
 
         var arrived = controller.TryCreateActions(
-            Snapshot(Enumerable.Range(1, 4).Select(tag => Fact((ulong)tag, "Marine", rally.X, rally.Y)).ToArray()),
+            Snapshot(Enumerable.Range(0, 4).Select(index =>
+                Fact((ulong)(index + 1), "Marine", targets[index].X, targets[index].Y)).ToArray()),
             map, decisions, gameData);
         Assert.Empty(arrived);
     }

@@ -1,3 +1,5 @@
+#nullable enable annotations
+
 #nullable enable
 
 using System.Buffers.Binary;

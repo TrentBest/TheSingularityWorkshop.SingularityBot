@@ -15,6 +15,7 @@ public sealed class Sc2MarineRallyController
     private const float RallyOffset = 8f;
     private const float ArrivalRadiusSquared = 4f;
     private const float RendezvousOffset = 5f;
+    private bool _squadDispatched;
 
     public IReadOnlyList<SC2APIProtocol.Action> TryCreateActions(
         NormalizedObservation observation,
@@ -45,6 +46,9 @@ public sealed class Sc2MarineRallyController
         foreach (var retired in _lastRallyCommandLoops.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
             _lastRallyCommandLoops.Remove(retired);
 
+        if (liveMarineTags.Count == 0)
+            _squadDispatched = false;
+
         // Marine four entering production starts a real rendezvous at the
         // producing Barracks. Early Marines occupy distinct box slots around it;
         // the squad does not begin its cross-map advance until all four have
@@ -67,7 +71,7 @@ public sealed class Sc2MarineRallyController
             X: rendezvousAnchor.X + rendezvousOffsets[index].X,
             Y: rendezvousAnchor.Y + rendezvousOffsets[index].Y)).ToArray();
 
-        var allFourAssembled = squadTags.Length == 4 && decisions
+        var allFourAssembled = _squadDispatched || (squadTags.Length == 4 && decisions
             .Where(decision => squadTags.Contains(decision.MarineTag))
             .All(decision =>
             {
@@ -79,7 +83,9 @@ public sealed class Sc2MarineRallyController
                 var dx = marine.PositionX - slot.X;
                 var dy = marine.PositionY - slot.Y;
                 return dx * dx + dy * dy <= ArrivalRadiusSquared;
-            });
+            }));
+        if (allFourAssembled)
+            _squadDispatched = true;
 
         var targetsByTag = new Dictionary<ulong, (float X, float Y)>();
         if (!allFourAssembled)

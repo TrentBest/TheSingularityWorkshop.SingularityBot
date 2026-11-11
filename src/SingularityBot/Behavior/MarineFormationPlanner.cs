@@ -50,7 +50,7 @@ public static class MarineFormationPlanner
 
         return local.Select(point => (
             X: sideX * point.Item1 + forwardX * point.Item2,
-            Y: sideY * point.X + forwardY * point.Y)).ToArray();
+            Y: sideY * point.Item1 + forwardY * point.Item2)).ToArray();
     }
 
     private static (float X, float Y)[] Box(int count)

@@ -23,7 +23,7 @@ Prove a sustainable Terran economy and production loop, then prove its tactical 
 4. Expand the opening through follow-up supply, additional Barracks, and a resource-derived friendly expansion.
 5. Establish four Barracks and sustain Marine production without gas while protecting worker production and expansion reserves.
 6. Assemble Marines at the producing Barracks: existing Marines rendezvous with the fourth Marine before the squad is dispatched.
-7. Scout and hold a map-derived safe observation point at the bottom of the enemy ramp, preserving vision without climbing the ramp.
+7. Send the first Marine to the farthest safe, non-enemy sector adjacent to our starting sector to watch for cannon rushes, proxies, worker rushes and other cheese; keep it separate from the first four-Marine pressure squad.
 8. Measure economy, production, movement, combat and outcomes from game-loop diagnostics; replay and compare controlled matches.
 
 The first worker, construction and production stages have progressed beyond the original single-Depot prototype and have controller regression coverage. The current `development` head also has a regression test for the four-Marine rendezvous gate. These are implementation and automated-test facts—not proof that SC2 pathing, ramp safety, the complete four-Barracks economy, or the full opening has succeeded in a live match. The latest recorded GitHub Actions Build and Sith Policy runs passed for commit [`42f943e14fcc2d85fb3b83ec01ae0f5f74729010`](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/commit/42f943e14fcc2d85fb3b83ec01ae0f5f74729010). Consult [the roadmap](docs/roadmap.md) and [CiAi evidence workflow](docs/ciai-evidence.md) for the exact proof boundaries.

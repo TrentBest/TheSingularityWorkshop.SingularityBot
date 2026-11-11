@@ -93,12 +93,12 @@ public sealed class BuildJobRuntime
     private readonly Dictionary<long, BuildJobContext> _jobs = new();
     private readonly Dictionary<long, FSMHandle> _handles = new();
     private long _nextId;
-    private bool _registered;
+    private static bool _registered;
 
     public IReadOnlyCollection<BuildJobContext> Jobs => _jobs.Values.ToArray();
     public int ActiveCount => _jobs.Values.Count(job => !job.IsCompleted && !job.IsFailed);
 
-    public void Register()
+    public static void RegisterDefinition()
     {
         if (_registered) return;
         FSM_API.Create.CreateFiniteStateMachine(FsmName, processRate: 1, processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)

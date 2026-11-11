@@ -571,6 +571,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingBuilder.OnActionResult(null, _buildJobs);
             if (_openingMarineActionSubmitted)
                 _openingMarine.OnActionResult(null, _buildJobs);
+            if (_supplyDepotExpansionActionSubmitted)
+                _supplyDepotExpansion.OnActionResult(null, _buildJobs);
             if (_secondBarracksActionSubmitted)
                 _secondBarracks.OnActionResult(null);
             if (_barracksProductionActionSubmitted)

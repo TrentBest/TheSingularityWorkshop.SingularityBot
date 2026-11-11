@@ -42,15 +42,14 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
             assignments, new HashSet<ulong>());
 
-        Assert.NotNull(move);
-        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Null(move);
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
         Assert.NotNull(controller.TakePlacementQuery(gameData));
     }
 
     [Fact]
-    public void ComparesCargoReturningCrewMemberAgainstEmptyCrewMember()
+    public void LetsLoadedBuilderDepositMineralsBeforeLeavingForConstruction()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -64,14 +63,13 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
-        // A worker already carrying its completed mineral load is dispatched
-        // directly to the site; it must not return to the Command Center first.
-        Assert.NotNull(action);
-        Assert.Equal(16, action.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(10UL, action.ActionRaw.UnitCommand.UnitTags[0]);
+        // A loaded worker whose current order returns it to the town hall keeps
+        // that order; the builder is reserved but not redirected mid-trip.
+        Assert.Null(action);
         Assert.Equal(10UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(10));
         Assert.False(assignments.IsReserved(11));
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
     }
 
     [Fact]
@@ -133,13 +131,8 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
-        Assert.NotNull(move);
-        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.False(move.ActionRaw.UnitCommand.QueueCommand);
-        Assert.Equal(site.X, move.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
-        controller.OnActionResult(ActionResult.Success);
-        Assert.True(controller.IsDispatched);
+        Assert.Null(move);
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
 
         Assert.Null(controller.TryCreateAction(Snapshot(99, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", site.X, site.Y),
@@ -156,7 +149,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void ReplacesStagingMoveWhenPlacementQuerySelectsAnotherSite()
+    public void MovesDirectlyToTheAcceptedPlacementWithoutAnIntermediateStagingMove()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -272,7 +265,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, data,
             assignments, Crew(10), preferredBuilderTag: 11,
             releaseBuilderOnCompletion: true);
-        Assert.NotNull(move);
+        Assert.Null(move);
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
 
@@ -355,7 +348,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10), minerals[0], minerals[1], minerals[2], minerals[3]),
             Map(), gameData, assignments, Crew(10));
 
-        Assert.NotNull(action);
+        Assert.Null(action);
         var query = controller.TakePlacementQuery(gameData);
         Assert.NotNull(query);
         var target = query.Placements[0].TargetPos;
@@ -381,10 +374,9 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
-        Assert.NotNull(selection);
-        Assert.Equal(16, selection.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, selection.ActionRaw.UnitCommand.UnitTags[0]);
-        controller.OnActionResult(ActionResult.Success);
+        Assert.Null(selection);
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
     }
 
     private static HashSet<ulong> Crew(params ulong[] tags) => new(tags);

@@ -535,21 +535,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _supplyDepotExpansionActionSubmitted = false;
             }
 
-            // Secondary Barracks are persistent Marine factories. Keep them ahead
-            // of optional Orbital spending so the Marine economy gets first claim.
-            if (secondBarracksAction is null && expansionCommandCenterAction is null && builderAction is null && marineAction is null && sprayAction is null)
-            {
-                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(normalized, _gameData, _buildJobs, reservedInfrastructureMinerals);
-                _barracksProductionActionSubmitted = barracksProductionAction is not null;
-            }
-            else
-            {
-                _barracksProductionActionSubmitted = false;
-            }
-
-            // Orbital upgrades/MULEs are lower priority than SCV, construction,
-            // and Marine production. This avoids spending the same minerals twice.
-            if (builderAction is null && marineAction is null && sprayAction is null && barracksProductionAction is null && expansionCommandCenterAction is null)
+            // The Orbital upgrade unlocks MULE income and must not be starved
+            // forever by an always-busy Marine production line. Construction and
+            // the four-Barracks expansion milestone retain higher priority.
+            if (secondBarracksAction is null && builderAction is null && marineAction is null &&
+                sprayAction is null && expansionCommandCenterAction is null)
             {
                 orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData, reservedInfrastructureMinerals);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
@@ -557,6 +547,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             else
             {
                 _orbitalSupportActionSubmitted = false;
+            }
+
+            // Secondary Barracks produce Marines whenever no higher-priority
+            // infrastructure or Orbital action claimed this frame.
+            if (orbitalSupportAction is null && secondBarracksAction is null &&
+                expansionCommandCenterAction is null && builderAction is null &&
+                marineAction is null && sprayAction is null)
+            {
+                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(
+                    normalized, _gameData, _buildJobs, reservedInfrastructureMinerals);
+                _barracksProductionActionSubmitted = barracksProductionAction is not null;
+            }
+            else
+            {
+                _barracksProductionActionSubmitted = false;
             }
 
             var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);

@@ -405,7 +405,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // construction. It has its own SCV, so this overlaps the two
                 // construction timers instead of serializing them.
                 secondBarracksAction = _secondBarracks.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
+                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs,
+                    firstMarineObserved: _openingMarine.MarineObserved);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 assignments = _workerAssignments.Reconcile(normalized);
 

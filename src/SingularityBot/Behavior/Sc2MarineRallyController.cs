@@ -11,6 +11,7 @@ namespace SingularityBot.Behavior;
 public sealed class Sc2MarineRallyController
 {
     private readonly Dictionary<ulong, uint> _lastRallyCommandLoops = new();
+    private readonly Dictionary<ulong, MapPoint> _lastRallyTargets = new();
     private const uint RetryAfterGameLoops = 44;
     private const float RallyOffset = 30f;
     private const float ArrivalRadiusSquared = 4f;
@@ -46,6 +47,8 @@ public sealed class Sc2MarineRallyController
 
         foreach (var retired in _lastRallyCommandLoops.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
             _lastRallyCommandLoops.Remove(retired);
+        foreach (var retired in _lastRallyTargets.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
+            _lastRallyTargets.Remove(retired);
 
         if (liveMarineTags.Count == 0)
         {
@@ -161,19 +164,34 @@ public sealed class Sc2MarineRallyController
                 continue;
 
             var destination = targetsByTag[marine.Tag];
-            var dx = marine.PositionX - destination.X;
-            var dy = marine.PositionY - destination.Y;
-            if (dx * dx + dy * dy <= ArrivalRadiusSquared)
+            var finalDx = marine.PositionX - destination.X;
+            var finalDy = marine.PositionY - destination.Y;
+            if (finalDx * finalDx + finalDy * finalDy <= ArrivalRadiusSquared)
             {
                 _lastRallyCommandLoops.Remove(marine.Tag);
+                _lastRallyTargets.Remove(marine.Tag);
                 continue;
+            }
+
+            // Formation members advance through short local waypoints rather than
+            // asking SC2 to pathfind the entire cross-map route in one command.
+            // This keeps each Marine close to its assigned slot and reduces the
+            // tendency for trailing units to route around the Marine ahead.
+            if (_lastRallyTargets.TryGetValue(marine.Tag, out var priorTarget) &&
+                DistanceSquared(marine.PositionX, marine.PositionY, priorTarget.X, priorTarget.Y) <= ArrivalRadiusSquared)
+            {
+                _lastRallyCommandLoops.Remove(marine.Tag);
+                _lastRallyTargets.Remove(marine.Tag);
             }
 
             if (_lastRallyCommandLoops.TryGetValue(marine.Tag, out var lastCommand) &&
                 observation.GameLoop < lastCommand + RetryAfterGameLoops)
                 continue;
 
+            var waypoint = StepToward(
+                marine.PositionX, marine.PositionY, destination.X, destination.Y, 7f);
             _lastRallyCommandLoops[marine.Tag] = observation.GameLoop;
+            _lastRallyTargets[marine.Tag] = waypoint;
             actions.Add(new SC2APIProtocol.Action
             {
                 ActionRaw = new ActionRaw
@@ -182,7 +200,7 @@ public sealed class Sc2MarineRallyController
                     {
                         AbilityId = checked((int)gameData.MoveAbilityId.Value),
                         UnitTags = { marine.Tag },
-                        TargetWorldSpacePos = new Point2D { X = destination.X, Y = destination.Y },
+                        TargetWorldSpacePos = new Point2D { X = waypoint.X, Y = waypoint.Y },
                         QueueCommand = false
                     }
                 }
@@ -221,6 +239,17 @@ public sealed class Sc2MarineRallyController
                 }
             }
         };
+
+    private static MapPoint StepToward(float x, float y, float targetX, float targetY, float maxDistance)
+    {
+        var dx = targetX - x;
+        var dy = targetY - y;
+        var distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance <= maxDistance || distance <= 0.001f)
+            return new MapPoint(targetX, targetY);
+        var scale = maxDistance / distance;
+        return new MapPoint(x + dx * scale, y + dy * scale);
+    }
 
     private static float DistanceSquared(float x1, float y1, float x2, float y2)
     {

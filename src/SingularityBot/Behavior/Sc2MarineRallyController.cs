@@ -35,8 +35,6 @@ public sealed class Sc2MarineRallyController
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
         var rallyPoint = map.Side.EnemyStart - direction * RallyOffset;
-        if (!map.Bounds.Contains(rallyPoint) || map.Side.Assess(rallyPoint) != MapSide.Enemy)
-            return Array.Empty<SC2APIProtocol.Action>();
 
         var actions = new List<SC2APIProtocol.Action>();
         var liveMarineTags = observation.Units
@@ -63,15 +61,16 @@ public sealed class Sc2MarineRallyController
             _scoutTarget = null;
         }
 
-        _scoutTag ??= liveMarineTags.OrderBy(tag => tag).Cast<ulong?>().FirstOrDefault();
+        _scoutTag ??= liveMarineTags.OrderBy(tag => tag).Select(tag => (ulong?)tag).FirstOrDefault();
         var scoutActions = new List<SC2APIProtocol.Action>();
         if (_scoutTag is ulong scoutTag)
         {
             _scoutTarget ??= FindFriendlyObservationSector(map);
+            var hasScoutDecision = decisions.Any(item => item.MarineTag == scoutTag);
             var scoutDecision = decisions.FirstOrDefault(item => item.MarineTag == scoutTag);
             var scout = observation.Units.FirstOrDefault(unit =>
                 unit.Tag == scoutTag && unit.IsLiveVisible && unit.HasPosition);
-            if (_scoutTarget is MapPoint scoutTarget && scout is not null &&
+            if (_scoutTarget is MapPoint scoutTarget && scout is not null && hasScoutDecision &&
                 scoutDecision.Action == MarineTacticalAction.Hold && scoutDecision.TargetTag is null)
             {
                 var scoutDistanceSquared = DistanceSquared(
@@ -93,6 +92,9 @@ public sealed class Sc2MarineRallyController
         // producing Barracks. Early Marines occupy distinct box slots around it;
         // the squad does not begin its cross-map advance until all four have
         // reached their assigned slots.
+        if (!map.Bounds.Contains(rallyPoint) || map.Side.Assess(rallyPoint) != MapSide.Enemy)
+            return scoutActions;
+
         var squadTags = liveMarineTags
             .Where(tag => tag != _scoutTag)
             .OrderBy(tag => tag)
@@ -202,7 +204,7 @@ public sealed class Sc2MarineRallyController
             .OrderByDescending(point => point.DistanceSquaredTo(map.Side.FriendlyStart))
             .ThenBy(point => point.X)
             .ThenBy(point => point.Y)
-            .Cast<MapPoint?>()
+            .Select(point => (MapPoint?)point)
             .FirstOrDefault();
     }
 

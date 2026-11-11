@@ -50,7 +50,9 @@ public sealed class Sc2OpeningBuilderController
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
-        BuildJobRuntime buildJobs = null)
+        BuildJobRuntime buildJobs = null,
+        ulong? preferredBuilderTag = null,
+        bool releaseBuilderOnCompletion = false)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -105,7 +107,7 @@ public sealed class Sc2OpeningBuilderController
             var stagingPoint = _candidatePoints[0];
             var selected = observation.Units
                 .Where(unit => IsLiveScv(unit) &&
-                               constructionCrewTags.Contains(unit.Tag) &&
+                               (constructionCrewTags.Contains(unit.Tag) || unit.Tag == preferredBuilderTag) &&
                                !assignments.IsReserved(unit.Tag))
                 .Select(worker => new
                 {
@@ -114,7 +116,8 @@ public sealed class Sc2OpeningBuilderController
                         worker.PositionX, worker.PositionY,
                         stagingPoint.X, stagingPoint.Y))
                 })
-                .OrderBy(candidate => candidate.EstimatedArrivalDistance)
+                .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag ? 0 : 1)
+                .ThenBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
                 .FirstOrDefault();
 
@@ -172,7 +175,15 @@ public sealed class Sc2OpeningBuilderController
                 if (depot.BuildProgress >= 1f)
                 {
                     _completed = true;
-                    Console.WriteLine($"[Opening] Supply Depot {depot.Tag} completed; construction-crew SCV {_builderTag.Value} remains reserved for the queued Barracks build.");
+                    if (releaseBuilderOnCompletion && _builderTag is ulong completedBuilder)
+                    {
+                        assignments.Unreserve(completedBuilder);
+                        Console.WriteLine($"[Opening] Supply Depot {depot.Tag} completed; recycled SCV {completedBuilder} back to the worker pool.");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[Opening] Supply Depot {depot.Tag} completed; construction-crew SCV {_builderTag.Value} remains reserved for the queued Barracks build.");
+                    }
                 }
                 return null;
             }

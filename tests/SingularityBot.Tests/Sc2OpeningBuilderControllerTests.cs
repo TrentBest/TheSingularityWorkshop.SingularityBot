@@ -131,8 +131,10 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
-        Assert.Null(move);
-        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(site.X, move.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
+        controller.OnActionResult(ActionResult.Success);
 
         Assert.Null(controller.TryCreateAction(Snapshot(99, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", site.X, site.Y),

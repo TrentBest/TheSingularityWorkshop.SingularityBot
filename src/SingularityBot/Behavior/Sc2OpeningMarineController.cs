@@ -202,6 +202,13 @@ public sealed class Sc2OpeningMarineController
 
         if (_marineTrainingRequested && observation.GameLoop <= _marineTrainingRequestGameLoop)
             return null;
+        if (_marineTrainingRequested && _marineBuildJobId is long pendingJobId &&
+            buildJobs is not null && buildJobs.TryGet(pendingJobId, out var pendingJob) &&
+            !pendingJob.IsExecuting && observation.GameLoop > _marineTrainingRequestGameLoop + 8)
+        {
+            pendingJob.Fail("Opening Barracks training order was not observed before retry timeout.", observation.GameLoop);
+            _marineBuildJobId = null;
+        }
         _marineTrainingRequested = false;
 
         if (observation.Minerals < gameData.MarineMineralCost ||

@@ -1,7 +1,7 @@
 # Windows Development Setup and Local Terran Testing
 
 **Target:** local, private StarCraft II bot-vs-computer development on Windows  
-**Current status:** prerequisites and launch path are documented; the first active Terran economy controller is still being implemented. A successful process launch is not evidence that the bot can yet play.
+**Current status:** the local Terran bot has a four-Barracks Marine-production path, observation-driven construction/production job tracking, and a Marine combat planner with focus fire, cooldown repositioning and withdrawal. Automated tests pass; live-match performance against the intended opponent is not yet established. A successful launch is not evidence of a win.
 
 ## 1. Install the development prerequisites
 
@@ -82,7 +82,7 @@ AcolyteLE.SC2Map
 
 The adapter checks the StarCraft II installation's `Maps` directory first, then searches its subfolders for that exact filename. You can keep folders such as `Maps\\Ladder2017Season3\\` intact; do not delete them just to make the map lookup work. If the same filename exists in more than one subfolder, set `MapName` to a relative path (for example, `Ladder2017Season3\\AcolyteLE.SC2Map`) to select the intended copy. The local launcher reports a clear error if no matching map is found.
 
-## 7. Launch a local session (after the Terran controller is ready)
+## 7. Launch a local session
 
 From the repository root:
 
@@ -92,7 +92,7 @@ dotnet run --project .\src\SingularityBot.Runner\SingularityBot.Runner.csproj --
 
 With no arguments, the runner selects the local single-player path. Do not pass ladder arguments. Close the game normally when the match ends; if startup fails, preserve the full console exception and the contents of `ExecuteInfo.txt` with personal paths redacted.
 
-## 8. What we will verify in the first Terran match
+## 8. What to verify in the next Terran match
 
 The first test is not about winning. We will record whether the bot:
 
@@ -100,10 +100,12 @@ The first test is not about winning. We will record whether the bot:
 2. Observes its Command Center, SCVs, mineral fields and resource/supply state.
 3. Keeps each SCV's FSM context tied to its stable unit tag and retires it when the unit disappears.
 4. Assigns workers without issuing duplicate or stale commands.
-5. Builds a Supply Depot, then a Barracks, then trains a Marine.
-6. Completes the sequence without invalid actions or unintended supply blocks.
+5. Completes the Supply Depot and Barracks construction chain, then expands toward four Barracks.
+6. Produces Marines from secondary Barracks without duplicate or rejected training commands.
+7. Uses Marine combat decisions to focus fire, reposition during cooldown, and withdraw away from threats when appropriate.
+8. Records whether the army survives, reinforces, and converts production into effective engagements.
 
-We will then compare worker assignment strategies using the same map, opponent, game speed and initial conditions.
+Run the first match as a systems and behavior smoke test. Compare subsequent matches with the same map, opponent, game speed and initial conditions; a passing unit suite does not establish combat readiness.
 
 ## Troubleshooting
 

@@ -282,7 +282,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 !normalized.DeadUnitTags.Contains(unit.Tag)).ToArray();
             var secondBarracksUnderConstruction = observedBarracks.Length >= 2 &&
                 observedBarracks.Any(unit => unit.BuildProgress < 1f);
-            if (_secondBarracks.RequiresCommandCenter)
+            var observedDepotCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag));
+            var secondBarracksComplete = observedBarracks.Length >= 2 &&
+                observedBarracks.All(unit => unit.BuildProgress >= 1f);
+            var expansionCommandCenterPending = _secondBarracks.RequiresCommandCenter ||
+                (secondBarracksComplete && observedDepotCount >= 2 &&
+                 !_expansionCommandCenter.IsStarted &&
+                 normalized.Units.Count(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                     (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+                      unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+                      unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase))) < 2);
+            if (expansionCommandCenterPending)
                 reservedProductionMinerals = _gameData.CommandCenterMineralCost;
             else if (_secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction)
                 reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
@@ -630,6 +644,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarineActionSubmitted = false;
             _secondBarracksActionSubmitted = false;
             _supplyDepotExpansionActionSubmitted = false;
+            _expansionCommandCenterActionSubmitted = false;
             _barracksProductionActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
             return;

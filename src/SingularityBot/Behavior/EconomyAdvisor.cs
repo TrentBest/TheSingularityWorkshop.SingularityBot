@@ -46,8 +46,11 @@ public readonly record struct EconomyAdvisorCosts(
 /// reservation. It never submits actions or assumes that a reservation makes
 /// a build legal.
 /// </summary>
-public sealed class EconomyAdvisor
+public sealed class EconomyAdvisor : IStrategicAdvisor
 {
+    public AdvisorDomain Domain => AdvisorDomain.Economy;
+    public GamePhase CurrentPhase { get; set; } = GamePhase.Early;
+    public int ComputeWeight => AdvisorWorkScheduler.GetWeights(CurrentPhase)[Domain];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true

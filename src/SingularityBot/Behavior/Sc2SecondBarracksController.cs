@@ -21,8 +21,6 @@ public sealed class Sc2SecondBarracksController
     private long? _buildJobId;
     private ulong? _preferredBuilderTag;
     private bool _supplyDepotGateSatisfied;
-    private bool _commandCenterGateSatisfied;
-    public bool RequiresCommandCenter { get; private set; }
     public ulong? PreferredBuilderTag => _preferredBuilderTag;
     public bool RequiresSupplyDepot { get; private set; }
 
@@ -56,13 +54,6 @@ public sealed class Sc2SecondBarracksController
             unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
         var completedCount = barracks.Count(unit => unit.BuildProgress >= 1f);
-        if (_targetBarracksCount == 3 && _supplyDepotGateSatisfied &&
-            !_commandCenterGateSatisfied && completedCount >= 2)
-        {
-            RequiresCommandCenter = true;
-            return null;
-        }
-
         if (completedCount >= _targetBarracksCount)
         {
             ReleaseBuilder(assignments);
@@ -83,12 +74,6 @@ public sealed class Sc2SecondBarracksController
                 return null;
             }
             _supplyDepotGateSatisfied = false;
-            if (_targetBarracksCount == 3 && !_commandCenterGateSatisfied)
-            {
-                RequiresCommandCenter = true;
-                Console.WriteLine("[Opening] Pausing before Barracks three until the expansion Command Center has started.");
-                return null;
-            }
             Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
             return null;
         }
@@ -221,13 +206,6 @@ public sealed class Sc2SecondBarracksController
         return query;
     }
 
-    public void NotifyCommandCenterStarted()
-    {
-        if (!RequiresCommandCenter) return;
-        _commandCenterGateSatisfied = true;
-        RequiresCommandCenter = false;
-        Console.WriteLine("[Opening] Expansion Command Center construction observed; Barracks three may proceed.");
-    }
 
     public void NotifySupplyDepotCompleted(ulong? recycledBuilderTag)
     {

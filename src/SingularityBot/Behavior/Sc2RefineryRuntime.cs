@@ -153,7 +153,8 @@ public sealed class Sc2RefineryRuntime
             IsGeyser(unit.UnitKind) && !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
         foreach (var geyser in geysers)
         {
-            var site = FindOrCreateSite(geyser.Tag, geyser.PositionX, geyser.PositionY, observation.GameLoop);
+            var site = FindNearestSite(geyser.PositionX, geyser.PositionY) ??
+                       FindOrCreateSite(geyser.Tag, geyser.PositionX, geyser.PositionY, observation.GameLoop);
             site.ObserveGeyser(geyser, observation.GameLoop);
         }
 

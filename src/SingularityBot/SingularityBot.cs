@@ -312,6 +312,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                          !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)))
                 reservedProductionMinerals = _gameData.MarineMineralCost;
 
+            // Once the first SCV training order has been observed, the first Supply Depot
+            // owns the opening's mineral budget. Do not queue SCV #2 (or later workers)
+            // ahead of it: the previous run reached 15/15 supply around 36 seconds but
+            // did not complete the Depot until roughly 70 seconds. Resume worker production
+            // immediately after the Depot is observed complete.
+            if (_initialScvProductionObserved && !_openingBuilder.IsCompleted)
+                reservedProductionMinerals = uint.MaxValue;
+
             reservedInfrastructureMinerals = reservedProductionMinerals;
             var productionAction = _openingProduction.TryCreateScvTrainingAction(
                 normalized, _gameData, reservedProductionMinerals);

@@ -55,6 +55,23 @@ public sealed class BuildJobContextTests
     }
 
     [Fact]
+    public void MarineProductionCompletesOnlyWhenResultUnitIsObserved()
+    {
+        var job = new BuildJobContext(5, "Marine", null, 701, 500);
+
+        job.MarkStarted(510);
+        Assert.Equal(0f, job.Progress);
+        Assert.False(job.IsCompleted);
+
+        job.ObserveResult(9101, 1f, 900);
+
+        Assert.Equal(9101UL, job.ResultUnitTag);
+        Assert.Equal(100f, job.Progress);
+        Assert.True(job.IsCompleted);
+        Assert.False(job.IsExecuting);
+    }
+
+    [Fact]
     public void ResultIdentityCannotChangeAfterAssociation()
     {
         var job = new BuildJobContext(4, "Barracks", 13, null, 400);

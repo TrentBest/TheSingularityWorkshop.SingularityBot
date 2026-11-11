@@ -76,9 +76,11 @@ public sealed class Sc2MarineRallyController
             X: rendezvousAnchor.X + rendezvousOffsets[index].X,
             Y: rendezvousAnchor.Y + rendezvousOffsets[index].Y)).ToArray();
 
-        var allFourAssembled = _squadDispatched || (squadTags.Length == 4 && decisions
+        var squadDecisions = decisions
             .Where(decision => squadTags.Contains(decision.MarineTag))
-            .All(decision =>
+            .ToArray();
+        var allFourAssembled = _squadDispatched || (squadTags.Length == 4 &&
+            squadDecisions.Length == 4 && squadDecisions.All(decision =>
             {
                 var marine = observation.Units.FirstOrDefault(unit =>
                     unit.Tag == decision.MarineTag && unit.IsLiveVisible && unit.HasPosition);

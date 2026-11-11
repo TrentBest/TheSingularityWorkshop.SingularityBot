@@ -166,9 +166,10 @@ public sealed class Sc2RefineryRuntime
         {
             var site = FindNearestSite(refinery.PositionX, refinery.PositionY) ??
                        FindOrCreateSite(refinery.Tag, refinery.PositionX, refinery.PositionY, observation.GameLoop);
+            var completedBuilderTag = site.BuilderTag;
             site.ObserveRefinery(refinery, observation.GameLoop);
             _buildSubmittedAt.Remove(site.GeyserTag);
-            if (site.BuilderTag is ulong builderTag)
+            if (completedBuilderTag is ulong builderTag)
                 assignments.Unreserve(builderTag);
         }
 
@@ -190,7 +191,9 @@ public sealed class Sc2RefineryRuntime
                 _buildSubmittedAt.Remove(site.GeyserTag);
             }
 
-            if (site.RemainingVespene == 0 && (site.IsOperational || site.IsDestroyed))
+            if (site.IsDepleted)
+                ReleaseGasWorkers(site, assignments);
+            else if (site.RemainingVespene == 0 && (site.IsOperational || site.IsDestroyed))
             {
                 site.MarkDepleted(observation.GameLoop);
                 ReleaseGasWorkers(site, assignments);

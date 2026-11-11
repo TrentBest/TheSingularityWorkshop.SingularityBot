@@ -30,6 +30,7 @@ public sealed class Sc2OpeningMarineController
     public bool BarracksComplete => _barracksComplete;
     public bool MarineObserved { get; private set; }
     public bool MarineDeployed => _deployed;
+    public int CandidateCount => _candidatePoints.Count;
 
     public SC2APIProtocol.Action TryCreateAction(
         NormalizedObservation observation,

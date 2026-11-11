@@ -1,3 +1,5 @@
+#nullable enable annotations
+
 using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
 

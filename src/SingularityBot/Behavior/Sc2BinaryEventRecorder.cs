@@ -97,6 +97,8 @@ internal sealed class Sc2BinaryEventRecorder : IDisposable
     private const ushort MarineDecision = 3;
     private const ushort SubmittedAction = 4;
     private const ushort ActionResult = 5;
+    private const ushort UnitSnapshot = 6;
+    private const ushort EconomySnapshot = 7;
 
     private FileStream _file;
     private StreamBinaryStream _stream;
@@ -160,6 +162,29 @@ internal sealed class Sc2BinaryEventRecorder : IDisposable
     {
         Write(ActionResult, 0, index, abilityId, result, gameLoop);
     }
+
+    public void RecordEconomySnapshot(NormalizedObservation observation, int activeBuildJobs)
+    {
+        Write(EconomySnapshot, 0, observation.Minerals, observation.Vespene,
+            $"foodUsed={observation.FoodUsed};foodCap={observation.FoodCap};scvs={Count(observation, "SCV")};marines={Count(observation, "Marine")};barracks={Count(observation, "Barracks")};depots={Count(observation, "SupplyDepot") + Count(observation, "SupplyDepotLowered")};commandCenters={Count(observation, "CommandCenter")};orbitals={Count(observation, "OrbitalCommand")};refineries={Count(observation, "Refinery")};engineeringBays={Count(observation, "EngineeringBay")};activeBuildJobs={activeBuildJobs}", observation.GameLoop);
+    }
+
+    public void RecordUnitSnapshots(NormalizedObservation observation)
+    {
+        foreach (var unit in observation.Units.Where(unit => unit.IsLiveVisible))
+        {
+            var orders = string.Join("|", unit.Orders.Select(order =>
+                $"{order.AbilityId}:{order.TargetUnitTag?.ToString() ?? ""}:{order.TargetPositionX?.ToString("F1") ?? ""}:{order.TargetPositionY?.ToString("F1") ?? ""}"));
+            Write(UnitSnapshot, unit.Tag, unit.UnitTypeId,
+                (long)Math.Round(unit.Health * 1000f),
+                $"kind={unit.UnitKind};alliance={unit.Alliance};x={unit.PositionX:F2};y={unit.PositionY:F2};healthMax={unit.HealthMax:F1};shield={unit.Shield:F1};buildProgress={unit.BuildProgress:F4};energy={unit.Energy:F1};cooldown={unit.WeaponCooldownRemaining:F2};flying={unit.IsFlying};cargo={unit.HasCargo};orders={orders}",
+                observation.GameLoop);
+        }
+    }
+
+    private static int Count(NormalizedObservation observation, string kind) =>
+        observation.Units.Count(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            unit.UnitKind.Equals(kind, StringComparison.OrdinalIgnoreCase));
 
     private void Write(ushort eventType, ulong entityTag, long valueA, long valueB, string details, uint gameLoop)
     {

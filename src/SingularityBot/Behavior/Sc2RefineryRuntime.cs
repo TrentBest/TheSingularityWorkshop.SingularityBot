@@ -16,6 +16,7 @@ public sealed class RefinerySiteContext : IStateContext
     {
         if (geyserTag == 0) throw new ArgumentOutOfRangeException(nameof(geyserTag));
         GeyserTag = geyserTag;
+        CurrentGeyserTag = geyserTag;
         PositionX = x;
         PositionY = y;
         LastObservedGameLoop = gameLoop;
@@ -24,6 +25,7 @@ public sealed class RefinerySiteContext : IStateContext
     }
 
     public ulong GeyserTag { get; }
+    public ulong CurrentGeyserTag { get; private set; }
     public string Name { get; set; }
     public bool IsValid { get; set; }
     public float PositionX { get; private set; }
@@ -32,6 +34,7 @@ public sealed class RefinerySiteContext : IStateContext
     public ulong? RefineryTag { get; private set; }
     public uint RemainingVespene { get; private set; }
     public bool HasObservedGeyser { get; private set; }
+    public bool IsGeyserVisible { get; private set; }
     public bool IsBuilding { get; private set; }
     public bool IsOperational { get; private set; }
     public bool IsDepleted { get; private set; }
@@ -39,8 +42,12 @@ public sealed class RefinerySiteContext : IStateContext
     public ulong? BuilderTag { get; private set; }
     public HashSet<ulong> GasWorkerTags { get; } = new();
 
+    public void BeginFrame() => IsGeyserVisible = false;
+
     public void ObserveGeyser(UnitObservationFacts geyser, uint gameLoop)
     {
+        CurrentGeyserTag = geyser.Tag;
+        IsGeyserVisible = true;
         PositionX = geyser.PositionX;
         PositionY = geyser.PositionY;
         RemainingVespene = geyser.VespeneContents;
@@ -132,7 +139,7 @@ public sealed class Sc2RefineryRuntime
             .Transition("Operational", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
             .Transition("Operational", "Destroyed", ctx => ctx is RefinerySiteContext site && site.IsDestroyed && !site.IsDepleted)
             .Transition("Building", "Destroyed", ctx => ctx is RefinerySiteContext site && site.IsDestroyed && !site.IsDepleted)
-            .Transition("Destroyed", "Available", ctx => ctx is RefinerySiteContext site && site.HasObservedGeyser && !site.IsDepleted)
+            .Transition("Destroyed", "Available", ctx => ctx is RefinerySiteContext site && site.IsGeyserVisible && !site.IsDepleted)
             .Transition("Destroyed", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
             .WithInitialState("Available")
             .BuildDefinition();
@@ -151,6 +158,8 @@ public sealed class Sc2RefineryRuntime
         ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(constructionCrewTags);
         if (!_registered) throw new InvalidOperationException("Refinery-site FSM must be registered before the match.");
+
+        foreach (var site in _sites.Values) site.BeginFrame();
 
         var geysers = observation.Units.Where(unit =>
             unit.Alliance == UnitAlliance.Neutral && unit.IsLiveVisible && unit.HasPosition &&
@@ -211,7 +220,7 @@ public sealed class Sc2RefineryRuntime
             foreach (var site in _sites.Values.OrderBy(site => DistanceToNearestTownHall(site, observation)))
             {
                 if (site.IsDepleted || site.IsBuilding || site.IsOperational ||
-                    site.RefineryTag.HasValue || !geysers.Any(geyser => geyser.Tag == site.GeyserTag) ||
+                    site.RefineryTag.HasValue || !geysers.Any(geyser => geyser.Tag == site.CurrentGeyserTag) ||
                     _buildSubmittedAt.ContainsKey(site.GeyserTag) ||
                     observation.Minerals < gameData.RefineryMineralCost)
                     continue;
@@ -239,12 +248,12 @@ public sealed class Sc2RefineryRuntime
                         {
                             AbilityId = checked((int)refineryAbility.Value),
                             UnitTags = { builder.Tag },
-                            TargetUnitTag = site.GeyserTag,
+                            TargetUnitTag = site.CurrentGeyserTag,
                             QueueCommand = false
                         }
                     }
                 });
-                Console.WriteLine($"[Refinery] SCV {builder.Tag} ordered to build Refinery on geyser tag {site.GeyserTag}.");
+                Console.WriteLine($"[Refinery] SCV {builder.Tag} ordered to build Refinery on geyser tag {site.CurrentGeyserTag}.");
                 break; // One new gas structure per frame; other sites remain independently eligible.
             }
         }

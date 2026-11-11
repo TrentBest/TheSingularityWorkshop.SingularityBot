@@ -179,6 +179,25 @@ public sealed class MarineCombatPlannerTests
     }
 
     [Fact]
+    public void WithdrawsAwayFromThreatEvenWhenSupportersAreOnEnemyFacingSide()
+    {
+        var catalog = CombatCatalog();
+        var observation = Snapshot(
+            Marine(1, 0, 0, 0),
+            Marine(2, 10, 0, 0),
+            ArmedEnemy(3, 1, 0));
+        var decision = new MarineTacticalDecision(
+            1, 3, MarineTacticalAction.Withdraw, 0, 9, "retreat regression");
+
+        var action = Assert.Single(Sc2MarineCombatActionTranslator.Translate(
+            new[] { decision }, observation, catalog,
+            CombatWeaponProfile.FromCatalog(catalog)));
+
+        Assert.True(action.ActionRaw.UnitCommand.TargetWorldSpacePos.X < 0,
+            "Retreat destination must move away from the enemy, not toward the supporter centroid.");
+    }
+
+    [Fact]
     public void CatalogRetainsAuthoritativeWeaponEnvelopeAndAttackAbility()
     {
         var catalog = CombatCatalog();

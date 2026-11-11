@@ -29,7 +29,7 @@ public sealed class Sc2WorkerProgressWatchdog
         IReadOnlySet<ulong>? alreadyCommandedTags = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
-        if (moveAbilityId is not > 0 || moveAbilityId > int.MaxValue)
+        if (moveAbilityId is not uint moveId || moveId == 0 || moveId > int.MaxValue)
             return Array.Empty<SC2APIProtocol.Action>();
 
         var liveScvs = observation.Units
@@ -49,7 +49,7 @@ public sealed class Sc2WorkerProgressWatchdog
                 continue;
 
             var moveOrder = scv.Orders.FirstOrDefault(order =>
-                order.AbilityId == moveAbilityId.Value &&
+                order.AbilityId == moveId &&
                 order.TargetPositionX.HasValue &&
                 order.TargetPositionY.HasValue);
             if (moveOrder is null)
@@ -108,7 +108,7 @@ public sealed class Sc2WorkerProgressWatchdog
                 {
                     UnitCommand = new ActionRawUnitCommand
                     {
-                        AbilityId = checked((int)moveAbilityId.Value),
+                        AbilityId = checked((int)moveId),
                         UnitTags = { scv.Tag },
                         TargetWorldSpacePos = new Point2D { X = targetX, Y = targetY },
                         QueueCommand = false

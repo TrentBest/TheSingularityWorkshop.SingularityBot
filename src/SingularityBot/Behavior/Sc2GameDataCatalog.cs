@@ -33,7 +33,9 @@ public sealed class Sc2GameDataCatalog
         uint orbitalUpgradeMineralCost,
         uint? muleCallDownAbilityId,
         uint? commandCenterBuildAbilityId,
-        uint commandCenterMineralCost)
+        uint commandCenterMineralCost,
+        uint? refineryBuildAbilityId,
+        uint refineryMineralCost)
     {
         UnitNames = unitNames;
         BuffNames = buffNames;
@@ -60,6 +62,8 @@ public sealed class Sc2GameDataCatalog
         MuleCallDownAbilityId = muleCallDownAbilityId;
         CommandCenterBuildAbilityId = commandCenterBuildAbilityId;
         CommandCenterMineralCost = commandCenterMineralCost;
+        RefineryBuildAbilityId = refineryBuildAbilityId;
+        RefineryMineralCost = refineryMineralCost;
     }
 
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
@@ -98,6 +102,9 @@ public sealed class Sc2GameDataCatalog
     public uint? MuleCallDownAbilityId { get; }
     public uint? CommandCenterBuildAbilityId { get; }
     public uint CommandCenterMineralCost { get; }
+    /// <summary>Build ability and mineral cost sourced from the match's Refinery UnitTypeData.</summary>
+    public uint? RefineryBuildAbilityId { get; }
+    public uint RefineryMineralCost { get; }
 
     public static Sc2GameDataCatalog Create(ResponseData data)
     {
@@ -145,6 +152,8 @@ public sealed class Sc2GameDataCatalog
             string.Equals(unit.Name, "OrbitalCommand", StringComparison.OrdinalIgnoreCase));
         var commandCenter = data.Units.FirstOrDefault(unit =>
             string.Equals(unit.Name, "CommandCenter", StringComparison.OrdinalIgnoreCase));
+        var refinery = data.Units.FirstOrDefault(unit =>
+            string.Equals(unit.Name, "Refinery", StringComparison.OrdinalIgnoreCase));
 
         return new Sc2GameDataCatalog(
             unitNames,
@@ -171,7 +180,9 @@ public sealed class Sc2GameDataCatalog
             orbitalCommand?.MineralCost ?? 0,
             ResolveAbility(data.Abilities, "CalldownMULE", "CallDownMULE"),
             commandCenter?.AbilityId is > 0 ? commandCenter.AbilityId : null,
-            commandCenter?.MineralCost ?? 0);
+            commandCenter?.MineralCost ?? 0,
+            refinery?.AbilityId is > 0 ? refinery.AbilityId : null,
+            refinery?.MineralCost ?? 0);
     }
 
 

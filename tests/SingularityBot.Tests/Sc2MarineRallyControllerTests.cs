@@ -49,7 +49,7 @@ public sealed class Sc2MarineRallyControllerTests
             var marine = marines.Single(unit => unit.Tag == move.ActionRaw.UnitCommand.UnitTags.Single());
             var point = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
             var waypoint = new MapPoint(point.X, point.Y);
-            Assert.True(waypoint.DistanceTo(new MapPoint(marine.PositionX, marine.PositionY)) <= 7.01f);
+            Assert.True(waypoint.DistanceTo(new MapPoint(marine.PositionX, marine.PositionY)) <= 4.01f);
             Assert.True(waypoint.DistanceTo(map.Side.EnemyStart) <
                 new MapPoint(marine.PositionX, marine.PositionY).DistanceTo(map.Side.EnemyStart));
         });

@@ -26,6 +26,7 @@ public sealed class Sc2OpeningMarineController
     private bool _deployed;
     private PendingAction _pendingAction;
     private long? _marineBuildJobId;
+    private long? _barracksBuildJobId;
 
     public ulong? BuilderTag => _builderTag;
     public bool BarracksComplete => _barracksComplete;
@@ -50,6 +51,7 @@ public sealed class Sc2OpeningMarineController
             gameData.MarineMineralCost == 0 || gameData.MoveAbilityId is not > 0)
             return null;
 
+        buildJobs?.ReconcileBarracks(observation);
         if (gameData.MarineTrainAbilityId is > 0)
             buildJobs?.ReconcileMarineProduction(observation, gameData.MarineTrainAbilityId.Value);
 
@@ -147,9 +149,17 @@ public sealed class Sc2OpeningMarineController
                 return null;
             if (_buildSubmitted && observation.GameLoop <= _buildRequestGameLoop + 8)
                 return null;
+            if (_buildSubmitted && _barracksBuildJobId is long staleJobId &&
+                buildJobs is not null && buildJobs.TryGet(staleJobId, out var staleJob) &&
+                !staleJob.IsCompleted && !staleJob.IsFailed)
+                staleJob.Fail("Opening Barracks structure was not observed before build retry.", observation.GameLoop);
 
             _buildSubmitted = true;
             _buildRequestGameLoop = observation.GameLoop;
+            _barracksBuildJobId = buildJobs?.CreateBarracksConstruction(observation.GameLoop, worker.Tag,
+                observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self &&
+                    unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase))
+                    .Select(unit => unit.Tag)).Id;
             Console.WriteLine($"[Opening] Requesting Barracks: SCV={worker.Tag}, ability={gameData.BarracksBuildAbilityId}, minerals={observation.Minerals}, site=({_placement.Value.X:F1},{_placement.Value.Y:F1}).");
             _pendingAction = PendingAction.BuildBarracks;
             return PositionCommand(worker.Tag,
@@ -280,6 +290,10 @@ public sealed class Sc2OpeningMarineController
                     break;
                 case PendingAction.BuildBarracks:
                     _buildSubmitted = false;
+                    if (_barracksBuildJobId is long barracksJobId && buildJobs is not null &&
+                        buildJobs.TryGet(barracksJobId, out var barracksJob))
+                        barracksJob.Fail("SC2 rejected the opening Barracks construction command.", barracksJob.LastObservedGameLoop);
+                    _barracksBuildJobId = null;
                     break;
                 case PendingAction.TrainMarine:
                     _marineTrainingRequested = false;

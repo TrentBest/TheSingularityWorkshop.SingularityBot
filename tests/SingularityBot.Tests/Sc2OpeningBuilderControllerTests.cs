@@ -75,7 +75,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void DispatchesDepotBuilderAsSoonAsTheDepotCostIsAvailable()
+    public void WaitsForSelectedMinerToFinishItsCurrentTripEvenWhenDepotIsAffordable()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -90,15 +90,15 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 
-        // Depot capacity takes priority over preserving the next SCV's 50 minerals.
-        Assert.NotNull(move);
-        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
+        // Reaching the mineral threshold is not permission to interrupt an active
+        // harvest. The builder remains reserved, but its gather order is allowed to finish.
+        Assert.Null(move);
+        Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
     }
 
     [Fact]
-    public void DispatchesAnActiveMineralWorkerWhenStructureAndNextScvAreFunded()
+    public void DoesNotInterruptAnActiveMineralTripEvenWhenStructureAndNextScvAreFunded()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -113,9 +113,8 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 
-        Assert.NotNull(move);
-        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.Null(move);
+        Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
     }
 
@@ -338,7 +337,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void PlacesOpeningDepotBehindObservedMineralLineOnTownHallSide()
+    public void PlacesOpeningDepotBeyondObservedMineralLineAwayFromTownHall()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -366,8 +365,8 @@ public sealed class Sc2OpeningBuilderControllerTests
         var directionY = MathF.Sqrt(0.5f);
         var towardMinerals = (target.X - centerX) * directionX + (target.Y - centerY) * directionY;
 
-        Assert.True(towardMinerals < 0,
-            "The Depot candidate should be on the town-hall side of the observed mineral line.");
+        Assert.True(towardMinerals > 0,
+            "The Depot candidate should be beyond the mineral line, on the side away from the town hall.");
         Assert.InRange(MathF.Sqrt((target.X - centerX) * (target.X - centerX) +
             (target.Y - centerY) * (target.Y - centerY)), 3.5f, 6f);
     }

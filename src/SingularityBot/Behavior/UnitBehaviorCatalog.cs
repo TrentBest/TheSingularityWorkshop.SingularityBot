@@ -58,6 +58,7 @@ public static class UnitBehaviorCatalog
         RegisterStutterStep();
         RegisterCombatUnit();
         ProductionBehaviorCatalog.Register();
+        BuildJobRuntime.RegisterDefinition();
     }
 
     private static void RegisterEntityExistence()

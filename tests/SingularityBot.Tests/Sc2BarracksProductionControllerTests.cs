@@ -43,6 +43,18 @@ public sealed class Sc2BarracksProductionControllerTests
     }
 
     [Fact]
+    public void HoldsSuccessfulRequestAcrossObservationLatencyThenRetries()
+    {
+        var controller = new Sc2BarracksProductionController();
+        Assert.NotNull(controller.TryCreateMarineTrainingAction(Snapshot(50, 10, 15,
+            Fact(100, "Barracks"), Fact(200, "Barracks")), GameData()));
+        Assert.Null(controller.TryCreateMarineTrainingAction(SnapshotAt(101, 50, 10, 15,
+            Fact(100, "Barracks"), Fact(200, "Barracks")), GameData()));
+        Assert.NotNull(controller.TryCreateMarineTrainingAction(SnapshotAt(109, 50, 10, 15,
+            Fact(100, "Barracks"), Fact(200, "Barracks")), GameData()));
+    }
+
+    [Fact]
     public void AdvancesToAnotherBarracksAfterTrainingOrderIsObserved()
     {
         var controller = new Sc2BarracksProductionController();

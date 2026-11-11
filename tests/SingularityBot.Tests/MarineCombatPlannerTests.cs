@@ -179,6 +179,24 @@ public sealed class MarineCombatPlannerTests
     }
 
     [Fact]
+    public void CooldownKitingDoesNotDriftFurtherAwayAfterLeavingEnemyRange()
+    {
+        var catalog = CombatCatalog();
+        var observation = Snapshot(
+            Marine(1, 0, 0, 3),
+            ArmedEnemy(3, 8, 0));
+        var decisions = MarineCombatPlanner.Plan(
+            observation, CombatWeaponProfile.FromCatalog(catalog));
+
+        var action = Assert.Single(Sc2MarineCombatActionTranslator.Translate(
+            decisions, observation, catalog,
+            CombatWeaponProfile.FromCatalog(catalog)));
+
+        Assert.Equal(0f, action.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
+        Assert.NotEqual(0f, action.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
+    }
+
+    [Fact]
     public void WithdrawsAwayFromThreatEvenWhenSupportersAreOnEnemyFacingSide()
     {
         var catalog = CombatCatalog();

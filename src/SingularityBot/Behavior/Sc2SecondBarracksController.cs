@@ -53,6 +53,13 @@ public sealed class Sc2SecondBarracksController
             unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
         var completedCount = barracks.Count(unit => unit.BuildProgress >= 1f);
+        if (_targetBarracksCount == 3 && _supplyDepotGateSatisfied &&
+            !_commandCenterGateSatisfied && completedCount >= 2)
+        {
+            RequiresCommandCenter = true;
+            return null;
+        }
+
         if (completedCount >= _targetBarracksCount)
         {
             ReleaseBuilder(assignments);

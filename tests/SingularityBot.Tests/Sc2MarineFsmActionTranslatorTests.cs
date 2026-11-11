@@ -12,7 +12,7 @@ public sealed class Sc2MarineFsmActionTranslatorTests
     {
         var context = new UnitBehaviorContext(1, "Marine:1", "Marine", false, _ => { })
         {
-            AssignedSector = new SingularityBot.Spatial.SectorId(0, 0),
+            AssignedSector = new global::SingularityBot.Spatial.SectorId(0, 0),
             SectorCenterX = 18,
             SectorCenterY = 22
         };

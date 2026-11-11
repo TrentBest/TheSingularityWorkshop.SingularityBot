@@ -635,6 +635,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             .Where(action => action.ActionRaw?.UnitCommand is not null)
             .SelectMany(action => action.ActionRaw.UnitCommand.UnitTags)
             .ToHashSet();
+        foreach (var reservedWorker in normalized.Units.Where(unit =>
+                     unit.Alliance == UnitAlliance.Self &&
+                     unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) &&
+                     _workerAssignments.IsReserved(unit.Tag)))
+            commandedUnitTags.Add(reservedWorker.Tag);
         actions.AddRange(_workerProgressWatchdog.TryCreateActions(
             normalized, _gameData.MoveAbilityId, commandedUnitTags));
 

@@ -71,26 +71,22 @@ public sealed class Sc2SecondBarracksController
             }
 
             _targetBarracksCount++;
-            if (_targetBarracksCount == 3 && !_supplyDepotGateSatisfied)
-            {
-                RequiresSupplyDepot = true;
-                Console.WriteLine("[Opening] Pausing Barracks expansion after Barracks two; another Supply Depot is required before Barracks three.");
-                return null;
-            }
             _supplyDepotGateSatisfied = false;
             Console.WriteLine($"[Opening] OBSERVED: {_targetBarracksCount - 1} Barracks completed; preparing Barracks {_targetBarracksCount}.");
             return null;
         }
 
         // Keep reconciling the in-progress Barracks while the Depot controller
-        // runs, but do not dispatch another Barracks until the Depot is complete.
-        if (RequiresSupplyDepot || RequiresCommandCenter)
+        // runs. The Depot and next Barracks use separate reserved SCVs and may
+        // progress concurrently; supply capacity is handled by the repeatable
+        // Depot job rather than serializing production-facility construction.
+        if (RequiresCommandCenter)
             return null;
 
         // As soon as Barracks two is observed under construction, use the
         // released first-Barracks SCV to build the next Depot in parallel.
         // Keep the second Barracks worker committed to its own structure and
-        // block Barracks three until the Depot is observed complete.
+        // allow Barracks three to start as soon as its own builder and minerals are available.
         if (_targetBarracksCount == 2 && !_supplyDepotGateSatisfied &&
             barracks.Length >= 2 && completedCount < 2)
         {

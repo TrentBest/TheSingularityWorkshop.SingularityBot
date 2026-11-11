@@ -75,7 +75,22 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             B(marineActionSubmitted), B(spatialMapAvailable),
             expansion?.ExpansionLocation?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             expansion?.ExpansionLocation?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
-            B(expansion?.IsStarted ?? false), B(expansion?.IsComplete ?? false)
+            B(expansion?.IsStarted ?? false), B(expansion?.IsComplete ?? false),
+            openingMarine?.BuilderTag?.ToString(CultureInfo.InvariantCulture) ?? "",
+            openingMarine?.ReleasedBuilderTag?.ToString(CultureInfo.InvariantCulture) ?? "",
+            B(openingMarine?.BarracksComplete ?? false), B(openingMarine?.MarineObserved ?? false),
+            N(secondBarracks?.TargetBarracksCount ?? 0),
+            secondBarracks?.BuilderTag?.ToString(CultureInfo.InvariantCulture) ?? "",
+            secondBarracks?.Site?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            secondBarracks?.Site?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            B(secondBarracks?.RequiresSupplyDepot ?? false),
+            B(secondBarracks?.RequiresCommandCenter ?? false),
+            supplyDepot?.BuilderTag?.ToString(CultureInfo.InvariantCulture) ?? "",
+            supplyDepot?.Placement?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            supplyDepot?.Placement?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            B(supplyDepot?.IsMoveSubmitted ?? false),
+            B(supplyDepot?.IsBuildSubmitted ?? false),
+            B(supplyDepot?.IsCompleted ?? false)
         };
         _writer.WriteLine(string.Join(",", row));
     }

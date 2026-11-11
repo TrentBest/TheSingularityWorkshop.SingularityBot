@@ -158,10 +158,8 @@ public sealed class Sc2SecondBarracksControllerTests
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
             map, data, assignments, crew));
-        Assert.True(controller.RequiresCommandCenter);
+        // Barracks three must not wait for a 400-mineral expansion Command Center.
         Assert.Null(controller.BuilderTag);
-        controller.NotifyCommandCenterStarted();
-        Assert.False(controller.RequiresCommandCenter);
         Assert.Null(controller.TryCreateAction(Snapshot(150,
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
             Fact(12, "SCV", 12, 10),
@@ -201,9 +199,8 @@ public sealed class Sc2SecondBarracksControllerTests
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
             map, data, assignments, new HashSet<ulong> { 11 }));
-        Assert.True(controller.RequiresCommandCenter);
-        Assert.Null(controller.BuilderTag);
-        controller.NotifyCommandCenterStarted();
+        // Once the follow-up Depot is confirmed, Barracks three starts directly;
+        // an expansion Command Center is no longer a production prerequisite.
         Assert.Null(controller.TryCreateAction(Snapshot(300,
             Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),

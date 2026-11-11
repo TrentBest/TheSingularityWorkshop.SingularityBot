@@ -92,6 +92,7 @@ public sealed class BuildJobRuntime
     public const string FsmName = "SingularityBot.BuildJob";
     private readonly Dictionary<long, BuildJobContext> _jobs = new();
     private readonly Dictionary<long, FSMHandle> _handles = new();
+    private readonly Dictionary<long, HashSet<ulong>> _excludedResultTags = new();
     private long _nextId;
     private static bool _registered;
 
@@ -131,11 +132,15 @@ public sealed class BuildJobRuntime
 
     public bool TryGet(long id, out BuildJobContext job) => _jobs.TryGetValue(id, out job);
 
-    public BuildJobContext CreateBarracksConstruction(uint gameLoop, ulong workerTag) =>
-        Create("Barracks", gameLoop, workerTag: workerTag);
+    public BuildJobContext CreateBarracksConstruction(uint gameLoop, ulong workerTag, IEnumerable<ulong> existingBarracksTags)
+    {
+        var job = Create("Barracks", gameLoop, workerTag: workerTag);
+        _excludedResultTags[job.Id] = existingBarracksTags?.ToHashSet() ?? new HashSet<ulong>();
+        return job;
+    }
 
     /// <summary>Associates observed Barracks with their reserved SCV and tracks authoritative build progress.</summary>
-    public void ReconcileBarracks(SingularityBot.Observation.NormalizedObservation observation)
+    public void ReconcileBarracks(global::SingularityBot.Observation.NormalizedObservation observation)
     {
         ArgumentNullException.ThrowIfNull(observation);
         var structures = observation.Units.Where(unit =>
@@ -161,7 +166,8 @@ public sealed class BuildJobRuntime
                 unit.IsLiveVisible && unit.HasPosition && unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase));
             if (worker is null) continue;
 
-            var candidate = structures.Where(unit => !_jobs.Values.Any(other =>
+            var excluded = _excludedResultTags.TryGetValue(job.Id, out var known) ? known : new HashSet<ulong>();
+            var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_jobs.Values.Any(other =>
                     other.Id != job.Id && other.ResultUnitTag == unit.Tag))
                 .Select(unit => new
                 {
@@ -188,6 +194,7 @@ public sealed class BuildJobRuntime
     {
         if (!_jobs.Remove(id, out var job)) return false;
         job.IsValid = false;
+        _excludedResultTags.Remove(id);
         if (_handles.Remove(id, out var handle)) FSM_API.Interaction.DestroyInstance(handle);
         return true;
     }

@@ -481,6 +481,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarineActionSubmitted = false;
             }
 
+            if (_openingMarine.BarracksComplete)
+                _openingBuilder.ReleaseBuilderAfterBarracksHandoff(_workerAssignments);
+
             var firstBarracksObserved = normalized.Units.Any(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&

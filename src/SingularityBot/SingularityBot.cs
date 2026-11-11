@@ -343,7 +343,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (builderAction is null && _openingBuilder.IsCompleted)
             {
                 marineAction = _openingMarine.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag);
+                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag, _buildJobs);
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else
@@ -519,7 +519,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (_openingBuilderActionSubmitted)
                 _openingBuilder.OnActionResult(null);
             if (_openingMarineActionSubmitted)
-                _openingMarine.OnActionResult(null);
+                _openingMarine.OnActionResult(null, _buildJobs);
             if (_secondBarracksActionSubmitted)
                 _secondBarracks.OnActionResult(null);
             if (_barracksProductionActionSubmitted)
@@ -569,7 +569,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
         if (_openingMarineActionSubmitted)
         {
-            _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
             resultIndex++;
         }
         if (_secondBarracksActionSubmitted)

@@ -124,6 +124,7 @@ public sealed class Sc2OpeningBuilderController
             _moveTarget = null;
             _dispatched = false;
             _buildSubmitted = false;
+            _builderHasCarriedMinerals = false;
             _pendingAction = PendingAction.None;
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }

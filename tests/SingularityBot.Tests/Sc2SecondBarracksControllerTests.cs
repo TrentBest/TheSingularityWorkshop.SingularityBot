@@ -90,8 +90,8 @@ public sealed class Sc2SecondBarracksControllerTests
             map, GameData(), assignments, crew));
 
         Assert.Equal(2, controller.TargetBarracksCount);
-        Assert.Equal(10UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(10));
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
         Assert.NotNull(controller.TakePlacementQuery(GameData()));
     }
 
@@ -130,7 +130,7 @@ public sealed class Sc2SecondBarracksControllerTests
         controller.NotifySupplyDepotCompleted(12);
         Assert.False(controller.RequiresSupplyDepot);
 
-        // Barracks two is still progressing: no third Barracks is dispatched.
+        // Barracks two is still progressing, so the Depot can finish independently.
         Assert.Null(controller.TryCreateAction(Snapshot(0,
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
             Fact(12, "SCV", 12, 10),
@@ -141,8 +141,8 @@ public sealed class Sc2SecondBarracksControllerTests
         Assert.False(controller.RequiresSupplyDepot);
         Assert.Equal(11UL, controller.BuilderTag);
 
-        // Once Barracks two finishes, its own builder is released to the
-        // mining pool and the first-Barracks SCV is recycled for Barracks three.
+        // Once Barracks two finishes, its builder returns to the worker pool. The
+        // next Barracks builder is selected from the now-available workers.
         Assert.Null(controller.TryCreateAction(Snapshot(0,
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
             Fact(12, "SCV", 12, 10),
@@ -158,16 +158,16 @@ public sealed class Sc2SecondBarracksControllerTests
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
             map, data, assignments, crew));
-        // Barracks three must not wait for a 400-mineral expansion Command Center.
-        Assert.Null(controller.BuilderTag);
+        // Barracks three does not wait for a 400-mineral expansion Command Center.
+        Assert.Equal(11UL, controller.BuilderTag);
         Assert.Null(controller.TryCreateAction(Snapshot(150,
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 18, 18),
             Fact(12, "SCV", 12, 10),
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
             map, data, assignments, crew));
-        Assert.Equal(12UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(12));
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
     }
 
     [Fact]

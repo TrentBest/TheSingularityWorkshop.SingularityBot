@@ -227,6 +227,50 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.True(assignments.IsReserved(11));
     }
 
+    [Fact]
+    public void ReusesPreferredBarracksBuilderForExpansionDepotAndReleasesItWhenComplete()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var data = GameData();
+
+        var move = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)), map, data,
+            assignments, Crew(10), preferredBuilderTag: 11,
+            releaseBuilderOnCompletion: true);
+        Assert.NotNull(move);
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
+
+        var query = controller.TakePlacementQuery(data);
+        Assert.NotNull(query);
+        var placement = new ResponseQuery();
+        placement.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(placement);
+        var site = controller.Placement!.Value;
+
+        var build = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10)), map, data,
+            assignments, Crew(10), preferredBuilderTag: 11,
+            releaseBuilderOnCompletion: true);
+        Assert.NotNull(build);
+        Assert.Equal(319, build.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, build.ActionRaw.UnitCommand.UnitTags[0]);
+
+        var complete = controller.TryCreateAction(Snapshot(0, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(300, "SupplyDepot", site.X, site.Y, buildProgress: 1)),
+            map, data, assignments, Crew(10), preferredBuilderTag: 11,
+            releaseBuilderOnCompletion: true);
+        Assert.Null(complete);
+        Assert.True(controller.IsCompleted);
+        Assert.False(assignments.IsReserved(11));
+    }
+
     private static void SelectBuilder(
         Sc2OpeningBuilderController controller,
         WorkerResourceAssignmentPlanner assignments,

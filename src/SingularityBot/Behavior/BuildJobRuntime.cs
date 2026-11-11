@@ -174,7 +174,12 @@ public sealed class BuildJobRuntime
             var worker = observation.Units.FirstOrDefault(unit =>
                 unit.Tag == job.WorkerTag && unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self &&
                 unit.IsLiveVisible && unit.HasPosition && unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase));
-            if (worker is null) continue;
+            if (worker is null)
+            {
+                if (observation.DeadUnitTags.Contains(job.WorkerTag.Value))
+                    job.Fail("Assigned SCV was destroyed before its Supply Depot could be associated.", observation.GameLoop);
+                continue;
+            }
 
             var excluded = _excludedResultTags.TryGetValue(job.Id, out var known) ? known : new HashSet<ulong>();
             var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_jobs.Values.Any(other =>
@@ -270,7 +275,12 @@ public sealed class BuildJobRuntime
             var worker = observation.Units.FirstOrDefault(unit =>
                 unit.Tag == job.WorkerTag && unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self &&
                 unit.IsLiveVisible && unit.HasPosition && unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase));
-            if (worker is null) continue;
+            if (worker is null)
+            {
+                if (observation.DeadUnitTags.Contains(job.WorkerTag.Value))
+                    job.Fail("Assigned SCV was destroyed before its Barracks could be associated.", observation.GameLoop);
+                continue;
+            }
 
             var excluded = _excludedResultTags.TryGetValue(job.Id, out var known) ? known : new HashSet<ulong>();
             var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_jobs.Values.Any(other =>

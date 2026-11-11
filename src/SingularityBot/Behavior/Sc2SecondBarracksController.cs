@@ -30,14 +30,13 @@ public sealed class Sc2SecondBarracksController
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
-        BuildJobRuntime buildJobs)
+        BuildJobRuntime buildJobs = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(constructionCrewTags);
-        ArgumentNullException.ThrowIfNull(buildJobs);
-        buildJobs.ReconcileBarracks(observation);
+        buildJobs?.ReconcileBarracks(observation);
 
         if (IsComplete || map is null || gameData.BarracksBuildAbilityId is not > 0 ||
             gameData.BarracksMineralCost == 0 || gameData.MoveAbilityId is not > 0)
@@ -74,7 +73,7 @@ public sealed class Sc2SecondBarracksController
             (observation.DeadUnitTags.Contains(current) ||
              !observation.Units.Any(unit => unit.Tag == current && IsLiveScv(unit))))
         {
-            if (_buildJobId is long failedJob && buildJobs.TryGet(failedJob, out var failed))
+            if (_buildJobId is long failedJob && buildJobs is not null && buildJobs.TryGet(failedJob, out var failed))
                 failed.Fail("Assigned SCV died or was lost from live observation.", observation.GameLoop);
             _buildJobId = null;
             ReleaseBuilder(assignments);
@@ -100,7 +99,7 @@ public sealed class Sc2SecondBarracksController
 
             _builderTag = builder.Tag;
             assignments.Reserve(builder.Tag);
-            _buildJobId = buildJobs.CreateBarracksConstruction(observation.GameLoop, builder.Tag, barracks.Select(unit => unit.Tag)).Id;
+            _buildJobId = buildJobs?.CreateBarracksConstruction(observation.GameLoop, builder.Tag, barracks.Select(unit => unit.Tag)).Id;
             _candidates.AddRange(CreateCandidates(townHall, map, _targetBarracksCount));
             _queryPending = _candidates.Count > 0;
             Console.WriteLine($"[Opening] SCV {_builderTag} reserved for Barracks {_targetBarracksCount}.");

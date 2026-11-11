@@ -53,6 +53,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 - [CiAi evidence observation and acceptance boundaries](docs/ciai-evidence.md)
 - [Strategy format](docs/strategy-format.md)
 - [Engagement service and operational picture](docs/engagement-service.md)
+- [Task Master, scouting and military force allocation](docs/task-master-and-force-allocation.md)
 - [Spatial reasoning foundation](docs/spatial-reasoning.md)
 - [Tactical spatial reasoning: spacing and platforms](docs/tactical-spatial-reasoning.md)
 - [World model, platform doctrine and contingency planning](docs/world-model-and-maneuver-planning.md)

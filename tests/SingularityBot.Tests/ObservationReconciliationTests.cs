@@ -270,4 +270,38 @@ public sealed class ObservationReconciliationTests
         Assert.True(runtime.TryGetContext(45, out _)); // The separately observed unsupported unit remains alive.
         Assert.Equal(1, runtime.Count);
     }
+    [Fact]
+    public void Runtime_BindsWorkerMiningJobToPersistentMineralContextEvenWithoutHealthMax()
+    {
+        UnitBehaviorCatalog.Register();
+        var runtime = new UnitBehaviorRuntime();
+        var worker = new UnitObservationFacts(
+            10, 7, "SCV", 1, UnitAlliance.Self, UnitVisibility.Visible,
+            45, 45, 0, 0, 1, 2, 0, true, false, false,
+            false, false, false, 100);
+        var townHall = new UnitObservationFacts(
+            1, 18, "CommandCenter", 1, UnitAlliance.Self, UnitVisibility.Visible,
+            1500, 1500, 0, 0, 1, 0, 0, true, false, false,
+            false, false, false, 100);
+        var mineral = new UnitObservationFacts(
+            20, 341, "MineralField750", 0, UnitAlliance.Neutral, UnitVisibility.Visible,
+            0, 0, 0, 0, 1, 5, 0, true, false, false,
+            false, false, false, 100);
+        var observation = new NormalizedObservation(
+            100, 1, new[] { worker, townHall, mineral }, new HashSet<ulong>());
+        var planner = new WorkerResourceAssignmentPlanner();
+        var assignments = planner.Reconcile(observation);
+
+        runtime.Reconcile(observation, static (_, _) => { });
+        runtime.ApplyWorkerAssignments(assignments, 100);
+
+        Assert.True(runtime.TryGetContext(20, out var mineralContext));
+        Assert.True(mineralContext.IsMineralResource);
+        Assert.True(runtime.TryGetContext(10, out var workerContext));
+        Assert.Same(mineralContext, workerContext.AssignedMineralContext);
+        Assert.Equal(20UL, workerContext.AssignedMineralTag);
+
+        runtime.RemoveAll();
+    }
+
 }

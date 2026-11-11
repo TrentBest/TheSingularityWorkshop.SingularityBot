@@ -9,7 +9,7 @@ namespace SingularityBot.Tests;
 public sealed class Sc2MarineRallyControllerTests
 {
     [Fact]
-    public void MovesIdleMarineToFriendlySideAssemblyPointAndStopsWhenItArrives()
+    public void MovesIdleMarineAcrossTheMapToEnemySideReconAndStopsWhenItArrives()
     {
         var controller = new Sc2MarineRallyController();
         var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
@@ -24,7 +24,8 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(1UL, Assert.Single(move.ActionRaw.UnitCommand.UnitTags));
         var rally = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
-        Assert.Equal(MapSide.Friendly, map.Side.Assess(new MapPoint(rally.X, rally.Y)));
+        Assert.Equal(MapSide.Enemy, map.Side.Assess(new MapPoint(rally.X, rally.Y)));
+        Assert.True(new MapPoint(10, 10).DistanceSquaredTo(new MapPoint(rally.X, rally.Y)) > 2500f);
 
         var arrived = controller.TryCreateActions(
             Snapshot(Fact(1, "Marine", rally.X, rally.Y)), map, new[] { decision }, gameData);

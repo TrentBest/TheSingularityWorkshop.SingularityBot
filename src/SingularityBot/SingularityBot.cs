@@ -300,7 +300,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (expansionCommandCenterPending)
                 reservedProductionMinerals = _gameData.CommandCenterMineralCost;
             else if (_secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction)
-                reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
+                reservedProductionMinerals = _gameData.SupplyDepotMineralCost + _gameData.ScvMineralCost;
             else if (!_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null)
                 reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
             else if (_openingBuilder.IsCompleted && !_openingMarine.BarracksComplete)

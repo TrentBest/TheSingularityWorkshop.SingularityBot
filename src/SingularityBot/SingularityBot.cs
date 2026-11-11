@@ -393,17 +393,25 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarineActionSubmitted = false;
             }
 
-            if (_openingMarine.BarracksComplete && marineAction is null)
+            var firstBarracksObserved = normalized.Units.Any(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag));
+
+            if (firstBarracksObserved)
             {
-                // Always reconcile the current Barracks job. The controller can
-                // discover Barracks two starting/finishing while the second Depot
-                // is being built by the recycled first-Barracks SCV.
+                // Start Barracks two as soon as Barracks one is observed under
+                // construction. It has its own SCV, so this overlaps the two
+                // construction timers instead of serializing them.
                 secondBarracksAction = _secondBarracks.TryCreateAction(
                     normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 assignments = _workerAssignments.Reconcile(normalized);
 
-                if (_secondBarracks.RequiresSupplyDepot)
+                // The first-Barracks builder is the preferred recycled worker
+                // for the follow-up Depot. Wait until that Barracks completes
+                // and releases its SCV rather than silently assigning a third worker.
+                if (_secondBarracks.RequiresSupplyDepot && _openingMarine.BarracksComplete)
                 {
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
@@ -436,6 +444,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             else
             {
                 _secondBarracksActionSubmitted = false;
+                _supplyDepotExpansionActionSubmitted = false;
             }
 
             // Secondary Barracks are persistent Marine factories. Keep them ahead

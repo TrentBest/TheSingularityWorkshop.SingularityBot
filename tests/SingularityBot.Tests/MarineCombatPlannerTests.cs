@@ -137,6 +137,34 @@ public sealed class MarineCombatPlannerTests
     }
 
     [Fact]
+    public void TranslatorRejectsFriendlyFireEvenWhenGivenMalformedDecision()
+    {
+        var catalog = CombatCatalog();
+        var marine = Marine(1, 0, 0, 0);
+        var friendly = Marine(2, 4, 0, 0);
+        var observation = Snapshot(marine, friendly);
+        var decision = new MarineTacticalDecision(
+            1, 2, MarineTacticalAction.Fire, 6, 0, "malformed target");
+
+        Assert.Empty(Sc2MarineCombatActionTranslator.Translate(
+            new[] { decision }, observation, catalog,
+            CombatWeaponProfile.FromCatalog(catalog)));
+    }
+
+    [Fact]
+    public void TranslatorRejectsFireDecisionOutsideWeaponRange()
+    {
+        var catalog = CombatCatalog();
+        var observation = Snapshot(Marine(1, 0, 0, 0), Enemy(2, 8, 0));
+        var decision = new MarineTacticalDecision(
+            1, 2, MarineTacticalAction.Fire, 6, 0, "stale range");
+
+        Assert.Empty(Sc2MarineCombatActionTranslator.Translate(
+            new[] { decision }, observation, catalog,
+            CombatWeaponProfile.FromCatalog(catalog)));
+    }
+
+    [Fact]
     public void TranslatorMovesMarineDuringWeaponCooldown()
     {
         var catalog = CombatCatalog();

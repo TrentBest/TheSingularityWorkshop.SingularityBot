@@ -111,12 +111,21 @@ public sealed class Sc2ExpansionCommandCenterController
             }
 
             var staging = _candidates[0];
-            var builder = observation.Units
-                .Where(unit => IsLiveScv(unit) &&
-                    (constructionCrewTags.Contains(unit.Tag) || unit.Tag == preferredBuilderTag) &&
-                    !assignments.IsReserved(unit.Tag))
+            var eligibleWorkers = observation.Units
+                .Where(unit => IsLiveScv(unit) && !assignments.IsReserved(unit.Tag))
+                .ToArray();
+            var builder = eligibleWorkers
+                .Where(unit => constructionCrewTags.Contains(unit.Tag) || unit.Tag == preferredBuilderTag)
                 .OrderBy(unit => unit.Tag == preferredBuilderTag ? 0 : 1)
                 .ThenBy(unit => DistanceSquared(unit.PositionX, unit.PositionY, staging.X, staging.Y))
+                .ThenBy(unit => unit.Tag)
+                .FirstOrDefault();
+
+            // A missing or stale Construction-capability assignment must not
+            // prevent the expansion from starting. Fall back to the nearest
+            // unreserved SCV; Reserve() removes its mining assignment atomically.
+            builder ??= eligibleWorkers
+                .OrderBy(unit => DistanceSquared(unit.PositionX, unit.PositionY, staging.X, staging.Y))
                 .ThenBy(unit => unit.Tag)
                 .FirstOrDefault();
             if (builder is null)

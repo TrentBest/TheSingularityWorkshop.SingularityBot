@@ -75,7 +75,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void LetsAnActiveMineralTripFinishThenDispatchesWithoutReturningToTownHall()
+    public void DispatchesDepotBuilderAsSoonAsTheDepotCostIsAvailable()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -84,25 +84,17 @@ public sealed class Sc2OpeningBuilderControllerTests
         var miningOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
         var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
 
-        var waiting = controller.TryCreateAction(Snapshot(100, 12, 15,
+        var move = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5),
             Fact(11, "SCV", 6, 5, orders: miningOrder),
             Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 
-        Assert.Null(waiting);
-        Assert.Equal(11UL, controller.BuilderTag);
+        // Depot capacity takes priority over preserving the next SCV's 50 minerals.
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.True(assignments.IsReserved(11));
-
-        var dispatch = controller.TryCreateAction(Snapshot(100, 12, 15,
-            Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5, hasCargo: true, orders: miningOrder),
-            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
-            assignments, Crew(10, 11));
-
-        Assert.NotNull(dispatch);
-        Assert.Equal(16, dispatch.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, dispatch.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]

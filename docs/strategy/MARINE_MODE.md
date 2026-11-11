@@ -40,7 +40,7 @@ A Marine is controlled from current observations, not a one-time move order.
 - Retreat toward friendly reinforcements when threatened; regroup before resuming pressure.
 - Re-evaluate every frame and cancel stale movement when threat, target, or support conditions change.
 - Treat destructible neutral blockers as obstacles to clear, not combat targets to camp: fire when ready, then advance during cooldown. Take another shot only if the Marine is still blocked and the weapon is ready; stop targeting the blocker once the formation has moved beyond it.
-- Move each formation member through short local waypoints (about seven world units at a time) toward its assigned slot. Do not issue a single distant move that lets pathfinding route the entire squad around the Marine ahead.
+- Move each formation member through short local waypoints (about four world units at a time) toward its assigned slot. Do not issue a single distant move that lets pathfinding route the entire squad around the Marine ahead.
 
 ### 3. Scale the Marine economy
 

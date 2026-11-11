@@ -47,10 +47,12 @@ public sealed class Sc2OpeningMarineController
             gameData.MarineMineralCost == 0 || gameData.MoveAbilityId is not > 0)
             return null;
 
-        var barracks = observation.Units.FirstOrDefault(unit =>
-            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-            unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
-            !observation.DeadUnitTags.Contains(unit.Tag));
+        var barracks = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                !observation.DeadUnitTags.Contains(unit.Tag))
+            .OrderBy(unit => unit.Tag)
+            .FirstOrDefault();
 
         if (barracks is null)
         {

@@ -103,3 +103,8 @@ The long-term fleet is managed by one strategic controller, not independent Orbi
 An emergency worker-collapse policy may redirect flying town halls to safe friendly landing sites, confirm they are grounded, and restart SCV production where affordable and legal. This recovery policy takes precedence over opportunistic MULE touring. A fleet of dozens is an eventual scale experiment whose value must be demonstrated against its cost, flight risk, base coverage and actual MULE income.
 
 The first controller currently uses nearest-visible-mineral Euclidean distance and a simple pending-order timeout. It does not validate cast range, select a safe landing point, observe MULE spawn, or model multiple Orbital roles. These are explicit implementation gaps.
+
+
+### Marine assembly when no contact is visible
+
+When the combat planner has no visible attackable target, Marines gather at a conservative staging point eight map units from the friendly start toward the enemy start, provided the point remains inside playable bounds and on the friendly side. The rally controller retries stalled movement at a bounded interval, stops issuing movement once the Marine arrives, and yields immediately to combat decisions when a target is assigned. It is an assembly behavior, not a solo attack or cross-map scouting order.

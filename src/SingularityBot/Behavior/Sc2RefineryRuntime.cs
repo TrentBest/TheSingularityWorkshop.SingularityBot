@@ -122,6 +122,7 @@ public sealed class Sc2RefineryRuntime
             .State("Available", null, null, null)
             .State("Building", null, null, null)
             .State("Operational", null, null, null)
+            .State("Destroyed", null, null, null)
             .State("Depleted", null, null, null)
             .Transition("Available", "Building", ctx => ctx is RefinerySiteContext site && site.IsBuilding)
             .Transition("Available", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
@@ -129,7 +130,10 @@ public sealed class Sc2RefineryRuntime
             .Transition("Building", "Available", ctx => ctx is RefinerySiteContext site && !site.IsBuilding && !site.IsDepleted)
             .Transition("Building", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
             .Transition("Operational", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
-            .Transition("Operational", "Available", ctx => ctx is RefinerySiteContext site && site.IsDestroyed && !site.IsDepleted)
+            .Transition("Operational", "Destroyed", ctx => ctx is RefinerySiteContext site && site.IsDestroyed && !site.IsDepleted)
+            .Transition("Building", "Destroyed", ctx => ctx is RefinerySiteContext site && site.IsDestroyed && !site.IsDepleted)
+            .Transition("Destroyed", "Available", ctx => ctx is RefinerySiteContext site && site.HasObservedGeyser && !site.IsDepleted)
+            .Transition("Destroyed", "Depleted", ctx => ctx is RefinerySiteContext site && site.IsDepleted)
             .WithInitialState("Available")
             .BuildDefinition();
         _registered = true;
@@ -231,7 +235,7 @@ public sealed class Sc2RefineryRuntime
                 {
                     ActionRaw = new ActionRaw
                     {
-                        UnitCommand = new UnitCommand
+                        UnitCommand = new ActionRawUnitCommand
                         {
                             AbilityId = checked((int)refineryAbility.Value),
                             UnitTags = { builder.Tag },
@@ -281,7 +285,7 @@ public sealed class Sc2RefineryRuntime
                     {
                         ActionRaw = new ActionRaw
                         {
-                            UnitCommand = new UnitCommand
+                            UnitCommand = new ActionRawUnitCommand
                             {
                                 AbilityId = checked((int)gameData.SmartAbilityId.Value),
                                 UnitTags = { worker.Tag },

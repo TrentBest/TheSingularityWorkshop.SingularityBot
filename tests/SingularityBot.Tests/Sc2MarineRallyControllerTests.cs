@@ -147,9 +147,12 @@ public sealed class Sc2MarineRallyControllerTests
         var reinforcementMoves = controller.TryCreateActions(
             Snapshot(arrived.ToArray()), map, decisions, gameData);
 
-        var reinforcement = Assert.Single(reinforcementMoves);
-        Assert.Equal(6UL, Assert.Single(reinforcement.ActionRaw.UnitCommand.UnitTags));
+        Assert.Equal(5, reinforcementMoves.Count);
+        var reinforcement = Assert.Single(reinforcementMoves,
+            move => move.ActionRaw.UnitCommand.UnitTags.Single() == 6UL);
         Assert.Equal(16, reinforcement.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(4, reinforcementMoves.Count(move =>
+            move.ActionRaw.UnitCommand.UnitTags.Single() != 6UL));
     }
 
     private static Sc2GameDataCatalog GameData()

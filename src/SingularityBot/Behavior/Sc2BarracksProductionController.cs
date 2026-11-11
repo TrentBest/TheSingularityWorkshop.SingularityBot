@@ -8,15 +8,18 @@ public sealed class Sc2BarracksProductionController
 {
     private ulong? _pendingBarracksTag;
     private uint _pendingGameLoop;
+    private long? _pendingJobId;
 
     public SC2APIProtocol.Action TryCreateMarineTrainingAction(
         NormalizedObservation observation,
-        Sc2GameDataCatalog gameData)
+        Sc2GameDataCatalog gameData,
+        BuildJobRuntime buildJobs = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         if (gameData.MarineTrainAbilityId is not > 0 || gameData.MarineMineralCost == 0)
             return null;
+        buildJobs?.ReconcileMarineProduction(observation, gameData.MarineTrainAbilityId.Value);
 
         var barracks = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
@@ -36,6 +39,7 @@ public sealed class Sc2BarracksProductionController
             var pending = secondaryBarracks.FirstOrDefault(unit => unit.Tag == pendingTag);
             if (pending is null)
             {
+                FailPending(buildJobs, observation.GameLoop, "Assigned Barracks disappeared before Marine training was observed.");
                 ClearPending();
             }
             else if (pending.Orders.Any(order => order.AbilityId == gameData.MarineTrainAbilityId.Value))
@@ -48,6 +52,7 @@ public sealed class Sc2BarracksProductionController
             }
             else
             {
+                FailPending(buildJobs, observation.GameLoop, "Marine training order was not observed before retry timeout.");
                 ClearPending();
             }
         }
@@ -63,6 +68,8 @@ public sealed class Sc2BarracksProductionController
 
         _pendingBarracksTag = producer.Tag;
         _pendingGameLoop = observation.GameLoop;
+        _pendingJobId = buildJobs?.CreateMarineProduction(observation.GameLoop, producer.Tag,
+            observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self && unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase)).Select(unit => unit.Tag)).Id;
         return new SC2APIProtocol.Action
         {
             ActionRaw = new ActionRaw
@@ -77,15 +84,26 @@ public sealed class Sc2BarracksProductionController
         };
     }
 
-    public void OnActionResult(ActionResult? result)
+    public void OnActionResult(ActionResult? result, BuildJobRuntime buildJobs = null, uint gameLoop = 0)
     {
         if (result is null || result != ActionResult.Success)
+        {
+            FailPending(buildJobs, gameLoop, "SC2 rejected the Marine training command.");
             ClearPending();
+        }
+    }
+
+    private void FailPending(BuildJobRuntime buildJobs, uint gameLoop, string reason)
+    {
+        if (_pendingJobId is long id && buildJobs is not null && buildJobs.TryGet(id, out var job))
+            job.Fail(reason, gameLoop);
+        _pendingJobId = null;
     }
 
     private void ClearPending()
     {
         _pendingBarracksTag = null;
         _pendingGameLoop = 0;
+        _pendingJobId = null;
     }
 }

@@ -253,7 +253,7 @@ public sealed class Sc2SecondBarracksControllerTests
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15, 0.4f)),
-            map, GameData(), assignments, crew, firstMarineProductionStarted: true));
+            map, GameData(), assignments, crew));
 
         Assert.NotNull(controller.BuilderTag);
         Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));

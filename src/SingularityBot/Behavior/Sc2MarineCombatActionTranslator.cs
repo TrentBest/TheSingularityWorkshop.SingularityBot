@@ -136,20 +136,31 @@ public static class Sc2MarineCombatActionTranslator
         IReadOnlyList<UnitObservationFacts> marines)
     {
         var supporters = marines.Where(unit => unit.Tag != marine.Tag).ToArray();
-        if (supporters.Length > 0)
-        {
-            var centerX = supporters.Average(unit => unit.PositionX);
-            var centerY = supporters.Average(unit => unit.PositionY);
-            var dx = centerX - marine.PositionX;
-            var dy = centerY - marine.PositionY;
-            var length = MathF.Sqrt(dx * dx + dy * dy);
-            if (length > 0.01f)
-                return (marine.PositionX + dx / length * 3f,
-                        marine.PositionY + dy / length * 3f);
-        }
-
         var (awayX, awayY, _) = Direction(marine, nearestThreat);
-        return (marine.PositionX + awayX * 5f, marine.PositionY + awayY * 5f);
+        if (supporters.Length == 0)
+            return (marine.PositionX + awayX * 5f, marine.PositionY + awayY * 5f);
+
+        // Regrouping is secondary to actually leaving the threat envelope.
+        // A supporter centroid can lie on the enemy-facing side of an isolated
+        // Marine, so it must never reverse the retreat vector.
+        var centerX = supporters.Average(unit => unit.PositionX);
+        var centerY = supporters.Average(unit => unit.PositionY);
+        var regroupX = centerX - marine.PositionX;
+        var regroupY = centerY - marine.PositionY;
+        var regroupLength = MathF.Sqrt(regroupX * regroupX + regroupY * regroupY);
+        if (regroupLength <= 0.01f)
+            return (marine.PositionX + awayX * 5f, marine.PositionY + awayY * 5f);
+
+        regroupX /= regroupLength;
+        regroupY /= regroupLength;
+        var retreatX = awayX * 0.75f + regroupX * 0.25f;
+        var retreatY = awayY * 0.75f + regroupY * 0.25f;
+        var retreatLength = MathF.Sqrt(retreatX * retreatX + retreatY * retreatY);
+        if (retreatLength <= 0.01f)
+            return (marine.PositionX + awayX * 5f, marine.PositionY + awayY * 5f);
+
+        return (marine.PositionX + retreatX / retreatLength * 5f,
+                marine.PositionY + retreatY / retreatLength * 5f);
     }
 
     private static (float X, float Y, float Distance) Direction(

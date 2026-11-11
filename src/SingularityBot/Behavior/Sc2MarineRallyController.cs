@@ -18,10 +18,12 @@ public sealed class Sc2MarineRallyController
     public IReadOnlyList<SC2APIProtocol.Action> TryCreateActions(
         NormalizedObservation observation,
         SpatialMap map,
-        IReadOnlyList<MarineTacticalDecision> decisions,\n        Sc2GameDataCatalog gameData)
+        IReadOnlyList<MarineTacticalDecision> decisions,
+        Sc2GameDataCatalog gameData)
     {
         ArgumentNullException.ThrowIfNull(observation);
-        ArgumentNullException.ThrowIfNull(decisions);\n        ArgumentNullException.ThrowIfNull(gameData);
+        ArgumentNullException.ThrowIfNull(decisions);
+        ArgumentNullException.ThrowIfNull(gameData);
         if (map is null || decisions.Count == 0 || gameData.MoveAbilityId is not > 0)
             return Array.Empty<SC2APIProtocol.Action>();
 

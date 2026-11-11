@@ -99,8 +99,7 @@ public sealed class Sc2MarineRallyController
             .Where(tag => tag != _scoutTag)
             .OrderBy(tag => tag)
             .ToArray();
-        if (!_squadDispatched && squadTags.Length < 4 &&
-            !(squadTags.Length == 3 && fourthMarineInProduction))
+        if (!_squadDispatched && squadTags.Length < 4)
             return scoutActions;
 
         var producingBarracks = observation.Units.FirstOrDefault(unit =>

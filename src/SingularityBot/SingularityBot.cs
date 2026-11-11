@@ -591,7 +591,18 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var combatDecisions = MarineCombatPlanner.Plan(normalized, _combatWeapons);
             actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
                 combatDecisions, normalized, _gameData, _combatWeapons));
-            var marineRallyActions = _marineRally.TryCreateActions(normalized, SpatialMap, combatDecisions, _gameData);
+            var liveMarineCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag));
+            var fourthMarineInProduction = liveMarineCount >= 3 &&
+                _gameData.MarineTrainAbilityId is > 0 &&
+                normalized.Units.Any(unit =>
+                    unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                    unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                    unit.Orders.Any(order => order.AbilityId == _gameData.MarineTrainAbilityId.Value));
+            var marineRallyActions = _marineRally.TryCreateActions(
+                normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction);
             actions.AddRange(marineRallyActions);
             if (_writeDiagnostics)
                 foreach (var decision in combatDecisions)

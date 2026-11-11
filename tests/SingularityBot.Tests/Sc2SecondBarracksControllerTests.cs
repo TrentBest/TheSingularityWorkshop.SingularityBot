@@ -9,7 +9,7 @@ namespace SingularityBot.Tests;
 public sealed class Sc2SecondBarracksControllerTests
 {
     [Fact]
-    public void BuildsSecondBarracksWithDifferentScvAndReleasesBuilderOnCompletion()
+    public void BuildsSecondBarracksAndReleasesBuilderForContinuedScaling()
     {
         var controller = new Sc2SecondBarracksController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -69,7 +69,7 @@ public sealed class Sc2SecondBarracksControllerTests
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15),
             Fact(201, "Barracks", site.X, site.Y)),
             map, data, assignments, crew));
-        Assert.True(controller.IsComplete);
+        Assert.False(controller.IsComplete);
         Assert.False(assignments.IsReserved(11));
         Assert.True(assignments.IsReserved(10));
     }

@@ -4,7 +4,7 @@ The shortest path to a bot that actually completes a local StarCraft II match re
 
 ## Evidence status (2026-11-11)
 
-The current `development` head is `42f943e14fcc2d85fb3b83ec01ae0f5f74729010`. GitHub Actions Build and Sith Policy both completed successfully for that exact SHA. The Build workflow completed documentation validation, restore, build and test; the test suite reported 166 passed, 0 failed, 0 skipped. This is CI evidence only. No live SC2 match was run as part of that CI execution.
+The runtime behavior baseline is `42f943e14fcc2d85fb3b83ec01ae0f5f74729010`; its [Build](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42977688888) and [Sith Policy](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42977688947) runs both succeeded, with 166 tests passed, 0 failed and 0 skipped. The subsequent documentation-only revision [`644dc6535936ec5b29b36b1c7bf905e48cb846f9`](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/commit/644dc6535936ec5b29b36b1c7bf905e48cb846f9) also passed its [Build](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42978689180) and [Sith Policy](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42978689315) workflows. These are CI facts only. No live SC2 match was run as part of either CI execution.
 
 Evidence levels must remain distinct:
 
@@ -13,7 +13,6 @@ Evidence levels must remain distinct:
 3. **CI-verified** — the exact candidate SHA has complete, successful required workflow evidence, observable through [CiAi](ciai-evidence.md).
 4. **Match-verified** — a local SC2 match/replay demonstrates observed state transitions, action results, movement and arrival, and the intended outcome.
 5. **Release-authorized** — the owner explicitly authorizes promotion/publication/deployment for the exact candidate. CI or model output never supplies this authorization.
-
 ## 1. Observation-to-action foundation
 
 - [x] Integrate deterministic observation normalization into `development`.

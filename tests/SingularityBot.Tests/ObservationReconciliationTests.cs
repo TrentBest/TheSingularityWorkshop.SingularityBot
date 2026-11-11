@@ -204,6 +204,8 @@ public sealed class ObservationReconciliationTests
         Assert.True(refreshed.IsCurrentlyVisible);
 
         runtime.Update();
+        Assert.Empty(firstFrame.Drain()); // Assess transitions before the destination state's entry action runs.
+        runtime.Update();
         var firstFrameCommands = firstFrame.Drain();
         Assert.NotEmpty(firstFrameCommands);
         Assert.Contains(firstFrameCommands, command => command.Key == 44);

@@ -82,6 +82,22 @@ public sealed class MarineCombatPlannerTests
     }
 
     [Fact]
+    public void AdvancesInsteadOfOrbitingNeutralBlockerDuringWeaponCooldown()
+    {
+        var result = MarineCombatPlanner.Plan(
+            Snapshot(
+                Marine(1, 0, 0, 2),
+                Fact(2, EnemyType, "DestructibleRock", UnitAlliance.Neutral, 4, 0)),
+            Weapons,
+            new HashSet<ulong> { 2 });
+
+        var decision = Assert.Single(result);
+        Assert.Equal(MarineTacticalAction.Hold, decision.Action);
+        Assert.Null(decision.TargetTag);
+        Assert.Contains("advance", decision.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void FailsClosedWhenMarineWeaponDataIsMissing()
     {
         var result = MarineCombatPlanner.Plan(

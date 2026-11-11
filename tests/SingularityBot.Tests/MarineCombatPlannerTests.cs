@@ -94,7 +94,7 @@ public sealed class MarineCombatPlannerTests
         var decision = Assert.Single(result);
         Assert.Equal(MarineTacticalAction.Hold, decision.Action);
         Assert.Null(decision.TargetTag);
-        Assert.Contains("advance", decision.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("advance", decision.Reason.ToLowerInvariant());
     }
 
     [Fact]

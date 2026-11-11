@@ -71,6 +71,7 @@ public static class Sc2ObservationNormalizer
         return new NormalizedObservation(observation.GameLoop, playerId, units, deadTags)
         {
             Minerals = observation.PlayerCommon?.Minerals ?? 0,
+            Vespene = observation.PlayerCommon?.Vespene ?? 0,
             FoodUsed = observation.PlayerCommon?.FoodUsed ?? 0,
             FoodCap = observation.PlayerCommon?.FoodCap ?? 0
         };

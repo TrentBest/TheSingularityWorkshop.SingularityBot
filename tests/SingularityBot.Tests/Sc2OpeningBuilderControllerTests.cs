@@ -37,13 +37,15 @@ public sealed class Sc2OpeningBuilderControllerTests
         var assignments = new WorkerResourceAssignmentPlanner();
         var gameData = GameData();
 
-        Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
+        var move = controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
-            assignments, new HashSet<ulong>()));
+            assignments, new HashSet<ulong>());
 
-        Assert.Equal(10UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(10));
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
         Assert.NotNull(controller.TakePlacementQuery(gameData));
     }
 

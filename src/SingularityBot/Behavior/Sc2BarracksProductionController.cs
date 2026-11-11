@@ -13,7 +13,8 @@ public sealed class Sc2BarracksProductionController
     public SC2APIProtocol.Action TryCreateMarineTrainingAction(
         NormalizedObservation observation,
         Sc2GameDataCatalog gameData,
-        BuildJobRuntime buildJobs = null)
+        BuildJobRuntime buildJobs = null,
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -58,6 +59,7 @@ public sealed class Sc2BarracksProductionController
         }
 
         if (observation.Minerals < gameData.MarineMineralCost ||
+            observation.Minerals - gameData.MarineMineralCost < reservedMinerals ||
             observation.FoodCap < observation.FoodUsed ||
             observation.FoodCap - observation.FoodUsed < gameData.MarineFoodRequired)
             return null;

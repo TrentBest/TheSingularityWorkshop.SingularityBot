@@ -310,7 +310,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10), existingDepot), map, data,
             assignments, Crew(10, 11), preferredBuilderTag: 11,
             releaseBuilderOnCompletion: true);
-        Assert.NotNull(select);
+        Assert.Null(select);
         Assert.NotNull(controller.TakePlacementQuery(data));
 
         var placement = new ResponseQuery();

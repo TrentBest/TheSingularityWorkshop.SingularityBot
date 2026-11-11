@@ -44,14 +44,14 @@ A Marine is controlled from current observations, not a one-time move order.
 
 ### 3. Scale the Marine economy
 
-- Continue Marine production across available Barracks and spend resource float on the next affordable, placement-validated infrastructure or production action instead of allowing minerals to accumulate.
+- Continue Marine production across available Barracks and spend resource float on the next affordable, placement-validated infrastructure or production action instead of allowing minerals to accumulate. Do not reserve 400 minerals for a Command Center merely to unlock Barracks three.
 - Establish Refinery gas income early enough to support the Tech Lab, Marauders, and Marine upgrades; balance gas workers against the mineral income needed to sustain four Barracks.
 - Once four Marines are available, prioritize a Tech Lab on one Barracks, then add Reactors to the remaining production facilities as soon as the gas/mineral budget and add-on clearance allow. The initial production milestone is four Barracks, not an unconditional jump to eight.
 - Add a Reaper as a dedicated mobile scout when prerequisites and resource budget permit. Preserve it: avoid unfavorable fights, retreat from threats, and use safe alternate routes or another jump point rather than forcing a bad engagement.
 - Introduce a small Marauder contingent from the Tech Lab to absorb pressure and slow armored ground threats while Marines provide sustained DPS.
 - Use damage-aware focus fire: estimate allied damage over a short firing window, assign only enough attackers to finish a target, and allocate remaining damage to another viable target. Maintain focus on a chosen target until its predicted remaining health reaches the kill threshold; avoid wasting a full volley as overkill.
 - Treat the first few dozen Marines as the initial mass-building phase; do not let early add-on construction interrupt the force before the economy can sustain it.
-- Expand toward eight Barracks total as the resource and supply model supports it.
+- Do not make an expansion Command Center a prerequisite for Barracks three or four. Expand toward eight Barracks total as the resource and supply model supports it; town-hall expansion is a separate economic decision and must not hold up production.
 - The intended add-on mix is one Tech Lab-capable Barracks and seven Reactor Barracks. The Tech Lab timing is a measured decision based on gas income, production saturation, and the value of adding Marauders; it is not a fixed opening timestamp.
 - Add two Engineering Bays around the twenty-Marine scale only when doing so does not collapse Marine production or cause a supply/resource stall. Research weapon and armor upgrades concurrently when gas and income support both.
 

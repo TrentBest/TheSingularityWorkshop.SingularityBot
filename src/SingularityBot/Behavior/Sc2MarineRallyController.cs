@@ -14,12 +14,14 @@ public sealed class Sc2MarineRallyController
     private const uint RetryAfterGameLoops = 44;
     private const float RallyOffset = 8f;
     private const float ArrivalRadiusSquared = 4f;
+    private const float RendezvousOffset = 5f;
 
     public IReadOnlyList<SC2APIProtocol.Action> TryCreateActions(
         NormalizedObservation observation,
         SpatialMap map,
         IReadOnlyList<MarineTacticalDecision> decisions,
-        Sc2GameDataCatalog gameData)
+        Sc2GameDataCatalog gameData,
+        bool fourthMarineInProduction = false)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -43,15 +45,33 @@ public sealed class Sc2MarineRallyController
         foreach (var retired in _lastRallyCommandLoops.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
             _lastRallyCommandLoops.Remove(retired);
 
-        // The cross-map operation is a four-Marine squad, never a trickle of
-        // individual units. The first Marines remain available for local sector
-        // scouting until the complete squad exists.
-        var squadTags = liveMarineTags.OrderBy(tag => tag).Take(4).ToHashSet();
-        if (squadTags.Count < 4)
+        // As soon as Marine four is training, the first three leave local scouting
+        // and converge on a safe rendezvous near the friendly start. Once four are
+        // alive, the squad moves in a persistent 2x2 box rather than four unrelated
+        // point orders. Formation slots are derived from the travel direction.
+        var squadTags = liveMarineTags.OrderBy(tag => tag).Take(4).ToArray();
+        var rendezvousStarted = fourthMarineInProduction && squadTags.Length < 4;
+        if (squadTags.Length < 4 && !rendezvousStarted)
             return Array.Empty<SC2APIProtocol.Action>();
 
+        var rendezvousPoint = map.Side.FriendlyStart + direction * RendezvousOffset;
+        var formationPoint = rallyPoint;
+        var formationOffsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, squadTags.Length, direction);
+        var targetsByTag = new Dictionary<ulong, (float X, float Y)>();
+        if (rendezvousStarted)
+        {
+            foreach (var tag in squadTags)
+                targetsByTag[tag] = (rendezvousPoint.X, rendezvousPoint.Y);
+        }
+        else
+        {
+            for (var index = 0; index < squadTags.Length; index++)
+                targetsByTag[squadTags[index]] = (formationPoint.X + formationOffsets[index].X,
+                    formationPoint.Y + formationOffsets[index].Y);
+        }
+
         foreach (var decision in decisions.Where(item =>
-                     squadTags.Contains(item.MarineTag) &&
+                     targetsByTag.ContainsKey(item.MarineTag) &&
                      item.Action == MarineTacticalAction.Hold && item.TargetTag is null))
         {
             var marine = observation.Units.FirstOrDefault(unit =>
@@ -59,8 +79,9 @@ public sealed class Sc2MarineRallyController
             if (marine is null)
                 continue;
 
-            var dx = marine.PositionX - rallyPoint.X;
-            var dy = marine.PositionY - rallyPoint.Y;
+            var destination = targetsByTag[marine.Tag];
+            var dx = marine.PositionX - destination.X;
+            var dy = marine.PositionY - destination.Y;
             if (dx * dx + dy * dy <= ArrivalRadiusSquared)
             {
                 _lastRallyCommandLoops.Remove(marine.Tag);
@@ -80,7 +101,7 @@ public sealed class Sc2MarineRallyController
                     {
                         AbilityId = checked((int)gameData.MoveAbilityId.Value),
                         UnitTags = { marine.Tag },
-                        TargetWorldSpacePos = new Point2D { X = rallyPoint.X, Y = rallyPoint.Y },
+                        TargetWorldSpacePos = new Point2D { X = destination.X, Y = destination.Y },
                         QueueCommand = false
                     }
                 }

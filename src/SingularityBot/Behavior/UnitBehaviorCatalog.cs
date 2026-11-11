@@ -62,6 +62,7 @@ public static class UnitBehaviorCatalog
         RegisterCombatUnit();
         ProductionBehaviorCatalog.Register();
         BuildJobRuntime.RegisterDefinition();
+        Sc2RefineryRuntime.RegisterDefinition();
     }
 
     private static void RegisterGameState()

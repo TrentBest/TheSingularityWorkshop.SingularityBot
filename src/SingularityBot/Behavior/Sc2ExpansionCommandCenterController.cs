@@ -136,7 +136,10 @@ public sealed class Sc2ExpansionCommandCenterController
             unit.Tag == _builderTag.Value && IsLiveScv(unit));
         if (worker is null)
             return null;
-        if (!worker.HasCargo && IsGatheringMinerals(worker, observation))
+        var canFundCommandCenterAndNextScv =
+            observation.Minerals >= gameData.CommandCenterMineralCost + gameData.ScvMineralCost;
+        if (!worker.HasCargo && IsGatheringMinerals(worker, observation) &&
+            !canFundCommandCenterAndNextScv)
             return null;
 
         if (DistanceSquared(worker.PositionX, worker.PositionY, _site.Value.X, _site.Value.Y) > 2.25f)

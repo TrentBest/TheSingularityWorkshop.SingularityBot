@@ -481,6 +481,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarineActionSubmitted = false;
             }
 
+            // Do not leave the original Depot SCV reserved while another worker
+            // constructs the first Barracks. Recycle it immediately when it is not
+            // the Barracks builder; if it is the same worker, release after handoff.
+            _openingBuilder.ReleaseBuilderIfNotAssignedToBarracks(
+                _workerAssignments, _openingMarine.BuilderTag);
             if (_openingMarine.BarracksComplete)
                 _openingBuilder.ReleaseBuilderAfterBarracksHandoff(_workerAssignments);
 
@@ -499,10 +504,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 assignments = _workerAssignments.Reconcile(normalized);
 
-                // The first-Barracks builder is the preferred recycled worker
-                // for the follow-up Depot. Wait until that Barracks completes
-                // and releases its SCV rather than silently assigning a third worker.
-                if (_secondBarracks.RequiresSupplyDepot && _openingMarine.BarracksComplete)
+                // Start the follow-up Depot as soon as Barracks two is observed
+                // under construction. Do not serialize it behind Barracks one's
+                // completion: the Depot controller reserves a separate available SCV
+                // when the preferred Barracks builder has not yet been released.
+                if (_secondBarracks.RequiresSupplyDepot)
                 {
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
@@ -541,7 +547,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // The Orbital upgrade unlocks MULE income and must not be starved
             // forever by an always-busy Marine production line. Construction and
             // the four-Barracks expansion milestone retain higher priority.
-            if (secondBarracksAction is null && builderAction is null && marineAction is null &&
+            if (secondBarracksAction is null && builderAction is null &&
                 sprayAction is null && expansionCommandCenterAction is null)
             {
                 orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData, reservedInfrastructureMinerals);

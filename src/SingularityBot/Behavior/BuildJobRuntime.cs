@@ -1,3 +1,6 @@
+#nullable enable
+
+using System.Diagnostics.CodeAnalysis;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -33,7 +36,7 @@ public sealed class BuildJobContext : IStateContext
     public bool IsExecuting { get; private set; }
     public bool IsCompleted { get; private set; }
     public bool IsFailed { get; private set; }
-    public string FailureReason { get; private set; }
+    public string FailureReason { get; private set; } = string.Empty;
 
     public void AssignWorker(ulong workerTag)
     {
@@ -136,7 +139,8 @@ public sealed class BuildJobRuntime
         return job;
     }
 
-    public bool TryGet(long id, out BuildJobContext job) => _jobs.TryGetValue(id, out job);
+    [NotNullWhen(true)]
+    public bool TryGet(long id, out BuildJobContext? job) => _jobs.TryGetValue(id, out job);
 
     public BuildJobContext CreateBarracksConstruction(uint gameLoop, ulong workerTag, IEnumerable<ulong> existingBarracksTags)
     {

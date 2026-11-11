@@ -95,6 +95,10 @@ public sealed class BuildJobRuntime
     private readonly Dictionary<long, FSMHandle> _handles = new();
     private readonly Dictionary<long, HashSet<ulong>> _excludedResultTags = new();
     private readonly Dictionary<long, HashSet<ulong>> _excludedMarineTags = new();
+    // Result identities remain claimed for the entire match, even after their
+    // completed job FSM is retired. Otherwise a later nearby job could adopt
+    // the same already-produced unit/structure from an old snapshot.
+    private readonly HashSet<ulong> _claimedResultTags = new();
     private long _nextId;
     private static bool _registered;
 
@@ -182,7 +186,7 @@ public sealed class BuildJobRuntime
             }
 
             var excluded = _excludedResultTags.TryGetValue(job.Id, out var known) ? known : new HashSet<ulong>();
-            var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_jobs.Values.Any(other =>
+            var candidate = structures.Where(unit => !excluded.Contains(unit.Tag) && !_claimedResultTags.Contains(unit.Tag) && !_jobs.Values.Any(other =>
                     other.Id != job.Id && other.ResultUnitTag == unit.Tag))
                 .Select(unit => new
                 {
@@ -194,7 +198,10 @@ public sealed class BuildJobRuntime
                 .ThenBy(item => item.Unit.Tag)
                 .FirstOrDefault();
             if (candidate is not null)
+            {
+                _claimedResultTags.Add(candidate.Unit.Tag);
                 job.ObserveResult(candidate.Unit.Tag, candidate.Unit.BuildProgress, observation.GameLoop);
+            }
         }
     }
 
@@ -246,7 +253,10 @@ public sealed class BuildJobRuntime
                 .ThenBy(item => item.Unit.Tag)
                 .FirstOrDefault();
             if (candidate is not null)
+            {
+                _claimedResultTags.Add(candidate.Unit.Tag);
                 job.ObserveResult(candidate.Unit.Tag, 1f, observation.GameLoop);
+            }
         }
     }
 
@@ -295,7 +305,10 @@ public sealed class BuildJobRuntime
                 .ThenBy(item => item.Unit.Tag)
                 .FirstOrDefault();
             if (candidate is not null)
+            {
+                _claimedResultTags.Add(candidate.Unit.Tag);
                 job.ObserveResult(candidate.Unit.Tag, candidate.Unit.BuildProgress, observation.GameLoop);
+            }
         }
     }
 
@@ -325,5 +338,6 @@ public sealed class BuildJobRuntime
     public void Clear()
     {
         foreach (var id in _jobs.Keys.ToArray()) Retire(id);
+        _claimedResultTags.Clear();
     }
 }

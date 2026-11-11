@@ -177,6 +177,15 @@ public static class MarineCombatPlanner
                 action = MarineTacticalAction.Withdraw;
                 reason = "Local friendly damage output does not cover nearby threat";
             }
+            else if (target.Alliance == UnitAlliance.Neutral && marine.WeaponCooldownRemaining > 0)
+            {
+                // Neutral destructibles are obstacles, not combat engagements.
+                // After a shot, hand movement back to the squad/rally controller
+                // instead of orbiting the blocker and stalling at the ramp.
+                decisions.Add(new(marine.Tag, null, MarineTacticalAction.Hold,
+                    friendlyDps, 0, "Neutral blocker hit; advance during weapon cooldown"));
+                continue;
+            }
             else if (distance <= ownWeapon.GetRange(target.IsFlying))
             {
                 if (marine.WeaponCooldownRemaining <= 0)

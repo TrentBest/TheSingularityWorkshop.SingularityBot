@@ -18,6 +18,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private GoalActionPlanDefinition _goalActionPlan = new();
+    private readonly EconomyAdvisor _economyAdvisor = new();
     private readonly bool _passiveBaseline;
     private readonly bool _writeDiagnostics;
     private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
@@ -85,6 +86,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (errors.Count == 0) _goalActionPlan = plan;
         return errors;
     }
+
+    /// <summary>Sets user-authored economy policy before or during a match.</summary>
+    public IReadOnlyList<string> ConfigureEconomyAdvisorJson(string json) =>
+        _economyAdvisor.ConfigureJson(json);
+
+    /// <summary>Current economy policy exposed to the development GUI.</summary>
+    public EconomyAdvisorSettings EconomySettings => _economyAdvisor.Settings;
 
     public void OnStart(
         ResponseGameInfo gameInfo,
@@ -238,7 +246,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _initialScvProductionObserved |= scvTrainingOrderObserved;
 
         var initialWorkerPathingQuery = _workerAssignments.PrepareInitialPathingQuery(normalized);
-        var assignments = _workerAssignments.Reconcile(normalized);
+        var assignments = _workerAssignments.Reconcile(
+            normalized, _economyAdvisor.Settings.MineralSaturation);
         var actions = new List<SC2APIProtocol.Action>();
         SC2APIProtocol.Action sprayAction = null;
         SC2APIProtocol.Action builderAction = null;
@@ -277,7 +286,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // must still produce its first SCV and continue toward construction.
         if (allowWorkerActions)
         {
-            var reservedProductionMinerals = 0u;
             var observedBarracks = normalized.Units.Where(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
@@ -298,28 +306,24 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                      (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
                       unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
                       unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase))) < 2);
-            if (expansionCommandCenterPending)
-                reservedProductionMinerals = _gameData.CommandCenterMineralCost;
-            else if (_secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction)
-                reservedProductionMinerals = _gameData.SupplyDepotMineralCost + _gameData.ScvMineralCost;
-            else if (!_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null)
-                reservedProductionMinerals = _gameData.SupplyDepotMineralCost;
-            else if (_openingBuilder.IsCompleted && !_openingMarine.BarracksComplete)
-                reservedProductionMinerals = _gameData.BarracksMineralCost;
-            else if (_openingMarine.BarracksComplete &&
-                     normalized.Units.Any(unit =>
-                         unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-                         unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
-                         !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)))
-                reservedProductionMinerals = _gameData.MarineMineralCost;
 
-            // Once the first SCV training order has been observed, the first Supply Depot
-            // owns the opening's mineral budget. Do not queue SCV #2 (or later workers)
-            // ahead of it: the previous run reached 15/15 supply around 36 seconds but
-            // did not complete the Depot until roughly 70 seconds. Resume worker production
-            // immediately after the Depot is observed complete.
-            if (_initialScvProductionObserved && !_openingBuilder.IsCompleted)
-                reservedProductionMinerals = uint.MaxValue;
+            var reservedProductionMinerals = _economyAdvisor.GetReservedMinerals(
+                new EconomyAdvisorFrame(
+                    expansionCommandCenterPending,
+                    _secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction,
+                    !_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null,
+                    _openingBuilder.IsCompleted && !_openingMarine.BarracksComplete,
+                    _openingMarine.BarracksComplete && normalized.Units.Any(unit =>
+                        unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                        unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                        !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)),
+                    _initialScvProductionObserved && !_openingBuilder.IsCompleted),
+                new EconomyAdvisorCosts(
+                    _gameData.CommandCenterMineralCost,
+                    _gameData.SupplyDepotMineralCost,
+                    _gameData.ScvMineralCost,
+                    _gameData.BarracksMineralCost,
+                    _gameData.MarineMineralCost));
 
             reservedInfrastructureMinerals = reservedProductionMinerals;
             var productionAction = _openingProduction.TryCreateScvTrainingAction(

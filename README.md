@@ -22,7 +22,7 @@ Prove a sustainable Terran economy and production loop, then prove its tactical 
 3. Produce SCVs while scheduling and verifying the first Depot/Barracks construction sequence.
 4. Expand the opening through follow-up supply, additional Barracks, and a resource-derived friendly expansion.
 5. Establish four Barracks and sustain Marine production without gas while protecting worker production and expansion reserves.
-6. Assemble Marines at the producing Barracks: existing Marines rendezvous with the fourth Marine before the squad is dispatched.
+6. Keep the first Marine on early-warning duty; assemble the next four Marines at the producing Barracks before dispatching the first pressure squad.
 7. Send the first Marine to the farthest safe, non-enemy sector adjacent to our starting sector to watch for cannon rushes, proxies, worker rushes and other cheese; keep it separate from the first four-Marine pressure squad.
 8. Measure economy, production, movement, combat and outcomes from game-loop diagnostics; replay and compare controlled matches.
 

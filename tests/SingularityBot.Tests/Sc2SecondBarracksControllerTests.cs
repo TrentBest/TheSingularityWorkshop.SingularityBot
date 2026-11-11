@@ -75,6 +75,39 @@ public sealed class Sc2SecondBarracksControllerTests
     }
 
     [Fact]
+    public void PausesAfterSecondBarracksUntilSupplyDepotAndReusesFirstBarracksBuilder()
+    {
+        var controller = new Sc2SecondBarracksController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var data = GameData();
+
+        // The second Barracks is now complete. Expansion must pause before
+        // reserving another worker for Barracks three.
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, new HashSet<ulong> { 11, 12 }));
+        Assert.True(controller.RequiresSupplyDepot);
+        Assert.Null(controller.BuilderTag);
+
+        // The SCV that built the first Barracks is no longer in the
+        // supplemental construction-crew set, but is explicitly recycled
+        // after the follow-up Depot completes.
+        controller.NotifySupplyDepotCompleted(12);
+        Assert.False(controller.RequiresSupplyDepot);
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, new HashSet<ulong> { 11 }));
+        Assert.Equal(12UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(12));
+    }
+
+    [Fact]
     public void DoesNotStealCargoCarryingOrAlreadyReservedWorkers()
     {
         var controller = new Sc2SecondBarracksController();

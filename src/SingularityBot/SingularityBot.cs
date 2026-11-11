@@ -605,7 +605,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (_writeDiagnostics)
         {
             _openingTrace.RecordFrame(normalized, _openingBuilder, builderAction,
-                marineAction is not null, SpatialMap is not null, _buildJobs.ActiveCount, _expansionCommandCenter);
+                marineAction is not null, SpatialMap is not null, _buildJobs.ActiveCount, _expansionCommandCenter,
+                _openingMarine, _secondBarracks, _supplyDepotExpansion);
             _binaryTrace.RecordFrame(normalized.GameLoop, normalized.Minerals,
                 normalized.FoodUsed, normalized.FoodCap, normalized.Units.Count, actions.Count);
             _binaryTrace.RecordEconomySnapshot(normalized, _buildJobs.ActiveCount);

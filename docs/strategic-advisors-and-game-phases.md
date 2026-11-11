@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The bot should expose a coherent strategic decision layer rather than accumulating unrelated controllers. Domain advisors reason about different questions, while a match-level Game State FSM determines which strategic era the match is in. The Task Master is the eventual arbitration and assignment authority.
+The bot should expose a coherent strategic decision layer rather than accumulating unrelated controllers. Domain advisors reason about different questions, while a match-level Game State FSM determines which strategic era the match is in. The Strategic Planner consumes advisor-owned postings and resolves dependencies, priorities, resource conflicts and assignments. Advisors—not the planner—own the lifecycle of their jobs.
 
 The five advisor domains are:
 
@@ -12,7 +12,7 @@ The five advisor domains are:
 - **Base Engineering Advisor** — base layout and infrastructure, supply capacity, production footprint, defenses, repair, expansion-site readiness and resilient base operation.
 - **Intelligence Advisor** — scouting missions, information requirements, target-site revisit schedules, opponent progression evidence, threat confidence and information freshness.
 
-These advisors are peers. No advisor directly steals units, spends resources or submits SC2 commands. Each publishes typed assessments and proposed jobs. The Task Master resolves competing requests, reserves actors/resources, and assigns executable work. The action pipeline remains the final legality boundary.
+These advisors are peers. No advisor directly steals units, spends resources or submits SC2 commands. Each publishes typed assessments and proposed jobs. The Strategic Planner consumes current postings, resolves competing requests, and eventually reserves actors/resources and assigns executable work. The action pipeline remains the final legality boundary.
 
 ## Game State FSM
 
@@ -45,6 +45,12 @@ The values are relative evaluation slots, not milliseconds or a guarantee of equ
 
 The scheduler currently provides deterministic weighted FSM update opportunities. It does not yet measure wall-clock time, preempt an advisor midway through evaluation, or guarantee a fixed percentage of CPU time. Expensive advisors must be decomposed into bounded incremental FSM work. A later scheduler can add a measured frame budget, per-advisor cost estimates, deadline/urgency overrides and deferred work queues without changing the advisor contracts.
 
+## Advisor-owned job postings and shared planning
+
+Each advisor maintains its own postings. It creates a stable job ID when a need appears, updates priority/quantity/constraints as evidence changes, renews expiry when appropriate, and withdraws the posting when the need disappears or is satisfied. The Strategic Planner does not edit advisor intent. It reads the active posting set, handles dependencies and conflicts, and decides what can be scheduled and resourced.
+
+The first implementation provides an ownership-enforcing job board: an advisor can upsert or withdraw only its own IDs, a posting update preserves its creation timestamp, expiry removes stale demand from the planner view, and composition goals own a separate namespace of postings. The planner currently ranks active postings; atomic unit/resource reservations and dependency execution are still future stages.
+
 ## Advisor contract and task flow
 
 The initial shared contract exposes an advisor's domain, current game phase and phase-derived compute weight. The Economy Advisor implements this contract and retains its existing configurable mineral reservation policy. The remaining domains are established as processing groups and extension points; their domain-specific policy engines and task producers are not yet implemented.
@@ -54,8 +60,8 @@ Intended flow:
 1. DataSync reconciles visible and remembered entities, resources, structures, orders and game-loop facts.
 2. Game State FSM evaluates phase transitions from the normalized world state.
 3. The scheduler allocates each advisor its phase-weighted evaluation slots.
-4. Advisors update domain assessments and submit typed recommendations/jobs.
-5. Task Master scores and arbitrates requests, checking prerequisites, deadlines, resource and unit reservations, and conflicts.
+4. Advisors update domain assessments and create/update/withdraw their own typed job postings.
+5. Strategic Planner consumes the live posting set, checks prerequisites, deadlines, resource and unit conflicts, and sequences feasible work.
 6. Unit/group/job FSMs execute assignments and report verified progress.
 7. Action resolution validates each concrete intent against current authoritative observations and game data.
 
@@ -78,14 +84,14 @@ Not yet implemented:
 
 - Military, Science, Base Engineering and Intelligence policy engines.
 - Intelligence-owned base-site visit/revisit FSMs and scouting job generation.
-- Task Master integration that arbitrates all advisor-produced jobs.
+- Full Strategic Planner integration for dependency solving, resource/unit reservations and assignment execution.
 - Typed recommendation/event queues and per-advisor diagnostics.
 - Measured wall-clock compute budgeting, incremental work quotas and starvation protection.
 - GUI controls for advisor policy, priorities and compute budgets.
 
 Next vertical slices should be:
 1. Add the Intelligence Advisor over the existing spatial intelligence and persistent base-site model; create natural/third/fourth scouting jobs and report requirements.
-2. Add Task Master intake and atomic reservations for those jobs, reusing existing unit contexts and scout capabilities.
+2. Add Strategic Planner intake and atomic reservations for those jobs, reusing existing unit contexts and scout capabilities.
 3. Add Military assessment for force readiness, defense coverage and urgent threats.
 4. Add Base Engineering assessment for supply, production footprint, repair and base defense.
 5. Add Science assessment over authoritative game-data prerequisites and upgrade state.

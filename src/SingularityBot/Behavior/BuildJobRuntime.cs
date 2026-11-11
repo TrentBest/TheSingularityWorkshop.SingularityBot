@@ -94,6 +94,7 @@ public sealed class BuildJobRuntime
     private readonly Dictionary<long, BuildJobContext> _jobs = new();
     private readonly Dictionary<long, FSMHandle> _handles = new();
     private readonly Dictionary<long, HashSet<ulong>> _excludedResultTags = new();
+    private readonly Dictionary<long, HashSet<ulong>> _excludedMarineTags = new();
     private long _nextId;
     private static bool _registered;
 
@@ -138,6 +139,58 @@ public sealed class BuildJobRuntime
         var job = Create("Barracks", gameLoop, workerTag: workerTag);
         _excludedResultTags[job.Id] = existingBarracksTags?.ToHashSet() ?? new HashSet<ulong>();
         return job;
+    }
+
+    public BuildJobContext CreateMarineProduction(uint gameLoop, ulong producerTag, IEnumerable<ulong> existingMarineTags)
+    {
+        var job = Create("Marine", gameLoop, producerTag: producerTag);
+        _excludedMarineTags[job.Id] = existingMarineTags?.ToHashSet() ?? new HashSet<ulong>();
+        return job;
+    }
+
+    /// <summary>Tracks Marine training orders and associates each completed job with its newly observed Marine.</summary>
+    public void ReconcileMarineProduction(global::SingularityBot.Observation.NormalizedObservation observation, uint marineAbilityId)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        if (marineAbilityId == 0) return;
+        var marines = observation.Units.Where(unit =>
+            unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self &&
+            unit.IsLiveVisible && unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+            !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
+
+        foreach (var job in _jobs.Values.Where(job => job.BuildableKind == "Marine" &&
+                     !job.IsCompleted && !job.IsFailed && job.ProducerTag.HasValue).ToArray())
+        {
+            var producer = observation.Units.FirstOrDefault(unit => unit.Tag == job.ProducerTag &&
+                unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self &&
+                unit.IsLiveVisible && !observation.DeadUnitTags.Contains(unit.Tag));
+            if (producer is null)
+            {
+                if (observation.DeadUnitTags.Contains(job.ProducerTag.Value))
+                    job.Fail("Marine production facility was destroyed.", observation.GameLoop);
+                continue;
+            }
+
+            if (producer.Orders.Any(order => order.AbilityId == marineAbilityId))
+                job.MarkStarted(observation.GameLoop);
+
+            if (!job.IsExecuting || !producer.HasPosition) continue;
+            var excluded = _excludedMarineTags.TryGetValue(job.Id, out var known)
+                ? known : new HashSet<ulong>();
+            var candidate = marines.Where(unit => !excluded.Contains(unit.Tag) &&
+                    !_jobs.Values.Any(other => other.Id != job.Id && other.ResultUnitTag == unit.Tag))
+                .Select(unit => new
+                {
+                    Unit = unit,
+                    DistanceSquared = DistanceSquared(producer.PositionX, producer.PositionY, unit.PositionX, unit.PositionY)
+                })
+                .Where(item => item.DistanceSquared <= 64f)
+                .OrderBy(item => item.DistanceSquared)
+                .ThenBy(item => item.Unit.Tag)
+                .FirstOrDefault();
+            if (candidate is not null)
+                job.ObserveResult(candidate.Unit.Tag, 1f, observation.GameLoop);
+        }
     }
 
     /// <summary>Associates observed Barracks with their reserved SCV and tracks authoritative build progress.</summary>
@@ -196,6 +249,7 @@ public sealed class BuildJobRuntime
         if (!_jobs.Remove(id, out var job)) return false;
         job.IsValid = false;
         _excludedResultTags.Remove(id);
+        _excludedMarineTags.Remove(id);
         if (_handles.Remove(id, out var handle)) FSM_API.Interaction.DestroyInstance(handle);
         return true;
     }

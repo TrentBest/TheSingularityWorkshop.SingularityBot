@@ -159,7 +159,14 @@ public sealed class Sc2OpeningBuilderController
         // If the selected worker is already mining and has not collected its load,
         // let that trip finish. Once it is carrying minerals, dispatch it directly
         // to construction: do not waste the trip returning to the Command Center.
-        if (!builder.HasCargo && IsGatheringMinerals(builder, observation))
+        // Preserve one SCV's next production cost, but do not wait for a
+        // mineral trip when the bank can already fund both the structure and
+        // another worker. The diagnostics showed this harvest wait delaying
+        // the first Depot despite a healthy mineral bank.
+        var canFundStructureAndNextScv =
+            observation.Minerals >= gameData.SupplyDepotMineralCost + gameData.ScvMineralCost;
+        if (!builder.HasCargo && IsGatheringMinerals(builder, observation) &&
+            !canFundStructureAndNextScv)
             return null;
 
         // Replace the worker's mining order only after its current harvest is

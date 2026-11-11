@@ -58,9 +58,9 @@ public sealed class Sc2OpeningBuilderControllerTests
         var gameData = GameData();
 
         var action = controller.TryCreateAction(Snapshot(100, 12, 15,
-            Fact(10, "SCV", 9, 9, hasCargo: true,
+            Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
-            Fact(11, "SCV", 5, 5),
+            Fact(11, "SCV", 9, 9),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
@@ -335,6 +335,41 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.NotNull(build);
         Assert.Equal(319, build.ActionRaw.UnitCommand.AbilityId);
         Assert.False(controller.IsCompleted);
+    }
+
+    [Fact]
+    public void PlacesOpeningDepotBehindObservedMineralLineOnTownHallSide()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var gameData = GameData();
+        var minerals = new[]
+        {
+            Fact(20, "MineralField", 19, 19) with { Alliance = UnitAlliance.Neutral },
+            Fact(21, "MineralField", 21, 19) with { Alliance = UnitAlliance.Neutral },
+            Fact(22, "MineralField", 19, 21) with { Alliance = UnitAlliance.Neutral },
+            Fact(23, "MineralField", 21, 21) with { Alliance = UnitAlliance.Neutral }
+        };
+
+        var action = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 12, 12, hasCargo: true),
+            Fact(1, "CommandCenter", 10, 10), minerals[0], minerals[1], minerals[2], minerals[3]),
+            Map(), gameData, assignments, Crew(10));
+
+        Assert.NotNull(action);
+        var query = controller.TakePlacementQuery(gameData);
+        Assert.NotNull(query);
+        var target = query.Placements[0].TargetPos;
+        var centerX = 20f;
+        var centerY = 20f;
+        var directionX = MathF.Sqrt(0.5f);
+        var directionY = MathF.Sqrt(0.5f);
+        var towardMinerals = (target.X - centerX) * directionX + (target.Y - centerY) * directionY;
+
+        Assert.True(towardMinerals < 0,
+            "The Depot candidate should be on the town-hall side of the observed mineral line.");
+        Assert.InRange(MathF.Sqrt((target.X - centerX) * (target.X - centerX) +
+            (target.Y - centerY) * (target.Y - centerY)), 3.5f, 6f);
     }
 
     private static void SelectBuilder(

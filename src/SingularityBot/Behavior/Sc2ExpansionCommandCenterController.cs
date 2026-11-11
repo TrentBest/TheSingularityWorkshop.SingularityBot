@@ -22,6 +22,7 @@ public sealed class Sc2ExpansionCommandCenterController
     private uint _buildLoop;
     private PendingAction _pending;
     private BuildJobContext _job;
+    private readonly HashSet<ulong> _preexistingCommandCenterTags = new();
 
     public ulong? BuilderTag => _builderTag;
     public MapPoint? ExpansionLocation => _site;
@@ -57,9 +58,9 @@ public sealed class Sc2ExpansionCommandCenterController
         if (_site is not null)
         {
             var structure = commandCenters
-                .Where(unit => unit.HasPosition)
+                .Where(unit => unit.HasPosition && !_preexistingCommandCenterTags.Contains(unit.Tag))
                 .Select(unit => new { Unit = unit, Distance = DistanceSquared(unit.PositionX, unit.PositionY, _site.Value.X, _site.Value.Y) })
-                .Where(item => item.Distance <= 64f)
+                .Where(item => item.Distance <= 16f)
                 .OrderBy(item => item.Distance)
                 .FirstOrDefault();
             if (structure is not null)
@@ -101,6 +102,8 @@ public sealed class Sc2ExpansionCommandCenterController
         {
             if (observation.Minerals < gameData.CommandCenterMineralCost)
                 return null;
+            _preexistingCommandCenterTags.Clear();
+            foreach (var existing in commandCenters) _preexistingCommandCenterTags.Add(existing.Tag);
             _candidates = ExpansionSitePlanner.FindCommandCenterCandidates(observation, map);
             if (_candidates.Count == 0)
             {
@@ -192,7 +195,7 @@ public sealed class Sc2ExpansionCommandCenterController
         Console.WriteLine($"[Expansion] SC2 rejected all {_candidates.Count} Command Center sites; placement will be queried again.");
     }
 
-    public void OnActionResult(ActionResult? result, uint gameLoop, BuildJobRuntime buildJobs)
+    public void OnActionResult(ActionResult? result, uint gameLoop)
     {
         if (_pending == PendingAction.None)
             return;

@@ -47,6 +47,9 @@ public static class UnitBehaviorCatalog
         foreach (var group in ProcessGroupsThisFrame.Distinct())
             FSM_API.Create.CreateProcessingGroup(group);
 
+        AdvisorWorkScheduler.RegisterProcessingGroups();
+        RegisterGameState();
+
         RegisterEntityExistence();
         RegisterWorker();
         RegisterConstruction();
@@ -59,6 +62,18 @@ public static class UnitBehaviorCatalog
         RegisterCombatUnit();
         ProductionBehaviorCatalog.Register();
         BuildJobRuntime.RegisterDefinition();
+    }
+
+    private static void RegisterGameState()
+    {
+        FSM_API.Create.CreateFiniteStateMachine("SingularityBot.GameState", processRate: -1, processingGroup: StrategyProcessingGroup)
+            .State("EarlyGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Early), null, null)
+            .State("MidGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Mid), null, null)
+            .State("LateGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Late), null, null)
+            .Transition("EarlyGame", "MidGame", ctx => ctx is GameStateContext state && (state.HasAdvancedTech || state.FriendlyBaseCount >= 2))
+            .Transition("MidGame", "LateGame", ctx => ctx is GameStateContext state && (state.HasLateGameTech || state.FriendlyBaseCount >= 3))
+            .WithInitialState("EarlyGame")
+            .BuildDefinition();
     }
 
     private static void RegisterEntityExistence()

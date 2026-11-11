@@ -56,6 +56,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 - [Task Master, scouting and military force allocation](docs/task-master-and-force-allocation.md)
 - [Economy Advisor and persistent mineral contexts](docs/economy-advisor.md)
 - [Strategic advisors and game-phase scheduling](docs/strategic-advisors-and-game-phases.md)
+- [Strategic intent and composition goals](docs/strategic-intent-and-composition-goals.md)
 - [Spatial reasoning foundation](docs/spatial-reasoning.md)
 - [Tactical spatial reasoning: spacing and platforms](docs/tactical-spatial-reasoning.md)
 - [World model, platform doctrine and contingency planning](docs/world-model-and-maneuver-planning.md)

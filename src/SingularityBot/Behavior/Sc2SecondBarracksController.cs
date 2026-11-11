@@ -29,6 +29,9 @@ public sealed class Sc2SecondBarracksController
     public ulong? BuilderTag => _builderTag;
     public bool IsComplete { get; private set; }
     public int CandidateCount => _candidates.Count;
+    public int TargetBarracksCount => _targetBarracksCount;
+    public MapPoint? Site => _site;
+    public bool IsBuildSubmitted => _buildSubmitted;
 
     public SC2APIProtocol.Action TryCreateAction(
         NormalizedObservation observation,
@@ -125,14 +128,16 @@ public sealed class Sc2SecondBarracksController
 
         if (_builderTag is null)
         {
-            var builder = observation.Units
+            var eligibleWorkers = observation.Units
                 .Where(IsLiveScv)
-                .Where(unit => !unit.HasCargo &&
-                    (constructionCrewTags.Contains(unit.Tag) || unit.Tag == _preferredBuilderTag) &&
-                    !assignments.IsReserved(unit.Tag))
+                .Where(unit => !unit.HasCargo && !assignments.IsReserved(unit.Tag))
+                .ToArray();
+            var builder = eligibleWorkers
+                .Where(unit => constructionCrewTags.Contains(unit.Tag) || unit.Tag == _preferredBuilderTag)
                 .OrderBy(unit => unit.Tag == _preferredBuilderTag ? 0 : 1)
                 .ThenBy(unit => unit.Tag)
-                .FirstOrDefault();
+                .FirstOrDefault()
+                ?? eligibleWorkers.OrderBy(unit => unit.Tag).FirstOrDefault();
             if (builder is null)
                 return null;
 

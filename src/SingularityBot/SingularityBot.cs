@@ -368,7 +368,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // of optional Orbital spending so the Marine economy gets first claim.
             if (secondBarracksAction is null && builderAction is null && marineAction is null && sprayAction is null)
             {
-                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(normalized, _gameData);
+                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(normalized, _gameData, _buildJobs);
                 _barracksProductionActionSubmitted = barracksProductionAction is not null;
             }
             else
@@ -522,7 +522,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (_secondBarracksActionSubmitted)
                 _secondBarracks.OnActionResult(null);
             if (_barracksProductionActionSubmitted)
-                _barracksProduction.OnActionResult(null);
+                _barracksProduction.OnActionResult(null, _buildJobs);
             if (_orbitalSupportActionSubmitted)
                 _orbitalSupport.OnActionResult(null);
             _openingRallyActionSubmitted = false;
@@ -578,7 +578,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
         if (_barracksProductionActionSubmitted)
         {
-            _barracksProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            _barracksProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
             resultIndex++;
         }
         if (_orbitalSupportActionSubmitted)

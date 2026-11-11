@@ -105,10 +105,11 @@ public sealed class Sc2OpeningBuilderController
                 return null;
 
             var stagingPoint = _candidatePoints[0];
-            var selected = observation.Units
-                .Where(unit => IsLiveScv(unit) &&
-                               (constructionCrewTags.Contains(unit.Tag) || unit.Tag == preferredBuilderTag) &&
-                               !assignments.IsReserved(unit.Tag))
+            var eligibleWorkers = observation.Units
+                .Where(unit => IsLiveScv(unit) && !assignments.IsReserved(unit.Tag))
+                .ToArray();
+            var selected = eligibleWorkers
+                .Where(unit => constructionCrewTags.Contains(unit.Tag) || unit.Tag == preferredBuilderTag)
                 .Select(worker => new
                 {
                     Worker = worker,
@@ -118,6 +119,20 @@ public sealed class Sc2OpeningBuilderController
                 })
                 .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag ? 0 : 1)
                 .ThenBy(candidate => candidate.EstimatedArrivalDistance)
+                .ThenBy(candidate => candidate.Worker.Tag)
+                .FirstOrDefault();
+            // A missing construction capability must never stall the opening.
+            // Fall back to the nearest unreserved SCV and let the reservation
+            // prevent its mineral assignment from being reissued.
+            selected ??= eligibleWorkers
+                .Select(worker => new
+                {
+                    Worker = worker,
+                    EstimatedArrivalDistance = Math.Sqrt(DistanceSquared(
+                        worker.PositionX, worker.PositionY,
+                        stagingPoint.X, stagingPoint.Y))
+                })
+                .OrderBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
                 .FirstOrDefault();
 

@@ -31,7 +31,8 @@ The shortest path to a bot that actually plays a local StarCraft II match is the
 - [ ] Replace the single-Depot builder with a persistent construction sequence: 80-mineral return-event trigger, raised Depot, then Barracks using the same SCV.
 - [ ] Detect the actual ramp and evaluate legal Depot/Barracks placement pairs as a wall; validate ground-unit passage in a live match.
 - [ ] Keep Command Center SCV production running while construction is scheduled against a resource budget.
-- [ ] Establish four Barracks as the first production milestone, with supply-depot forecasting and no avoidable supply blocks.
+- [x] Add a follow-up Supply Depot gate after Barracks two and recycle the first-Barracks builder into that Depot and then Barracks three; this is a fixed opening milestone, not yet full supply forecasting.
+- [ ] Establish four Barracks as the first production milestone with predictive supply-depot scheduling and no avoidable supply blocks; validate the timing in local matches.
 - [ ] Train pure Marines from every completed Barracks while protecting SCV production and expansion reserves.
 - [ ] Generalize the production scheduler beyond four Barracks toward a configurable eight-Barracks target; reference add-on layout is three Tech Labs and five Reactors.
 - [ ] Model add-on construction/attachment, Reactor dual-queue throughput, Tech Lab unit eligibility, production reservations and technology prerequisites from authoritative game data.

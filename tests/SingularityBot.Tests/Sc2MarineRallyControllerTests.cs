@@ -33,7 +33,7 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.All(targets, point => Assert.Equal(MapSide.Enemy, map.Side.Assess(new MapPoint(point.X, point.Y))));
         Assert.All(targets, point => Assert.True(new MapPoint(11, 10).DistanceSquaredTo(new MapPoint(point.X, point.Y)) > 2500f));
         Assert.All(targets, point => Assert.True(
-            new MapPoint(point.X, point.Y).DistanceTo(map.Side.EnemyStart) >= 18f,
+            new MapPoint(point.X, point.Y).DistanceTo(map.Side.EnemyStart) >= 28f,
             "The observation waypoint must preserve a conservative stand-off from the enemy start."));
 
         var arrived = controller.TryCreateActions(

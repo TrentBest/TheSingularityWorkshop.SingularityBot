@@ -12,7 +12,7 @@ public sealed class Sc2MarineRallyController
 {
     private readonly Dictionary<ulong, uint> _lastRallyCommandLoops = new();
     private const uint RetryAfterGameLoops = 44;
-    private const float RallyOffset = 20f;
+    private const float RallyOffset = 30f;
     private const float ArrivalRadiusSquared = 4f;
     private const float RendezvousOffset = 5f;
     private bool _squadDispatched;

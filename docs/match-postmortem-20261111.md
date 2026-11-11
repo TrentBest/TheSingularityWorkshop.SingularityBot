@@ -41,7 +41,7 @@ The initial worker pathing query returned 104 results with zero valid distances.
 
 ## Changes made from this postmortem
 
-- Increase the Marine observation waypoint stand-off from 8 to 20 map units.
+- Increase the Marine observation waypoint stand-off from 8 to 30 map units. The 30-unit stand-off keeps the waypoint beyond the current 11-unit weapon-plus-pursuit envelope for contacts near the enemy start.
 - Keep the first-four assembly gate, then stream later Marines into the observation formation.
 - Preserve existing formation slots as reinforcements arrive.
 - Query expansion placements across multiple friendly mineral clusters instead of retrying only one blocked cluster.

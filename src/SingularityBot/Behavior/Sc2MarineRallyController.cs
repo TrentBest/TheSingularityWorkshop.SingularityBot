@@ -18,11 +18,11 @@ public sealed class Sc2MarineRallyController
     public IReadOnlyList<SC2APIProtocol.Action> TryCreateActions(
         NormalizedObservation observation,
         SpatialMap map,
-        IReadOnlyList<MarineTacticalDecision> decisions)
+        IReadOnlyList<MarineTacticalDecision> decisions,\n        Sc2GameDataCatalog gameData)
     {
         ArgumentNullException.ThrowIfNull(observation);
-        ArgumentNullException.ThrowIfNull(decisions);
-        if (map is null || decisions.Count == 0)
+        ArgumentNullException.ThrowIfNull(decisions);\n        ArgumentNullException.ThrowIfNull(gameData);
+        if (map is null || decisions.Count == 0 || gameData.MoveAbilityId is not > 0)
             return Array.Empty<SC2APIProtocol.Action>();
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
@@ -68,7 +68,7 @@ public sealed class Sc2MarineRallyController
                 {
                     UnitCommand = new ActionRawUnitCommand
                     {
-                        AbilityId = 16,
+                        AbilityId = checked((int)gameData.MoveAbilityId.Value),
                         UnitTags = { marine.Tag },
                         TargetWorldSpacePos = new Point2D { X = rallyPoint.X, Y = rallyPoint.Y },
                         QueueCommand = false

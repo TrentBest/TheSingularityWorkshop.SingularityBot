@@ -79,6 +79,7 @@ public sealed class Sc2SecondBarracksControllerTests
     {
         var controller = new Sc2SecondBarracksController();
         var assignments = new WorkerResourceAssignmentPlanner();
+        assignments.Reserve(10);
         var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
             new MapPoint(10, 10), new MapPoint(54, 54));
         var data = GameData();

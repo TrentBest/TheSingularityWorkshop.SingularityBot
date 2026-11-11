@@ -56,6 +56,17 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void DoesNotCallMuleOnMineralsOutsideAuthoritativeAbilityRange()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var orbital = Fact(1, "OrbitalCommand", 10, 10) with { Energy = 100 };
+        var mineral = Fact(10, "MineralField750", 21, 10) with { Alliance = UnitAlliance.Neutral };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(0, orbital, mineral), data));
+    }
+
+    [Fact]
     public void DoesNotCallMuleWithoutFiftyEnergyOrWithoutMineralTarget()
     {
         var controller = new Sc2OrbitalSupportController();
@@ -88,7 +99,7 @@ public sealed class Sc2OrbitalSupportControllerTests
         var data = new ResponseData();
         data.Units.Add(new UnitTypeData { UnitId = 132, Name = "OrbitalCommand", MineralCost = 150 });
         data.Abilities.Add(new AbilityData { AbilityId = 1516, LinkName = "UpgradeToOrbitalCommand" });
-        data.Abilities.Add(new AbilityData { AbilityId = 168, LinkName = "CalldownMULE" });
+        data.Abilities.Add(new AbilityData { AbilityId = 168, LinkName = "CalldownMULE", CastRange = 10 });
         return Sc2GameDataCatalog.Create(data);
     }
 

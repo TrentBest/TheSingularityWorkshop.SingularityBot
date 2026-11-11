@@ -50,13 +50,14 @@ public sealed class Sc2OrbitalSupportController
             }
         }
 
-        // First establish Orbital capability. Never steal minerals reserved
-        // for SCV production, construction, or the current opening objective.
+        // Orbital capability unlocks with the first completed Barracks. Upgrade
+        // immediately when the Depot prerequisite and resource reservations permit;
+        // waiting for a second Barracks delays the first energy/MULE utility.
         var orbitalTechReady =
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "SupplyDepot") && unit.BuildProgress >= 1f) &&
-            observation.Units.Count(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f) >= 2;
+            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
         if (orbitalTechReady && gameData.OrbitalUpgradeAbilityId is > 0 &&
             gameData.OrbitalUpgradeMineralCost > 0)

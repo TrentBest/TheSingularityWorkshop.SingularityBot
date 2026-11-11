@@ -571,14 +571,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         if (allowWorkerBehaviorActions)
         {
-            var workerIntents = intents.Drain()
+            var frameIntents = intents.Drain()
                 .Where(intent => !_workerAssignments.ShouldSuppressIntent(intent.Key, intent.Value))
                 .ToArray();
             actions.AddRange(Sc2ActionTranslator.Translate(
-                workerIntents,
+                frameIntents,
                 normalized,
                 _gameData.SmartAbilityId,
                 assignments));
+            actions.AddRange(Sc2MarineFsmActionTranslator.Translate(
+                frameIntents, _unitBehaviors.Contexts, normalized, _gameData));
         }
 
         // The opening controller owns the first Marine's cross-map deployment.

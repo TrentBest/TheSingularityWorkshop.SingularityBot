@@ -31,6 +31,7 @@ public sealed class Sc2OpeningBuilderController
     private uint _buildRequestGameLoop;
     private PendingAction _pendingAction;
     private bool _completed;
+    private long? _buildJobId;
 
     public Sc2OpeningBuilderController() { }
 
@@ -48,11 +49,14 @@ public sealed class Sc2OpeningBuilderController
         SpatialMap spatialMap,
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
-        IReadOnlySet<ulong> constructionCrewTags)
+        IReadOnlySet<ulong> constructionCrewTags,
+        BuildJobRuntime buildJobs = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
+
+        buildJobs?.ReconcileSupplyDepotConstruction(observation);
 
         if (_completed ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
@@ -208,13 +212,25 @@ public sealed class Sc2OpeningBuilderController
         if (_buildSubmitted)
         {
             if (observation.GameLoop > _buildRequestGameLoop + 8)
+            {
+                if (_buildJobId is long staleId && buildJobs is not null &&
+                    buildJobs.TryGet(staleId, out var staleJob) && !staleJob.IsCompleted && !staleJob.IsFailed)
+                    staleJob.Fail("Opening Supply Depot structure was not observed before build retry.", observation.GameLoop);
                 _buildSubmitted = false;
+            }
             else
+            {
                 return null;
+            }
         }
 
         _buildSubmitted = true;
         _buildRequestGameLoop = observation.GameLoop;
+        _buildJobId = buildJobs?.CreateSupplyDepotConstruction(observation.GameLoop, builder.Tag,
+            observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self &&
+                (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)))
+                .Select(unit => unit.Tag)).Id;
         _pendingAction = PendingAction.Build;
         return CreatePositionCommand(
             _builderTag.Value,
@@ -273,7 +289,7 @@ public sealed class Sc2OpeningBuilderController
         Console.WriteLine($"[Opening] SC2 rejected all {_candidatePoints.Count} candidate Supply Depot sites (attempt {_placementQueryAttempts}); retrying placement query for builder {_builderTag}.");
     }
 
-    public void OnActionResult(ActionResult? result)
+    public void OnActionResult(ActionResult? result, BuildJobRuntime buildJobs = null)
     {
         if (_pendingAction == PendingAction.None)
             return;
@@ -289,7 +305,12 @@ public sealed class Sc2OpeningBuilderController
                 _dispatched = false;
             }
             else if (_pendingAction == PendingAction.Build)
+            {
                 _buildSubmitted = false;
+                if (_buildJobId is long id && buildJobs is not null && buildJobs.TryGet(id, out var job))
+                    job.Fail("SC2 rejected the opening Supply Depot construction command.", job.LastObservedGameLoop);
+                _buildJobId = null;
+            }
         }
 
         _pendingAction = PendingAction.None;

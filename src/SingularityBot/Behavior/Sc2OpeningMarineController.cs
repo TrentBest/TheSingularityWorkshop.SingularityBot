@@ -31,6 +31,7 @@ public sealed class Sc2OpeningMarineController
     private long? _barracksBuildJobId;
 
     public ulong? BuilderTag => _builderTag;
+    public ulong? ReleasedBuilderTag { get; private set; }
     public bool BarracksComplete => _barracksComplete;
     public bool MarineObserved { get; private set; }
     public bool MarineDeployed => _deployed;
@@ -177,6 +178,7 @@ public sealed class Sc2OpeningMarineController
         if (_builderTag is ulong builderTag)
         {
             assignments.Unreserve(builderTag);
+            ReleasedBuilderTag = builderTag;
             _builderTag = null;
         }
 

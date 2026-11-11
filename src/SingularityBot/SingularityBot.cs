@@ -443,6 +443,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             foreach (var pg in ProcessGroupsThisFrame)
                 FSM_API.Interaction.Update(pg);
+            _buildJobs.RetireTerminalJobs();
         }
         finally
         {

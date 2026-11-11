@@ -58,6 +58,15 @@ public sealed class Sc2BarracksProductionController
             }
         }
 
+        // The opening force goal is 60 Marines. Stop adding units at the
+        // target so the economy can fund expansions and later composition goals.
+        var marineCount = observation.Units.Count(unit =>
+            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+            !observation.DeadUnitTags.Contains(unit.Tag));
+        if (marineCount >= 60)
+            return null;
+
         if (observation.Minerals < gameData.MarineMineralCost ||
             observation.Minerals - gameData.MarineMineralCost < reservedMinerals ||
             observation.FoodCap < observation.FoodUsed ||

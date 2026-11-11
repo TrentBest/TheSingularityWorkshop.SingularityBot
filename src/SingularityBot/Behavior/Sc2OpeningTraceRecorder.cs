@@ -19,7 +19,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         Directory.CreateDirectory(directory);
         _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
         _writer = new StreamWriter(_path, false);
-        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,depotCount,barracksCount,marineCount,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable");
+        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable");
         _writer.Flush();
         Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
     }

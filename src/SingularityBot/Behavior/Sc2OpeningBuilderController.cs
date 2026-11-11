@@ -220,7 +220,7 @@ public sealed class Sc2OpeningBuilderController
         var distanceSquared = DistanceSquared(
             builder.PositionX, builder.PositionY, movementTarget.X, movementTarget.Y);
 
-        if (distanceSquared > 9f)
+        if (distanceSquared > 2.25f)
         {
             // An accepted Move is not proof that the SCV reached the site.
             // Retry after a bounded travel window so pathing interruptions cannot stall the opening.

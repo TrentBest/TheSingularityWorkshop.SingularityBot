@@ -111,7 +111,7 @@ public sealed class BuildJobRuntime
     public static void RegisterDefinition()
     {
         if (_registered) return;
-        FSM_API.Create.CreateFiniteStateMachine(FsmName, processRate: 1, processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(FsmName, processRate: -1, processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
             .State("Queued", null, null, null)
             .State("Assigned", null, null, null)
             .State("Executing", null, null, null)

@@ -19,7 +19,7 @@ public sealed class BuildJobContext : IStateContext
     }
 
     public long Id { get; }
-    public string Name => $"BuildJob:{Id}:{BuildableKind}";
+    public string Name { get; set; }
     public bool IsValid { get; set; }
     public string BuildableKind { get; }
     public ulong? WorkerTag { get; private set; }

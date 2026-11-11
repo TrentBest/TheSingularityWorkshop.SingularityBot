@@ -25,6 +25,21 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void UpgradesAfterTheFirstCompletedBarracksWithoutWaitingForASecond()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var action = controller.TryCreateAction(Snapshot(150,
+            Fact(1, "CommandCenter"),
+            Fact(2, "SupplyDepot"),
+            Fact(3, "Barracks")), data);
+
+        Assert.NotNull(action);
+        Assert.Equal(1516, action.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(new[] { 1UL }, action.ActionRaw.UnitCommand.UnitTags);
+    }
+
+    [Fact]
     public void WaitsForUpgradeOrderBeforeIssuingAnotherUpgrade()
     {
         var controller = new Sc2OrbitalSupportController();

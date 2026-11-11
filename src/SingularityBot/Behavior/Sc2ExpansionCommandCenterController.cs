@@ -133,7 +133,7 @@ public sealed class Sc2ExpansionCommandCenterController
             return null;
 
         var worker = observation.Units.FirstOrDefault(unit =>
-            unit.Tag == _builderTag.Value && IsLiveScv(unit) && !unit.HasCargo);
+            unit.Tag == _builderTag.Value && IsLiveScv(unit));
         if (worker is null)
             return null;
         if (!worker.HasCargo && IsGatheringMinerals(worker, observation))

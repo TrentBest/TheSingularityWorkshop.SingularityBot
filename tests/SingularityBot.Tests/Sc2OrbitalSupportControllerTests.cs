@@ -164,6 +164,30 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void DoesNotResubmitMorphWhileSc2ContinuesReportingTheUpgradeOrder()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var morphingCommandCenter = Fact(1, "CommandCenter") with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(1516, null, null, null) }
+        };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(500,
+            morphingCommandCenter,
+            Fact(2, "SupplyDepot"),
+            Fact(3, "Barracks")), data));
+
+        controller.OnActionResult(ActionResult.Success);
+        Assert.Null(controller.TryCreateAction(Snapshot(500,
+            morphingCommandCenter,
+            Fact(2, "SupplyDepot"),
+            Fact(3, "Barracks"),
+            loop: 500), data));
+    }
+
+    [Fact]
     public void UpgradesTheOriginalStartingCommandCenterAfterExpansionExists()
     {
         var controller = new Sc2OrbitalSupportController();

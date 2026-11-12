@@ -1,6 +1,5 @@
 using SingularityBot.Behavior;
 using SingularityBot.Observation;
-using TheSingularityWorkshop.FSM_API;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -17,7 +16,7 @@ public sealed class BuildingBehaviorRuntimeTests
         var second = Depot(1002, "SupplyDepot", 1f);
 
         runtime.Reconcile(Observation(10, first, second), Array.Empty<BuildJobContext>(), _ => false);
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
+        runtime.UpdateLifecycle();
 
         Assert.Equal("SupplyDepot 1", runtime.Buildings.Single(item => item.UnitTag == 1001).BuildingId);
         Assert.Equal("SupplyDepot 2", runtime.Buildings.Single(item => item.UnitTag == 1002).BuildingId);
@@ -44,12 +43,12 @@ public sealed class BuildingBehaviorRuntimeTests
 
         runtime.Reconcile(Observation(11, Depot(2001, "SupplyDepot", 0.5f)),
             jobs.Jobs, _ => false);
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
+        runtime.UpdateLifecycle();
         Assert.Empty(runtime.DrainEvents());
 
         runtime.Reconcile(Observation(12, Depot(2001, "SupplyDepot", 1f)),
             jobs.Jobs, _ => false);
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
+        runtime.UpdateLifecycle();
 
         var completed = Assert.Single(runtime.DrainEvents());
         Assert.Equal(BuildingEventKind.Operational, completed.Kind);
@@ -72,7 +71,7 @@ public sealed class BuildingBehaviorRuntimeTests
         };
         runtime.Reconcile(Observation(20, barracks), Array.Empty<BuildJobContext>(),
             id => id == 501);
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Researching", Assert.Single(runtime.Buildings).ActivityState);
 
         var production = barracks with
@@ -82,7 +81,7 @@ public sealed class BuildingBehaviorRuntimeTests
         };
         runtime.Reconcile(Observation(21, production), Array.Empty<BuildJobContext>(),
             _ => false);
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Producing", Assert.Single(runtime.Buildings).ActivityState);
 
         runtime.Clear();
@@ -100,18 +99,18 @@ public sealed class BuildingBehaviorRuntimeTests
             45, 45, 0, 0, 1, 14, 10, true, false, false,
             false, false, false, 30);
         runtime.Reconcile(Observation(30, raisedDepot, enemy), Array.Empty<BuildJobContext>(), _ => false);
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Raised", Assert.Single(runtime.Buildings).AccessState);
         Assert.Empty(runtime.DrainEvents());
 
         Assert.True(runtime.RequestDepotPassage(4001));
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Lowered", Assert.Single(runtime.Buildings).AccessState);
         var lower = Assert.Single(runtime.DrainEvents());
         Assert.Equal(BuildingEventKind.LowerSupplyDepot, lower.Kind);
 
         runtime.RequestDepotPassage(4001, false);
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Raised", Assert.Single(runtime.Buildings).AccessState);
         var raise = Assert.Single(runtime.DrainEvents());
         Assert.Equal(BuildingEventKind.RaiseSupplyDepot, raise.Kind);

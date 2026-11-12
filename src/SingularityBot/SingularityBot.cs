@@ -101,6 +101,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     /// <summary>Current SCV production request state.</summary>
     public string OpeningScvProductionState => _openingProduction.CurrentState;
+    public string OpeningDepotBuildJobState => _openingBuilder.BuildJobState;
+    public string OpeningDepotBuildFailureReason => _openingBuilder.BuildJobFailureReason;
 
     /// <summary>Sets the user-authored goal plan before or during a match.</summary>
     public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)

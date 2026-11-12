@@ -26,6 +26,20 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void KeepsStartingCommandCenterReservedWhenOrbitalAbilityMetadataIsMissing()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData(includeOrbitalAbility: false);
+        var observation = Snapshot(500,
+            Fact(1, "CommandCenter"),
+            Fact(2, "SupplyDepot"),
+            Fact(3, "Barracks"));
+
+        Assert.Null(controller.TryCreateAction(observation, data));
+        Assert.Equal(1UL, controller.GetCommandCenterReservedForUpgrade(observation, data));
+    }
+
+    [Fact]
     public void DoesNotReserveCommandCenterBeforeOrbitalTechIsReady()
     {
         var controller = new Sc2OrbitalSupportController();
@@ -257,13 +271,14 @@ public sealed class Sc2OrbitalSupportControllerTests
             Fact(10, "MineralField750", 12, 10) with { Alliance = UnitAlliance.Neutral }), data));
     }
 
-    private static Sc2GameDataCatalog GameData()
+    private static Sc2GameDataCatalog GameData(bool includeOrbitalAbility = true)
     {
         var data = new ResponseData();
         data.Units.Add(new UnitTypeData { UnitId = 18, Name = "CommandCenter", MineralCost = 400 });
         data.Units.Add(new UnitTypeData { UnitId = 132, Name = "OrbitalCommand", MineralCost = 550 });
         data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1 });
-        data.Abilities.Add(new AbilityData { AbilityId = 1516, LinkName = "UpgradeToOrbitalCommand" });
+        if (includeOrbitalAbility)
+            data.Abilities.Add(new AbilityData { AbilityId = 1516, LinkName = "UpgradeToOrbitalCommand" });
         data.Abilities.Add(new AbilityData { AbilityId = 168, LinkName = "CalldownMULE", CastRange = 10 });
         return Sc2GameDataCatalog.Create(data);
     }

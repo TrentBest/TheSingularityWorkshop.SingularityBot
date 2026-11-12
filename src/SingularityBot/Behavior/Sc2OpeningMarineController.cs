@@ -49,7 +49,8 @@ public sealed class Sc2OpeningMarineController
         BuildJobRuntime buildJobs = null,
         uint reservedMinerals = 0,
         ulong? excludedBuilderTag = null,
-        bool allowConstruction = true)
+        bool allowConstruction = true,
+        bool allowMarineTraining = true)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -194,6 +195,9 @@ public sealed class Sc2OpeningMarineController
             ReleasedBuilderTag = builderTag;
             _builderTag = null;
         }
+
+        if (!allowMarineTraining)
+            return null;
 
         var marines = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&

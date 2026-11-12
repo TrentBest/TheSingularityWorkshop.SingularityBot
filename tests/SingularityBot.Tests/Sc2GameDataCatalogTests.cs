@@ -150,7 +150,8 @@ public sealed class Sc2GameDataCatalogTests
     public void Create_ResolvesOrbitalUpgradeAndMuleAbilitiesWithoutGuessingIds()
     {
         var data = new ResponseData();
-        data.Units.Add(new UnitTypeData { UnitId = 132, Name = "OrbitalCommand", MineralCost = 150 });
+        data.Units.Add(new UnitTypeData { UnitId = 18, Name = "CommandCenter", MineralCost = 400 });
+        data.Units.Add(new UnitTypeData { UnitId = 132, Name = "OrbitalCommand", MineralCost = 550 });
         data.Abilities.Add(new AbilityData { AbilityId = 1516, LinkName = "UpgradeToOrbitalCommand" });
         data.Abilities.Add(new AbilityData { AbilityId =  9021, LinkName = "CalldownMULE" });
 

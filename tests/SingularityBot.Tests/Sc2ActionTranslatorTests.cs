@@ -78,6 +78,31 @@ public sealed class Sc2ActionTranslatorTests
     }
 
     [Fact]
+    public void ReturnCargoIntentOverridesAnObservedMineralGatherOrder()
+    {
+        var loadedWorker = Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true) with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(295, 20, null, null) }
+        };
+        var observation = Snapshot(
+            loadedWorker,
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 8, 2));
+
+        var actions = Sc2ActionTranslator.Translate(
+            new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.ReturnCarriedResources) },
+            observation,
+            1);
+
+        var command = Assert.Single(actions).ActionRaw.UnitCommand;
+        Assert.Equal(1UL, command.TargetUnitTag);
+        Assert.Equal(1, command.AbilityId);
+        Assert.Equal(new[] { 10UL }, command.UnitTags);
+        Assert.False(command.QueueCommand);
+    }
+
+    [Fact]
     public void ReturnCargoIntentFailsClosedWithoutSmartAbilityOrTownHall()
     {
         var loadedWorker = Snapshot(Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true));

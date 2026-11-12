@@ -156,14 +156,19 @@ public static class UnitBehaviorCatalog
     private static void RegisterConstruction()
     {
         FSM_API.Create.CreateFiniteStateMachine(ConstructionFsm, processRate: -1, processingGroup: ConstructionProcessingGroup)
-            .State("Waiting", null, ctx =>
-            {
-                if (ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.BuildOrderAvailable)
-                    unit.Emit(BehaviorCommand.BuildRequestedStructure);
-            }, null)
+            .State("Waiting", null, null, null)
+            .State("Executing", null, ctx => Emit(ctx, BehaviorCommand.BuildRequestedStructure), null)
+            .Transition("Waiting", "Executing", HasVisibleBuildOrder)
+            .Transition("Executing", "Waiting", HasNoVisibleBuildOrder)
             .WithInitialState("Waiting")
             .BuildDefinition();
     }
+
+    private static bool HasVisibleBuildOrder(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.BuildOrderAvailable;
+
+    private static bool HasNoVisibleBuildOrder(IStateContext context) =>
+        context is UnitBehaviorContext unit && (!unit.IsCurrentlyVisible || !unit.BuildOrderAvailable);
 
     private static bool CanRepairAssignedTarget(UnitBehaviorContext unit) =>
         unit.IsCurrentlyVisible && unit.RepairTargetTag is not null && unit.IsRepairAssignmentSafe;
@@ -287,9 +292,9 @@ public static class UnitBehaviorCatalog
             .Transition("Disabled", "WeaponReady", IsStutterReady)
             .Transition("Disabled", "WeaponCooldown", IsStutterCooling)
             .Transition("WeaponReady", "WeaponCooldown", IsStutterCooling)
-            .Transition("WeaponReady", "Disabled", ctx => !IsStutterEnabled(ctx))
+             .Transition("WeaponReady", "Disabled", IsStutterDisabled)
             .Transition("WeaponCooldown", "WeaponReady", IsStutterReady)
-            .Transition("WeaponCooldown", "Disabled", ctx => !IsStutterEnabled(ctx))
+             .Transition("WeaponCooldown", "Disabled", IsStutterDisabled)
             .WithInitialState("Disabled").BuildDefinition();
     }
 
@@ -297,6 +302,7 @@ public static class UnitBehaviorCatalog
         ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.GoalRole == role;
     private static bool IsStutterEnabled(IStateContext ctx) =>
         ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.StutterStepEnabled && unit.GoalRole != GoalActionRole.Fallback && unit.AttackTargetTag.HasValue;
+    private static bool IsStutterDisabled(IStateContext ctx) => !IsStutterEnabled(ctx);
     private static bool IsStutterReady(IStateContext ctx) =>
         IsStutterEnabled(ctx) && ctx is UnitBehaviorContext unit && unit.WeaponCooldownRemaining <= 0;
     private static bool IsStutterCooling(IStateContext ctx) =>

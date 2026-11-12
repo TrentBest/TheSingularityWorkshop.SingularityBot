@@ -28,7 +28,7 @@ Configuration is versioned and applied atomically: invalid JSON or invalid value
 - `mineralSaturation`: target workers per mineral field, constrained to 1–4.
 - `prioritizeOpeningInfrastructure`: when enabled, reserve the next observed opening milestone's mineral cost before optional production.
 - `holdWorkerProductionForFirstDepot`: when enabled, prevent additional SCV training from consuming the first Depot's mineral budget after initial SCV production has begun.
-- `allowLongDistanceMining`: defaults to `false`; when disabled, mineral fields more than 12 map units from every completed Command Center, Orbital Command, or Planetary Fortress are excluded from worker assignments. This keeps workers on established base mineral lines instead of sending them to unoccupied expansions.
+- `allowLongDistanceMining`: defaults to `false`; when disabled, mineral fields more than 14 map units from every completed Command Center, Orbital Command, or Planetary Fortress are excluded from worker assignments. This keeps workers on established base mineral lines instead of sending them to unoccupied expansions.
 
 The current infrastructure priority is: expansion Command Center, follow-up Depot plus an SCV reserve, first Depot, first Barracks, then Marine production. These are mineral reservations, not promises that the corresponding job is ready.
 

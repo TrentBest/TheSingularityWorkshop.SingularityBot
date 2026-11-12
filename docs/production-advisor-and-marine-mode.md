@@ -241,3 +241,11 @@ Implementation is complete only when:
 - live replays demonstrate the intended visible behavior.
 
 Passing CI is not live-match evidence. Do not claim that the described Marine Mode doctrine is implemented until these acceptance gates have been met.
+
+## Threat-responsive formation spacing and line-attack evasion
+
+Formation spacing is a live tactical input, not a fixed constant. The same role-aware slot geometry supports a compact spacing profile for early-game concentration and a wider profile when observed enemy weapons punish clustered units. The planner accepts the selected spacing explicitly, allowing the tactical evaluator to change spacing without changing unit roles or slot ordering. A spacing transition should be applied to the affected squad as a coordinated formation update, not as an uncontrolled scatter.
+
+For a line attack such as a Colossus thermal lance, the combat layer must first derive the finite attack segment from observed attacker/weapon state and the best available target or attack direction. It then tests each Marine against the beam corridor. A Marine inside the corridor receives a local escape target on a perpendicular to the beam, with the side selected by the nearest available formation gap. Marines already outside the corridor keep their positions. Once the attack corridor clears, the squad reforms using its current role and spacing profile.
+
+The current planner implements deterministic spacing selection and finite-line geometry for a single unit. It does not yet read Colossus weapon state, predict the live beam endpoint, detect the active wind-up, issue SC2 movement actions, coordinate collision-safe gap reservations, or trigger reformation. Those remain integration work. Beam width, attack timing, pathability, collision radius, and other Marines occupying the candidate gap must be supplied by authoritative game observations/data; do not substitute arbitrary fixed assumptions.

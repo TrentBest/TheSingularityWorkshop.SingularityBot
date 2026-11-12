@@ -55,6 +55,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OpeningBuilderController _openingBuilder = new();
     private readonly Sc2OpeningMarineController _openingMarine = new();
     private readonly Sc2MarineRallyController _marineRally = new();
+    private readonly ScoutingAdvisor _scoutingAdvisor = new();
     private readonly Sc2SecondBarracksController _secondBarracks = new();
     private readonly Sc2ExpansionCommandCenterController _expansionCommandCenter = new();
     private bool _expansionCommandCenterActionSubmitted;
@@ -719,7 +720,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // deterministic combat planner for every visible friendly Marine.
         if (_openingMarine.MarineDeployed)
         {
-            var combatDecisions = MarineCombatPlanner.Plan(normalized, _combatWeapons);
+            var scoutingAssignments = SpatialMap is null
+                ? new Dictionary<ulong, MapPoint>()
+                : _scoutingAdvisor.Plan(normalized, SpatialMap, _combatWeapons);
+            actions.AddRange(Sc2ScoutingActionTranslator.Translate(
+                scoutingAssignments, normalized, _gameData));
+            var combatDecisions = MarineCombatPlanner.Plan(
+                normalized, _combatWeapons, excludedUnitTags: scoutingAssignments.Keys.ToHashSet());
             actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
                 combatDecisions, normalized, _gameData, _combatWeapons));
             var liveMarineCount = normalized.Units.Count(unit =>

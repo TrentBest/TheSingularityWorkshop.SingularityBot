@@ -210,7 +210,8 @@ public sealed class Sc2OpeningBuilderController
             return null;
         }
 
-        if (_builderWasReturningMinerals)
+        var builderJustDepositedMinerals = _builderWasReturningMinerals;
+        if (builderJustDepositedMinerals)
         {
             var bankDelta = previousMineralBank is uint previous
                 ? (int)observation.Minerals - (int)previous
@@ -221,8 +222,10 @@ public sealed class Sc2OpeningBuilderController
             _builderWasReturningMinerals = false;
         }
 
-        // Keep an empty worker on its active mineral trip until it has harvested.
-        if (IsGatheringMinerals(builder, observation))
+        // A worker FSM can immediately queue another mineral gather after the
+        // return completes. That new trip must not strand a reserved builder:
+        // preserve an existing trip only when the builder has not just deposited.
+        if (!builderJustDepositedMinerals && IsGatheringMinerals(builder, observation))
             return null;
 
         // Do not send the builder to a speculative staging point. SC2's placement

@@ -402,8 +402,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _gameData.MarineMineralCost));
 
             reservedInfrastructureMinerals = reservedProductionMinerals;
-            var productionAction = _openingProduction.TryCreateScvTrainingAction(
+            var orbitalReservedCommandCenter = _orbitalSupport.GetCommandCenterReservedForUpgrade(
                 normalized, _gameData, reservedProductionMinerals);
+            var productionAction = _openingProduction.TryCreateScvTrainingAction(
+                normalized, _gameData, reservedProductionMinerals, orbitalReservedCommandCenter);
             _openingProductionActionSubmitted = productionAction is not null;
             if (productionAction is not null)
             {

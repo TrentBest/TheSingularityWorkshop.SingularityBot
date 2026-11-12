@@ -453,6 +453,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
+            var orbitalMineralReservation = startingTownHall is not null &&
+                startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) &&
+                orbitalDepotReady && orbitalBarracksReady && !orbitalMorphingObserved
+                    ? orbitalUpgradeCost
+                    : 0u;
             var orbitalCommandCenterBusy = _gameData.ScvTrainAbilityId is > 0
                 ? startingTownHall?.Orders.Any(order => order.AbilityId == _gameData.ScvTrainAbilityId.Value) == true
                 : startingTownHall?.HasOrders == true;
@@ -710,7 +715,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 refineryUnderConstruction);
             refineryActions = _refineries.ReconcileAndCreateActions(
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
-                allowConstruction: refineryConstructionAllowed);
+                allowConstruction: refineryConstructionAllowed,
+                reservedMinerals: orbitalMineralReservation);
             assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
 
             // Secondary Barracks produce Marines whenever no higher-priority

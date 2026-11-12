@@ -994,6 +994,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 var withdrawing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Withdraw);
                 _openingTrace.RecordEvent("MarineCombat", normalized.GameLoop,
                     $"marines={combatDecisions.Count};fire={firing};reposition={repositioning};withdraw={withdrawing};rally={marineRallyActions.Count}");
+                foreach (var decision in combatDecisions)
+                    _openingTrace.RecordEvent("MarineDecision", normalized.GameLoop,
+                        $"marine={decision.MarineTag};target={decision.TargetTag?.ToString() ?? "none"};action={decision.Action};friendlyDps={decision.FriendlyDps:F2};threatDps={decision.ThreatDps:F2};reason={decision.Reason}");
             }
         }
 

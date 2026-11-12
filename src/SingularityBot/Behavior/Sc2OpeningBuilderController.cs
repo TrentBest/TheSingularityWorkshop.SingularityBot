@@ -129,6 +129,12 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
     private void UpdateMovementFsm()
     {
+        // The retry deadline is an explicit external observation boundary. Resolve
+        // it directly through the FSM handle before the normal group tick so a
+        // long-running move cannot retain the Moving state past its deadline.
+        if (MovementState == Moving && HasMoveRetryElapsed(this))
+            _movementHandle.TransitionTo(MovementIdle);
+
         FSM_API.Interaction.Update(_movementProcessingGroup);
         _moveSubmissionRequested = false;
         _moveAccepted = false;

@@ -1,5 +1,6 @@
 using SingularityBot.Behavior;
 using SingularityBot.Observation;
+using TheSingularityWorkshop.FSM_API;
 using Xunit;
 
 namespace SingularityBot.Tests;

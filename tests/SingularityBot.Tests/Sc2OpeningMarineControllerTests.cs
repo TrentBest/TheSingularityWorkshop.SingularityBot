@@ -46,6 +46,8 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.NotNull(buildBarracks);
         Assert.Equal(321, buildBarracks.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(10UL, buildBarracks.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.True(controller.IsBuildSubmitted);
+        Assert.False(controller.BarracksComplete);
         controller.OnActionResult(ActionResult.Success);
 
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
@@ -58,6 +60,7 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y)),
             map, gameData, assignments, allowMarineTraining: false));
+        Assert.True(controller.BarracksComplete);
 
         var trainMarine = controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
@@ -65,6 +68,8 @@ public sealed class Sc2OpeningMarineControllerTests
             map, gameData, assignments, allowMarineTraining: true);
         Assert.NotNull(trainMarine);
         Assert.False(controller.MarineTrainingOrderObserved);
+        Assert.True(controller.IsOpeningMarineTrainingPending);
+        Assert.False(controller.MarineTrainingStarted);
         Assert.Equal(560, trainMarine.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(200UL, trainMarine.ActionRaw.UnitCommand.UnitTags[0]);
         controller.OnActionResult(ActionResult.Success);
@@ -78,6 +83,8 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
             Fact(10, "SCV", site.X, site.Y), trainingBarracks), map, gameData, assignments));
         Assert.True(controller.MarineTrainingOrderObserved);
+        Assert.True(controller.MarineTrainingStarted);
+        Assert.False(controller.IsOpeningMarineTrainingPending);
 
         var observedMarine = controller.TryCreateAction(Snapshot(0, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),

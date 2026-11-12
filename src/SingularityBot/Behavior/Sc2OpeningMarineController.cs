@@ -21,7 +21,6 @@ public sealed class Sc2OpeningMarineController : IDisposable
 
     private readonly List<MapPoint> _candidatePoints = new();
     private ulong? _builderTag;
-    private ulong? _marineTag;
     private MapPoint? _placement;
     private bool _placementQueryPending;
     private uint _builderMoveRequestGameLoop;

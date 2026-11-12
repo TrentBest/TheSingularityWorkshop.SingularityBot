@@ -62,6 +62,7 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool HasCompletedSupplyDepot { get; private set; }
     public bool IsInDesignatedCommandCenterConstructionArea { get; private set; }
     public bool IsOrbitalCommand { get; private set; }
+    public bool IsPlanetaryFortress { get; private set; }
     public bool HasScvTrainingOrder { get; private set; }
     public uint? OrbitalUpgradeAbilityId { get; private set; }
     public string TownHallUpgradeState => _handles.ContainsKey(BuildingBehaviorCatalog.TownHallUpgradeFsm)
@@ -105,6 +106,7 @@ public sealed class BuildingBehaviorContext : IStateContext
         HasCompletedSupplyDepot = hasCompletedSupplyDepot;
         IsInDesignatedCommandCenterConstructionArea = isInDesignatedCommandCenterConstructionArea;
         IsOrbitalCommand = facts.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase);
+        IsPlanetaryFortress = facts.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase);
         OrbitalUpgradeAbilityId = orbitalUpgradeAbilityId;
         if (!facts.IsLiveVisible) return;
 
@@ -131,7 +133,7 @@ public sealed class BuildingBehaviorContext : IStateContext
     }
 
     public bool CanUpgradeToOrbital =>
-        UnitKind == "CommandCenter" && IsLanded && !IsOrbitalCommand &&
+        UnitKind == "CommandCenter" && IsLanded && !IsOrbitalCommand && !IsPlanetaryFortress &&
         HasCompletedBarracks && HasCompletedSupplyDepot &&
         !IsInDesignatedCommandCenterConstructionArea && !HasScvTrainingOrder;
 

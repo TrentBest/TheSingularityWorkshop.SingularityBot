@@ -148,36 +148,39 @@ public sealed class BuildingBehaviorRuntime
 
     public static void RegisterDefinitions()
     {
-        FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.LifecycleFsm, processRate: -1,
-                processingGroup: UnitBehaviorCatalog.DataSyncProcessingGroup)
-            .State("UnderConstruction", null, null, null)
-            .State("Operational", context => (context as BuildingBehaviorContext)?.EmitOperational(), null, null)
-            .Transition("UnderConstruction", "Operational", IsOperational)
-            .WithInitialState("UnderConstruction").BuildDefinition();
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.LifecycleFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.DataSyncProcessingGroup)
+                .State("UnderConstruction", null, null, null)
+                .State("Operational", context => (context as BuildingBehaviorContext)?.EmitOperational(), null, null)
+                .Transition("UnderConstruction", "Operational", IsOperational)
+                .WithInitialState("UnderConstruction").BuildDefinition();
 
-        FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ActivityFsm, processRate: -1,
-                processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
-            .State("Idle", null, null, null)
-            .State("Producing", null, null, null)
-            .State("Researching", null, null, null)
-            .Transition("Idle", "Producing", IsProducing)
-            .Transition("Idle", "Researching", IsResearching)
-            .Transition("Producing", "Idle", IsIdle)
-            .Transition("Producing", "Researching", IsResearching)
-            .Transition("Researching", "Idle", IsIdle)
-            .Transition("Researching", "Producing", IsProducing)
-            .WithInitialState("Idle").BuildDefinition();
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ActivityFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ActivityFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+                .State("Idle", null, null, null)
+                .State("Producing", null, null, null)
+                .State("Researching", null, null, null)
+                .Transition("Idle", "Producing", IsProducing)
+                .Transition("Idle", "Researching", IsResearching)
+                .Transition("Producing", "Idle", IsIdle)
+                .Transition("Producing", "Researching", IsResearching)
+                .Transition("Researching", "Idle", IsIdle)
+                .Transition("Researching", "Producing", IsProducing)
+                .WithInitialState("Idle").BuildDefinition();
 
-        FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
-                processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
-            .State("Assess", null, null, null)
-            .State("Lowered", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(false), null)
-            .State("Raised", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(true), null)
-            .Transition("Assess", "Raised", IsObservedRaised)
-            .Transition("Assess", "Lowered", IsObservedLowered)
-            .Transition("Lowered", "Raised", ShouldRaiseDepot)
-            .Transition("Raised", "Lowered", ShouldLowerDepot)
-            .WithInitialState("Assess").BuildDefinition();
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+                .State("Assess", null, null, null)
+                .State("Lowered", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(false), null)
+                .State("Raised", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(true), null)
+                .Transition("Assess", "Raised", IsObservedRaised)
+                .Transition("Assess", "Lowered", IsObservedLowered)
+                .Transition("Lowered", "Raised", ShouldRaiseDepot)
+                .Transition("Raised", "Lowered", ShouldLowerDepot)
+                .WithInitialState("Assess").BuildDefinition();
     }
 
     private static bool IsOperational(IStateContext context) =>

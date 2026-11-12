@@ -130,12 +130,10 @@ public sealed class Sc2OpeningBuilderControllerTests
         var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
         var nextGatherOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
         var dispatch = controller.TryCreateAction(Snapshot(150, 12, 15,
-            Fact(10, "SCV", 5, 5),
+            Fact(10, "SCV", 5, 5, orders: nextGatherOrder),
             Fact(11, "SCV", 9, 9),
             Fact(1, "CommandCenter", 10, 10),
-            Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral },
-            Fact(10, "SCV", 5, 5),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData,
+            mineral), map, gameData,
             assignments, Crew(10, 11));
 
         Assert.NotNull(dispatch);

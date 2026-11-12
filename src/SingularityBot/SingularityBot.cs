@@ -127,6 +127,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius) =>
         _buildings.ConfigureDesignatedCommandCenterConstructionArea(centerX, centerY, radius);
 
+    public void ClearDesignatedCommandCenterConstructionArea() =>
+        _buildings.ClearDesignatedCommandCenterConstructionArea();
+
     /// <summary>Sets the user-authored goal plan before or during a match.</summary>
     public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)
     {
@@ -616,7 +619,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     reservedMinerals: marineReservedMinerals,
                     excludedBuilderTag: _openingBuilder.BuilderTag,
                     allowConstruction: _openingBuilder.IsCompleted,
-                    allowMarineTraining: orbitalMorphingObserved);
+                    allowMarineTraining: true);
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else
@@ -643,8 +646,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Give the first Barracks opening room to settle before pulling
                 // another SCV. Four and a half seconds at SC2's 22.4 loops/sec.
                 const uint secondBarracksWorkerPullDelayLoops = 101;
-                if (orbitalMorphingObserved &&
-                    normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
+                if (normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
                     secondBarracksAction = _secondBarracks.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
@@ -690,7 +692,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Do not spend on the four-Barracks expansion or a second town hall
                 // until SC2 has observed the starting Command Center's Orbital morph
                 // order. This keeps the 150-mineral upgrade ahead of optional builds.
-                if (orbitalMorphingObserved && _secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete)
+                var designatedAreaStreaming = _buildings.HasDesignatedCommandCenterConstructionArea &&
+                    _buildings.Buildings.Any(building =>
+                        building.TownHallExpansionState == "StreamingCommandCenters");
+                var expansionProductionEnabled = _buildings.HasDesignatedCommandCenterConstructionArea
+                    ? designatedAreaStreaming
+                    : orbitalMorphingObserved;
+                if (expansionProductionEnabled && _secondBarracks.IsComplete)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,

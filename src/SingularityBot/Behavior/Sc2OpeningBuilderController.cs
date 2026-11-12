@@ -35,6 +35,7 @@ public sealed class Sc2OpeningBuilderController
     private BuildJobContext _buildJob;
     private HashSet<ulong> _preexistingDepotTags;
     private bool _builderWasReturningMinerals;
+    private bool _builderReleasedOnCompletion;
     private uint? _lastObservedMinerals;
 
     public Sc2OpeningBuilderController() { }
@@ -111,8 +112,19 @@ public sealed class Sc2OpeningBuilderController
             .Select(unit => unit.Tag)
             .ToHashSet();
 
-        if (IsCompleted ||
-            gameData.SupplyDepotBuildAbilityId is not > 0 ||
+        if (IsCompleted)
+        {
+            if (releaseBuilderOnCompletion && !_builderReleasedOnCompletion &&
+                _builderTag is ulong completedBuilder)
+            {
+                assignments.Unreserve(completedBuilder);
+                _builderReleasedOnCompletion = true;
+                Console.WriteLine($"[Opening] Supply Depot completed; recycled SCV {completedBuilder} back to the worker pool.");
+            }
+            return null;
+        }
+
+        if (gameData.SupplyDepotBuildAbilityId is not > 0 ||
             gameData.SupplyDepotMineralCost == 0 ||
             gameData.MoveAbilityId is not > 0 ||
             spatialMap is null ||
@@ -187,6 +199,7 @@ public sealed class Sc2OpeningBuilderController
                 return null;
 
             _builderTag = selected.Worker.Tag;
+            _builderReleasedOnCompletion = false;
             assignments.Reserve(_builderTag.Value);
             _placementQueryPending = true;
             Console.WriteLine(
@@ -265,6 +278,7 @@ public sealed class Sc2OpeningBuilderController
                     if (releaseBuilderOnCompletion && _builderTag is ulong completedBuilder)
                     {
                         assignments.Unreserve(completedBuilder);
+                        _builderReleasedOnCompletion = true;
                         Console.WriteLine($"[Opening] Supply Depot {depot.Tag} completed; recycled SCV {completedBuilder} back to the worker pool.");
                     }
                     else

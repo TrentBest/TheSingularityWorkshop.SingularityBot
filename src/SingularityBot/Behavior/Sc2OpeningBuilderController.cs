@@ -87,7 +87,8 @@ public sealed class Sc2OpeningBuilderController
         IReadOnlySet<ulong> constructionCrewTags,
         BuildJobRuntime buildJobs = null,
         ulong? preferredBuilderTag = null,
-        bool releaseBuilderOnCompletion = false)
+        bool releaseBuilderOnCompletion = false,
+        uint workerPullMinerals = 80)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -128,9 +129,11 @@ public sealed class Sc2OpeningBuilderController
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
-        // Never pull an SCV merely because the opening has started. Keep the
-        // whole worker line gathering until the actual structure cost is available.
-        if (_builderTag is null && observation.Minerals < gameData.SupplyDepotMineralCost)
+        // Pull the builder before the structure is affordable so it can travel
+        // while the bank accumulates. The threshold is policy data; the authoritative
+        // game-data cost still gates the actual Build command below.
+        var builderPullThreshold = Math.Min(workerPullMinerals, gameData.SupplyDepotMineralCost);
+        if (_builderTag is null && observation.Minerals < builderPullThreshold)
             return null;
 
         if (_builderTag is null)
@@ -150,33 +153,21 @@ public sealed class Sc2OpeningBuilderController
                 .Where(unit => IsLiveScv(unit) && !assignments.IsReserved(unit.Tag))
                 .ToArray();
             var selected = eligibleWorkers
-                .Where(unit => constructionCrewTags.Contains(unit.Tag) || unit.Tag == preferredBuilderTag)
                 .Select(worker => new
                 {
                     Worker = worker,
                     EstimatedArrivalDistance = Math.Sqrt(DistanceSquared(
                         worker.PositionX, worker.PositionY,
-                        stagingPoint.X, stagingPoint.Y))
+                        stagingPoint.X, stagingPoint.Y)),
+                    IsConstructionCrew = constructionCrewTags.Contains(worker.Tag)
                 })
+                // Preserve an explicitly handed-off builder when one is supplied.
+                // Otherwise take a loaded mineral worker first, regardless of whether
+                // its optional construction capability has been registered yet.
                 .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag ? 0 : 1)
-                // Prefer a worker that has already completed a mineral trip:
-                // construction consumes the cargo trip as an intentional opening cost.
                 .ThenBy(candidate => candidate.Worker.HasCargo ? 0 : 1)
+                .ThenBy(candidate => candidate.IsConstructionCrew ? 0 : 1)
                 .ThenBy(candidate => candidate.EstimatedArrivalDistance)
-                .ThenBy(candidate => candidate.Worker.Tag)
-                .FirstOrDefault();
-            // A missing construction capability must never stall the opening.
-            // Fall back to the nearest unreserved SCV and let the reservation
-            // prevent its mineral assignment from being reissued.
-            selected ??= eligibleWorkers
-                .Select(worker => new
-                {
-                    Worker = worker,
-                    EstimatedArrivalDistance = Math.Sqrt(DistanceSquared(
-                        worker.PositionX, worker.PositionY,
-                        stagingPoint.X, stagingPoint.Y))
-                })
-                .OrderBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
                 .FirstOrDefault();
 

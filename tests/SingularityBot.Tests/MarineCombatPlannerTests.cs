@@ -73,6 +73,17 @@ public sealed class MarineCombatPlannerTests
     }
 
     [Fact]
+    public void IgnoresUnrequestedDestructibleNeutralBlockers()
+    {
+        var result = Plan(Marine(1, 0, 0, 0),
+            Fact(2, EnemyType, "UnbuildableBricksDestructible", UnitAlliance.Neutral, 4, 0));
+
+        var decision = Assert.Single(result);
+        Assert.Equal(MarineTacticalAction.Hold, decision.Action);
+        Assert.Null(decision.TargetTag);
+    }
+
+    [Fact]
     public void AllowsExplicitlyClassifiedDestructibleNeutrals()
     {
         var result = Plan(Marine(1, 0, 0, 0),

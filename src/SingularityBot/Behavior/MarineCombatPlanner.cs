@@ -96,12 +96,14 @@ public static class MarineCombatPlanner
             unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
             excludedUnitTags?.Contains(unit.Tag) != true).ToArray();
         var enemyTargets = live.Where(unit => unit.Alliance == UnitAlliance.Enemy).ToArray();
-        // Neutral blockers are opportunistic only: a visible enemy always wins
-        // over a rock or debris target, so clearing terrain cannot derail combat.
+        // Neutral destructibles are not combat targets by default. A separate,
+        // observation-backed route-clearance policy must explicitly identify a
+        // blocker before Marines are allowed to spend time attacking it.
         var targets = enemyTargets.Length > 0
             ? enemyTargets
             : live.Where(unit => unit.Alliance == UnitAlliance.Neutral &&
-                (destructibleNeutralTags?.Contains(unit.Tag) == true || IsDestructible(unit.UnitKind)) &&
+                destructibleNeutralTags?.Contains(unit.Tag) == true &&
+                IsDestructible(unit.UnitKind) &&
                 !IsNonCombatResource(unit.UnitKind)).ToArray();
 
         var anchorMarine = marines.OrderBy(marine => marine.Tag).FirstOrDefault();

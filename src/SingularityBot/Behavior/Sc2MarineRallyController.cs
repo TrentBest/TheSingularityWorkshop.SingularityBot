@@ -35,7 +35,7 @@ public sealed class Sc2MarineRallyController
             return Array.Empty<SC2APIProtocol.Action>();
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
-        var patrolPoints = FindFriendlyPatrolSectors(map);
+        var patrolPoints = FindFriendlyPatrolWaypoints(map);
 
         var actions = new List<SC2APIProtocol.Action>();
         var liveMarineTags = observation.Units
@@ -230,16 +230,46 @@ public sealed class Sc2MarineRallyController
             .FirstOrDefault();
     }
 
-    private static IReadOnlyList<MapPoint> FindFriendlyPatrolSectors(SpatialMap map)
+    private static IReadOnlyList<MapPoint> FindFriendlyPatrolWaypoints(SpatialMap map)
     {
         var homeSector = map.GetSector(map.Side.FriendlyStart);
         var scoutPoint = FindFriendlyObservationSector(map);
-        return map.GetNeighbors(homeSector.Id)
-            .Select(sector => sector.Center)
-            .Where(map.Bounds.Contains)
-            .Where(point => map.Side.Assess(point) != MapSide.Enemy)
-            .Where(point => scoutPoint is null ||
-                point.DistanceSquaredTo(scoutPoint.Value) > 0.01f)
+        var sectors = map.GetNeighbors(homeSector.Id).Prepend(homeSector);
+        var candidates = new List<MapPoint>();
+
+        // A 3x3 sector grid has only three neighbors at a corner spawn. Using
+        // each safe neighboring sector's inset 3x3 sample gives the squad enough
+        // distinct perimeter stations to patrol without stacking five Marines
+        // on the same two sector centers.
+        foreach (var sector in sectors)
+        {
+            var insetX = MathF.Min(4f, sector.Bounds.Width * 0.15f);
+            var insetY = MathF.Min(4f, sector.Bounds.Height * 0.15f);
+            var minX = sector.Bounds.MinX + insetX;
+            var maxX = sector.Bounds.MaxX - insetX;
+            var minY = sector.Bounds.MinY + insetY;
+            var maxY = sector.Bounds.MaxY - insetY;
+            var xSamples = new[] { minX, (minX + maxX) * 0.5f, maxX };
+            var ySamples = new[] { minY, (minY + maxY) * 0.5f, maxY };
+
+            foreach (var y in ySamples)
+            foreach (var x in xSamples)
+            {
+                var point = new MapPoint(x, y);
+                if (!map.Bounds.Contains(point) || map.Side.Assess(point) != MapSide.Friendly)
+                    continue;
+                if (point.DistanceSquaredTo(map.Side.FriendlyStart) < 100f)
+                    continue;
+                if (scoutPoint is MapPoint scout && point.DistanceSquaredTo(scout) < 64f)
+                    continue;
+                if (candidates.Any(existing => existing.DistanceSquaredTo(point) < 64f))
+                    continue;
+
+                candidates.Add(point);
+            }
+        }
+
+        return candidates
             .OrderBy(point => MathF.Atan2(
                 point.Y - map.Side.FriendlyStart.Y,
                 point.X - map.Side.FriendlyStart.X))

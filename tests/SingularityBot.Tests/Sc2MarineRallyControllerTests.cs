@@ -161,6 +161,60 @@ public sealed class Sc2MarineRallyControllerTests
             move.ActionRaw.UnitCommand.UnitTags.Single() != 6UL));
     }
 
+    [Fact]
+    public void DistributesReinforcedSquadAcrossDistinctFriendlyPatrolWaypoints()
+    {
+        var controller = new Sc2MarineRallyController();
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(10, 10), new MapPoint(90, 90));
+        var gameData = GameData();
+        var offsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4,
+            map.Side.EnemyStart.X - map.Side.FriendlyStart.X,
+            map.Side.EnemyStart.Y - map.Side.FriendlyStart.Y);
+        var initial = new List<UnitObservationFacts>
+        {
+            Fact(1, "Marine", map.Side.FriendlyStart.X, map.Side.FriendlyStart.Y)
+        };
+        initial.AddRange(offsets.Select((offset, index) => Fact((ulong)(index + 2), "Marine",
+            map.Side.FriendlyStart.X + offset.X, map.Side.FriendlyStart.Y + offset.Y)));
+        var initialDecisions = Enumerable.Range(1, 5).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "No visible attackable target")).ToArray();
+
+        // Assemble the original four-Marine squad and establish its separate scout.
+        var initialMoves = controller.TryCreateActions(
+            Snapshot(initial.ToArray()), map, initialDecisions, gameData);
+        var scoutMove = Assert.Single(initialMoves,
+            move => move.ActionRaw.UnitCommand.UnitTags.Single() == 1UL);
+        var scoutTarget = scoutMove.ActionRaw.UnitCommand.TargetWorldSpacePos;
+
+        // Add two reinforcements after dispatch. Put all six squad Marines at the
+        // same observation position so duplicate patrol destinations cannot hide
+        // behind different short-step waypoints.
+        var reinforced = new List<UnitObservationFacts>
+        {
+            Fact(1, "Marine", scoutTarget.X, scoutTarget.Y)
+        };
+        reinforced.AddRange(Enumerable.Range(2, 6).Select(tag =>
+            Fact((ulong)tag, "Marine", 20, 20)));
+        var decisions = Enumerable.Range(1, 7).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "No visible attackable target")).ToArray();
+
+        var moves = controller.TryCreateActions(
+            new NormalizedObservation(324, 1, reinforced, new HashSet<ulong>()),
+            map, decisions, gameData);
+
+        Assert.Equal(6, moves.Count);
+        var targets = moves.Select(move =>
+        {
+            var point = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
+            Assert.Equal(MapSide.Friendly, map.Side.Assess(new MapPoint(point.X, point.Y)));
+            return (point.X, point.Y);
+        }).ToArray();
+        Assert.Equal(6, targets.Distinct().Count());
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

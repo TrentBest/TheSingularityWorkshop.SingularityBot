@@ -82,7 +82,7 @@ public static class MarineCombatPlanner
     public static IReadOnlyList<MarineTacticalDecision> Plan(
         NormalizedObservation observation,
         IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType,
-        IReadOnlySet<ulong>? destructibleNeutralTags = null)
+        IReadOnlySet<ulong>? destructibleNeutralTags = null,\n        IReadOnlySet<ulong>? excludedUnitTags = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(weaponsByUnitType);

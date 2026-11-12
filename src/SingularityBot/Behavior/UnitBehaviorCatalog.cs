@@ -65,14 +65,45 @@ public static class UnitBehaviorCatalog
         Sc2RefineryRuntime.RegisterDefinition();
     }
 
+    private static bool ShouldEnterMidGame(IStateContext context) =>
+        context is GameStateContext state &&
+        (state.HasAdvancedTech || state.FriendlyBaseCount >= 2);
+
+    private static bool ShouldEnterLateGame(IStateContext context) =>
+        context is GameStateContext state &&
+        (state.HasLateGameTech || state.FriendlyBaseCount >= 3);
+
+    private static bool IsUnitCurrentlyVisible(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.IsCurrentlyVisible;
+
+    private static bool IsUnitNotCurrentlyVisible(IStateContext context) =>
+        context is UnitBehaviorContext unit && !unit.IsCurrentlyVisible;
+
+    private static bool IsWorkerVisible(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.IsWorker && unit.IsCurrentlyVisible;
+
+    private static bool IsWorkerNotVisible(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.IsWorker && !unit.IsCurrentlyVisible;
+
+    private static bool IsWorkerVisibleAndCarryingResources(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.IsWorker && unit.IsCurrentlyVisible && unit.HasCargo;
+
+    private static bool IsWorkerVisibleAndAssignedToMinerals(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.IsWorker && unit.IsCurrentlyVisible &&
+        !unit.HasCargo && unit.AssignedMineralTag.HasValue;
+
+    private static bool IsWorkerVisibleAndAwaitingAssignment(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.IsWorker && unit.IsCurrentlyVisible &&
+        !unit.HasCargo && !unit.AssignedMineralTag.HasValue;
+
     private static void RegisterGameState()
     {
         FSM_API.Create.CreateFiniteStateMachine("SingularityBot.GameState", processRate: -1, processingGroup: StrategyProcessingGroup)
             .State("EarlyGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Early), null, null)
             .State("MidGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Mid), null, null)
             .State("LateGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Late), null, null)
-            .Transition("EarlyGame", "MidGame", ctx => ctx is GameStateContext state && (state.HasAdvancedTech || state.FriendlyBaseCount >= 2))
-            .Transition("MidGame", "LateGame", ctx => ctx is GameStateContext state && (state.HasLateGameTech || state.FriendlyBaseCount >= 3))
+            .Transition("EarlyGame", "MidGame", ShouldEnterMidGame)
+            .Transition("MidGame", "LateGame", ShouldEnterLateGame)
             .WithInitialState("EarlyGame")
             .BuildDefinition();
     }
@@ -83,10 +114,10 @@ public static class UnitBehaviorCatalog
             .State("FirstSeen", null, null, null)
             .State("AliveVisible", null, null, null)
             .State("AliveRemembered", null, null, null)
-            .Transition("FirstSeen", "AliveVisible", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible)
-            .Transition("FirstSeen", "AliveRemembered", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("AliveVisible", "AliveRemembered", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("AliveRemembered", "AliveVisible", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible)
+            .Transition("FirstSeen", "AliveVisible", IsUnitCurrentlyVisible)
+            .Transition("FirstSeen", "AliveRemembered", IsUnitNotCurrentlyVisible)
+            .Transition("AliveVisible", "AliveRemembered", IsUnitNotCurrentlyVisible)
+            .Transition("AliveRemembered", "AliveVisible", IsUnitCurrentlyVisible)
             .WithInitialState("FirstSeen")
             .BuildDefinition();
     }
@@ -100,24 +131,24 @@ public static class UnitBehaviorCatalog
             .State("ReturningResources", ctx => Emit(ctx, BehaviorCommand.ReturnCarriedResources), null, null)
             .State("Mining", ctx => Emit(ctx, BehaviorCommand.AssignWorkerToMinerals), null, null)
             .State("AwaitingAssignment", null, null, null)
-            .Transition("Assess", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("Assess", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
-            .Transition("Assess", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
-            .Transition("Assess", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)
-            .Transition("NotVisible", "Visible", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible)
-            .Transition("Visible", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("Visible", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
-            .Transition("Visible", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
-            .Transition("Visible", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)
-            .Transition("ReturningResources", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("ReturningResources", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
-            .Transition("ReturningResources", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)
-            .Transition("Mining", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("Mining", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
-            .Transition("Mining", "AwaitingAssignment", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && !unit.AssignedMineralTag.HasValue)
-            .Transition("AwaitingAssignment", "NotVisible", ctx => ctx is UnitBehaviorContext unit && !unit.IsCurrentlyVisible)
-            .Transition("AwaitingAssignment", "ReturningResources", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && unit.HasCargo)
-            .Transition("AwaitingAssignment", "Mining", ctx => ctx is UnitBehaviorContext unit && unit.IsCurrentlyVisible && !unit.HasCargo && unit.AssignedMineralTag.HasValue)
+            .Transition("Assess", "NotVisible", IsUnitNotCurrentlyVisible)
+            .Transition("Assess", "ReturningResources", IsWorkerVisibleAndCarryingResources)
+            .Transition("Assess", "Mining", IsWorkerVisibleAndAssignedToMinerals)
+            .Transition("Assess", "AwaitingAssignment", IsWorkerVisibleAndAwaitingAssignment)
+            .Transition("NotVisible", "Visible", IsUnitCurrentlyVisible)
+            .Transition("Visible", "NotVisible", IsUnitNotCurrentlyVisible)
+            .Transition("Visible", "ReturningResources", IsWorkerVisibleAndCarryingResources)
+            .Transition("Visible", "Mining", IsWorkerVisibleAndAssignedToMinerals)
+            .Transition("Visible", "AwaitingAssignment", IsWorkerVisibleAndAwaitingAssignment)
+            .Transition("ReturningResources", "NotVisible", IsUnitNotCurrentlyVisible)
+            .Transition("ReturningResources", "Mining", IsWorkerVisibleAndAssignedToMinerals)
+            .Transition("ReturningResources", "AwaitingAssignment", IsWorkerVisibleAndAwaitingAssignment)
+            .Transition("Mining", "NotVisible", IsUnitNotCurrentlyVisible)
+            .Transition("Mining", "ReturningResources", IsWorkerVisibleAndCarryingResources)
+            .Transition("Mining", "AwaitingAssignment", IsWorkerVisibleAndAwaitingAssignment)
+            .Transition("AwaitingAssignment", "NotVisible", IsUnitNotCurrentlyVisible)
+            .Transition("AwaitingAssignment", "ReturningResources", IsWorkerVisibleAndCarryingResources)
+            .Transition("AwaitingAssignment", "Mining", IsWorkerVisibleAndAssignedToMinerals)
             .WithInitialState("Assess")
             .BuildDefinition();
     }

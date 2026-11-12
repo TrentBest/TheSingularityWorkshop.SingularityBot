@@ -237,7 +237,7 @@ public sealed class Sc2SecondBarracksControllerTests
         Assert.NotNull(build);
         Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(12UL, build.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.True(controller.RequiresSupplyDepot);
+        Assert.False(controller.RequiresSupplyDepot);
     }
 
     [Fact]

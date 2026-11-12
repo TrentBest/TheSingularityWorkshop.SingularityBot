@@ -158,6 +158,7 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Orbital", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+        Assert.Equal("CommandCenter 1", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).BuildingId);
 
         runtime.Clear();
     }
@@ -219,6 +220,7 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Lowered", Assert.Single(runtime.Buildings).AccessState);
+        Assert.Equal("SupplyDepot 1", Assert.Single(runtime.Buildings).BuildingId);
         var lower = Assert.Single(runtime.DrainEvents());
         Assert.Equal(BuildingEventKind.LowerSupplyDepot, lower.Kind);
 

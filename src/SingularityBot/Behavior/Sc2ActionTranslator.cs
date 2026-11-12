@@ -82,18 +82,34 @@ public static class Sc2ActionTranslator
             }
         }
 
-        // FSM intents remain the normal command owner. This narrow recovery
-        // path covers workers that have a valid mineral reservation but are
-        // visibly idle (for example, after a construction FSM finishes and its
-        // prior order disappears). It never interrupts cargo trips or active orders.
+        // FSM intents remain the normal command owner. Recover both sides of a
+        // completed construction handoff: an idle loaded worker must first unload
+        // at a town hall, while an idle empty worker resumes its mineral route.
+        // Only assigned (therefore unreserved) workers enter this recovery path.
         if (workerAssignments is not null && TryGetAbilityId(smartAbilityId, out var recoverySmartId))
         {
             foreach (var assignment in workerAssignments.Values.OrderBy(item => item.WorkerTag))
             {
                 if (commanded.Contains(assignment.WorkerTag) ||
                     !visibleSelf.TryGetValue(assignment.WorkerTag, out var worker) ||
-                    worker.HasCargo || worker.HasOrders ||
-                    !mineralFields.ContainsKey(assignment.MineralTag))
+                    worker.HasOrders)
+                    continue;
+
+                if (worker.HasCargo)
+                {
+                    var townHall = townHalls
+                        .OrderBy(field => DistanceSquared(worker, field))
+                        .ThenBy(field => field.Tag)
+                        .FirstOrDefault();
+                    if (townHall is null)
+                        continue;
+
+                    commanded.Add(worker.Tag);
+                    actions.Add(CreateUnitCommand(worker.Tag, recoverySmartId, townHall.Tag));
+                    continue;
+                }
+
+                if (!mineralFields.ContainsKey(assignment.MineralTag))
                     continue;
 
                 commanded.Add(worker.Tag);

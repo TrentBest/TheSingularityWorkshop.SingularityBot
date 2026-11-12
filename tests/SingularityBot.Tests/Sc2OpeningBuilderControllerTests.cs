@@ -301,12 +301,15 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
         Assert.NotNull(firstMove);
+        Assert.Equal("MoveSubmitted", controller.MovementState);
         controller.OnActionResult(ActionResult.Success);
+        Assert.Equal("Moving", controller.MovementState);
 
         var retryMove = controller.TryCreateAction(SnapshotAt(146, 150, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
+        Assert.Equal("MoveSubmitted", controller.MovementState);
         Assert.NotNull(retryMove);
         Assert.Equal(firstMove.ActionRaw.UnitCommand.AbilityId, retryMove.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(11UL, retryMove.ActionRaw.UnitCommand.UnitTags[0]);

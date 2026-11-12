@@ -120,6 +120,7 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("WaitingForPrerequisites", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+        Assert.Equal("StreamingCommandCenters", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallExpansionState);
 
         runtime.ClearDesignatedCommandCenterConstructionArea();
         var scvProducing = commandCenter with
@@ -132,6 +133,7 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("WaitingForPrerequisites", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+        Assert.Equal("Waiting", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallExpansionState);
 
         runtime.Reconcile(Observation(43, commandCenter with { GameLoop = 43 }, barracks, depot),
             Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);

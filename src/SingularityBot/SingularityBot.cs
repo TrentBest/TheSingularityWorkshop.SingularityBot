@@ -708,7 +708,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // third Supply Depot must be completed before we take the second geyser;
             // this keeps the supply investment ahead of the second gas commitment.
             var refineryConstructionAllowed = Sc2RefineryProgressionPolicy.ShouldConstruct(
-                _openingMarine.BarracksComplete,
+                orbitalBarracksReady,
                 orbitalMorphingObserved,
                 completedRefineryCount,
                 _thirdSupplyDepot.IsCompleted,

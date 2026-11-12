@@ -16,6 +16,7 @@ public sealed class Sc2BarracksProductionControllerTests
         Assert.NotNull(action);
         Assert.Equal(560, action.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(new[] { 200UL }, action.ActionRaw.UnitCommand.UnitTags);
+        Assert.Equal("AwaitingEvidence", controller.CurrentState);
     }
 
     [Fact]
@@ -40,6 +41,7 @@ public sealed class Sc2BarracksProductionControllerTests
             Orders = new[] { new UnitOrderObservationFacts(560, null, null, null) } };
         Assert.Null(controller.TryCreateMarineTrainingAction(Snapshot(50, 10, 15,
             Fact(100, "Barracks"), training), GameData()));
+        Assert.Equal("Ready", controller.CurrentState);
     }
 
     [Fact]
@@ -52,6 +54,7 @@ public sealed class Sc2BarracksProductionControllerTests
             Fact(100, "Barracks"), Fact(200, "Barracks")), GameData()));
         Assert.NotNull(controller.TryCreateMarineTrainingAction(SnapshotAt(109, 50, 10, 15,
             Fact(100, "Barracks"), Fact(200, "Barracks")), GameData()));
+        Assert.Equal("AwaitingEvidence", controller.CurrentState);
     }
 
     [Fact]

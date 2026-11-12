@@ -45,6 +45,21 @@ public sealed class Sc2OpeningProductionControllerTests
             GameData(), reservedMinerals: 100));
     }
 
+    [Theory]
+    [InlineData(149, false)]
+    [InlineData(199, false)]
+    [InlineData(200, true)]
+    [InlineData(225, true)]
+    public void PreservesOrbitalMineralCostBeforeRefillingScvQueue(uint minerals, bool expected)
+    {
+        var controller = new Sc2OpeningProductionController();
+        var action = controller.TryCreateScvTrainingAction(
+            Snapshot(minerals, 12, 15, Fact(100, "CommandCenter")),
+            GameData(), reservedMinerals: 150);
+
+        Assert.Equal(expected, action is not null);
+    }
+
     [Fact]
     public void CanHoldAllFurtherScvProductionUntilTheFirstDepotCompletes()
     {

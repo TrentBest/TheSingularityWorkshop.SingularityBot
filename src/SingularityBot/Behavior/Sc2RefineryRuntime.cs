@@ -151,7 +151,8 @@ public sealed class Sc2RefineryRuntime
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
-        bool allowConstruction)
+        bool allowConstruction,
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -222,7 +223,8 @@ public sealed class Sc2RefineryRuntime
                 if (site.IsDepleted || site.IsBuilding || site.IsOperational ||
                     site.RefineryTag.HasValue || !geysers.Any(geyser => geyser.Tag == site.CurrentGeyserTag) ||
                     _buildSubmittedAt.ContainsKey(site.GeyserTag) ||
-                    observation.Minerals < gameData.RefineryMineralCost)
+                    !Sc2RefineryProgressionPolicy.CanFundRefinery(
+                        observation.Minerals, gameData.RefineryMineralCost, reservedMinerals))
                     continue;
 
                 var builder = observation.Units

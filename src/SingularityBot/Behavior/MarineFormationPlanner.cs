@@ -53,6 +53,58 @@ public static class MarineFormationPlanner
             Y: sideY * point.Item1 + forwardY * point.Item2)).ToArray();
     }
 
+    /// <summary>
+    /// Computes marching waypoints from current Marine positions. Marines are
+    /// ordered front-to-back; -1 marks a leading-edge Marine that advances by
+    /// <paramref name="advanceDistance"/>, while every other Marine moves to
+    /// the current position of its designated Marine in front. The references
+    /// are positional only: they are never converted into unit-target orders.
+    /// </summary>
+    public static IReadOnlyList<(float X, float Y)> GetMarchingTargets(
+        IReadOnlyList<(float X, float Y)> currentPositions,
+        IReadOnlyList<int> frontMarineIndices,
+        float directionX,
+        float directionY,
+        float advanceDistance = SlotSpacing)
+    {
+        ArgumentNullException.ThrowIfNull(currentPositions);
+        ArgumentNullException.ThrowIfNull(frontMarineIndices);
+        if (currentPositions.Count != frontMarineIndices.Count)
+            throw new ArgumentException("Every Marine must have exactly one front-reference entry.", nameof(frontMarineIndices));
+        if (!float.IsFinite(advanceDistance) || advanceDistance <= 0)
+            throw new ArgumentOutOfRangeException(nameof(advanceDistance));
+
+        var length = MathF.Sqrt(directionX * directionX + directionY * directionY);
+        if (!float.IsFinite(length) || length < 0.001f)
+            throw new ArgumentException("A finite, non-zero travel direction is required.");
+        var forwardX = directionX / length;
+        var forwardY = directionY / length;
+        var targets = new (float X, float Y)[currentPositions.Count];
+
+        for (var index = 0; index < currentPositions.Count; index++)
+        {
+            var position = currentPositions[index];
+            if (!float.IsFinite(position.X) || !float.IsFinite(position.Y))
+                throw new ArgumentException("Marine positions must be finite.", nameof(currentPositions));
+
+            var frontIndex = frontMarineIndices[index];
+            if (frontIndex == -1)
+            {
+                targets[index] = (
+                    position.X + forwardX * advanceDistance,
+                    position.Y + forwardY * advanceDistance);
+                continue;
+            }
+
+            if (frontIndex < 0 || frontIndex >= index)
+                throw new ArgumentOutOfRangeException(nameof(frontMarineIndices),
+                    "A front Marine must have a lower index in the front-to-back ordering.");
+            targets[index] = currentPositions[frontIndex];
+        }
+
+        return targets;
+    }
+
     private static (float X, float Y)[] Box(int count)
     {
         var result = new (float X, float Y)[count];

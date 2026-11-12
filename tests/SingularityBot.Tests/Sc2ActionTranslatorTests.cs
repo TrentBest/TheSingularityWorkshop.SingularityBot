@@ -45,10 +45,16 @@ public sealed class Sc2ActionTranslatorTests
             1,
             workerAssignments: assignments);
 
-        var command = Assert.Single(actions).ActionRaw.UnitCommand;
-        Assert.Equal(10UL, command.UnitTags.Single());
-        Assert.Equal(20UL, command.TargetUnitTag);
-        Assert.Equal(1, command.AbilityId);
+        Assert.Equal(2, actions.Count);
+        var gather = Assert.Single(actions.Select(action => action.ActionRaw.UnitCommand)
+            .Where(command => command.UnitTags.Single() == 10));
+        Assert.Equal(20UL, gather.TargetUnitTag);
+        Assert.Equal(1, gather.AbilityId);
+
+        var returnCargo = Assert.Single(actions.Select(action => action.ActionRaw.UnitCommand)
+            .Where(command => command.UnitTags.Single() == 11));
+        Assert.Equal(1UL, returnCargo.TargetUnitTag);
+        Assert.Equal(1, returnCargo.AbilityId);
     }
 
     [Fact]

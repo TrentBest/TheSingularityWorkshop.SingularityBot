@@ -134,6 +134,18 @@ public sealed class BuildingBehaviorRuntime
     public IReadOnlyCollection<BuildingBehaviorContext> Buildings => _buildings.Values.ToArray();
     public int Count => _buildings.Count;
 
+    public void UpdateLifecycle() =>
+        FSM_API.Interaction.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
+
+    public void UpdateActivityAndAccess() =>
+        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+
+    public void Update()
+    {
+        UpdateLifecycle();
+        UpdateActivityAndAccess();
+    }
+
     public static void RegisterDefinitions()
     {
         FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.LifecycleFsm, processRate: -1,

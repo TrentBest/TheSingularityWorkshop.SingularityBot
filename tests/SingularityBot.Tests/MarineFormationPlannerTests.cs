@@ -127,6 +127,49 @@ public sealed class MarineFormationPlannerTests
     }
 
     [Fact]
+    public void RoleAwareSpacingCanCompressAndImmediatelyOpenTheFormation()
+    {
+        var roles = Enumerable.Repeat(CombatFormationRole.Line, 4).ToArray();
+        var compact = MarineFormationPlanner.GetRoleAwareOffsets(roles, 1, 0, slotSpacing: 1f);
+        var spread = MarineFormationPlanner.GetRoleAwareOffsets(roles, 1, 0, slotSpacing: 4f);
+
+        Assert.Equal(1f, MathF.Abs(compact[1].Y - compact[2].Y));
+        Assert.Equal(4f, MathF.Abs(spread[1].Y - spread[2].Y));
+        Assert.Equal(4f, spread.Max(point => point.Y) - spread.Min(point => point.Y));
+    }
+
+    [Fact]
+    public void LineThreatEscapeStepsPerpendicularIntoThePreferredGap()
+    {
+        var moved = MarineFormationPlanner.TryGetLineThreatEscapeTarget(
+            (5f, 0.2f), (0f, 0f), (10f, 0f), 2f, (5f, 5f), out var target);
+
+        Assert.True(moved);
+        Assert.Equal(5f, target.X);
+        Assert.Equal(2f, target.Y);
+    }
+
+    [Fact]
+    public void LineThreatEscapeDoesNothingWhenMarineIsAlreadyClear()
+    {
+        var moved = MarineFormationPlanner.TryGetLineThreatEscapeTarget(
+            (5f, 3f), (0f, 0f), (10f, 0f), 2f, (5f, 5f), out _);
+
+        Assert.False(moved);
+    }
+
+    [Fact]
+    public void LineThreatEscapeRotatesWithTheAttackLine()
+    {
+        var moved = MarineFormationPlanner.TryGetLineThreatEscapeTarget(
+            (0.2f, 5f), (0f, 0f), (0f, 10f), 2f, (5f, 5f), out var target);
+
+        Assert.True(moved);
+        Assert.Equal(2f, target.X);
+        Assert.Equal(5f, target.Y);
+    }
+
+    [Fact]
     public void RoleAwareFormationRejectsInvalidSpacingAndDirection()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

@@ -17,6 +17,7 @@ public sealed class BuildingBehaviorRuntimeTests
 
         runtime.Reconcile(Observation(10, first, second), Array.Empty<BuildJobContext>(), _ => false);
         runtime.UpdateLifecycle();
+        runtime.UpdateLifecycle();
 
         Assert.Equal("SupplyDepot 1", runtime.Buildings.Single(item => item.UnitTag == 1001).BuildingId);
         Assert.Equal("SupplyDepot 2", runtime.Buildings.Single(item => item.UnitTag == 1002).BuildingId);
@@ -44,10 +45,12 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.Reconcile(Observation(11, Depot(2001, "SupplyDepot", 0.5f)),
             jobs.Jobs, _ => false);
         runtime.UpdateLifecycle();
+        runtime.UpdateLifecycle();
         Assert.Empty(runtime.DrainEvents());
 
         runtime.Reconcile(Observation(12, Depot(2001, "SupplyDepot", 1f)),
             jobs.Jobs, _ => false);
+        runtime.UpdateLifecycle();
         runtime.UpdateLifecycle();
 
         var completed = Assert.Single(runtime.DrainEvents());
@@ -72,6 +75,7 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.Reconcile(Observation(20, barracks), Array.Empty<BuildJobContext>(),
             id => id == 501);
         runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Researching", Assert.Single(runtime.Buildings).ActivityState);
 
         var production = barracks with
@@ -81,6 +85,7 @@ public sealed class BuildingBehaviorRuntimeTests
         };
         runtime.Reconcile(Observation(21, production), Array.Empty<BuildJobContext>(),
             _ => false);
+        runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Producing", Assert.Single(runtime.Buildings).ActivityState);
 
@@ -100,16 +105,19 @@ public sealed class BuildingBehaviorRuntimeTests
             false, false, false, 30);
         runtime.Reconcile(Observation(30, raisedDepot, enemy), Array.Empty<BuildJobContext>(), _ => false);
         runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Raised", Assert.Single(runtime.Buildings).AccessState);
         Assert.Empty(runtime.DrainEvents());
 
         Assert.True(runtime.RequestDepotPassage(4001));
+        runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Lowered", Assert.Single(runtime.Buildings).AccessState);
         var lower = Assert.Single(runtime.DrainEvents());
         Assert.Equal(BuildingEventKind.LowerSupplyDepot, lower.Kind);
 
         runtime.RequestDepotPassage(4001, false);
+        runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Raised", Assert.Single(runtime.Buildings).AccessState);
         var raise = Assert.Single(runtime.DrainEvents());

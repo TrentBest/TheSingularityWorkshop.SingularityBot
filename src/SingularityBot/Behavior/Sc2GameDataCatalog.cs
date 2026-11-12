@@ -105,6 +105,22 @@ public sealed class Sc2GameDataCatalog
     /// <summary>Build ability and mineral cost sourced from the match's Refinery UnitTypeData.</summary>
     public uint? RefineryBuildAbilityId { get; }
     public uint RefineryMineralCost { get; }
+    /// <summary>Command Center lift-off ability, resolved only when match data identifies it uniquely.</summary>
+    public uint? LiftOffAbilityId => ResolveUniqueAbilityId("LiftOff");
+
+    /// <summary>Command Center landing ability, resolved only when match data identifies it uniquely.</summary>
+    public uint? LandAbilityId => ResolveUniqueAbilityId("Land");
+    
+    private uint? ResolveUniqueAbilityId(string linkName)
+    {
+        var matches = AbilitiesById.Values
+            .Where(ability => string.Equals(ability.LinkName, linkName, StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+        return matches.Length == 1 ? matches[0] : null;
+    }
 
     public static Sc2GameDataCatalog Create(ResponseData data)
     {

@@ -91,6 +91,80 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Equal(200UL, nextMarine.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
+    [Fact]
+    public void StagesADifferentBarracksBuilderDuringDepotConstructionAndBuildsOnlyAfterCompletion()
+    {
+        var controller = new Sc2OpeningMarineController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        const ulong depotBuilderTag = 10;
+        const ulong barracksBuilderTag = 11;
+        assignments.Reserve(depotBuilderTag);
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var gameData = GameData();
+
+        // The Depot worker is explicitly excluded. A second, empty SCV is
+        // reserved for the Barracks while the Depot is still being built.
+        Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(depotBuilderTag, "SCV", 10, 10),
+            Fact(barracksBuilderTag, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10)),
+            map, gameData, assignments,
+            preferredBuilderTag: null,
+            excludedBuilderTag: depotBuilderTag,
+            allowConstruction: false));
+
+        Assert.Equal(barracksBuilderTag, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(barracksBuilderTag));
+        Assert.True(assignments.IsReserved(depotBuilderTag));
+        var placementQuery = controller.TakePlacementQuery(gameData);
+        Assert.NotNull(placementQuery);
+
+        var placementResult = new ResponseQuery();
+        placementResult.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(placementResult);
+        var site = new MapPoint(placementQuery.Placements[0].TargetPos.X,
+            placementQuery.Placements[0].TargetPos.Y);
+
+        // The selected Barracks worker moves while the Depot is incomplete.
+        var move = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(depotBuilderTag, "SCV", 10, 10),
+            Fact(barracksBuilderTag, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10)),
+            map, gameData, assignments,
+            excludedBuilderTag: depotBuilderTag,
+            allowConstruction: false);
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(barracksBuilderTag, move.ActionRaw.UnitCommand.UnitTags[0]);
+        site = new MapPoint(move.ActionRaw.UnitCommand.TargetWorldSpacePos.X,
+            move.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
+        controller.OnActionResult(ActionResult.Success);
+
+        // Reaching the site is not permission to build before the Depot completes.
+        Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(depotBuilderTag, "SCV", 10, 10),
+            Fact(barracksBuilderTag, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10)),
+            map, gameData, assignments,
+            excludedBuilderTag: depotBuilderTag,
+            allowConstruction: false));
+
+        // Once the Depot completion gate opens, the already-staged SCV builds.
+        var build = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(depotBuilderTag, "SCV", 10, 10),
+            Fact(barracksBuilderTag, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(300, "SupplyDepot", 20, 20)),
+            map, gameData, assignments,
+            excludedBuilderTag: depotBuilderTag,
+            allowConstruction: true);
+        Assert.NotNull(build);
+        Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(barracksBuilderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.NotEqual(depotBuilderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

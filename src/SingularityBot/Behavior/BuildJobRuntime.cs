@@ -155,7 +155,7 @@ public sealed class BuildJobRuntime
 
     public BuildJobContext Create(string buildableKind, uint gameLoop, ulong? workerTag = null, ulong? producerTag = null)
     {
-        if (!_registered) throw new InvalidOperationException("Build-job FSM must be registered before creating jobs.");
+        RegisterDefinition();
         var job = new BuildJobContext(++_nextId, buildableKind, workerTag, producerTag, gameLoop);
         _jobs.Add(job.Id, job);
         var handle = FSM_API.Create.CreateInstance(FsmName, job, UnitBehaviorCatalog.ProductionProcessingGroup);

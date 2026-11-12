@@ -437,7 +437,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            var orbitalAbility = _gameData.OrbitalUpgradeAbilityId;
             var orbitalReservationReason = startingTownHall is null ? "no-live-town-hall" :
                 !startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ? "starting-town-hall-not-command-center" :
                 !orbitalDepotReady ? "supply-depot-incomplete-or-missing" :

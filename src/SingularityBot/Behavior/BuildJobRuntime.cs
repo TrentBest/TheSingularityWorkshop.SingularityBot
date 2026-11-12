@@ -31,12 +31,21 @@ public sealed class BuildJobContext : IStateContext
     public ulong? ResultUnitTag { get; private set; }
     public uint CreatedAtGameLoop { get; }
     public uint LastObservedGameLoop { get; private set; }
+    private FSMHandle? _handle;
+    internal bool HasExecutionEvidence { get; private set; }
+    internal bool HasCompletionEvidence { get; private set; }
+    internal bool HasFailureEvidence { get; private set; }
+
     public float Progress { get; private set; }
     public bool IsAssigned => WorkerTag.HasValue || ProducerTag.HasValue;
-    public bool IsExecuting { get; private set; }
-    public bool IsCompleted { get; private set; }
-    public bool IsFailed { get; private set; }
+    public string CurrentState => _handle?.CurrentState ?? "Queued";
+    public bool IsExecuting => CurrentState == "Executing";
+    public bool IsCompleted => CurrentState == "Completed";
+    public bool IsFailed => CurrentState == "Failed";
     public string FailureReason { get; private set; } = string.Empty;
+
+    internal void AttachHandle(FSMHandle handle) =>
+        _handle = handle ?? throw new ArgumentNullException(nameof(handle));
 
     public void AssignWorker(ulong workerTag)
     {
@@ -60,14 +69,14 @@ public sealed class BuildJobContext : IStateContext
         if (ResultUnitTag != resultUnitTag) return;
         LastObservedGameLoop = gameLoop;
         Progress = Math.Clamp(float.IsFinite(progress) ? progress * 100f : Progress, 0f, 100f);
-        IsExecuting = true;
+        HasExecutionEvidence = true;
         if (Progress >= 100f) Complete(gameLoop);
     }
 
     public void MarkStarted(uint gameLoop)
     {
         if (IsCompleted || IsFailed) return;
-        IsExecuting = true;
+        HasExecutionEvidence = true;
         LastObservedGameLoop = gameLoop;
     }
 
@@ -75,16 +84,14 @@ public sealed class BuildJobContext : IStateContext
     {
         if (IsFailed) return;
         Progress = 100f;
-        IsExecuting = false;
-        IsCompleted = true;
+        HasCompletionEvidence = true;
         LastObservedGameLoop = gameLoop;
     }
 
     public void Fail(string reason, uint gameLoop)
     {
         if (IsCompleted || IsFailed) return;
-        IsFailed = true;
-        IsExecuting = false;
+        HasFailureEvidence = true;
         FailureReason = string.IsNullOrWhiteSpace(reason) ? "Unspecified failure" : reason;
         LastObservedGameLoop = gameLoop;
     }
@@ -103,39 +110,57 @@ public sealed class BuildJobRuntime
     // the same already-produced unit/structure from an old snapshot.
     private readonly HashSet<ulong> _claimedResultTags = new();
     private long _nextId;
-    private static bool _registered;
-
     public IReadOnlyCollection<BuildJobContext> Jobs => _jobs.Values.ToArray();
     public int ActiveCount => _jobs.Values.Count(job => !job.IsCompleted && !job.IsFailed);
 
     public static void RegisterDefinition()
     {
-        if (_registered) return;
-        FSM_API.Create.CreateFiniteStateMachine(FsmName, processRate: -1, processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+        if (FSM_API.Interaction.Exists(FsmName, UnitBehaviorCatalog.ProductionProcessingGroup))
+            return;
+
+        FSM_API.Create.CreateFiniteStateMachine(
+                FsmName,
+                processRate: -1,
+                processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
             .State("Queued", null, null, null)
             .State("Assigned", null, null, null)
             .State("Executing", null, null, null)
             .State("Completed", null, null, null)
             .State("Failed", null, null, null)
-            .Transition("Queued", "Assigned", ctx => ctx is BuildJobContext job && job.IsAssigned)
-            .Transition("Queued", "Executing", ctx => ctx is BuildJobContext job && job.IsExecuting)
-            .Transition("Assigned", "Executing", ctx => ctx is BuildJobContext job && job.IsExecuting)
-            .Transition("Assigned", "Failed", ctx => ctx is BuildJobContext job && job.IsFailed)
-            .Transition("Queued", "Failed", ctx => ctx is BuildJobContext job && job.IsFailed)
-            .Transition("Executing", "Completed", ctx => ctx is BuildJobContext job && job.IsCompleted)
-            .Transition("Assigned", "Completed", ctx => ctx is BuildJobContext job && job.IsCompleted)
-            .Transition("Queued", "Completed", ctx => ctx is BuildJobContext job && job.IsCompleted)
-            .Transition("Executing", "Failed", ctx => ctx is BuildJobContext job && job.IsFailed)
-            .WithInitialState("Queued").BuildDefinition();
-        _registered = true;
+            .Transition("Queued", "Failed", HasFailureEvidence)
+            .Transition("Queued", "Completed", HasCompletionEvidence)
+            .Transition("Queued", "Executing", HasExecutionEvidence)
+            .Transition("Queued", "Assigned", HasAssignmentEvidence)
+            .Transition("Assigned", "Failed", HasFailureEvidence)
+            .Transition("Assigned", "Completed", HasCompletionEvidence)
+            .Transition("Assigned", "Executing", HasExecutionEvidence)
+            .Transition("Executing", "Failed", HasFailureEvidence)
+            .Transition("Executing", "Completed", HasCompletionEvidence)
+            .WithInitialState("Queued")
+            .BuildDefinition();
     }
+
+    // Named conditions make the lifecycle contract independently inspectable.
+    private static bool HasAssignmentEvidence(IStateContext context) =>
+        context is BuildJobContext job && job.IsAssigned;
+
+    private static bool HasExecutionEvidence(IStateContext context) =>
+        context is BuildJobContext job && job.HasExecutionEvidence;
+
+    private static bool HasCompletionEvidence(IStateContext context) =>
+        context is BuildJobContext job && job.HasCompletionEvidence;
+
+    private static bool HasFailureEvidence(IStateContext context) =>
+        context is BuildJobContext job && job.HasFailureEvidence;
 
     public BuildJobContext Create(string buildableKind, uint gameLoop, ulong? workerTag = null, ulong? producerTag = null)
     {
         if (!_registered) throw new InvalidOperationException("Build-job FSM must be registered before creating jobs.");
         var job = new BuildJobContext(++_nextId, buildableKind, workerTag, producerTag, gameLoop);
         _jobs.Add(job.Id, job);
-        _handles.Add(job.Id, FSM_API.Create.CreateInstance(FsmName, job, UnitBehaviorCatalog.ProductionProcessingGroup));
+        var handle = FSM_API.Create.CreateInstance(FsmName, job, UnitBehaviorCatalog.ProductionProcessingGroup);
+        job.AttachHandle(handle);
+        _handles.Add(job.Id, handle);
         return job;
     }
 
@@ -322,6 +347,10 @@ public sealed class BuildJobRuntime
         var dy = y1 - y2;
         return dx * dx + dy * dy;
     }
+
+    /// <summary>Advances all build-job lifecycle FSMs in the production processing group.</summary>
+    public void Update() =>
+        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
     public bool Retire(long id)
     {

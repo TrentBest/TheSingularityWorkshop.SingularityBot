@@ -637,8 +637,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Stage a DIFFERENT SCV at the Barracks site while the Depot is
                 // building. The Barracks Build command remains gated on the Depot
                 // being observed complete, removing the old Orbital/Barracks cycle.
-                var firstMarinePriority = !_openingMarine.MarineTrainingStarted && !_openingMarine.MarineObserved;
-                var marineReservedMinerals = firstMarinePriority ? 0u : reservedInfrastructureMinerals;
+                // The first Marine is not allowed to consume minerals already committed to
+                // the starting Command Center's Orbital morph (or higher-priority
+                // infrastructure). Releasing this reserve here can spend the exact
+                // 150 minerals before the independent Orbital action is submitted.
+                var marineReservedMinerals = reservedInfrastructureMinerals;
                 marineAction = _openingMarine.TryCreateAction(
                     normalized, SpatialMap, _gameData, _workerAssignments,
                     preferredBuilderTag: null,

@@ -325,7 +325,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _lastGameLoop = normalized.GameLoop;
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
-        _buildings.Reconcile(normalized, _buildJobs.Jobs, IsResearchAbility);
         _gameState.Apply(normalized);
         UpdateSpatialIntelligence(observation);
         if (SpatialMap is not null)
@@ -850,6 +849,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
 
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
+        // Associate observed structures with their construction jobs after all
+        // construction controllers have reconciled this frame's result evidence.
+        _buildings.Reconcile(normalized, _buildJobs.Jobs, IsResearchAbility);
 
         // The scheduler advances every registered group in declared order even
         // when an opening gate suppresses outgoing actions for this frame.

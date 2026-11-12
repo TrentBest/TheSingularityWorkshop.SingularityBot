@@ -446,16 +446,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 !normalized.DeadUnitTags.Contains(unit.Tag));
             var secondBarracksComplete = observedBarracks.Length >= 2 &&
                 observedBarracks.All(unit => unit.BuildProgress >= 1f);
-            var friendlyTownHallCount = normalized.Units.Count(unit =>
-                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-                (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
-                 unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
-                 unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase)) &&
-                !normalized.DeadUnitTags.Contains(unit.Tag));
-            // Four completed Barracks is the explicit expansion trigger. The
-            // second Command Center is funded before optional Marine spending.
-            var expansionCommandCenterPending = orbitalMorphingObserved && _secondBarracks.IsComplete &&
-                !_expansionCommandCenter.IsStarted && friendlyTownHallCount < 2;
+            var designatedAreaStreaming = _buildings.HasDesignatedCommandCenterConstructionArea &&
+                _buildings.Buildings.Any(building =>
+                    building.TownHallExpansionState == "StreamingCommandCenters");
+            var expansionProductionEnabledForBudget = _buildings.HasDesignatedCommandCenterConstructionArea
+                ? designatedAreaStreaming
+                : orbitalMorphingObserved && _secondBarracks.IsComplete;
+            // Reserve for each next expansion while the designated Town Hall is
+            // in streaming mode. A completed cycle immediately becomes eligible
+            // for the next one rather than imposing a two-town-hall ceiling.
+            var expansionCommandCenterPending = expansionProductionEnabledForBudget &&
+                (!_expansionCommandCenter.IsStarted || _expansionCommandCenter.IsComplete);
 
             reservedProductionMinerals = _economyAdvisor.GetReservedMinerals(
                 new EconomyAdvisorFrame(
@@ -688,12 +689,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Do not spend on the four-Barracks expansion or a second town hall
                 // until SC2 has observed the starting Command Center's Orbital morph
                 // order. This keeps the 150-mineral upgrade ahead of optional builds.
-                var designatedAreaStreaming = _buildings.HasDesignatedCommandCenterConstructionArea &&
-                    _buildings.Buildings.Any(building =>
-                        building.TownHallExpansionState == "StreamingCommandCenters");
-                var expansionProductionEnabled = _buildings.HasDesignatedCommandCenterConstructionArea
-                    ? designatedAreaStreaming
-                    : orbitalMorphingObserved && _secondBarracks.IsComplete;
+                var expansionProductionEnabled = expansionProductionEnabledForBudget;
                 if (expansionProductionEnabled)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(

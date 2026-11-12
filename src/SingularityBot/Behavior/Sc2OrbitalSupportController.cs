@@ -15,7 +15,8 @@ public sealed class Sc2OrbitalSupportController
     private uint _pendingGameLoop;
 
     /// <summary>
-    /// Reserves the first-base Command Center as soon as Orbital tech is ready.
+    /// Legacy first-base reservation query retained for isolated controller callers.
+    /// The match loop now reserves the exact Town Hall selected by TownHallUpgradeFsm.
     /// Do not wait until the 150-mineral threshold: doing so lets continuous SCV
     /// production spend each new 50-mineral increment and starve the morph forever.
     /// The reservation survives an existing SCV order so production cannot refill
@@ -101,9 +102,9 @@ public sealed class Sc2OrbitalSupportController
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
-        // Convert only the original starting Command Center. Later expansion
-        // town halls must not steal the one-time opening upgrade, and their
-        // existence must not make the starting base permanently ineligible.
+        // The match loop supplies the exact Town Hall admitted by its Orbital
+        // upgrade FSM. Without an explicit tag, retain first-base behavior for
+        // direct controller callers and legacy tests.
         var firstBaseTownHall = permittedCommandCenterTag is ulong permittedTag
             ? townHalls.FirstOrDefault(unit => unit.Tag == permittedTag)
             : townHalls.FirstOrDefault();

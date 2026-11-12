@@ -480,7 +480,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // or optional Marine queues. The third Depot is not represented by
             // the older advisor frame, so reserve its cost explicitly as soon
             // as Depot two is complete and until Depot three is observed complete.
-            var followupDepotPending = secondBarracksUnderConstruction && !_thirdSupplyDepot.IsCompleted;
+            var followupDepotPending = _secondBarracks.RequiresSupplyDepot && !_thirdSupplyDepot.IsCompleted;
             if (followupDepotPending)
                 reservedProductionMinerals = Math.Max(
                     reservedProductionMinerals, _gameData.SupplyDepotMineralCost);

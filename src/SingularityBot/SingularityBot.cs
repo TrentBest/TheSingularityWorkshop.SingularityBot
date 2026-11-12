@@ -478,8 +478,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Console.WriteLine("[Orbital] " + orbitalDiagnostic + ".");
                 _lastOrbitalDiagnostic = orbitalDiagnostic;
             }
+            var reservedScvMinerals = (uint)Math.Min(
+                uint.MaxValue, (ulong)reservedProductionMinerals + orbitalMineralReservation);
             var productionAction = _openingProduction.TryCreateScvTrainingAction(
-                normalized, _gameData, reservedProductionMinerals, orbitalReservedCommandCenter);
+                normalized, _gameData, reservedScvMinerals, orbitalReservedCommandCenter);
             _openingProductionActionSubmitted = productionAction is not null;
             if (productionAction is not null)
             {

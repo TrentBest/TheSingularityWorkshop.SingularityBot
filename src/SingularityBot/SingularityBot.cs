@@ -443,7 +443,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 !orbitalBarracksReady ? "barracks-incomplete-or-missing" :
                 orbitalAbility is not > 0 ? "orbital-ability-unavailable" :
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
-                normalized.Minerals < orbitalUpgradeCost + reservedProductionMinerals ? "reserved-minerals-block-upgrade" :
+                normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
                 "eligible";
             var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};loop={normalized.GameLoop}";
             if (!string.Equals(_lastOrbitalDiagnostic, orbitalDiagnostic, StringComparison.Ordinal))
@@ -460,7 +460,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Console.WriteLine($"[Opening] Requesting first SCV: Command Center={command.UnitTags[0]}, ability={command.AbilityId}, minerals={normalized.Minerals}, supply={normalized.FoodUsed}/{normalized.FoodCap}.");
                 actions.Add(productionAction);
                 _pendingQuery = null;
-                allowWorkerActions = false;
+                // SCV production uses the Command Center; construction, gas,
+                // and Orbital controllers use separate units. Do not let one
+                // production request suppress the rest of the opening schedule.
             }
         }
         else

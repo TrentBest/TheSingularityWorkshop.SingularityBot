@@ -25,7 +25,8 @@ public sealed class Sc2OrbitalSupportController
         var townHalls = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 !observation.DeadUnitTags.Contains(unit.Tag) &&
-                (IsKind(unit, "CommandCenter") || IsKind(unit, "OrbitalCommand")))
+                (IsKind(unit, "CommandCenter") || IsKind(unit, "OrbitalCommand") ||
+                 IsKind(unit, "PlanetaryFortress")))
             .OrderBy(unit => unit.Tag)
             .ToArray();
 
@@ -59,7 +60,15 @@ public sealed class Sc2OrbitalSupportController
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
-        if (orbitalTechReady && gameData.OrbitalUpgradeAbilityId is > 0 &&
+        // The opening Orbital conversion is a one-time first-base milestone.
+        // Later Command Centers are expansion assets; upgrading them here would
+        // compete with the flight/landing expansion cycle and can cause repeated
+        // lift-off/landing behavior in controllers that manage those assets.
+        var firstBaseOrbitalUpgradeEligible = townHalls.Length == 1 &&
+            IsKind(townHalls[0], "CommandCenter");
+
+        if (firstBaseOrbitalUpgradeEligible && orbitalTechReady &&
+            gameData.OrbitalUpgradeAbilityId is > 0 &&
             gameData.OrbitalUpgradeMineralCost > 0)
         {
             var commandCenter = townHalls.FirstOrDefault(unit =>

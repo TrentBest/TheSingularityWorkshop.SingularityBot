@@ -32,9 +32,9 @@ public sealed class BuildJobContext : IStateContext
     public uint CreatedAtGameLoop { get; }
     public uint LastObservedGameLoop { get; private set; }
     private FSMHandle? _handle;
-    internal bool HasExecutionEvidence { get; private set; }
-    internal bool HasCompletionEvidence { get; private set; }
-    internal bool HasFailureEvidence { get; private set; }
+    public bool HasExecutionEvidence { get; private set; }
+    public bool HasCompletionEvidence { get; private set; }
+    public bool HasFailureEvidence { get; private set; }
 
     public float Progress { get; private set; }
     public bool IsAssigned => WorkerTag.HasValue || ProducerTag.HasValue;

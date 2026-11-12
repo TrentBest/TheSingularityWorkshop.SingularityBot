@@ -241,6 +241,37 @@ public sealed class Sc2SecondBarracksControllerTests
     }
 
     [Fact]
+    public void KeepsBarracksBuilderMiningUntilBuildCostIsAvailableAfterOrbitalReserve()
+    {
+        var controller = new Sc2SecondBarracksController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var crew = new HashSet<ulong>();
+        var data = GameData();
+
+        // 150 minerals are committed to the Orbital. Pulling an SCV now
+        // would send it to the Barracks site before the 150-mineral build
+        // can be paid, creating exactly the idle-builder interval to avoid.
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
+            map, data, assignments, crew, reservedMinerals: 150));
+        Assert.Null(controller.BuilderTag);
+        Assert.False(assignments.IsReserved(10));
+        Assert.False(assignments.IsReserved(11));
+
+        // At 300 minerals, the 150-mineral Barracks is affordable without
+        // touching the 150-mineral Orbital commitment, so dispatch is justified.
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
+            map, data, assignments, crew, reservedMinerals: 150));
+        Assert.NotNull(controller.BuilderTag);
+        Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
+    }
+
+    [Fact]
     public void DoesNotStealCargoCarryingOrAlreadyReservedWorkers()
     {
         var controller = new Sc2SecondBarracksController();

@@ -115,6 +115,17 @@ public sealed class Sc2SecondBarracksController
             ResetPlacement();
         }
 
+        // Do not pull a construction SCV merely because the first Barracks
+        // exists. A worker dispatched before the Barracks cost is actually
+        // available (after strategic reservations) can reach the site and idle
+        // there while the economy is still funding the build. Keep that worker
+        // mining until the command is affordable; then the pull distance becomes
+        // the lead time that gets it to the site just before construction.
+        if (_builderTag is null &&
+            (observation.Minerals < gameData.BarracksMineralCost ||
+             observation.Minerals - gameData.BarracksMineralCost < reservedMinerals))
+            return null;
+
         if (_builderTag is null)
         {
             var townHall = observation.Units.FirstOrDefault(unit =>

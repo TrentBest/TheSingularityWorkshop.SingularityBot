@@ -689,7 +689,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Do not spend on the four-Barracks expansion or a second town hall
                 // until SC2 has observed the starting Command Center's Orbital morph
                 // order. This keeps the 150-mineral upgrade ahead of optional builds.
-                var expansionProductionEnabled = expansionProductionEnabledForBudget;
+                var designatedAreaStreaming = _buildings.HasDesignatedCommandCenterConstructionArea &&
+                    _buildings.Buildings.Any(building =>
+                        building.TownHallExpansionState == "StreamingCommandCenters");
+                var expansionProductionEnabled = _buildings.HasDesignatedCommandCenterConstructionArea
+                    ? designatedAreaStreaming
+                    : orbitalMorphingObserved && _secondBarracks.IsComplete;
                 if (expansionProductionEnabled)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(

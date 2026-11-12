@@ -619,6 +619,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             {
                 _secondBarracksActionSubmitted = false;
                 _supplyDepotExpansionActionSubmitted = false;
+                _thirdSupplyDepotActionSubmitted = false;
             }
 
             // The Orbital upgrade unlocks MULE income and must not be starved

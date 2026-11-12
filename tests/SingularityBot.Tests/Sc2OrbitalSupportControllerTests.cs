@@ -8,6 +8,38 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OrbitalSupportControllerTests
 {
     [Fact]
+    public void ReservesFirstCommandCenterWhileAnExistingScvOrderDrains()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var busyCommandCenter = Fact(1, "CommandCenter") with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(524, null, null, null) }
+        };
+
+        var reservedTag = controller.GetCommandCenterReservedForUpgrade(
+            Snapshot(350, busyCommandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")),
+            data);
+
+        Assert.Equal(1UL, reservedTag);
+    }
+
+    [Fact]
+    public void DoesNotReserveCommandCenterBeforeOrbitalTechOrMineralGate()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+
+        Assert.Null(controller.GetCommandCenterReservedForUpgrade(
+            Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot")),
+            data));
+        Assert.Null(controller.GetCommandCenterReservedForUpgrade(
+            Snapshot(149, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks")),
+            data));
+    }
+
+    [Fact]
     public void UpgradesIdleCommandCenterOnlyWhenUnreservedMineralsAreAvailable()
     {
         var controller = new Sc2OrbitalSupportController();

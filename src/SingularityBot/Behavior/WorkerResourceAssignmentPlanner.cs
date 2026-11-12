@@ -12,7 +12,7 @@ namespace SingularityBot.Behavior;
 public sealed class WorkerResourceAssignmentPlanner
 {
     public const int DefaultMineralSaturation = 2;
-    public const float DefaultMaximumLocalMineralDistance = 12f;
+    public const float DefaultMaximumLocalMineralDistance = 14f;
 
     private readonly Dictionary<ulong, WorkerResourceAssignment> _assignments = new();
     private uint _nextGeneration;

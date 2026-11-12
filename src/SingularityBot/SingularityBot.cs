@@ -88,6 +88,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public SpatialIntelligence SpatialIntelligence { get; private set; }
     /// <summary>Immutable pathing, placement and elevation layers cached from SC2 OnStart data.</summary>
     public SpatialTerrain SpatialTerrain { get; private set; }
+    public SpatialTopology PathingTopology { get; private set; }
     public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
     public GamePhase CurrentGamePhase => _gameState.Phase;
     public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
@@ -242,6 +243,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             SpatialTerrain = null;
             Console.WriteLine("[Spatial] SC2 terrain image layers unavailable or invalid; terrain-dependent reasoning remains disabled.");
         }
+
+        PathingTopology = SpatialTerrain?.Pathing is not null
+            ? SpatialTopology.Build(SpatialTerrain)
+            : null;
+        if (PathingTopology is not null)
+            Console.WriteLine($"[Spatial] Pathing topology: {PathingTopology.Regions.Count} connected walkable regions.");
+
+        _marineRally.Reset();
 
         if (SpatialMapFactory.TryCreate(gameInfo, observation, out var spatialMap))
         {
@@ -969,12 +978,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 frameIntents, _unitBehaviors.Contexts, normalized, _gameData));
         }
 
-        // The opening controller owns the first Marine's cross-map deployment.
-        // Once that milestone is observed, tactical control transfers to the
-        // deterministic combat planner for every visible friendly Marine.
+        // The first live Marine is assigned a dedicated scout role before
+        // combat planning. It may observe the enemy ramp but is never given an
+        // attack target; the remaining Marines share the combat focus and patrol.
         if (_openingMarine.MarineDeployed)
         {
-            var combatDecisions = MarineCombatPlanner.Plan(normalized, _combatWeapons);
+            var scoutTag = _marineRally.GetScoutTag(normalized);
+            var excludedScoutTags = scoutTag is ulong dedicatedScoutTag
+                ? new HashSet<ulong> { dedicatedScoutTag }
+                : null;
+            var combatDecisions = MarineCombatPlanner.Plan(
+                normalized, _combatWeapons, excludedUnitTags: excludedScoutTags);
             actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
                 combatDecisions, normalized, _gameData, _combatWeapons));
             var liveMarineCount = normalized.Units.Count(unit =>
@@ -987,9 +1001,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                     unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
                     unit.Orders.Any(order => order.AbilityId == _gameData.MarineTrainAbilityId.Value));
+            SpatialGridSnapshot visibilityGrid = null;
+            if (SpatialMap is not null)
+                Sc2SpatialVisionFactory.TryCreate(response, SpatialMap, out visibilityGrid);
             var marineRallyActions = _marineRally.TryCreateActions(
-                normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction, SpatialTerrain);
+                normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
+                SpatialTerrain, PathingTopology, visibilityGrid);
             actions.AddRange(marineRallyActions);
+            if (_writeDiagnostics &&
+                _marineRally.TryTakeScoutStatusChange(out var scoutStatus, out var scoutDetails))
+                _openingTrace.RecordEvent("MarineScout", normalized.GameLoop,
+                    $"status={scoutStatus};{scoutDetails}");
             if (_writeDiagnostics)
                 foreach (var decision in combatDecisions)
                     _binaryTrace.RecordMarineDecision(normalized.GameLoop, decision.MarineTag,
@@ -1364,6 +1386,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _buildJobs.Clear();
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();
+        _marineRally.Reset();
+        PathingTopology = null;
         _openingTrace.Dispose();
         _binaryTrace.Dispose();
     }

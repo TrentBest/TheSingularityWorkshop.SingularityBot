@@ -94,8 +94,10 @@ public static class MarineCombatPlanner
                            !observation.DeadUnitTags.Contains(unit.Tag))
             .ToArray();
         var marines = live.Where(unit => unit.Alliance == UnitAlliance.Self &&
-            unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
-            excludedUnitTags?.Contains(unit.Tag) != true).ToArray();
+            unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase)).ToArray();
+        var combatMarines = marines
+            .Where(unit => excludedUnitTags?.Contains(unit.Tag) != true)
+            .ToArray();
         var enemyTargets = live.Where(unit => unit.Alliance == UnitAlliance.Enemy).ToArray();
         // Neutral destructibles are not combat targets by default. A separate,
         // observation-backed route-clearance policy must explicitly identify a
@@ -107,9 +109,9 @@ public static class MarineCombatPlanner
                 IsDestructible(unit.UnitKind) &&
                 !IsNonCombatResource(unit.UnitKind)).ToArray();
 
-        var anchorMarine = marines.OrderBy(marine => marine.Tag).FirstOrDefault();
+        var anchorMarine = combatMarines.OrderBy(marine => marine.Tag).FirstOrDefault();
         var focusTarget = targets
-            .Where(candidate => marines.Any(marine =>
+            .Where(candidate => combatMarines.Any(marine =>
                 weaponsByUnitType.TryGetValue(marine.UnitTypeId, out var profile) &&
                 profile.IsUsable && profile.CanHit(candidate.IsFlying)))
             .OrderByDescending(candidate =>
@@ -133,6 +135,13 @@ public static class MarineCombatPlanner
         var decisions = new List<MarineTacticalDecision>(marines.Length);
         foreach (var marine in marines.OrderBy(unit => unit.Tag))
         {
+            if (excludedUnitTags?.Contains(marine.Tag) == true)
+            {
+                decisions.Add(new(marine.Tag, null, MarineTacticalAction.Hold, 0, 0,
+                    "Dedicated scout excluded from combat targeting"));
+                continue;
+            }
+
             if (!weaponsByUnitType.TryGetValue(marine.UnitTypeId, out var ownWeapon) ||
                 !ownWeapon.IsUsable)
             {
@@ -153,7 +162,7 @@ public static class MarineCombatPlanner
                 continue;
             }
 
-            var friendlyDps = marines
+            var friendlyDps = combatMarines
                 .Where(ally => weaponsByUnitType.TryGetValue(ally.UnitTypeId, out var profile) &&
                     profile.IsUsable && profile.CanHit(target.IsFlying) &&
                     DistanceSquared(ally, target) <= profile.GetRange(target.IsFlying) * profile.GetRange(target.IsFlying))

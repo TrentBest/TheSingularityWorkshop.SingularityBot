@@ -10,6 +10,7 @@ namespace SingularityBot.Behavior;
 /// </summary>
 public readonly record struct RampScoutPlan(
     MapPoint ObservationPoint,
+    MapPoint RampEdgePoint,
     float DistanceFromEnemyStart,
     float CrossTrackDistance,
     byte TerrainHeight);
@@ -55,6 +56,7 @@ public static class Sc2RampScoutPlanner
         var found = false;
         var bestScore = float.MaxValue;
         var bestPoint = default(MapPoint);
+        var bestEdgePoint = default(MapPoint);
         var bestDistance = 0f;
         var bestCrossTrack = 0f;
         byte bestHeight = 0;
@@ -85,7 +87,7 @@ public static class Sc2RampScoutPlanner
 
             if (!HasEnemyHighGroundEdge(
                     terrain, candidate, map.Side.EnemyStart,
-                    highGroundMinimum, cellWidth, cellHeight, out var edgeDistance))
+                    highGroundMinimum, cellWidth, cellHeight, out var edgeDistance, out var edgePoint))
                 continue;
 
             var distance = MathF.Sqrt(offsetX * offsetX + offsetY * offsetY);
@@ -98,6 +100,7 @@ public static class Sc2RampScoutPlanner
             found = true;
             bestScore = score;
             bestPoint = candidate;
+            bestEdgePoint = edgePoint;
             bestDistance = distance;
             bestCrossTrack = crossTrack;
             bestHeight = height;
@@ -106,7 +109,7 @@ public static class Sc2RampScoutPlanner
         if (!found)
             return false;
 
-        plan = new RampScoutPlan(bestPoint, bestDistance, bestCrossTrack, bestHeight);
+        plan = new RampScoutPlan(bestPoint, bestEdgePoint, bestDistance, bestCrossTrack, bestHeight);
         return true;
     }
 
@@ -117,9 +120,11 @@ public static class Sc2RampScoutPlanner
         byte minimumHeight,
         float cellWidth,
         float cellHeight,
-        out float nearestDistance)
+        out float nearestDistance,
+        out MapPoint nearestPoint)
     {
         nearestDistance = float.MaxValue;
+        nearestPoint = default;
         var toEnemyX = enemyStart.X - candidate.X;
         var toEnemyY = enemyStart.Y - candidate.Y;
         var found = false;
@@ -149,6 +154,7 @@ public static class Sc2RampScoutPlanner
                 continue;
 
             nearestDistance = distance;
+            nearestPoint = neighbor;
             found = true;
         }
 

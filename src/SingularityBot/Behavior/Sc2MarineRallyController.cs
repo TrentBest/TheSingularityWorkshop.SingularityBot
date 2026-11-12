@@ -4,10 +4,6 @@ using SingularityBot.Spatial;
 
 namespace SingularityBot.Behavior;
 
-/// <summary>
-/// Keeps a dedicated early-warning Marine separate while distributing the
-/// assembled squad across a rotating security screen on friendly territory.
-/// </summary>
 public sealed class Sc2MarineRallyController
 {
     private readonly Dictionary<ulong, uint> _lastRallyCommandLoops = new();
@@ -15,11 +11,89 @@ public sealed class Sc2MarineRallyController
     private const uint RetryAfterGameLoops = 44;
     private const uint PatrolRotationGameLoops = 672;
     private const float ArrivalRadiusSquared = 4f;
-    private const float RendezvousOffset = 5f;
+    private const float ScoutThreatRadiusSquared = 144f;
+    private const float RetreatThreatSeparationSquared = 196f;
     private bool _squadDispatched;
     private MapPoint? _rendezvousAnchor;
     private ulong? _scoutTag;
     private MapPoint? _scoutTarget;
+    private RampScoutPlan? _scoutPlan;
+    private MapPoint? _scoutRetreatTarget;
+    private bool _scoutPlanAttempted;
+    private string _scoutStatus = "Unassigned";
+    private string _scoutDetails = string.Empty;
+    private bool _scoutStatusChanged;
+
+    public string ScoutStatus => _scoutStatus;
+    public string ScoutDetails => _scoutDetails;
+    public MapPoint? ScoutTarget => _scoutTarget;
+    public ulong? ScoutTag => _scoutTag;
+
+    public void Reset()
+    {
+        _lastRallyCommandLoops.Clear();
+        _lastRallyTargets.Clear();
+        _squadDispatched = false;
+        _rendezvousAnchor = null;
+        _scoutTag = null;
+        _scoutTarget = null;
+        _scoutPlan = null;
+        _scoutRetreatTarget = null;
+        _scoutPlanAttempted = false;
+        _scoutStatus = "Unassigned";
+        _scoutDetails = string.Empty;
+        _scoutStatusChanged = false;
+    }
+
+    public ulong? GetScoutTag(NormalizedObservation observation)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        var liveMarineTags = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+                !observation.DeadUnitTags.Contains(unit.Tag))
+            .Select(unit => unit.Tag)
+            .OrderBy(tag => tag)
+            .ToArray();
+
+        if (liveMarineTags.Length == 0)
+        {
+            if (_scoutTag is not null)
+            {
+                _scoutTag = null;
+                _scoutTarget = null;
+                _scoutPlan = null;
+                _scoutRetreatTarget = null;
+                _scoutPlanAttempted = false;
+                _squadDispatched = false;
+                _rendezvousAnchor = null;
+                SetScoutStatus("NoLiveScout", "No live Marine is available for the dedicated scout role");
+            }
+            return null;
+        }
+
+        if (_scoutTag is null || !liveMarineTags.Contains(_scoutTag.Value))
+        {
+            _scoutTag = liveMarineTags[0];
+            _scoutTarget = null;
+            _scoutPlan = null;
+            _scoutRetreatTarget = null;
+            _scoutPlanAttempted = false;
+            SetScoutStatus("ScoutAssigned", $"marine={_scoutTag.Value}");
+        }
+
+        return _scoutTag;
+    }
+
+    public bool TryTakeScoutStatusChange(out string status, out string details)
+    {
+        status = _scoutStatus;
+        details = _scoutDetails;
+        if (!_scoutStatusChanged)
+            return false;
+        _scoutStatusChanged = false;
+        return true;
+    }
 
     public IReadOnlyList<SC2APIProtocol.Action> TryCreateActions(
         NormalizedObservation observation,
@@ -27,7 +101,9 @@ public sealed class Sc2MarineRallyController
         IReadOnlyList<MarineTacticalDecision> decisions,
         Sc2GameDataCatalog gameData,
         bool fourthMarineInProduction = false,
-        SpatialTerrain terrain = null)
+        SpatialTerrain terrain = null,
+        SpatialTopology topology = null,
+        SpatialGridSnapshot visibility = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -36,8 +112,6 @@ public sealed class Sc2MarineRallyController
             return Array.Empty<SC2APIProtocol.Action>();
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
-        var patrolPoints = GetFriendlyPatrolWaypoints(map, terrain);
-
         var actions = new List<SC2APIProtocol.Action>();
         var liveMarineTags = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
@@ -51,57 +125,113 @@ public sealed class Sc2MarineRallyController
         foreach (var retired in _lastRallyTargets.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
             _lastRallyTargets.Remove(retired);
 
-        if (liveMarineTags.Count == 0)
-        {
-            _squadDispatched = false;
-            _rendezvousAnchor = null;
-            _scoutTag = null;
-            _scoutTarget = null;
-        }
+        var scoutTag = GetScoutTag(observation);
+        var scout = scoutTag is ulong assignedScoutTag
+            ? observation.Units.FirstOrDefault(unit =>
+                unit.Tag == assignedScoutTag && unit.IsLiveVisible && unit.HasPosition)
+            : null;
+        var patrolOrigin = scout is null
+            ? (MapPoint?)null
+            : new MapPoint(scout.PositionX, scout.PositionY);
+        var patrolPoints = GetFriendlyPatrolWaypoints(map, terrain, topology, patrolOrigin);
 
-        if (_scoutTag is ulong existingScout && !liveMarineTags.Contains(existingScout))
-        {
-            _scoutTag = null;
-            _scoutTarget = null;
-        }
-
-        _scoutTag ??= liveMarineTags.OrderBy(tag => tag).Select(tag => (ulong?)tag).FirstOrDefault();
         var scoutActions = new List<SC2APIProtocol.Action>();
-        if (_scoutTag is ulong scoutTag)
+        if (scoutTag is ulong tag && scout is not null)
         {
-            _scoutTarget ??= FindFriendlyObservationSector(map, terrain);
-            var hasScoutDecision = decisions.Any(item => item.MarineTag == scoutTag);
-            var scoutDecision = decisions.FirstOrDefault(item => item.MarineTag == scoutTag);
-            var scout = observation.Units.FirstOrDefault(unit =>
-                unit.Tag == scoutTag && unit.IsLiveVisible && unit.HasPosition);
-            if (_scoutTarget is MapPoint scoutTarget && scout is not null && hasScoutDecision &&
-                scoutDecision.Action == MarineTacticalAction.Hold &&
-                (scoutDecision.TargetTag is null || scoutDecision.IsOutsideLocalDefenseEnvelope))
+            EnsureScoutPlan(map, terrain, topology, scout);
+            var hasScoutDecision = decisions.Any(item => item.MarineTag == tag);
+            var scoutDecision = decisions.FirstOrDefault(item => item.MarineTag == tag);
+            if (hasScoutDecision && scoutDecision.Action == MarineTacticalAction.Hold &&
+                scoutDecision.TargetTag is null)
             {
-                var scoutDistanceSquared = DistanceSquared(
-                    scout.PositionX, scout.PositionY, scoutTarget.X, scoutTarget.Y);
-                if (scoutDistanceSquared > ArrivalRadiusSquared &&
-                    (!_lastRallyCommandLoops.TryGetValue(scoutTag, out var scoutLastCommand) ||
-                     observation.GameLoop >= scoutLastCommand + RetryAfterGameLoops))
+                var threats = observation.Units
+                    .Where(unit => unit.Alliance == UnitAlliance.Enemy && unit.IsLiveVisible && unit.HasPosition &&
+                        DistanceSquared(scout.PositionX, scout.PositionY, unit.PositionX, unit.PositionY) <=
+                        ScoutThreatRadiusSquared)
+                    .ToArray();
+
+                if (threats.Length > 0)
                 {
-                    _lastRallyCommandLoops[scoutTag] = observation.GameLoop;
-                    scoutActions.Add(MoveCommand(scoutTag, checked((int)gameData.MoveAbilityId.Value), scoutTarget));
+                    if (_scoutRetreatTarget is not MapPoint currentRetreat ||
+                        threats.Any(threat => DistanceSquared(currentRetreat.X, currentRetreat.Y,
+                            threat.PositionX, threat.PositionY) < RetreatThreatSeparationSquared))
+                    {
+                        _scoutRetreatTarget = FindSafeRetreatPoint(
+                            patrolPoints, map, terrain, topology,
+                            new MapPoint(scout.PositionX, scout.PositionY), threats);
+                        if (_scoutRetreatTarget is MapPoint safePoint)
+                            SetScoutStatus("ThreatRetreat",
+                                $"marine={tag};threats={threats.Length};retreat={safePoint.X:F1},{safePoint.Y:F1}");
+                        else
+                            SetScoutStatus("ThreatNoSafeRetreat",
+                                $"marine={tag};threats={threats.Length};no connected friendly retreat waypoint");
+                    }
+                }
+                else if (_scoutRetreatTarget is not null)
+                {
+                    _scoutRetreatTarget = null;
+                    SetScoutStatus("ResumingRampScout", $"marine={tag}");
+                }
+
+                var destination = _scoutRetreatTarget ?? _scoutTarget;
+                if (destination is MapPoint target)
+                {
+                    var distanceSquared = DistanceSquared(
+                        scout.PositionX, scout.PositionY, target.X, target.Y);
+                    if (distanceSquared > ArrivalRadiusSquared &&
+                        (!_lastRallyCommandLoops.TryGetValue(tag, out var scoutLastCommand) ||
+                         observation.GameLoop >= scoutLastCommand + RetryAfterGameLoops))
+                    {
+                        _lastRallyCommandLoops[tag] = observation.GameLoop;
+                        scoutActions.Add(MoveCommand(
+                            tag, checked((int)gameData.MoveAbilityId.Value), target));
+                        var planDetails = _scoutPlan is RampScoutPlan plan
+                            ? $";terrain={plan.TerrainHeight};rampEdge={plan.RampEdgePoint.X:F1},{plan.RampEdgePoint.Y:F1}"
+                            : string.Empty;
+                        SetScoutStatus(_scoutRetreatTarget is null ? "MovingToRampFoot" : "Retreating",
+                            $"marine={tag};target={target.X:F1},{target.Y:F1}{planDetails}");
+                    }
+                    else if (distanceSquared <= ArrivalRadiusSquared)
+                    {
+                        _lastRallyCommandLoops.Remove(tag);
+                        if (_scoutRetreatTarget is not null)
+                        {
+                            SetScoutStatus("HoldingSafeRetreat",
+                                $"marine={tag};retreat={target.X:F1},{target.Y:F1};threats={threats.Length}");
+                        }
+                        else if (_scoutPlan is RampScoutPlan plan)
+                        {
+                            var rampVisibility = visibility is not null &&
+                                visibility.TryGetValue(plan.RampEdgePoint, out var visibilityValue)
+                                    ? visibilityValue switch { 2 => "visible", 1 => "fogged", _ => "hidden" }
+                                    : "unavailable";
+                            var townHallVisible = observation.Units.Any(unit =>
+                                unit.Alliance == UnitAlliance.Enemy && unit.IsLiveVisible &&
+                                IsEnemyTownHall(unit.UnitKind));
+                            SetScoutStatus("AtRampFoot",
+                                $"marine={tag};rampEntranceVisibility={rampVisibility};enemyTownHallVisible={townHallVisible};" +
+                                $"target={plan.ObservationPoint.X:F1},{plan.ObservationPoint.Y:F1};" +
+                                $"rampEdge={plan.RampEdgePoint.X:F1},{plan.RampEdgePoint.Y:F1};terrain={plan.TerrainHeight}");
+                        }
+                        else
+                        {
+                            SetScoutStatus("AtFriendlyObservation",
+                                $"marine={tag};target={target.X:F1},{target.Y:F1}");
+                        }
+                    }
                 }
             }
         }
 
-        // The first Marine is a dedicated early-warning observer. It moves to
-        // the farthest non-enemy sector adjacent to the friendly start sector.
-        // The remaining four Marines form the first mass-pressure squad.
-        // Marine four entering production starts a real rendezvous at the
-        // producing Barracks. Early Marines occupy distinct box slots around it;
-        // the squad does not begin its cross-map advance until all four have
-        // reached their assigned slots.
+        // The first Marine is a dedicated, non-combat scout. With map layers it
+        // stages at a connected low-ground foot of the enemy ramp; without them
+        // it uses only the conservative friendly observation post. The remaining
+        // four Marines assemble before taking up the distributed patrol screen.
         if (patrolPoints.Count == 0)
             return scoutActions;
 
         var squadTags = liveMarineTags
-            .Where(tag => tag != _scoutTag)
+            .Where(tag => tag != scoutTag)
             .OrderBy(tag => tag)
             .ToArray();
         if (!_squadDispatched && squadTags.Length < 4)
@@ -117,8 +247,8 @@ public sealed class Sc2MarineRallyController
         var rendezvousAnchor = _rendezvousAnchor.Value;
         var rendezvousOffsets = MarineFormationPlanner.GetOffsets(
             MarineFormation.Box, squadTags.Length, direction.X, direction.Y);
-        var rendezvousTargets = squadTags.Select((tag, index) => (
-            Tag: tag,
+        var rendezvousTargets = squadTags.Select((squadTag, index) => (
+            Tag: squadTag,
             X: rendezvousAnchor.X + rendezvousOffsets[index].X,
             Y: rendezvousAnchor.Y + rendezvousOffsets[index].Y)).ToArray();
 
@@ -149,11 +279,6 @@ public sealed class Sc2MarineRallyController
         }
         else
         {
-            // Once assembled, the Marines do not march into a single exposed
-            // map-edge rally point. They patrol distinct, map-derived sectors
-            // around the friendly base. The whole screen rotates one sector at
-            // a time so it keeps moving, maintains spacing, and repeatedly checks
-            // the approaches instead of becoming a stationary clump.
             var patrolPhase = (int)((observation.GameLoop / PatrolRotationGameLoops) % patrolPoints.Count);
             for (var index = 0; index < squadTags.Length; index++)
             {
@@ -182,10 +307,6 @@ public sealed class Sc2MarineRallyController
                 continue;
             }
 
-            // Formation members advance through short local waypoints rather than
-            // asking SC2 to pathfind the entire cross-map route in one command.
-            // This keeps each Marine close to its assigned slot and reduces the
-            // tendency for trailing units to route around the Marine ahead.
             if (_lastRallyTargets.TryGetValue(marine.Tag, out var priorTarget) &&
                 DistanceSquared(marine.PositionX, marine.PositionY, priorTarget.X, priorTarget.Y) <= ArrivalRadiusSquared)
             {
@@ -201,24 +322,83 @@ public sealed class Sc2MarineRallyController
                 marine.PositionX, marine.PositionY, destination.X, destination.Y, 4f);
             _lastRallyCommandLoops[marine.Tag] = observation.GameLoop;
             _lastRallyTargets[marine.Tag] = waypoint;
-            actions.Add(new SC2APIProtocol.Action
-            {
-                ActionRaw = new ActionRaw
-                {
-                    UnitCommand = new ActionRawUnitCommand
-                    {
-                        AbilityId = checked((int)gameData.MoveAbilityId.Value),
-                        UnitTags = { marine.Tag },
-                        TargetWorldSpacePos = new Point2D { X = waypoint.X, Y = waypoint.Y },
-                        QueueCommand = false
-                    }
-                }
-            });
+            actions.Add(MoveCommand(marine.Tag, checked((int)gameData.MoveAbilityId.Value), waypoint));
         }
 
         scoutActions.AddRange(actions);
         return scoutActions;
     }
+
+    private void EnsureScoutPlan(
+        SpatialMap map,
+        SpatialTerrain terrain,
+        SpatialTopology topology,
+        UnitObservationFacts scout)
+    {
+        if (_scoutPlanAttempted)
+            return;
+
+        _scoutPlanAttempted = true;
+        var origin = new MapPoint(scout.PositionX, scout.PositionY);
+        if (terrain is not null && topology is not null &&
+            Sc2RampScoutPlanner.TryFindObservationPoint(map, terrain, topology, origin, out var plan))
+        {
+            _scoutPlan = plan;
+            _scoutTarget = plan.ObservationPoint;
+            SetScoutStatus("RampFootPlanned",
+                $"target={plan.ObservationPoint.X:F1},{plan.ObservationPoint.Y:F1};" +
+                $"edge={plan.RampEdgePoint.X:F1},{plan.RampEdgePoint.Y:F1};" +
+                $"terrain={plan.TerrainHeight};enemyDistance={plan.DistanceFromEnemyStart:F1};" +
+                $"crossTrack={plan.CrossTrackDistance:F1};connected=true");
+            return;
+        }
+
+        if (terrain is null || topology is null)
+        {
+            _scoutTarget = FindFriendlyObservationSector(map, terrain);
+            SetScoutStatus("FriendlyObservationFallback",
+                _scoutTarget is MapPoint fallback
+                    ? $"terrainOrTopologyUnavailable;target={fallback.X:F1},{fallback.Y:F1}"
+                    : "terrainOrTopologyUnavailable;noFriendlyObservationSector");
+            return;
+        }
+
+        SetScoutStatus("RampFootUnavailable",
+            "No pathable low-ground ramp foot is connected to the scout's current pathing region");
+    }
+
+    private static MapPoint? FindSafeRetreatPoint(
+        IReadOnlyList<MapPoint> patrolPoints,
+        SpatialMap map,
+        SpatialTerrain terrain,
+        SpatialTopology topology,
+        MapPoint origin,
+        IReadOnlyList<UnitObservationFacts> threats) =>
+        patrolPoints
+            .Where(point => map.Side.Assess(point) == MapSide.Friendly)
+            .Where(point => IsPathable(point, terrain))
+            .Where(point => topology is null || topology.AreConnected(origin, point))
+            .Where(point => threats.All(threat =>
+                DistanceSquared(point.X, point.Y, threat.PositionX, threat.PositionY) >=
+                RetreatThreatSeparationSquared))
+            .OrderBy(point => DistanceSquared(origin.X, origin.Y, point.X, point.Y))
+            .ThenBy(point => point.DistanceSquaredTo(map.Side.FriendlyStart))
+            .Select(point => (MapPoint?)point)
+            .FirstOrDefault();
+
+    private void SetScoutStatus(string status, string details)
+    {
+        if (_scoutStatus == status && _scoutDetails == details)
+            return;
+        _scoutStatus = status;
+        _scoutDetails = details;
+        _scoutStatusChanged = true;
+    }
+
+    private static bool IsEnemyTownHall(string unitKind) =>
+        unitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+        unitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+        unitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase);
 
     private static MapPoint? FindFriendlyObservationSector(SpatialMap map, SpatialTerrain terrain)
     {
@@ -235,23 +415,16 @@ public sealed class Sc2MarineRallyController
             .FirstOrDefault();
     }
 
-    /// <summary>
-    /// Builds a deterministic patrol screen across every friendly-side map sector.
-    /// Neutral/enemy territory is excluded; the first Marine's observation post
-    /// remains a separate assignment. Public so the tactical coverage can be
-    /// verified independently of SC2 command translation.
-    /// </summary>
     public static IReadOnlyList<MapPoint> GetFriendlyPatrolWaypoints(
         SpatialMap map,
-        SpatialTerrain terrain = null)
+        SpatialTerrain terrain = null,
+        SpatialTopology topology = null,
+        MapPoint? origin = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         var scoutPoint = FindFriendlyObservationSector(map, terrain);
         var candidates = new List<MapPoint>();
 
-        // Sample the whole friendly half of the map, not just the spawn's
-        // immediate neighbors. The 3x3 inset samples give the squad a distributed
-        // security screen while keeping every station away from map-edge cells.
         foreach (var sector in map.Sectors)
         {
             var insetX = MathF.Min(4f, sector.Bounds.Width * 0.15f);
@@ -270,9 +443,12 @@ public sealed class Sc2MarineRallyController
                 if (!map.Bounds.Contains(point) || map.Side.Assess(point) != MapSide.Friendly ||
                     !IsPathable(point, terrain))
                     continue;
+                if (topology is not null && origin is MapPoint originPoint &&
+                    !topology.AreConnected(originPoint, point))
+                    continue;
                 if (point.DistanceSquaredTo(map.Side.FriendlyStart) < 100f)
                     continue;
-                if (scoutPoint is MapPoint scout && point.DistanceSquaredTo(scout) < 64f)
+                if (scoutPoint is MapPoint reservedPoint && point.DistanceSquaredTo(reservedPoint) < 64f)
                     continue;
                 if (candidates.Any(existing => existing.DistanceSquaredTo(point) < 64f))
                     continue;

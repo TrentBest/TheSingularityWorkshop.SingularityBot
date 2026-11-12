@@ -49,40 +49,43 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void LetsLoadedBuilderDepositMineralsBeforeLeavingForConstruction()
+    public void DispatchesLoadedBuilderDirectlyToDepotAndSacrificesCargoReturnTrip()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
 
-        var action = controller.TryCreateAction(Snapshot(100, 12, 15,
+        // Select a loaded mineral worker. The first call reserves the worker and
+        // requests an authoritative placement; it must not send a speculative move.
+        var selected = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
             Fact(11, "SCV", 9, 9),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
-        // A loaded worker whose current order returns it to the town hall keeps
-        // that order; the builder is reserved but not redirected mid-trip.
-        Assert.Null(action);
+        Assert.Null(selected);
         Assert.Equal(10UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(10));
         Assert.False(assignments.IsReserved(11));
         Assert.NotNull(controller.TakePlacementQuery(gameData));
         SetValidPlacement(controller);
 
-        // After the cargo is deposited, SC2 may already have queued the next
-        // mineral order. The builder must recognize that delivery and depart.
-        var delivered = controller.TryCreateAction(Snapshot(100, 12, 15,
-            Fact(10, "SCV", 5, 5, orders: new[] { new UnitOrderObservationFacts(295, 20, null, null) }),
+        // The loaded SCV is diverted immediately, interrupting its return-to-CC
+        // order and intentionally sacrificing the carried minerals.
+        var dispatch = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5, hasCargo: true,
+                orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
             Fact(11, "SCV", 9, 9),
-            Fact(1, "CommandCenter", 10, 10),
-            Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral }),
-            map, gameData, assignments, Crew(10, 11));
-        Assert.NotNull(delivered);
-        Assert.Equal(16, delivered.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(10UL, delivered.ActionRaw.UnitCommand.UnitTags[0]);
+            Fact(1, "CommandCenter", 10, 10)), map, gameData,
+            assignments, Crew(10, 11));
+
+        Assert.NotNull(dispatch);
+        Assert.Equal(16, dispatch.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(10UL, dispatch.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.Equal(controller.Placement!.Value.X, dispatch.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
+        Assert.Equal(controller.Placement!.Value.Y, dispatch.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
     }
 
     [Fact]

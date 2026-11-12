@@ -89,7 +89,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void DispatchesLoadedBuilderDirectlyToDepotAndSacrificesCargoReturnTrip()
+    public void WaitsForLoadedBuilderToDepositMineralsBeforeDispatchingToDepot()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -112,11 +112,20 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.NotNull(controller.TakePlacementQuery(gameData));
         SetValidPlacement(controller);
 
-        // The loaded SCV is diverted immediately, interrupting its return-to-CC
-        // order and intentionally sacrificing the carried minerals.
-        var dispatch = controller.TryCreateAction(Snapshot(100, 12, 15,
+        // Even with an accepted placement, the loaded SCV must finish its
+        // return to the Command Center. Construction cannot consume this load.
+        var stillReturning = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
+            Fact(11, "SCV", 9, 9),
+            Fact(1, "CommandCenter", 10, 10)), map, gameData,
+            assignments, Crew(10, 11));
+        Assert.Null(stillReturning);
+
+        // A later observation confirms the deposit (cargo is gone). Only now
+        // may the reserved builder leave the mineral line for the Depot site.
+        var dispatch = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(10, "SCV", 5, 5),
             Fact(11, "SCV", 9, 9),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
@@ -152,17 +161,24 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.NotNull(controller.TakePlacementQuery(gameData));
         SetValidPlacement(controller);
 
-        // Once the selected miner has cargo, do not wait for the unload at the
-        // Command Center. Interrupt the return and dispatch to the Depot site.
-        var loadedMove = controller.TryCreateAction(Snapshot(100, 12, 15,
+        // Once loaded, the selected miner must first return its resources.
+        var loadedReturn = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5),
             Fact(11, "SCV", 6, 5, hasCargo: true, orders: miningOrder),
             Fact(1, "CommandCenter", 10, 10),
             mineral), map, gameData, assignments, Crew(10, 11));
 
-        Assert.NotNull(loadedMove);
-        Assert.Equal(16, loadedMove.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, loadedMove.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.Null(loadedReturn);
+
+        var depositedDispatch = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10),
+            mineral), map, gameData, assignments, Crew(10, 11));
+
+        Assert.NotNull(depositedDispatch);
+        Assert.Equal(16, depositedDispatch.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, depositedDispatch.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]

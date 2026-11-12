@@ -445,21 +445,24 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var orbitalReservedCommandCenter = _orbitalSupport.GetCommandCenterReservedForUpgrade(
                 normalized, _gameData);
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) &&
+                unit.IsLiveVisible &&
+                (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalBarracksReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            var orbitalScvTrainingOrderObserved = _gameData.ScvTrainAbilityId is > 0 &&
-                startingTownHall?.Orders.Any(order => order.AbilityId == _gameData.ScvTrainAbilityId.Value) == true;
+            var orbitalCommandCenterBusy = _gameData.ScvTrainAbilityId is > 0
+                ? startingTownHall?.Orders.Any(order => order.AbilityId == _gameData.ScvTrainAbilityId.Value) == true
+                : startingTownHall?.HasOrders == true;
             var orbitalReservationReason = startingTownHall is null ? "no-live-town-hall" :
                 !startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ? "starting-town-hall-not-command-center" :
                 !orbitalDepotReady ? "supply-depot-incomplete-or-missing" :
                 !orbitalBarracksReady ? "barracks-incomplete-or-missing" :
                 orbitalAbility is not > 0 ? "orbital-ability-unavailable-or-ambiguous" :
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
-                orbitalScvTrainingOrderObserved ? "waiting-for-current-scv-training-order" :
+                orbitalCommandCenterBusy ? "waiting-for-current-scv-training-order-or-unresolved-order-metadata" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
                 "eligible";
             var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};loop={normalized.GameLoop}";

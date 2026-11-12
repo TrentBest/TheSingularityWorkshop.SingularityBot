@@ -74,7 +74,8 @@ public sealed class Sc2MarineRallyController
             var scout = observation.Units.FirstOrDefault(unit =>
                 unit.Tag == scoutTag && unit.IsLiveVisible && unit.HasPosition);
             if (_scoutTarget is MapPoint scoutTarget && scout is not null && hasScoutDecision &&
-                scoutDecision.Action == MarineTacticalAction.Hold && scoutDecision.TargetTag is null)
+                scoutDecision.Action == MarineTacticalAction.Hold &&
+                (scoutDecision.TargetTag is null || scoutDecision.IsOutsideLocalDefenseEnvelope))
             {
                 var scoutDistanceSquared = DistanceSquared(
                     scout.PositionX, scout.PositionY, scoutTarget.X, scoutTarget.Y);
@@ -129,7 +130,8 @@ public sealed class Sc2MarineRallyController
                 var marine = observation.Units.FirstOrDefault(unit =>
                     unit.Tag == decision.MarineTag && unit.IsLiveVisible && unit.HasPosition);
                 var slot = rendezvousTargets.FirstOrDefault(target => target.Tag == decision.MarineTag);
-                if (marine is null || decision.Action != MarineTacticalAction.Hold || decision.TargetTag is not null)
+                if (marine is null || decision.Action != MarineTacticalAction.Hold ||
+                    (decision.TargetTag is not null && !decision.IsOutsideLocalDefenseEnvelope))
                     return false;
                 var dx = marine.PositionX - slot.X;
                 var dy = marine.PositionY - slot.Y;
@@ -161,7 +163,8 @@ public sealed class Sc2MarineRallyController
 
         foreach (var decision in decisions.Where(item =>
                      targetsByTag.ContainsKey(item.MarineTag) &&
-                     item.Action == MarineTacticalAction.Hold && item.TargetTag is null))
+                     item.Action == MarineTacticalAction.Hold &&
+                     (item.TargetTag is null || item.IsOutsideLocalDefenseEnvelope)))
         {
             var marine = observation.Units.FirstOrDefault(unit =>
                 unit.Tag == decision.MarineTag && liveMarineTags.Contains(unit.Tag) && unit.HasPosition);

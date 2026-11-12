@@ -1204,6 +1204,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Sc2Diagnostics.OutputDirectory,
                 _passiveBaseline ? "passive-baseline" : "active-run");
         _unitBehaviors.RemoveAll();
+        _openingProduction.Dispose();
         _buildJobs.Clear();
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();

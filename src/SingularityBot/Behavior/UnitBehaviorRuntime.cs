@@ -160,6 +160,21 @@ public sealed class UnitBehaviorRuntime
             ? context.Capabilities
             : Array.Empty<string>();
 
+    /// <summary>Returns the current FSM_API state of each capability attached to an entity.</summary>
+    public IReadOnlyDictionary<string, string> GetStates(ulong unitTag) =>
+        _contexts.TryGetValue(unitTag, out var context)
+            ? context.CurrentStates
+            : new Dictionary<string, string>();
+
+    public bool TryGetState(ulong unitTag, string fsmName, out string state)
+    {
+        if (_contexts.TryGetValue(unitTag, out var context))
+            return context.TryGetState(fsmName, out state);
+
+        state = null!;
+        return false;
+    }
+
     public bool Remove(ulong unitTag)
     {
         if (!_contexts.Remove(unitTag, out var context)) return false;

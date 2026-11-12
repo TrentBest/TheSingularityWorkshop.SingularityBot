@@ -545,8 +545,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Give the first Barracks opening room to settle before pulling
                 // another SCV. Four and a half seconds at SC2's 22.4 loops/sec.
                 const uint secondBarracksWorkerPullDelayLoops = 101;
-                if (normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops &&
-                    startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase))
+                if (normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
                     secondBarracksAction = _secondBarracks.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
@@ -571,9 +570,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _supplyDepotExpansionActionSubmitted = false;
                 }
 
-                // The starting base's Orbital is a hard opening milestone. Do not
-                // let the four-Barracks expansion branch spend its 400 minerals first.
-                if (_secondBarracks.IsComplete && startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) && !_expansionCommandCenter.IsComplete)
+                // Orbital conversion remains a priority, but it must never deadlock
+                // the production/economy progression if its action is unavailable.
+                if (_secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
@@ -624,7 +623,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 }
             }
 
-            // Gas infrastructure starts once the first Barracks is complete.
+            // Gas infrastructure starts once the first Barracks is complete; an
+            // unavailable Orbital must not hold the gas economy hostage.
             // Each geyser owns an independent FSM; construction targets the geyser
             // unit tag and completed Refineries receive up to three SCVs.
             var friendlyTownHallCount = normalized.Units.Count(unit =>
@@ -642,8 +642,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress < 1f && !normalized.DeadUnitTags.Contains(unit.Tag));
-            var refineryConstructionAllowed = startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) &&
-                _openingMarine.BarracksComplete && completedRefineryCount < 2 && !refineryUnderConstruction;
+            var refineryConstructionAllowed = _openingMarine.BarracksComplete &&
+                completedRefineryCount < 2 && !refineryUnderConstruction;
             refineryActions = _refineries.ReconcileAndCreateActions(
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
                 allowConstruction: refineryConstructionAllowed);

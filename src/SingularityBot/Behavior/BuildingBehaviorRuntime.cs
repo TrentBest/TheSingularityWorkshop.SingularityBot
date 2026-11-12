@@ -240,6 +240,10 @@ public sealed class BuildingBehaviorRuntime
         .Select(building => building.UnitTag).ToHashSet();
     public int Count => _buildings.Count;
     public bool HasDesignatedCommandCenterConstructionArea => _designatedCommandCenterArea.HasValue;
+    public MapPoint? DesignatedCommandCenterConstructionAreaCenter =>
+        _designatedCommandCenterArea is { } area ? new MapPoint(area.X, area.Y) : null;
+    public float DesignatedCommandCenterConstructionAreaRadius =>
+        _designatedCommandCenterArea?.Radius ?? 0;
 
     public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius)
     {

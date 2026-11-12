@@ -60,6 +60,19 @@ public sealed class Sc2OpeningProductionControllerTests
         Assert.Equal(expected, action is not null);
     }
 
+    [Theory]
+    [InlineData(274, false)]
+    [InlineData(275, true)]
+    public void PreservesBothOrbitalAndFirstRefineryCostsBeforeScvRefill(uint minerals, bool expected)
+    {
+        var controller = new Sc2OpeningProductionController();
+        var action = controller.TryCreateScvTrainingAction(
+            Snapshot(minerals, 12, 15, Fact(100, "CommandCenter")),
+            GameData(), reservedMinerals: 225);
+
+        Assert.Equal(expected, action is not null);
+    }
+
     [Fact]
     public void CanHoldAllFurtherScvProductionUntilTheFirstDepotCompletes()
     {

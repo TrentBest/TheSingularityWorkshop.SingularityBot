@@ -53,10 +53,16 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y, 0.5f)),
             map, gameData, assignments));
 
+        // Barracks completion alone must not spend the Orbital reserve on a Marine.
+        Assert.Null(controller.TryCreateAction(Snapshot(50, 12, 15,
+            Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y)),
+            map, gameData, assignments, allowMarineTraining: false));
+
         var trainMarine = controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y)),
-            map, gameData, assignments);
+            map, gameData, assignments, allowMarineTraining: true);
         Assert.NotNull(trainMarine);
         Assert.False(controller.MarineTrainingOrderObserved);
         Assert.Equal(560, trainMarine.ActionRaw.UnitCommand.AbilityId);

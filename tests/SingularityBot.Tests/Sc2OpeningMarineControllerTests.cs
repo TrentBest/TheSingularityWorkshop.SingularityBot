@@ -11,7 +11,7 @@ public sealed class Sc2OpeningMarineControllerTests
     [Fact]
     public void BuildsBarracksTrainsMarineAndKeepsItOnFriendlySide()
     {
-        var controller = new Sc2OpeningMarineController();
+        using var controller = new Sc2OpeningMarineController();
         var assignments = new WorkerResourceAssignmentPlanner();
         assignments.Reserve(10);
         var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
@@ -100,7 +100,7 @@ public sealed class Sc2OpeningMarineControllerTests
     [Fact]
     public void StagesADifferentBarracksBuilderDuringDepotConstructionAndBuildsOnlyAfterCompletion()
     {
-        var controller = new Sc2OpeningMarineController();
+        using var controller = new Sc2OpeningMarineController();
         var assignments = new WorkerResourceAssignmentPlanner();
         const ulong depotBuilderTag = 10;
         const ulong barracksBuilderTag = 11;

@@ -694,8 +694,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // The first Refinery may begin during the Orbital morph. The
             // third Supply Depot must be completed before we take the second geyser;
             // this keeps the supply investment ahead of the second gas commitment.
-            var refinerySequenceReady = completedRefineryCount == 0 ||
-                (orbitalMorphingObserved && _thirdSupplyDepot.IsCompleted);
             var refineryConstructionAllowed = Sc2RefineryProgressionPolicy.ShouldConstruct(
                 _openingMarine.BarracksComplete,
                 orbitalMorphingObserved,

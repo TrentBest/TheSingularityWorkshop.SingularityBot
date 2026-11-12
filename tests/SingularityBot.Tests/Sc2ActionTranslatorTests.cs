@@ -122,6 +122,29 @@ public sealed class Sc2ActionTranslatorTests
         Assert.Empty(actions);
     }
 
+    [Theory]
+    [InlineData("CommandCenter")]
+    [InlineData("Refinery")]
+    public void ReturnCargoIntentPreservesAnExistingReturnOrder(string destinationKind)
+    {
+        var loadedWorker = Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true) with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(295, 30, null, null) }
+        };
+        var observation = Snapshot(
+            loadedWorker,
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(30, destinationKind, UnitAlliance.Self, 8, 2));
+
+        var actions = Sc2ActionTranslator.Translate(
+            new[] { new KeyValuePair<ulong, BehaviorCommand>(10, BehaviorCommand.ReturnCarriedResources) },
+            observation,
+            1);
+
+        Assert.Empty(actions);
+    }
+
     [Fact]
     public void ReturnCargoIntentOverridesAnObservedMineralGatherOrder()
     {

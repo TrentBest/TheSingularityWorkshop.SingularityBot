@@ -43,7 +43,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         var buildBarracks = controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments);
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, jobs);
         Assert.NotNull(buildBarracks);
         Assert.Equal(321, buildBarracks.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(10UL, buildBarracks.ActionRaw.UnitCommand.UnitTags[0]);

@@ -62,6 +62,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OpeningBuilderController _supplyDepotExpansion = new();
     private bool _supplyDepotExpansionActionSubmitted;
     private int _supplyDepotExpansionPlacementCount;
+    private readonly Sc2OpeningBuilderController _thirdSupplyDepot = new();
+    private bool _thirdSupplyDepotActionSubmitted;
+    private int _thirdSupplyDepotPlacementCount;
     private readonly BuildJobRuntime _buildJobs = new();
     private readonly Sc2BarracksProductionController _barracksProduction = new();
     private bool _barracksProductionActionSubmitted;
@@ -344,6 +347,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         SC2APIProtocol.Action orbitalSupportAction = null;
         SC2APIProtocol.Action secondBarracksAction = null;
         SC2APIProtocol.Action supplyDepotExpansionAction = null;
+        SC2APIProtocol.Action thirdSupplyDepotPendingAction = null;
         SC2APIProtocol.Action expansionCommandCenterAction = null;
         SC2APIProtocol.Action barracksProductionAction = null;
         IReadOnlyList<SC2APIProtocol.Action> refineryActions = Array.Empty<SC2APIProtocol.Action>();
@@ -571,11 +575,27 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
                     if (_supplyDepotExpansion.IsCompleted)
                         _secondBarracks.NotifySupplyDepotCompleted(_supplyDepotExpansion.BuilderTag);
+                    _thirdSupplyDepotActionSubmitted = false;
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
+                }
+                else if (orbitalMorphingObserved && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted)
+                {
+                    // Depot two is the post-Orbital expansion Depot. Build Depot
+                    // three next, reusing the released Depot-two worker when possible;
+                    // the second Refinery remains gated on Depot three completing.
+                    supplyDepotExpansionAction = null;
+                    _thirdSupplyDepotActionSubmitted = false;
+                    var thirdDepotAction = _thirdSupplyDepot.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
+                        _buildJobs, _supplyDepotExpansion.BuilderTag, releaseBuilderOnCompletion: true);
+                    _thirdSupplyDepotActionSubmitted = thirdDepotAction is not null;
+                    thirdSupplyDepotPendingAction = thirdDepotAction;
                     assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
                 }
                 else
                 {
                     _supplyDepotExpansionActionSubmitted = false;
+                    _thirdSupplyDepotActionSubmitted = false;
                 }
 
                 // Orbital conversion remains a priority, but it must never deadlock
@@ -653,7 +673,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // The first Refinery may begin during the Orbital morph. The
             // third Supply Depot must be completed before we take the second geyser;
             // this keeps the supply investment ahead of the second gas commitment.
-            var refinerySequenceReady = completedRefineryCount == 0 || _supplyDepotExpansion.IsCompleted;
+            var refinerySequenceReady = completedRefineryCount == 0 || _thirdSupplyDepot.IsCompleted;
             var refineryConstructionAllowed = orbitalMorphingObserved &&
                 _openingMarine.BarracksComplete && refinerySequenceReady &&
                 completedRefineryCount < 2 && !refineryUnderConstruction;
@@ -685,6 +705,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var supplyDepotExpansionPlacementQuery = orbitalMorphingObserved && !_supplyDepotExpansion.IsCompleted
                 ? _supplyDepotExpansion.TakePlacementQuery(_gameData)
                 : null;
+            var thirdSupplyDepotPlacementQuery = orbitalMorphingObserved && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted
+                ? _thirdSupplyDepot.TakePlacementQuery(_gameData)
+                : null;
             var expansionCommandCenterPlacementQuery = _secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete
                 ? _expansionCommandCenter.TakePlacementQuery(_gameData)
                 : null;
@@ -692,8 +715,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarinePlacementCount = marinePlacementQuery?.Placements.Count ?? 0;
             _secondBarracksPlacementCount = secondBarracksPlacementQuery?.Placements.Count ?? 0;
             _supplyDepotExpansionPlacementCount = supplyDepotExpansionPlacementQuery?.Placements.Count ?? 0;
+            _thirdSupplyDepotPlacementCount = thirdSupplyDepotPlacementQuery?.Placements.Count ?? 0;
             _expansionCommandCenterPlacementCount = expansionCommandCenterPlacementQuery?.Placements.Count ?? 0;
-            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null || secondBarracksPlacementQuery is not null || supplyDepotExpansionPlacementQuery is not null || expansionCommandCenterPlacementQuery is not null)
+            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null || secondBarracksPlacementQuery is not null || supplyDepotExpansionPlacementQuery is not null || thirdSupplyDepotPlacementQuery is not null || expansionCommandCenterPlacementQuery is not null)
             {
                 _pendingQuery = new RequestQuery();
                 if (sprayQuery is not null)
@@ -706,6 +730,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _pendingQuery.Placements.Add(secondBarracksPlacementQuery.Placements);
                 if (supplyDepotExpansionPlacementQuery is not null)
                     _pendingQuery.Placements.Add(supplyDepotExpansionPlacementQuery.Placements);
+                if (thirdSupplyDepotPlacementQuery is not null)
+                    _pendingQuery.Placements.Add(thirdSupplyDepotPlacementQuery.Placements);
                 if (expansionCommandCenterPlacementQuery is not null)
                     _pendingQuery.Placements.Add(expansionCommandCenterPlacementQuery.Placements);
             }
@@ -721,6 +747,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarineActionSubmitted = false;
             _secondBarracksActionSubmitted = false;
             _supplyDepotExpansionActionSubmitted = false;
+            _thirdSupplyDepotActionSubmitted = false;
             _expansionCommandCenterActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
             _barracksProductionActionSubmitted = false;
@@ -771,6 +798,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             actions.Add(marineAction);
         if (supplyDepotExpansionAction is not null)
             actions.Add(supplyDepotExpansionAction);
+        if (thirdSupplyDepotPendingAction is not null)
+            actions.Add(thirdSupplyDepotPendingAction);
         if (secondBarracksAction is not null)
             actions.Add(secondBarracksAction);
         if (expansionCommandCenterAction is not null)
@@ -850,7 +879,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             _openingTrace.RecordFrame(normalized, _openingBuilder, builderAction,
                 marineAction is not null, SpatialMap is not null, _buildJobs.ActiveCount, _expansionCommandCenter,
-                _openingMarine, _secondBarracks, _supplyDepotExpansion);
+                _openingMarine, _secondBarracks, _supplyDepotExpansion, _thirdSupplyDepot);
             _binaryTrace.RecordFrame(normalized.GameLoop, normalized.Minerals,
                 normalized.FoodUsed, normalized.FoodCap, normalized.Units.Count, actions.Count);
             _binaryTrace.RecordEconomySnapshot(normalized, _buildJobs.ActiveCount);
@@ -883,6 +912,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingMarine.OnActionResult(null, _buildJobs);
             if (_supplyDepotExpansionActionSubmitted)
                 _supplyDepotExpansion.OnActionResult(null, _buildJobs);
+            if (_thirdSupplyDepotActionSubmitted)
+                _thirdSupplyDepot.OnActionResult(null, _buildJobs);
             if (_expansionCommandCenterActionSubmitted)
                 _expansionCommandCenter.OnActionResult(null, _lastGameLoop);
             if (_secondBarracksActionSubmitted)
@@ -898,6 +929,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingMarineActionSubmitted = false;
             _secondBarracksActionSubmitted = false;
             _supplyDepotExpansionActionSubmitted = false;
+            _thirdSupplyDepotActionSubmitted = false;
             _expansionCommandCenterActionSubmitted = false;
             _barracksProductionActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
@@ -945,6 +977,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _supplyDepotExpansion.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
             resultIndex++;
         }
+        if (_thirdSupplyDepotActionSubmitted)
+        {
+            _thirdSupplyDepot.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
+            resultIndex++;
+        }
         if (_secondBarracksActionSubmitted)
         {
             _secondBarracks.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
@@ -972,6 +1009,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingMarineActionSubmitted = false;
         _secondBarracksActionSubmitted = false;
         _supplyDepotExpansionActionSubmitted = false;
+        _thirdSupplyDepotActionSubmitted = false;
         _expansionCommandCenterActionSubmitted = false;
         _barracksProductionActionSubmitted = false;
         _orbitalSupportActionSubmitted = false;
@@ -1017,6 +1055,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _supplyDepotExpansion.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _supplyDepotExpansionPlacementCount));
             placementOffset += _supplyDepotExpansionPlacementCount;
         }
+        if (_thirdSupplyDepotPlacementCount > 0)
+        {
+            _thirdSupplyDepot.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _thirdSupplyDepotPlacementCount));
+            placementOffset += _thirdSupplyDepotPlacementCount;
+        }
         if (_expansionCommandCenterPlacementCount > 0)
         {
             _expansionCommandCenter.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _expansionCommandCenterPlacementCount));
@@ -1026,6 +1069,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingMarinePlacementCount = 0;
         _secondBarracksPlacementCount = 0;
         _supplyDepotExpansionPlacementCount = 0;
+        _thirdSupplyDepotPlacementCount = 0;
         _expansionCommandCenterPlacementCount = 0;
         _openingSpray.OnQueryResult(response, _workerAssignments);
     }

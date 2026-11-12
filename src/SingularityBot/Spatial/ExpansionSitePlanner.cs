@@ -11,10 +11,14 @@ public static class ExpansionSitePlanner
 {
     public static IReadOnlyList<MapPoint> FindCommandCenterCandidates(
         NormalizedObservation observation,
-        SpatialMap map)
+        SpatialMap map,
+        MapPoint? excludedAreaCenter = null,
+        float excludedAreaRadius = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(map);
+        if (!float.IsFinite(excludedAreaRadius) || excludedAreaRadius < 0)
+            throw new ArgumentOutOfRangeException(nameof(excludedAreaRadius));
 
         var resources = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Neutral && unit.IsLiveVisible &&
@@ -95,6 +99,11 @@ public static class ExpansionSitePlanner
             // so one blocked cluster cannot stall the entire production plan.
             if (candidates.Count >= 36)
                 break;
+        }
+        if (excludedAreaCenter is MapPoint excludedCenter && excludedAreaRadius > 0)
+        {
+            var radiusSquared = excludedAreaRadius * excludedAreaRadius;
+            candidates = candidates.Where(point => point.DistanceSquaredTo(excludedCenter) > radiusSquared).ToList();
         }
         return candidates;
     }

@@ -50,9 +50,14 @@ public sealed class Sc2MarineRallyControllerTests
             var point = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
             var waypoint = new MapPoint(point.X, point.Y);
             Assert.True(waypoint.DistanceTo(new MapPoint(marine.PositionX, marine.PositionY)) <= 4.01f);
-            Assert.True(waypoint.DistanceTo(map.Side.EnemyStart) <
-                new MapPoint(marine.PositionX, marine.PositionY).DistanceTo(map.Side.EnemyStart));
+            Assert.NotEqual(MapSide.Enemy, map.Side.Assess(waypoint));
         });
+        var patrolTargets = squadMoves.Select(move =>
+        {
+            var point = move.ActionRaw.UnitCommand.TargetWorldSpacePos;
+            return new MapPoint(point.X, point.Y);
+        }).ToArray();
+        Assert.Equal(4, patrolTargets.Distinct().Count());
 
         var targets = moves.ToDictionary(
             move => move.ActionRaw.UnitCommand.UnitTags.Single(),
@@ -62,7 +67,8 @@ public sealed class Sc2MarineRallyControllerTests
             var target = targets[marine.Tag];
             return Fact(marine.Tag, "Marine", target.X, target.Y);
         }).ToArray();
-        var nextWaypoints = controller.TryCreateActions(Snapshot(arrived), map, decisions, gameData);
+        var nextWaypoints = controller.TryCreateActions(
+            new NormalizedObservation(324, 1, arrived, new HashSet<ulong>()), map, decisions, gameData);
         Assert.Equal(4, nextWaypoints.Count);
         Assert.DoesNotContain(nextWaypoints, move => move.ActionRaw.UnitCommand.UnitTags.Single() == 1);
         Assert.All(nextWaypoints, move =>
@@ -147,12 +153,9 @@ public sealed class Sc2MarineRallyControllerTests
         var reinforcementMoves = controller.TryCreateActions(
             Snapshot(arrived.ToArray()), map, decisions, gameData);
 
-        Assert.Equal(5, reinforcementMoves.Count);
-        var reinforcement = Assert.Single(reinforcementMoves,
-            move => move.ActionRaw.UnitCommand.UnitTags.Single() == 6UL);
+        var reinforcement = Assert.Single(reinforcementMoves);
+        Assert.Equal(6UL, Assert.Single(reinforcement.ActionRaw.UnitCommand.UnitTags));
         Assert.Equal(16, reinforcement.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(4, reinforcementMoves.Count(move =>
-            move.ActionRaw.UnitCommand.UnitTags.Single() != 6UL));
     }
 
     private static Sc2GameDataCatalog GameData()

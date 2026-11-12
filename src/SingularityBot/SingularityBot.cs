@@ -647,10 +647,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 new[] {
                     builderAction is not null ? "builder" : null
                 }.Where(value => value is not null));
-            if (builderAction is null && _openingMarine.MarineTrainingOrderObserved)
+            if (builderAction is null)
             {
-                // The first Marine must be observed in the Barracks queue before
-                // the Orbital morph can consume the next mineral bank.
+                // Orbital readiness is governed by the controller's observed tech,
+                // Command Center, SCV-queue, and mineral guards. Marine production
+                // is deliberately independent: it is not an Orbital prerequisite.
                 orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
                 if (orbitalSupportAction is not null)
@@ -662,7 +663,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             else
             {
                 _orbitalSupportActionSubmitted = false;
-                var blockers = builderAction is not null ? orbitalCoordinatorBlockers : "waiting-for-observed-first-marine-order";
+                var blockers = orbitalCoordinatorBlockers;
                 var diagnostic = $"coordinator-blocked={blockers};loop={normalized.GameLoop}";
                 if (!string.Equals(_lastOrbitalDiagnostic, diagnostic, StringComparison.Ordinal))
                 {

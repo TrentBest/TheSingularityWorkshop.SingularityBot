@@ -13,6 +13,7 @@ public sealed class EconomyAdvisorSettings
     public int MineralSaturation { get; init; } = WorkerResourceAssignmentPlanner.DefaultMineralSaturation;
     public bool PrioritizeOpeningInfrastructure { get; init; } = true;
     public bool HoldWorkerProductionForFirstDepot { get; init; } = true;
+    public bool AllowLongDistanceMining { get; init; }
 
     public IReadOnlyList<string> Validate()
     {

@@ -202,7 +202,7 @@ public sealed class Sc2GameDataCatalog
             marine?.FoodRequired ?? 0,
             ResolveSprayAbility(data.Abilities),
             ResolveAbility(data.Abilities, "Rally_Workers"),
-            ResolveAbility(data.Abilities, "UpgradeToOrbitalCommand", "UpgradeToOrbital"),
+            ResolvePreferredAbility(data.Abilities, "UpgradeToOrbitalCommand", "UpgradeToOrbital"),
             orbitalUpgradeMineralCost,
             ResolveAbility(data.Abilities, "CalldownMULE", "CallDownMULE"),
             commandCenter?.AbilityId is > 0 ? commandCenter.AbilityId : null,
@@ -283,6 +283,31 @@ public sealed class Sc2GameDataCatalog
             .ToArray();
 
         return candidates.Length == 1 ? candidates[0] : null;
+    }
+
+    private static uint? ResolvePreferredAbility(
+        IEnumerable<AbilityData> abilities,
+        params string[] linkNames)
+    {
+        // Prefer the canonical SC2 link name over compatibility aliases.
+        // Merging aliases can produce a false ambiguity when ResponseData
+        // contains both names with different IDs, disabling a valid morph.
+        foreach (var linkName in linkNames)
+        {
+            var candidates = abilities
+                .Where(ability => ability.AbilityId != 0 &&
+                    string.Equals(ability.LinkName, linkName, StringComparison.OrdinalIgnoreCase))
+                .Select(ability => ability.AbilityId)
+                .Distinct()
+                .ToArray();
+
+            if (candidates.Length == 0)
+                continue;
+
+            return candidates.Length == 1 ? candidates[0] : null;
+        }
+
+        return null;
     }
 
     private static uint? ResolveAbility(

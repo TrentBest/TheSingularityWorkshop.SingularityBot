@@ -566,6 +566,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var friendlyTownHallCount = normalized.Units.Count(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 !normalized.DeadUnitTags.Contains(unit.Tag) &&
+                unit.BuildProgress >= 1f &&
                 (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase)));

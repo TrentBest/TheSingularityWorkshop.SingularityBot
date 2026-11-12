@@ -35,7 +35,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         var moveBuilder = controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments);
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, jobs);
         Assert.NotNull(moveBuilder);
         Assert.Equal(16, moveBuilder.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(10UL, moveBuilder.ActionRaw.UnitCommand.UnitTags[0]);
@@ -56,7 +56,7 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y, 0.5f)),
-            map, gameData, assignments));
+            map, gameData, assignments, jobs));
 
         // Barracks completion alone must not spend the Orbital reserve on a Marine.
         Assert.Null(controller.TryCreateAction(Snapshot(50, 12, 15,
@@ -88,14 +88,15 @@ public sealed class Sc2OpeningMarineControllerTests
             Orders = new[] { new UnitOrderObservationFacts(560, null, null, null) }
         };
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
-            Fact(10, "SCV", site.X, site.Y), trainingBarracks), map, gameData, assignments));
+            Fact(10, "SCV", site.X, site.Y), trainingBarracks), map, gameData, assignments, jobs));
+        jobs.Update();
         Assert.True(controller.MarineTrainingOrderObserved);
         Assert.True(controller.MarineTrainingStarted);
         Assert.False(controller.IsOpeningMarineTrainingPending);
 
         var observedMarine = controller.TryCreateAction(Snapshot(0, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
-            Fact(300, "Marine", 20, 20)), map, gameData, assignments);
+            Fact(300, "Marine", 20, 20)), map, gameData, assignments, jobs);
 
         Assert.Null(observedMarine);
         Assert.True(controller.MarineObserved);
@@ -107,7 +108,7 @@ public sealed class Sc2OpeningMarineControllerTests
         // continue filling its queue rather than stopping at one Marine.
         var nextMarine = controller.TryCreateAction(SnapshotAt(101, 50, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
-            Fact(300, "Marine", 20, 20)), map, gameData, assignments);
+            Fact(300, "Marine", 20, 20)), map, gameData, assignments, jobs);
         Assert.NotNull(nextMarine);
         Assert.Equal(560, nextMarine.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(200UL, nextMarine.ActionRaw.UnitCommand.UnitTags[0]);

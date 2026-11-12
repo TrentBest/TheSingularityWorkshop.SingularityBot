@@ -116,6 +116,12 @@ public sealed class BuildingBehaviorRuntimeTests
         var lower = Assert.Single(runtime.DrainEvents());
         Assert.Equal(BuildingEventKind.LowerSupplyDepot, lower.Kind);
 
+        // The next SC2 observation confirms that the lower command took effect.
+        runtime.Reconcile(Observation(31, Depot(4001, "SupplyDepotLowered", 1f), enemy),
+            Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+
         runtime.RequestDepotPassage(4001, false);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();

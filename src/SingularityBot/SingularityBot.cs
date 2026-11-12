@@ -1347,7 +1347,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.RemoveAll();
         _buildings.Clear();
         _openingProduction.Dispose();
-        _openingMarine.Dispose();
         _openingBuilder.Dispose();
         _supplyDepotExpansion.Dispose();
         _thirdSupplyDepot.Dispose();

@@ -1,6 +1,7 @@
 #nullable enable
 
 using SingularityBot.Observation;
+using SingularityBot.Spatial;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;

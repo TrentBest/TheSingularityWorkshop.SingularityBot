@@ -164,9 +164,21 @@ public sealed class BuildingBehaviorRuntime
     private readonly Dictionary<ulong, BuildingBehaviorContext> _buildings = new();
     private readonly Dictionary<string, int> _nextOrdinalByKind = new(StringComparer.Ordinal);
     private readonly Queue<BuildingEvent> _events = new();
+    private (float X, float Y, float Radius)? _designatedCommandCenterArea;
 
     public IReadOnlyCollection<BuildingBehaviorContext> Buildings => _buildings.Values.ToArray();
     public int Count => _buildings.Count;
+
+    public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius)
+    {
+        if (!float.IsFinite(centerX) || !float.IsFinite(centerY) ||
+            !float.IsFinite(radius) || radius <= 0)
+            throw new ArgumentOutOfRangeException(nameof(radius), "A finite positive construction-area radius is required.");
+        _designatedCommandCenterArea = (centerX, centerY, radius);
+    }
+
+    public void ClearDesignatedCommandCenterConstructionArea() =>
+        _designatedCommandCenterArea = null;
 
     public void UpdateLifecycle() =>
         FSM_API.Interaction.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
@@ -223,7 +235,9 @@ public sealed class BuildingBehaviorRuntime
                 .State("UpgradeReady", null, null, null)
                 .State("Upgrading", null, null, null)
                 .State("Orbital", null, null, null)
+                .Transition("WaitingForPrerequisites", "Orbital", IsOrbitalCommand)
                 .Transition("WaitingForPrerequisites", "UpgradeReady", CanUpgradeToOrbital)
+                .Transition("UpgradeReady", "Orbital", IsOrbitalCommand)
                 .Transition("UpgradeReady", "WaitingForPrerequisites", CannotUpgradeToOrbital)
                 .Transition("UpgradeReady", "Upgrading", IsOrbitalUpgradeOrderObserved)
                 .Transition("Upgrading", "Orbital", IsOrbitalCommand)
@@ -317,7 +331,9 @@ public sealed class BuildingBehaviorRuntime
 
             var nearbyEnemy = facts.HasPosition && enemies.Any(enemy =>
                 DistanceSquared(facts.PositionX, facts.PositionY, enemy.PositionX, enemy.PositionY) <= 100f);
-            var inDesignatedArea = false;
+            var inDesignatedArea = _designatedCommandCenterArea is { } area &&
+                facts.HasPosition &&
+                DistanceSquared(facts.PositionX, facts.PositionY, area.X, area.Y) <= area.Radius * area.Radius;
             building.Apply(facts, nearbyEnemy, isResearchAbility,
                 hasCompletedBarracks, hasCompletedSupplyDepot,
                 scvTrainAbilityId, orbitalUpgradeAbilityId, inDesignatedArea);
@@ -363,6 +379,7 @@ public sealed class BuildingBehaviorRuntime
         _buildings.Clear();
         _events.Clear();
         _nextOrdinalByKind.Clear();
+        _designatedCommandCenterArea = null;
     }
 
     private static bool IsBuildingKind(string kind) =>

@@ -164,6 +164,43 @@ public sealed class Sc2OpeningProductionControllerTests
             Snapshot(50, 12, 15, Fact(100, "CommandCenter"), gameLoop: 101), GameData()));
     }
 
+
+    [Fact]
+    public void RequestLifecycleIsOwnedByTheOpeningProductionFsm()
+    {
+        var controller = new Sc2OpeningProductionController();
+        Assert.Equal("Ready", controller.CurrentState);
+
+        var first = controller.TryCreateScvTrainingAction(
+            Snapshot(50, 12, 15, Fact(100, "CommandCenter"), gameLoop: 10), GameData());
+
+        Assert.NotNull(first);
+        Assert.Equal("AwaitingEvidence", controller.CurrentState);
+
+        controller.OnActionResult(ActionResult.Success);
+        Assert.Null(controller.TryCreateScvTrainingAction(
+            Snapshot(50, 12, 15, Fact(100, "CommandCenter"), gameLoop: 10), GameData()));
+        Assert.Equal("AwaitingEvidence", controller.CurrentState);
+
+        var retry = controller.TryCreateScvTrainingAction(
+            Snapshot(50, 12, 15, Fact(100, "CommandCenter"), gameLoop: 11), GameData());
+        Assert.NotNull(retry);
+        Assert.Equal("AwaitingEvidence", controller.CurrentState);
+    }
+
+    [Fact]
+    public void RejectedRequestTransitionsTheFsmBackToReady()
+    {
+        var controller = new Sc2OpeningProductionController();
+        Assert.NotNull(controller.TryCreateScvTrainingAction(
+            Snapshot(50, 12, 15, Fact(100, "CommandCenter"), gameLoop: 10), GameData()));
+        Assert.Equal("AwaitingEvidence", controller.CurrentState);
+
+        controller.OnActionResult(ActionResult.NotEnoughMinerals);
+
+        Assert.Equal("Ready", controller.CurrentState);
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

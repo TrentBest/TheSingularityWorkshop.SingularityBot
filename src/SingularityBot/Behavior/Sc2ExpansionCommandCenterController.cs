@@ -43,7 +43,8 @@ public sealed class Sc2ExpansionCommandCenterController
         BuildJobRuntime buildJobs = null,
         ulong? preferredBuilderTag = null,
         MapPoint? excludedConstructionAreaCenter = null,
-        float excludedConstructionAreaRadius = 0)
+        float excludedConstructionAreaRadius = 0,
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -160,7 +161,8 @@ public sealed class Sc2ExpansionCommandCenterController
         if (worker is null)
             return null;
         var canFundCommandCenterAndNextScv =
-            observation.Minerals >= gameData.CommandCenterMineralCost + gameData.ScvMineralCost;
+            observation.Minerals >= gameData.CommandCenterMineralCost +
+                gameData.ScvMineralCost + reservedMinerals;
         if (!worker.HasCargo && IsGatheringMinerals(worker, observation) &&
             !canFundCommandCenterAndNextScv)
             return null;
@@ -176,6 +178,7 @@ public sealed class Sc2ExpansionCommandCenterController
         }
 
         if (observation.Minerals < gameData.CommandCenterMineralCost ||
+            observation.Minerals - gameData.CommandCenterMineralCost < reservedMinerals ||
             (_buildSubmitted && observation.GameLoop <= _buildLoop + 8))
             return null;
 

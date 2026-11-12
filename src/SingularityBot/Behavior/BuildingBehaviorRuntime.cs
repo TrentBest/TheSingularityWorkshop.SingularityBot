@@ -58,6 +58,15 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool IsLowered { get; private set; }
     public bool HasNearbyEnemy { get; private set; }
     public bool PassageRequested { get; private set; }
+    public bool HasCompletedBarracks { get; private set; }
+    public bool HasCompletedSupplyDepot { get; private set; }
+    public bool IsInDesignatedCommandCenterConstructionArea { get; private set; }
+    public bool IsOrbitalCommand { get; private set; }
+    public bool HasScvTrainingOrder { get; private set; }
+    public uint? OrbitalUpgradeAbilityId { get; private set; }
+    public string TownHallUpgradeState => _handles.ContainsKey(BuildingBehaviorCatalog.TownHallUpgradeFsm)
+        ? CurrentState(BuildingBehaviorCatalog.TownHallUpgradeFsm)
+        : "NotTownHall";
     public ulong? BuilderWorkerTag { get; private set; }
     public bool IsOperational => CurrentState(BuildingBehaviorCatalog.LifecycleFsm) == "Operational";
     public string LifecycleState => CurrentState(BuildingBehaviorCatalog.LifecycleFsm);
@@ -78,7 +87,12 @@ public sealed class BuildingBehaviorContext : IStateContext
     internal void Apply(
         UnitObservationFacts facts,
         bool hasNearbyEnemy,
-        Func<uint, bool> isResearchAbility)
+        Func<uint, bool> isResearchAbility,
+        bool hasCompletedBarracks,
+        bool hasCompletedSupplyDepot,
+        uint? scvTrainAbilityId,
+        uint? orbitalUpgradeAbilityId,
+        bool isInDesignatedCommandCenterConstructionArea)
     {
         LastObservedGameLoop = facts.GameLoop;
         IsVisible = facts.IsLiveVisible;
@@ -87,8 +101,16 @@ public sealed class BuildingBehaviorContext : IStateContext
         IsRaised = facts.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase);
         IsLowered = facts.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase);
         HasNearbyEnemy = hasNearbyEnemy;
+        HasCompletedBarracks = hasCompletedBarracks;
+        HasCompletedSupplyDepot = hasCompletedSupplyDepot;
+        IsInDesignatedCommandCenterConstructionArea = isInDesignatedCommandCenterConstructionArea;
+        IsOrbitalCommand = facts.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase);
+        OrbitalUpgradeAbilityId = orbitalUpgradeAbilityId;
         if (!facts.IsLiveVisible) return;
 
+        ObservedOrders = facts.Orders;
+        HasScvTrainingOrder = scvTrainAbilityId is > 0 &&
+            facts.Orders.Any(order => order.AbilityId == scvTrainAbilityId.Value);
         IsResearching = facts.Orders.Any(order => isResearchAbility(order.AbilityId));
         IsProducing = facts.Orders.Count > 0 && !IsResearching;
     }
@@ -107,6 +129,18 @@ public sealed class BuildingBehaviorContext : IStateContext
             raise ? BuildingEventKind.RaiseSupplyDepot : BuildingEventKind.LowerSupplyDepot,
             UnitTag, BuildingId));
     }
+
+    public bool CanUpgradeToOrbital =>
+        UnitKind == "CommandCenter" && IsLanded && !IsOrbitalCommand &&
+        HasCompletedBarracks && HasCompletedSupplyDepot &&
+        !IsInDesignatedCommandCenterConstructionArea && !HasScvTrainingOrder;
+
+    public bool IsOrbitalUpgradeOrderObserved =>
+        OrbitalUpgradeAbilityId is > 0 &&
+        ObservedOrders.Any(order => order.AbilityId == OrbitalUpgradeAbilityId.Value);
+
+    public IReadOnlyList<UnitOrderObservationFacts> ObservedOrders { get; private set; } =
+        Array.Empty<UnitOrderObservationFacts>();
 
     private string CurrentState(string name) =>
         _handles.TryGetValue(name, out var handle) ? handle.CurrentState : "Unknown";
@@ -181,6 +215,20 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Lowered", "Raised", ShouldRaiseDepot)
                 .Transition("Raised", "Lowered", ShouldLowerDepot)
                 .WithInitialState("Assess").BuildDefinition();
+
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallUpgradeFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+                .State("WaitingForPrerequisites", null, null, null)
+                .State("UpgradeReady", null, null, null)
+                .State("Upgrading", null, null, null)
+                .State("Orbital", null, null, null)
+                .Transition("WaitingForPrerequisites", "UpgradeReady", CanUpgradeToOrbital)
+                .Transition("UpgradeReady", "WaitingForPrerequisites", CannotUpgradeToOrbital)
+                .Transition("UpgradeReady", "Upgrading", IsOrbitalUpgradeOrderObserved)
+                .Transition("Upgrading", "Orbital", IsOrbitalCommand)
+                .Transition("Upgrading", "UpgradeReady", UpgradeOrderNoLongerObserved)
+                .WithInitialState("WaitingForPrerequisites").BuildDefinition();
     }
 
     private static bool IsOperational(IStateContext context) =>
@@ -194,6 +242,21 @@ public sealed class BuildingBehaviorRuntime
 
     private static bool IsIdle(IStateContext context) =>
         context is BuildingBehaviorContext building && !building.IsProducing && !building.IsResearching;
+
+    private static bool CanUpgradeToOrbital(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.CanUpgradeToOrbital;
+
+    private static bool CannotUpgradeToOrbital(IStateContext context) =>
+        context is BuildingBehaviorContext building && !building.CanUpgradeToOrbital;
+
+    private static bool IsOrbitalUpgradeOrderObserved(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.IsOrbitalUpgradeOrderObserved;
+
+    private static bool IsOrbitalCommand(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.IsOrbitalCommand;
+
+    private static bool UpgradeOrderNoLongerObserved(IStateContext context) =>
+        context is BuildingBehaviorContext building && !building.IsOrbitalUpgradeOrderObserved && !building.IsOrbitalCommand;
 
     private static bool IsObservedRaised(IStateContext context) =>
         context is BuildingBehaviorContext building && building.IsRaised;
@@ -210,7 +273,9 @@ public sealed class BuildingBehaviorRuntime
     public void Reconcile(
         NormalizedObservation observation,
         IEnumerable<BuildJobContext> buildJobs,
-        Func<uint, bool> isResearchAbility)
+        Func<uint, bool> isResearchAbility,
+        uint? scvTrainAbilityId = null,
+        uint? orbitalUpgradeAbilityId = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(buildJobs);
@@ -221,6 +286,13 @@ public sealed class BuildingBehaviorRuntime
 
         var enemies = observation.Units.Where(unit =>
             unit.Alliance == UnitAlliance.Enemy && unit.IsLiveVisible && unit.HasPosition).ToArray();
+        var hasCompletedBarracks = observation.Units.Any(unit =>
+            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) && unit.BuildProgress >= 1f);
+        var hasCompletedSupplyDepot = observation.Units.Any(unit =>
+            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) && unit.BuildProgress >= 1f);
 
         foreach (var facts in observation.Units.OrderBy(unit => unit.Tag))
         {
@@ -239,11 +311,16 @@ public sealed class BuildingBehaviorRuntime
                 Attach(building, BuildingBehaviorCatalog.ActivityFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                 if (kind == "SupplyDepot")
                     Attach(building, BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
+                if (kind == "CommandCenter")
+                    Attach(building, BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
             }
 
             var nearbyEnemy = facts.HasPosition && enemies.Any(enemy =>
                 DistanceSquared(facts.PositionX, facts.PositionY, enemy.PositionX, enemy.PositionY) <= 100f);
-            building.Apply(facts, nearbyEnemy, isResearchAbility);
+            var inDesignatedArea = false;
+            building.Apply(facts, nearbyEnemy, isResearchAbility,
+                hasCompletedBarracks, hasCompletedSupplyDepot,
+                scvTrainAbilityId, orbitalUpgradeAbilityId, inDesignatedArea);
         }
 
         foreach (var job in buildJobs.Where(job => job.ResultUnitTag.HasValue && job.WorkerTag.HasValue))
@@ -314,4 +391,5 @@ public static class BuildingBehaviorCatalog
     public const string LifecycleFsm = "SingularityBot.BuildingLifecycle";
     public const string ActivityFsm = "SingularityBot.BuildingActivity";
     public const string DepotAccessFsm = "SingularityBot.SupplyDepotAccess";
+    public const string TownHallUpgradeFsm = "SingularityBot.TownHallOrbitalUpgrade";
 }

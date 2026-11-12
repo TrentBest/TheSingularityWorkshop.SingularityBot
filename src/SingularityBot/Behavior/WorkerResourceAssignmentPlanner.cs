@@ -153,7 +153,7 @@ public sealed class WorkerResourceAssignmentPlanner
             .ToDictionary(unit => unit.Tag);
 
         var townHalls = liveSelf.Values
-            .Where(unit => IsTownHall(unit.UnitKind))
+            .Where(unit => IsTownHall(unit.UnitKind) && unit.BuildProgress >= 1f)
             .OrderBy(unit => unit.Tag)
             .ToArray();
 

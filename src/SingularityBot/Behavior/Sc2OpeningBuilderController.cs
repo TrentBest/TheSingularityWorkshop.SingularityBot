@@ -27,6 +27,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private bool _moveRejected;
     private bool _builderLost;
     private bool _moveTargetChanged;
+    private bool _moveRetryReady;
     private uint _currentGameLoop;
     private float _movementDistanceSquared;
     private bool _hasMovementTarget;
@@ -66,7 +67,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public int CandidateCount => _candidatePoints.Count;
     public bool IsPlacementQueryPending => _placementQueryPending;
     public bool IsMoveSubmitted => MovementState is MoveSubmitted or Moving;
-    public bool IsMoveRetryReady => _currentGameLoop > _moveRequestGameLoop + 22;
+    public bool IsMoveRetryReady => _moveRetryReady;
     public uint CurrentMovementGameLoop => _currentGameLoop;
     public uint MoveRequestGameLoop => _moveRequestGameLoop;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
@@ -201,6 +202,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         ArgumentNullException.ThrowIfNull(assignments);
 
         _currentGameLoop = observation.GameLoop;
+        _moveRetryReady = false;
         var previousMineralBank = _lastObservedMinerals;
         _lastObservedMinerals = observation.Minerals;
 
@@ -410,7 +412,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 return null;
 
             if (stateBeforeMovementUpdate == Moving)
+            {
+                _moveRetryReady = true;
                 Console.WriteLine($"[Opening] Builder SCV {_builderTag} has not reached the Depot site; retrying Move (distance²={distanceSquared:F2}).");
+            }
 
             _moveTarget = movementTarget;
             _moveRequestGameLoop = observation.GameLoop;

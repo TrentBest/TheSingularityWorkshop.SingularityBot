@@ -220,8 +220,8 @@ public sealed class BuildingBehaviorRuntime
             FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Assess", null, null, null)
-                .State("Lowered", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(false), null)
-                .State("Raised", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(true), null)
+                .State("Lowered", context => (context as BuildingBehaviorContext)?.EmitDepotAccess(false), null, null)
+                .State("Raised", context => (context as BuildingBehaviorContext)?.EmitDepotAccess(true), null, null)
                 .Transition("Assess", "Raised", IsObservedRaised)
                 .Transition("Assess", "Lowered", IsObservedLowered)
                 .Transition("Lowered", "Raised", ShouldRaiseDepot)

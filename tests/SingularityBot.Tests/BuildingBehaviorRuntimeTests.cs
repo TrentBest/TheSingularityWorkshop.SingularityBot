@@ -161,6 +161,40 @@ public sealed class BuildingBehaviorRuntimeTests
     }
 
     [Fact]
+    public void OrbitalScanIsRequestedByItsFsmAndCompletesOnEnergyEvidence()
+    {
+        UnitBehaviorCatalog.Register();
+        BuildingBehaviorRuntime.RegisterDefinitions();
+        var runtime = new BuildingBehaviorRuntime();
+        var orbital = Depot(6001, "OrbitalCommand", 1f) with { Energy = 100 };
+
+        runtime.Reconcile(Observation(50, orbital), Array.Empty<BuildJobContext>(), _ => false);
+        Assert.True(runtime.RequestOrbitalScan(6001, 15, 16));
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+
+        var scan = Assert.Single(runtime.DrainEvents());
+        Assert.Equal(BuildingEventKind.ScanRequested, scan.Kind);
+        Assert.Equal(15f, scan.TargetX);
+        Assert.Equal(16f, scan.TargetY);
+        Assert.Contains(6001UL, runtime.ScanReservedOrbitalTags);
+
+        Assert.True(runtime.MarkScanSubmitted(6001, 50));
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Empty(runtime.DrainEvents());
+
+        var afterScan = orbital with { GameLoop = 51, Energy = 50 };
+        runtime.Reconcile(Observation(51, afterScan), Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+
+        Assert.DoesNotContain(6001UL, runtime.ScanReservedOrbitalTags);
+        Assert.Equal("Idle", Assert.Single(runtime.Buildings).OrbitalScanState);
+        runtime.Clear();
+    }
+
+    [Fact]
     public void ExplicitDepotPassageOverridesEnemyThreatAndLowersTheDepot()
     {
         UnitBehaviorCatalog.Register();

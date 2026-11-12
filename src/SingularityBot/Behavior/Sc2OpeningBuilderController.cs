@@ -34,6 +34,8 @@ public sealed class Sc2OpeningBuilderController
     private bool _completed;
     private long? _buildJobId;
     private HashSet<ulong> _preexistingDepotTags;
+    private bool _builderWasReturningMinerals;
+    private uint? _lastObservedMinerals;
 
     public Sc2OpeningBuilderController() { }
 
@@ -93,6 +95,9 @@ public sealed class Sc2OpeningBuilderController
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
+
+        var previousMineralBank = _lastObservedMinerals;
+        _lastObservedMinerals = observation.Minerals;
 
         buildJobs?.ReconcileSupplyDepotConstruction(observation);
         _preexistingDepotTags ??= observation.Units
@@ -183,7 +188,7 @@ public sealed class Sc2OpeningBuilderController
             Console.WriteLine(
                 $"[Opening] Construction-crew SCV {_builderTag.Value} reserved for the Supply Depot; " +
                 $"estimated staging distance={selected.EstimatedArrivalDistance:F2}. " +
-                "The worker stays on its current harvest until it has a load.");
+                "The worker completes its harvest and deposits its load before leaving the mineral line.");
         }
 
         var builder = observation.Units.FirstOrDefault(unit =>
@@ -199,7 +204,22 @@ public sealed class Sc2OpeningBuilderController
         // is active; wait until a later observation confirms the cargo was
         // deposited before dispatching the SCV to the accepted Depot site.
         if (builder.HasCargo)
+        {
+            if (IsReturningToTownHall(builder, observation))
+                _builderWasReturningMinerals = true;
             return null;
+        }
+
+        if (_builderWasReturningMinerals)
+        {
+            var bankDelta = previousMineralBank is uint previous
+                ? (int)observation.Minerals - (int)previous
+                : 0;
+            Console.WriteLine(
+                $"[Economy] OBSERVED mineral deposit: Depot builder SCV {builder.Tag} returned its load to a town hall; " +
+                $"bank={observation.Minerals}; net bank delta since prior controller observation={bankDelta}.");
+            _builderWasReturningMinerals = false;
+        }
 
         // Keep an empty worker on its active mineral trip until it has harvested.
         if (IsGatheringMinerals(builder, observation))

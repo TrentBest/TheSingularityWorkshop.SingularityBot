@@ -96,7 +96,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         var observedMarine = controller.TryCreateAction(SnapshotAt(101, 0, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
-            Fact(300, "Marine", 20, 20)), map, gameData, assignments, jobs);
+            Fact(300, "Marine", site.X + 1, site.Y + 1)), map, gameData, assignments, jobs);
 
         Assert.Null(observedMarine);
         Assert.True(controller.MarineObserved);

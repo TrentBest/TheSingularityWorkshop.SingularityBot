@@ -441,6 +441,23 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void KeepsWorkersOnLocalMineralLinesUnlessLongDistanceMiningIsEnabled()
+    {
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(10, "SCV", UnitAlliance.Self, 29, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 30, 0));
+
+        var localOnly = new WorkerResourceAssignmentPlanner().Reconcile(observation);
+        Assert.Equal(20UL, localOnly[10].MineralTag);
+
+        var longDistanceEnabled = new WorkerResourceAssignmentPlanner()
+            .Reconcile(observation, allowLongDistanceMining: true);
+        Assert.Equal(21UL, longDistanceEnabled[10].MineralTag);
+    }
+
+    [Fact]
     public void ExistingAssignmentsAreNotRecomputedFromWorkerMovement()
     {
         var planner = new WorkerResourceAssignmentPlanner();

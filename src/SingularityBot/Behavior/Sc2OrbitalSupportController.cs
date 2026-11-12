@@ -14,6 +14,45 @@ public sealed class Sc2OrbitalSupportController
     private uint _pendingAbilityId;
     private uint _pendingGameLoop;
 
+    /// <summary>
+    /// Reserves the first-base Command Center for its one-time Orbital morph as soon
+    /// as the tech and mineral gates are satisfied. The reservation intentionally
+    /// survives an existing SCV order so production cannot refill the queue when it
+    /// completes before the morph can be issued.
+    /// </summary>
+    public ulong? GetCommandCenterReservedForUpgrade(
+        NormalizedObservation observation,
+        Sc2GameDataCatalog gameData,
+        uint reservedMinerals = 0)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        ArgumentNullException.ThrowIfNull(gameData);
+
+        var commandCenters = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !observation.DeadUnitTags.Contains(unit.Tag) && IsKind(unit, "CommandCenter"))
+            .OrderBy(unit => unit.Tag)
+            .ToArray();
+        var otherTownHalls = observation.Units.Count(unit =>
+            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            !observation.DeadUnitTags.Contains(unit.Tag) &&
+            (IsKind(unit, "OrbitalCommand") || IsKind(unit, "PlanetaryFortress")));
+
+        var orbitalTechReady =
+            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && IsKind(unit, "SupplyDepot") && unit.BuildProgress >= 1f) &&
+            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
+
+        if (commandCenters.Length != 1 || otherTownHalls != 0 || !orbitalTechReady ||
+            gameData.OrbitalUpgradeAbilityId is not > 0 ||
+            gameData.OrbitalUpgradeMineralCost == 0 ||
+            observation.Minerals < gameData.OrbitalUpgradeMineralCost + reservedMinerals)
+            return null;
+
+        return commandCenters[0].Tag;
+    }
+
     public SC2APIProtocol.Action TryCreateAction(
         NormalizedObservation observation,
         Sc2GameDataCatalog gameData,

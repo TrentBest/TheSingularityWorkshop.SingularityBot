@@ -330,7 +330,7 @@ public sealed class Sc2SecondBarracksControllerTests
         var site = new MapPoint(query.Placements[0].TargetPos.X, query.Placements[0].TargetPos.Y);
 
         var move = controller.TryCreateAction(Snapshot(300,
-            Fact(10, "SCV", 10, 10), Fact(11, "SCV", site.X, site.Y),
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
             map, data, assignments, crew, reservedMinerals: 150);
         Assert.NotNull(move);

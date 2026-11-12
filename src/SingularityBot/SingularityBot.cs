@@ -427,6 +427,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             unit.BuildProgress >= 1f);
         uint orbitalMineralReservation = 0;
+        uint reservedStrategicMinerals = 0;
+        uint depotTwoReservedMinerals = 0;
+        uint depotThreeReservedMinerals = 0;
 
         // Worker rally is an optimization, not a production prerequisite. If
         // the optional rally ability is unavailable or rejected, the opening
@@ -521,7 +524,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var firstRefineryMineralReservation = firstRefineryPending
                 ? _gameData.RefineryMineralCost
                 : 0u;
-            var reservedStrategicMinerals = (uint)Math.Min(
+            reservedStrategicMinerals = (uint)Math.Min(
                 uint.MaxValue,
                 (ulong)orbitalMineralReservation + firstRefineryMineralReservation);
             reservedInfrastructureMinerals = (uint)Math.Min(
@@ -535,10 +538,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var remainingFollowupReserve = reservedProductionMinerals > _gameData.SupplyDepotMineralCost
                 ? reservedProductionMinerals - _gameData.SupplyDepotMineralCost
                 : 0u;
-            var depotTwoReservedMinerals = (uint)Math.Min(
+            depotTwoReservedMinerals = (uint)Math.Min(
                 uint.MaxValue,
                 (ulong)reservedStrategicMinerals + remainingFollowupReserve + _gameData.SupplyDepotMineralCost);
-            var depotThreeReservedMinerals = (uint)Math.Min(
+            depotThreeReservedMinerals = (uint)Math.Min(
                 uint.MaxValue,
                 (ulong)reservedStrategicMinerals + remainingFollowupReserve);
             var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};refineryReserve={firstRefineryMineralReservation};scvReserve={reservedScvMinerals};loop={normalized.GameLoop}";

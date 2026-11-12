@@ -176,6 +176,46 @@ public sealed class Sc2ExpansionCommandCenterControllerTests
         Assert.Single(controller.CompletedExpansionSites);
     }
 
+    [Fact]
+    public void PreservesReservedMineralsBeforeIssuingTheNextCommandCenterBuild()
+    {
+        var controller = new Sc2ExpansionCommandCenterController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var data = GameData();
+        var minerals = new[]
+        {
+            Mineral(200, 34, 19), Mineral(201, 35, 19),
+            Mineral(202, 36, 19), Mineral(203, 37, 19)
+        };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(400,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", 10, 10) }.Concat(minerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 }, reservedMinerals: 100));
+        var query = controller.TakePlacementQuery(data);
+        Assert.NotNull(query);
+        var placement = new ResponseQuery();
+        placement.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(placement);
+        var site = controller.ExpansionLocation!.Value;
+
+        var move = controller.TryCreateAction(Snapshot(500,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", 10, 10) }.Concat(minerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 }, reservedMinerals: 100);
+        Assert.NotNull(move);
+        controller.OnActionResult(ActionResult.Success, 100);
+
+        Assert.Null(controller.TryCreateAction(Snapshot(450,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", site.X, site.Y) }.Concat(minerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 }, reservedMinerals: 100));
+
+        var build = controller.TryCreateAction(Snapshot(500,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", site.X, site.Y) }.Concat(minerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 }, reservedMinerals: 100);
+        Assert.NotNull(build);
+        Assert.Equal(318, build.ActionRaw.UnitCommand.AbilityId);
+    }
+
     private static SpatialMap Map() => new(
         new MapBounds(0, 0, 100, 100),
         new MapPoint(10, 10),

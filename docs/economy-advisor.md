@@ -21,6 +21,7 @@ Configuration is versioned and applied atomically: invalid JSON or invalid value
   "mineralSaturation": 2,
   "prioritizeOpeningInfrastructure": true,
   "holdWorkerProductionForFirstDepot": true,
+  "supplyDepotWorkerPullMinerals": 80,
   "allowLongDistanceMining": false
 }
 ```
@@ -28,6 +29,7 @@ Configuration is versioned and applied atomically: invalid JSON or invalid value
 - `mineralSaturation`: target workers per mineral field, constrained to 1–4.
 - `prioritizeOpeningInfrastructure`: when enabled, reserve the next observed opening milestone's mineral cost before optional production.
 - `holdWorkerProductionForFirstDepot`: when enabled, prevent additional SCV training from consuming the first Depot's mineral budget after initial SCV production has begun.
+- `supplyDepotWorkerPullMinerals`: reserve and dispatch a Depot builder when the mineral bank reaches this threshold (default 80; valid range 0–1000). This does not authorize construction early: the actual Depot command still waits for its authoritative game-data cost and an accepted SC2 placement.
 - `allowLongDistanceMining`: defaults to `false`; when disabled, mineral fields more than 14 map units from every completed Command Center, Orbital Command, or Planetary Fortress are excluded from worker assignments. This keeps workers on established base mineral lines instead of sending them to unoccupied expansions.
 
 The current infrastructure priority is: expansion Command Center, follow-up Depot plus an SCV reserve, first Depot, first Barracks, then Marine production. These are mineral reservations, not promises that the corresponding job is ready.

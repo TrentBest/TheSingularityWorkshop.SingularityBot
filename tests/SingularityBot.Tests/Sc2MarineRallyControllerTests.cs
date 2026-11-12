@@ -261,6 +261,27 @@ public sealed class Sc2MarineRallyControllerTests
             action.ActionRaw.UnitCommand.UnitTags.Single()).Distinct().Count());
     }
 
+    [Fact]
+    public void PathingAwarePatrolPlannerRejectsUnpathableStationsAndKeepsOnlyWalkableOnes()
+    {
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(10, 10), new MapPoint(90, 90));
+        var blockedGrid = new SpatialGridSnapshot(10, 10, 100, 100, new byte[100]);
+        var blockedTerrain = new SpatialTerrain(blockedGrid, blockedGrid, blockedGrid);
+        var walkableGrid = new SpatialGridSnapshot(10, 10, 100, 100,
+            Enumerable.Repeat((byte)1, 100).ToArray());
+        var walkableTerrain = new SpatialTerrain(walkableGrid, walkableGrid, walkableGrid);
+
+        Assert.Empty(Sc2MarineRallyController.GetFriendlyPatrolWaypoints(map, blockedTerrain));
+        var walkable = Sc2MarineRallyController.GetFriendlyPatrolWaypoints(map, walkableTerrain);
+        Assert.True(walkable.Count > 20);
+        Assert.All(walkable, point =>
+        {
+            Assert.True(walkableTerrain.TryIsPathable(point, out var pathable));
+            Assert.True(pathable);
+        });
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

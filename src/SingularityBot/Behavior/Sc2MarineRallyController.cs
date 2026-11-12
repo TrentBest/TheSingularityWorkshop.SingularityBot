@@ -5,8 +5,8 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Sends an assembled Marine force without a tactical target to a conservative
-/// enemy-side observation waypoint, then streams later reinforcements into formation.
+/// Keeps a dedicated early-warning Marine separate while distributing the
+/// assembled squad across a rotating security screen on friendly territory.
 /// </summary>
 public sealed class Sc2MarineRallyController
 {

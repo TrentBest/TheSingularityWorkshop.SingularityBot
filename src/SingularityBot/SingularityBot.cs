@@ -382,6 +382,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // starting-worker mineral assignments; keep first-frame routing live.
             _pendingQuery = null;
         }
+        var orbitalBarracksReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+            unit.BuildProgress >= 1f);
+        uint orbitalMineralReservation = 0;
+
         // Worker rally is an optimization, not a production prerequisite. If
         // the optional rally ability is unavailable or rejected, the opening
         // must still produce its first SCV and continue toward construction.
@@ -449,11 +454,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
-            var orbitalBarracksReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
-                unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            var orbitalMineralReservation = startingTownHall is not null &&
+            orbitalMineralReservation = startingTownHall is not null &&
                 startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) &&
                 orbitalDepotReady && orbitalBarracksReady && !orbitalMorphingObserved
                     ? orbitalUpgradeCost

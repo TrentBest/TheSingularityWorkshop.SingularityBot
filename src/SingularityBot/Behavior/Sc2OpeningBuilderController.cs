@@ -5,8 +5,9 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Keeps starting SCVs mining until the Supply Depot is affordable, then reserves
-/// a worker and lets an active mineral trip finish before dispatching it to build.
+/// Keeps starting SCVs mining until the Supply Depot is affordable, then diverts
+/// a cargo-bearing worker directly to the accepted build site, sacrificing its load
+/// to avoid wasting the return trip to the Command Center.
 /// </summary>
 public sealed class Sc2OpeningBuilderController
 {
@@ -28,7 +29,6 @@ public sealed class Sc2OpeningBuilderController
     private MapPoint? _moveTarget;
     private int _placementQueryAttempts;
     private bool _buildSubmitted;
-    private bool _builderHasCarriedMinerals;
     private uint _buildRequestGameLoop;
     private PendingAction _pendingAction;
     private bool _completed;
@@ -124,7 +124,6 @@ public sealed class Sc2OpeningBuilderController
             _moveTarget = null;
             _dispatched = false;
             _buildSubmitted = false;
-            _builderHasCarriedMinerals = false;
             _pendingAction = PendingAction.None;
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
@@ -201,17 +200,12 @@ public sealed class Sc2OpeningBuilderController
         if (builder is null)
             return null;
 
-        // Finish the entire current mineral trip before diverting this worker.
-        // Remember the loaded state so that the first cargo-free observation
-        // after a delivery is recognized as the completed return, even if SC2
-        // has already queued the worker's next trip back to a mineral patch.
-        if (builder.HasCargo)
-            _builderHasCarriedMinerals = true;
-        var cargoWasJustDelivered = _builderHasCarriedMinerals && !builder.HasCargo;
-        if (!cargoWasJustDelivered && IsCompletingMineralTrip(builder, observation))
+        // Keep an empty worker on its active mineral trip until it has cargo.
+        // Once loaded, interrupt the return-to-town-hall order and send it directly
+        // to the accepted Depot site. Losing this one load is intentional: the
+        // saved return trip gets the supply structure started sooner.
+        if (!builder.HasCargo && IsGatheringMinerals(builder, observation))
             return null;
-        if (cargoWasJustDelivered)
-            _builderHasCarriedMinerals = false;
 
         // Do not send the builder to a speculative staging point. SC2's placement
         // response is authoritative; move once, directly to the accepted site.
@@ -391,20 +385,16 @@ public sealed class Sc2OpeningBuilderController
         _pendingAction = PendingAction.None;
     }
 
-    private static bool IsCompletingMineralTrip(
+    private static bool IsGatheringMinerals(
         UnitObservationFacts worker,
         NormalizedObservation observation)
     {
         var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
-        if (targetTag is not ulong tag)
-            return false;
-
-        return observation.Units.Any(unit =>
+        return targetTag is ulong tag && observation.Units.Any(unit =>
             unit.Tag == tag && unit.IsLiveVisible &&
-            ((unit.Alliance == UnitAlliance.Neutral &&
-              (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
-               unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase))) ||
-             (worker.HasCargo && unit.Alliance == UnitAlliance.Self && IsTownHall(unit.UnitKind))));
+            unit.Alliance == UnitAlliance.Neutral &&
+            (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase)));
     }
 
     private static bool IsLiveScv(UnitObservationFacts unit) =>

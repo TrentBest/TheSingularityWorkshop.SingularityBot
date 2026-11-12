@@ -31,6 +31,32 @@ public sealed class EconomyAdvisorTests
     }
 
     [Fact]
+    public void SupplyDepotWorkerPullThresholdDefaultsToEightyAndCanBeConfigured()
+    {
+        var advisor = new EconomyAdvisor();
+
+        Assert.Equal(80u, advisor.Settings.SupplyDepotWorkerPullMinerals);
+
+        var valid = advisor.ConfigureJson(
+            "{\"version\":1,\"supplyDepotWorkerPullMinerals\":95}");
+
+        Assert.Empty(valid);
+        Assert.Equal(95u, advisor.Settings.SupplyDepotWorkerPullMinerals);
+    }
+
+    [Fact]
+    public void RejectsAnUnreasonableSupplyDepotWorkerPullThreshold()
+    {
+        var advisor = new EconomyAdvisor();
+
+        var errors = advisor.ConfigureJson(
+            "{\"version\":1,\"supplyDepotWorkerPullMinerals\":1001}");
+
+        Assert.NotEmpty(errors);
+        Assert.Equal(80u, advisor.Settings.SupplyDepotWorkerPullMinerals);
+    }
+
+    [Fact]
     public void ConfigurationIsValidatedAndAppliedAtomically()
     {
         var advisor = new EconomyAdvisor();

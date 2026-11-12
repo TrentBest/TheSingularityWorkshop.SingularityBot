@@ -48,10 +48,37 @@ public sealed class SpatialPathingRegion
 public sealed class SpatialTopology
 {
     private readonly SpatialPathingRegion[] _regions;
+    private readonly int[] _regionLabels;
+    private readonly SpatialGridSnapshot _pathingGrid;
 
-    private SpatialTopology(SpatialPathingRegion[] regions) => _regions = regions;
+    private SpatialTopology(
+        SpatialPathingRegion[] regions,
+        int[] regionLabels,
+        SpatialGridSnapshot pathingGrid)
+    {
+        _regions = regions;
+        _regionLabels = regionLabels;
+        _pathingGrid = pathingGrid;
+    }
 
     public IReadOnlyList<SpatialPathingRegion> Regions => _regions;
+
+    /// <summary>Returns the four-connected pathing region containing a world point.</summary>
+    public bool TryGetRegionId(MapPoint point, out int regionId)
+    {
+        regionId = -1;
+        if (_pathingGrid == null || !_pathingGrid.TryGetCellIndex(point, out var index))
+            return false;
+
+        regionId = _regionLabels[index];
+        return regionId >= 0;
+    }
+
+    /// <summary>True only when both points belong to the same four-connected walkable region.</summary>
+    public bool AreConnected(MapPoint first, MapPoint second) =>
+        TryGetRegionId(first, out var firstRegion) &&
+        TryGetRegionId(second, out var secondRegion) &&
+        firstRegion == secondRegion;
 
     public static SpatialTopology Build(SpatialTerrain terrain, byte pathableThreshold = 1)
     {
@@ -115,7 +142,7 @@ public sealed class SpatialTopology
                 TraceContours(cells, labels, id, width, height, grid)));
         }
 
-        return new SpatialTopology(regions.ToArray());
+        return new SpatialTopology(regions.ToArray(), labels, grid);
     }
 
     private static IReadOnlyList<SpatialBoundaryContour> TraceContours(

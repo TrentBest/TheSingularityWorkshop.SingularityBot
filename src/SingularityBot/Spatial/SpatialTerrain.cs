@@ -32,9 +32,9 @@ public sealed class SpatialGridSnapshot
     public float WorldHeight { get; }
 
     /// <summary>Reads the cell containing a world-space point; max map edges are exclusive.</summary>
-    public bool TryGetValue(MapPoint point, out byte value)
+    public bool TryGetCellIndex(MapPoint point, out int index)
     {
-        value = 0;
+        index = -1;
         if (!float.IsFinite(point.X) || !float.IsFinite(point.Y) ||
             point.X < 0 || point.Y < 0 ||
             point.X >= WorldWidth || point.Y >= WorldHeight)
@@ -42,7 +42,17 @@ public sealed class SpatialGridSnapshot
 
         var x = Math.Min(Width - 1, (int)(point.X * Width / WorldWidth));
         var y = Math.Min(Height - 1, (int)(point.Y * Height / WorldHeight));
-        value = _cells[y * Width + x];
+        index = y * Width + x;
+        return true;
+    }
+
+    public bool TryGetValue(MapPoint point, out byte value)
+    {
+        value = 0;
+        if (!TryGetCellIndex(point, out var index))
+            return false;
+
+        value = _cells[index];
         return true;
     }
 }

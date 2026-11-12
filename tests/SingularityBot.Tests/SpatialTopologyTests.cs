@@ -16,6 +16,20 @@ public sealed class SpatialTopologyTests
     }
 
     [Fact]
+    public void ReportsConnectivityForPointsWithinTheSameWalkableRegion()
+    {
+        var pathing = new SpatialGridSnapshot(3, 1, 30, 10, new byte[] { 1, 1, 0 });
+        var topology = SpatialTopology.Build(new SpatialTerrain(pathing, null, null));
+
+        Assert.True(topology.TryGetRegionId(new MapPoint(5, 5), out var west));
+        Assert.True(topology.TryGetRegionId(new MapPoint(15, 5), out var east));
+        Assert.Equal(west, east);
+        Assert.True(topology.AreConnected(new MapPoint(5, 5), new MapPoint(15, 5)));
+        Assert.False(topology.TryGetRegionId(new MapPoint(25, 5), out _));
+        Assert.False(topology.AreConnected(new MapPoint(5, 5), new MapPoint(25, 5)));
+    }
+
+    [Fact]
     public void SolidWalkableBlockProducesOneClosedBoundary()
     {
         var pathing = new SpatialGridSnapshot(2, 2, 20, 10, new byte[] { 1, 1, 1, 1 });

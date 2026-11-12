@@ -21,6 +21,18 @@ public sealed class SpatialTerrainTests
     }
 
     [Fact]
+    public void CellIndexUsesTheSameBottomLeftWorldMappingAsCellReads()
+    {
+        var grid = new SpatialGridSnapshot(2, 2, 20, 20, new byte[] { 1, 2, 3, 4 });
+
+        Assert.True(grid.TryGetCellIndex(new MapPoint(1, 1), out var southWest));
+        Assert.Equal(0, southWest);
+        Assert.True(grid.TryGetCellIndex(new MapPoint(11, 11), out var northEast));
+        Assert.Equal(3, northEast);
+        Assert.False(grid.TryGetCellIndex(new MapPoint(20, 10), out _));
+    }
+
+    [Fact]
     public void MaxWorldEdgesAreExclusive()
     {
         var grid = new SpatialGridSnapshot(1, 1, 10, 10, new byte[] { 255 });

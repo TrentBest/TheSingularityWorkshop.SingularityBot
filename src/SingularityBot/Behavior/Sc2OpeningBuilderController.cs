@@ -41,6 +41,8 @@ public sealed class Sc2OpeningBuilderController
 
     public ulong? BuilderTag => _builderTag;
     public bool IsCompleted => _buildJob?.IsCompleted == true;
+    public string BuildJobState => _buildJob?.CurrentState ?? "NoBuildJob";
+    public string BuildJobFailureReason => _buildJob?.FailureReason ?? string.Empty;
     public bool IsDispatched => _dispatched;
     public MapPoint? Placement => _placement;
     public int CandidateCount => _candidatePoints.Count;

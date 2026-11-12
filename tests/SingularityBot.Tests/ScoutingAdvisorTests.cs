@@ -44,8 +44,8 @@ public sealed class ScoutingAdvisorTests
         var repeated = advisor.Plan(Snapshot(Fact(2, "Marine", 12, 10, 1)), map, weapons)[2];
         Assert.Equal(first, repeated);
 
-        advisor.Plan(Snapshot(Fact(2, "Marine", first.X, first.Y, 1)), map, weapons);
-        Assert.Empty(advisor.Assignments);
+        var next = advisor.Plan(Snapshot(Fact(2, "Marine", first.X, first.Y, 1)), map, weapons)[2];
+        Assert.NotEqual(first, next);
     }
 
     private static NormalizedObservation Snapshot(params UnitObservationFacts[] units) =>

@@ -365,6 +365,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var assignments = _workerAssignments.Reconcile(
             normalized, _economyAdvisor.Settings.MineralSaturation);
         var actions = new List<SC2APIProtocol.Action>();
+        var buildingAccessActions = new List<SC2APIProtocol.Action>();
         SC2APIProtocol.Action sprayAction = null;
         SC2APIProtocol.Action builderAction = null;
         SC2APIProtocol.Action marineAction = null;
@@ -878,7 +879,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 {
                     var accessAction = CreateDepotAccessAction(buildingEvent);
                     if (accessAction is not null)
-                        actions.Add(accessAction);
+                        buildingAccessActions.Add(accessAction);
                 }
             }
             if (_writeDiagnostics)
@@ -975,6 +976,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             commandedUnitTags.Add(reservedWorker.Tag);
         actions.AddRange(_workerProgressWatchdog.TryCreateActions(
             normalized, _gameData.MoveAbilityId, commandedUnitTags));
+
+        // Append building access actions after the existing controller action
+        // sequence so per-action result correlation for opening controllers stays stable.
+        actions.AddRange(buildingAccessActions);
 
         if (_writeDiagnostics)
         {

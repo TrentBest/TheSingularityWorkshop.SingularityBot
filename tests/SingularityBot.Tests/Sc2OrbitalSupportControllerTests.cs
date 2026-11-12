@@ -52,6 +52,34 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void DoesNotUpgradeExpansionCommandCentersAfterTheFirstBaseExists()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+
+        var twoCommandCenters = Snapshot(500,
+            Fact(1, "CommandCenter"),
+            Fact(2, "CommandCenter", 30, 30),
+            Fact(3, "SupplyDepot"),
+            Fact(4, "Barracks"));
+        Assert.Null(controller.TryCreateAction(twoCommandCenters, data));
+
+        var firstBaseAlreadyOrbital = Snapshot(500,
+            Fact(1, "OrbitalCommand"),
+            Fact(2, "CommandCenter", 30, 30),
+            Fact(3, "SupplyDepot"),
+            Fact(4, "Barracks"));
+        Assert.Null(controller.TryCreateAction(firstBaseAlreadyOrbital, data));
+
+        var planetaryFortressExists = Snapshot(500,
+            Fact(1, "CommandCenter"),
+            Fact(2, "PlanetaryFortress", 30, 30),
+            Fact(3, "SupplyDepot"),
+            Fact(4, "Barracks"));
+        Assert.Null(controller.TryCreateAction(planetaryFortressExists, data));
+    }
+
+    [Fact]
     public void CallsMuleOnNearestMineralWhenOrbitalHasEnoughEnergy()
     {
         var controller = new Sc2OrbitalSupportController();

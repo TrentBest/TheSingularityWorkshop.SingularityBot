@@ -74,6 +74,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2OrbitalSupportController _orbitalSupport = new();
     private readonly Sc2RefineryRuntime _refineries = new();
     private bool _orbitalSupportActionSubmitted;
+    private string _lastOrbitalDiagnostic;
+    private string _lastStartingTownHallKind;
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
@@ -312,6 +314,20 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
              unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase)) &&
             unit.Orders.Any(order => order.AbilityId == _gameData.ScvTrainAbilityId.Value));
+        var startingTownHall = normalized.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !normalized.DeadUnitTags.Contains(unit.Tag) &&
+                (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(unit => unit.Tag)
+            .FirstOrDefault();
+        var startingTownHallKind = startingTownHall?.UnitKind ?? "missing";
+        if (!string.Equals(_lastStartingTownHallKind, startingTownHallKind, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"[Orbital] OBSERVED starting town hall: tag={startingTownHall?.Tag.ToString() ?? "none"}, kind={startingTownHallKind}, loop={normalized.GameLoop}.");
+            _lastStartingTownHallKind = startingTownHallKind;
+        }
         if (scvTrainingOrderObserved && !_scvTrainingOrderObserved)
             Console.WriteLine("[Opening] OBSERVED: Command Center has an SCV training order.");
         _scvTrainingOrderObserved = scvTrainingOrderObserved;
@@ -404,6 +420,28 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             reservedInfrastructureMinerals = reservedProductionMinerals;
             var orbitalReservedCommandCenter = _orbitalSupport.GetCommandCenterReservedForUpgrade(
                 normalized, _gameData, reservedProductionMinerals);
+            var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) &&
+                unit.BuildProgress >= 1f);
+            var orbitalBarracksReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                unit.BuildProgress >= 1f);
+            var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
+            var orbitalAbility = _gameData.OrbitalUpgradeAbilityId;
+            var orbitalReservationReason = startingTownHall is null ? "no-live-town-hall" :
+                !startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ? "starting-town-hall-not-command-center" :
+                !orbitalDepotReady ? "supply-depot-incomplete-or-missing" :
+                !orbitalBarracksReady ? "barracks-incomplete-or-missing" :
+                orbitalAbility is not > 0 ? "orbital-ability-unavailable" :
+                orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
+                normalized.Minerals < orbitalUpgradeCost + reservedProductionMinerals ? "reserved-minerals-block-upgrade" :
+                "eligible";
+            var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};loop={normalized.GameLoop}";
+            if (!string.Equals(_lastOrbitalDiagnostic, orbitalDiagnostic, StringComparison.Ordinal))
+            {
+                Console.WriteLine("[Orbital] " + orbitalDiagnostic + ".");
+                _lastOrbitalDiagnostic = orbitalDiagnostic;
+            }
             var productionAction = _openingProduction.TryCreateScvTrainingAction(
                 normalized, _gameData, reservedProductionMinerals, orbitalReservedCommandCenter);
             _openingProductionActionSubmitted = productionAction is not null;
@@ -551,15 +589,33 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // The Orbital upgrade unlocks MULE income and must not be starved
             // forever by an always-busy Marine production line. Construction and
             // the four-Barracks expansion milestone retain higher priority.
+            var orbitalCoordinatorBlockers = string.Join(",",
+                new[] {
+                    secondBarracksAction is not null ? "second-barracks" : null,
+                    builderAction is not null ? "builder" : null,
+                    sprayAction is not null ? "spray" : null,
+                    expansionCommandCenterAction is not null ? "expansion-command-center" : null
+                }.Where(value => value is not null));
             if (secondBarracksAction is null && builderAction is null &&
                 sprayAction is null && expansionCommandCenterAction is null)
             {
                 orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData, reservedInfrastructureMinerals);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
+                if (orbitalSupportAction is not null)
+                {
+                    var command = orbitalSupportAction.ActionRaw.UnitCommand;
+                    Console.WriteLine($"[Orbital] SUBMIT: unit={string.Join(",", command.UnitTags)}, ability={command.AbilityId}, minerals={normalized.Minerals}, reserved={reservedInfrastructureMinerals}, loop={normalized.GameLoop}.");
+                }
             }
             else
             {
                 _orbitalSupportActionSubmitted = false;
+                var diagnostic = $"coordinator-blocked={orbitalCoordinatorBlockers};loop={normalized.GameLoop}";
+                if (!string.Equals(_lastOrbitalDiagnostic, diagnostic, StringComparison.Ordinal))
+                {
+                    Console.WriteLine("[Orbital] " + diagnostic + ".");
+                    _lastOrbitalDiagnostic = diagnostic;
+                }
             }
 
             // Gas infrastructure starts once the first Barracks is complete.

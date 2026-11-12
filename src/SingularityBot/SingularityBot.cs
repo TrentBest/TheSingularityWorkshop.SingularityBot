@@ -17,6 +17,7 @@ namespace SingularityBot;
 public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
 {
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
+    private readonly BuildingBehaviorRuntime _buildings = new();
     private GoalActionPlanDefinition _goalActionPlan = new();
     private readonly EconomyAdvisor _economyAdvisor = new();
     private readonly AdvisorJobBoard _advisorJobBoard = new();
@@ -103,6 +104,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public string OpeningScvProductionState => _openingProduction.CurrentState;
     public string OpeningDepotBuildJobState => _openingBuilder.BuildJobState;
     public string OpeningDepotBuildFailureReason => _openingBuilder.BuildJobFailureReason;
+    public IReadOnlyCollection<BuildingBehaviorContext> Buildings => _buildings.Buildings;
+
+    public IReadOnlyDictionary<string, string> GetBuildingFsmStates(ulong buildingTag) =>
+        _buildings.TryGet(buildingTag, out var building) && building is not null
+            ? building.CurrentStates
+            : new Dictionary<string, string>();
+
+    /// <summary>Publishes an explicit passage request; this overrides nearby-enemy Depot closure.</summary>
+    public bool RequestSupplyDepotPassage(ulong buildingTag, bool requested = true) =>
+        _buildings.RequestDepotPassage(buildingTag, requested);
 
     /// <summary>Sets the user-authored goal plan before or during a match.</summary>
     public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)
@@ -235,6 +246,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             return;
 
         UnitBehaviorCatalog.Register();
+        BuildingBehaviorRuntime.RegisterDefinitions();
         FSM_API.Create.CreateInstance("SingularityBot.GameState", _gameState, UnitBehaviorCatalog.StrategyProcessingGroup);
         _behaviorCatalogRegistered = true;
 
@@ -313,6 +325,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _lastGameLoop = normalized.GameLoop;
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
+        _buildings.Reconcile(normalized, _buildJobs.Jobs, IsResearchAbility);
         _gameState.Apply(normalized);
         UpdateSpatialIntelligence(observation);
         if (SpatialMap is not null)
@@ -851,6 +864,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _economyAdvisor.CurrentPhase = _gameState.Phase;
                 }
             }
+            foreach (var buildingEvent in _buildings.DrainEvents())
+            {
+                if (buildingEvent.Kind == BuildingEventKind.Operational &&
+                    buildingEvent.BuilderWorkerTag is ulong builderTag)
+                {
+                    _workerAssignments.Unreserve(builderTag);
+                    Console.WriteLine($"[Building] {buildingEvent.BuildingId} is operational; SCV {builderTag} returned to worker tasking.");
+                }
+                else if (buildingEvent.Kind is BuildingEventKind.RaiseSupplyDepot or BuildingEventKind.LowerSupplyDepot)
+                {
+                    var accessAction = CreateDepotAccessAction(buildingEvent);
+                    if (accessAction is not null)
+                        actions.Add(accessAction);
+                }
+            }
             if (_writeDiagnostics)
                 foreach (var job in _buildJobs.Jobs)
                     _binaryTrace.RecordBuildJob(job, normalized.GameLoop);
@@ -1154,6 +1182,41 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         return slice;
     }
 
+    private static bool IsResearchAbility(uint abilityId, Sc2GameDataCatalog gameData)
+    {
+        if (!gameData.TryGetAbility(abilityId, out var ability))
+            return false;
+        return ability.LinkName.Contains("Research", StringComparison.OrdinalIgnoreCase) ||
+               ability.LinkName.Contains("Upgrade", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsResearchAbility(uint abilityId) => IsResearchAbility(abilityId, _gameData);
+
+    private SC2APIProtocol.Action? CreateDepotAccessAction(BuildingEvent buildingEvent)
+    {
+        var linkName = buildingEvent.Kind == BuildingEventKind.RaiseSupplyDepot
+            ? "RaiseSupplyDepot"
+            : "LowerSupplyDepot";
+        var abilityIds = _gameData.AbilitiesById.Values
+            .Where(ability => ability.LinkName.Contains(linkName, StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Distinct()
+            .ToArray();
+        if (abilityIds.Length != 1)
+        {
+            Console.WriteLine($"[Building] {buildingEvent.BuildingId}: {linkName} ability unavailable or ambiguous; no command emitted.");
+            return null;
+        }
+
+        var command = new ActionRawUnitCommand
+        {
+            AbilityId = checked((int)abilityIds[0]),
+            QueueCommand = false
+        };
+        command.UnitTags.Add(buildingEvent.BuildingTag);
+        return new SC2APIProtocol.Action { ActionRaw = new ActionRaw { UnitCommand = command } };
+    }
+
     private void UpdateSpatialIntelligence(ResponseObservation response)
     {
         var intelligence = SpatialIntelligence;
@@ -1216,6 +1279,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Sc2Diagnostics.OutputDirectory,
                 _passiveBaseline ? "passive-baseline" : "active-run");
         _unitBehaviors.RemoveAll();
+        _buildings.Clear();
         _openingProduction.Dispose();
         _openingBuilder.Dispose();
         _supplyDepotExpansion.Dispose();

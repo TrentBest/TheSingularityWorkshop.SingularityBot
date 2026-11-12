@@ -81,6 +81,9 @@ public sealed class BuildingBehaviorContext : IStateContext
     public string TownHallUpgradeState => _handles.ContainsKey(BuildingBehaviorCatalog.TownHallUpgradeFsm)
         ? CurrentState(BuildingBehaviorCatalog.TownHallUpgradeFsm)
         : "NotTownHall";
+    public string TownHallExpansionState => _handles.ContainsKey(BuildingBehaviorCatalog.TownHallExpansionFsm)
+        ? CurrentState(BuildingBehaviorCatalog.TownHallExpansionFsm)
+        : "NotTownHall";
     public ulong? BuilderWorkerTag { get; private set; }
     public bool IsOperational => CurrentState(BuildingBehaviorCatalog.LifecycleFsm) == "Operational";
     public string LifecycleState => CurrentState(BuildingBehaviorCatalog.LifecycleFsm);
@@ -191,6 +194,10 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool CanRetryScan => ScanRequested && !_scanPending && IsOrbitalCommand && Energy >= 50;
     public bool IsScanComplete => !ScanRequested && !_scanPending;
 
+    public bool CanStreamCommandCenters =>
+        UnitKind == "CommandCenter" && !IsOrbitalCommand && !IsPlanetaryFortress &&
+        IsLanded && HasCompletedBarracks && IsInDesignatedCommandCenterConstructionArea;
+
     public bool CanUpgradeToOrbital =>
         UnitKind == "CommandCenter" && IsLanded && !IsOrbitalCommand && !IsPlanetaryFortress &&
         HasCompletedBarracks && HasCompletedSupplyDepot &&
@@ -232,6 +239,7 @@ public sealed class BuildingBehaviorRuntime
         .Where(building => building.IsOrbitalCommand && building.HasPendingOrRequestedScan)
         .Select(building => building.UnitTag).ToHashSet();
     public int Count => _buildings.Count;
+    public bool HasDesignatedCommandCenterConstructionArea => _designatedCommandCenterArea.HasValue;
 
     public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius)
     {
@@ -319,6 +327,15 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("AwaitingEvidence", "Idle", IsScanComplete)
                 .Transition("AwaitingEvidence", "Ready", CanRetryScan)
                 .WithInitialState("Idle").BuildDefinition();
+
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.TownHallExpansionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallExpansionFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+                .State("Waiting", null, null, null)
+                .State("StreamingCommandCenters", null, null, null)
+                .Transition("Waiting", "StreamingCommandCenters", CanStreamCommandCenters)
+                .Transition("StreamingCommandCenters", "Waiting", CannotStreamCommandCenters)
+                .WithInitialState("Waiting").BuildDefinition();
     }
 
     private static bool IsOperational(IStateContext context) =>
@@ -332,6 +349,12 @@ public sealed class BuildingBehaviorRuntime
 
     private static bool IsIdle(IStateContext context) =>
         context is BuildingBehaviorContext building && !building.IsProducing && !building.IsResearching;
+
+    private static bool CanStreamCommandCenters(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.CanStreamCommandCenters;
+
+    private static bool CannotStreamCommandCenters(IStateContext context) =>
+        context is BuildingBehaviorContext building && !building.CanStreamCommandCenters;
 
     private static bool CanUpgradeToOrbital(IStateContext context) =>
         context is BuildingBehaviorContext building && building.CanUpgradeToOrbital;
@@ -417,6 +440,7 @@ public sealed class BuildingBehaviorRuntime
                 {
                     Attach(building, BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                     Attach(building, BuildingBehaviorCatalog.OrbitalScanFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
+                    Attach(building, BuildingBehaviorCatalog.TownHallExpansionFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                 }
             }
 
@@ -517,4 +541,5 @@ public static class BuildingBehaviorCatalog
     public const string DepotAccessFsm = "SingularityBot.SupplyDepotAccess";
     public const string TownHallUpgradeFsm = "SingularityBot.TownHallOrbitalUpgrade";
     public const string OrbitalScanFsm = "SingularityBot.OrbitalScan";
+    public const string TownHallExpansionFsm = "SingularityBot.TownHallExpansion";
 }

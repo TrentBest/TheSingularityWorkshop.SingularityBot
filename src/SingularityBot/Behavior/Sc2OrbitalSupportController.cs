@@ -112,6 +112,17 @@ public sealed class Sc2OrbitalSupportController
         // queue and must not block its Orbital morph. Only an observed SCV-train
         // order makes the town hall busy for this transition. If SCV ability data
         // is unavailable, retain the conservative HasOrders guard.
+        // Once SC2 reports the morph order, it remains authoritative even
+        // after the local submission-retry window expires. Do not reissue the
+        // upgrade every frame while the unit is still represented as a
+        // CommandCenter during the transition.
+        var orbitalUpgradeAlreadyQueued = firstBaseTownHall is not null &&
+            gameData.OrbitalUpgradeAbilityId is > 0 &&
+            firstBaseTownHall.Orders.Any(order =>
+                order.AbilityId == gameData.OrbitalUpgradeAbilityId.Value);
+        if (orbitalUpgradeAlreadyQueued)
+            return null;
+
         var hasScvTrainingOrder = gameData.ScvTrainAbilityId is > 0
             ? firstBaseTownHall?.Orders.Any(order => order.AbilityId == gameData.ScvTrainAbilityId.Value) == true
             : firstBaseTownHall?.HasOrders == true;

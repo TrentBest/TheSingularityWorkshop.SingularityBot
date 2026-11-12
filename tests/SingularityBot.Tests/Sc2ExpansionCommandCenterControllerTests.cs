@@ -109,6 +109,67 @@ public sealed class Sc2ExpansionCommandCenterControllerTests
         Assert.Equal(site, controller.ExpansionLocation);
     }
 
+    [Fact]
+    public void ContinuesStreamingCommandCentersAfterThePreviousOneBecomesOperational()
+    {
+        var controller = new Sc2ExpansionCommandCenterController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var data = GameData();
+        var firstMinerals = new[]
+        {
+            Mineral(200, 34, 19), Mineral(201, 35, 19),
+            Mineral(202, 36, 19), Mineral(203, 37, 19)
+        };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(400,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", 10, 10) }.Concat(firstMinerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 }));
+        var firstQuery = controller.TakePlacementQuery(data);
+        Assert.NotNull(firstQuery);
+        var firstPlacement = new ResponseQuery();
+        firstPlacement.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(firstPlacement);
+        var firstSite = controller.ExpansionLocation!.Value;
+
+        var move = controller.TryCreateAction(Snapshot(400,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", 10, 10) }.Concat(firstMinerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 });
+        Assert.NotNull(move);
+        controller.OnActionResult(ActionResult.Success, 100);
+        var build = controller.TryCreateAction(Snapshot(400,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", firstSite.X, firstSite.Y) }.Concat(firstMinerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 });
+        Assert.NotNull(build);
+        controller.OnActionResult(ActionResult.Success, 101);
+
+        Assert.Null(controller.TryCreateAction(Snapshot(0,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", firstSite.X, firstSite.Y),
+                Fact(400, "CommandCenter", firstSite.X, firstSite.Y, 1f) }.Concat(firstMinerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 }));
+        Assert.True(controller.IsComplete);
+        Assert.Single(controller.CompletedExpansionSites);
+
+        var secondMinerals = new[]
+        {
+            Mineral(500, 55, 25), Mineral(501, 56, 25),
+            Mineral(502, 57, 25), Mineral(503, 58, 25)
+        };
+        Assert.Null(controller.TryCreateAction(Snapshot(400,
+            new[] { Fact(1, "CommandCenter", 10, 10), Fact(20, "SCV", firstSite.X, firstSite.Y),
+                Fact(400, "CommandCenter", firstSite.X, firstSite.Y, 1f) }
+                .Concat(firstMinerals).Concat(secondMinerals).ToArray()),
+            map, data, assignments, new HashSet<ulong> { 20 }));
+
+        Assert.False(controller.IsComplete);
+        Assert.Equal(20UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(20));
+        var secondQuery = controller.TakePlacementQuery(data);
+        Assert.NotNull(secondQuery);
+        Assert.NotEmpty(secondQuery.Placements);
+        Assert.Single(controller.CompletedExpansionSites);
+    }
+
     private static SpatialMap Map() => new(
         new MapBounds(0, 0, 100, 100),
         new MapPoint(10, 10),

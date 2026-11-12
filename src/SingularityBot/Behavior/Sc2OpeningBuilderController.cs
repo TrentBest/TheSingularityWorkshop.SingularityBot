@@ -14,6 +14,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 {
     public const string MovementFsmName = "SingularityBot.OpeningBuilderMovement";
     public const string MovementProcessingGroup = "SingularityBot.OpeningBuilderMovement";
+    private static long _nextMovementGroupId;
+    private readonly string _movementProcessingGroup;
     private const string MovementIdle = "Idle";
     private const string MoveSubmitted = "MoveSubmitted";
     private const string Moving = "Moving";
@@ -50,8 +52,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
     public Sc2OpeningBuilderController()
     {
-        EnsureMovementDefinition();
-        _movementHandle = FSM_API.Create.CreateInstance(MovementFsmName, this, MovementProcessingGroup);
+        _movementProcessingGroup = $"{MovementProcessingGroup}.{System.Threading.Interlocked.Increment(ref _nextMovementGroupId)}";
+        EnsureMovementDefinition(_movementProcessingGroup);
+        _movementHandle = FSM_API.Create.CreateInstance(MovementFsmName, this, _movementProcessingGroup);
     }
 
     public ulong? BuilderTag => _builderTag;
@@ -65,15 +68,15 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public bool IsMoveSubmitted => MovementState is MoveSubmitted or Moving;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
 
-    private static void EnsureMovementDefinition()
+    private static void EnsureMovementDefinition(string processingGroup)
     {
-        if (FSM_API.Interaction.Exists(MovementFsmName, MovementProcessingGroup))
+        if (FSM_API.Interaction.Exists(MovementFsmName, processingGroup))
             return;
 
         FSM_API.Create.CreateFiniteStateMachine(
                 MovementFsmName,
                 processRate: -1,
-                processingGroup: MovementProcessingGroup)
+                processingGroup: processingGroup)
             .State(MovementIdle, null, null, null)
             .State(MoveSubmitted, null, null, null)
             .State(Moving, null, null, null)
@@ -125,7 +128,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
     private void UpdateMovementFsm()
     {
-        FSM_API.Interaction.Update(MovementProcessingGroup);
+        FSM_API.Interaction.Update(_movementProcessingGroup);
         _moveSubmissionRequested = false;
         _moveAccepted = false;
         _moveRejected = false;

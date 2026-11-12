@@ -472,14 +472,26 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 orbitalCommandCenterBusy ? "waiting-for-current-scv-training-order-or-unresolved-order-metadata" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
                 "eligible";
-            var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};loop={normalized.GameLoop}";
+            var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};refineryReserve={firstRefineryMineralReservation};scvReserve={reservedScvMinerals};loop={normalized.GameLoop}";
             if (!string.Equals(_lastOrbitalDiagnostic, orbitalDiagnostic, StringComparison.Ordinal))
             {
                 Console.WriteLine("[Orbital] " + orbitalDiagnostic + ".");
                 _lastOrbitalDiagnostic = orbitalDiagnostic;
             }
+            var firstRefineryPending = orbitalMineralReservation > 0 &&
+                _gameData.RefineryMineralCost > 0 &&
+                !normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                    unit.IsLiveVisible && unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
+                    !normalized.DeadUnitTags.Contains(unit.Tag)) &&
+                normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Neutral &&
+                    unit.IsLiveVisible && unit.UnitKind.Contains("Geyser", StringComparison.OrdinalIgnoreCase) &&
+                    !normalized.DeadUnitTags.Contains(unit.Tag));
+            var firstRefineryMineralReservation = firstRefineryPending
+                ? _gameData.RefineryMineralCost
+                : 0u;
             var reservedScvMinerals = (uint)Math.Min(
-                uint.MaxValue, (ulong)reservedProductionMinerals + orbitalMineralReservation);
+                uint.MaxValue,
+                (ulong)reservedProductionMinerals + orbitalMineralReservation + firstRefineryMineralReservation);
             var productionAction = _openingProduction.TryCreateScvTrainingAction(
                 normalized, _gameData, reservedScvMinerals, orbitalReservedCommandCenter);
             _openingProductionActionSubmitted = productionAction is not null;

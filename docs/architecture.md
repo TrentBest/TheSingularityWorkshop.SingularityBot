@@ -89,7 +89,9 @@ Each building owns independent FSM_API capabilities:
 
 A build job continues to represent the attempt and its evidence; it does not become the durable identity of the resulting building.
 
-Town Hall expansion policy, Orbital upgrade policy, MULE/Scan capability graphs and per-building SCV production are the next migration layer. Their existing controllers remain in place until the corresponding FSMs are authoritative and their behavior is covered by tests.
+Town Halls additionally own an Orbital-upgrade FSM: `WaitingForPrerequisites -> UpgradeReady -> Upgrading -> Orbital`. Readiness requires a landed Command Center, a completed Barracks and Supply Depot, no active SCV training order, and a position outside the configured designated Command Center construction exclusion area. The match loop calls the Orbital action adapter only when this FSM is in `UpgradeReady`; the adapter still validates current SC2 costs and ability data before submission. The exclusion area is configured as a center point and radius through the bot's development API; until configured, no area is excluded.
+
+Continuous Command Center expansion streaming, per-town-hall SCV production, and Orbital MULE/Scan energy actions remain the next migration layer. The existing MULE and production controllers are retained; no Scan action implementation currently exists in this repository.
 
 ## Workshop integration
 

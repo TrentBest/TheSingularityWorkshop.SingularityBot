@@ -187,6 +187,7 @@ public sealed class BuildingBehaviorContext : IStateContext
 
     public bool CanScan => ScanRequested && !_scanPending && IsOrbitalCommand && Energy >= 50;
     public bool IsScanPending => _scanPending;
+    public bool HasPendingOrRequestedScan => ScanRequested || _scanPending;
     public bool CanRetryScan => ScanRequested && !_scanPending && IsOrbitalCommand && Energy >= 50;
     public bool IsScanComplete => !ScanRequested && !_scanPending;
 
@@ -227,6 +228,9 @@ public sealed class BuildingBehaviorRuntime
     private (float X, float Y, float Radius)? _designatedCommandCenterArea;
 
     public IReadOnlyCollection<BuildingBehaviorContext> Buildings => _buildings.Values.ToArray();
+    public IReadOnlySet<ulong> ScanReservedOrbitalTags => _buildings.Values
+        .Where(building => building.IsOrbitalCommand && building.HasPendingOrRequestedScan)
+        .Select(building => building.UnitTag).ToHashSet();
     public int Count => _buildings.Count;
 
     public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius)

@@ -15,15 +15,15 @@ public sealed class Sc2OrbitalSupportController
     private uint _pendingGameLoop;
 
     /// <summary>
-    /// Reserves the first-base Command Center for its one-time Orbital morph as soon
-    /// as the tech and mineral gates are satisfied. The reservation intentionally
-    /// survives an existing SCV order so production cannot refill the queue when it
-    /// completes before the morph can be issued.
+    /// Reserves the first-base Command Center as soon as Orbital tech is ready.
+    /// Do not wait until the 150-mineral threshold: doing so lets continuous SCV
+    /// production spend each new 50-mineral increment and starve the morph forever.
+    /// The reservation survives an existing SCV order so production cannot refill
+    /// the queue when it completes before the morph can be issued.
     /// </summary>
     public ulong? GetCommandCenterReservedForUpgrade(
         NormalizedObservation observation,
-        Sc2GameDataCatalog gameData,
-        uint reservedMinerals = 0)
+        Sc2GameDataCatalog gameData)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -47,8 +47,7 @@ public sealed class Sc2OrbitalSupportController
 
         if (firstBaseTownHall is null || !IsKind(firstBaseTownHall, "CommandCenter") ||
             !orbitalTechReady || gameData.OrbitalUpgradeAbilityId is not > 0 ||
-            gameData.OrbitalUpgradeMineralCost == 0 ||
-            observation.Minerals < gameData.OrbitalUpgradeMineralCost + reservedMinerals)
+            gameData.OrbitalUpgradeMineralCost == 0)
             return null;
 
         return firstBaseTownHall.Tag;

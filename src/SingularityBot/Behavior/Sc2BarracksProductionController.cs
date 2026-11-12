@@ -41,7 +41,8 @@ public sealed class Sc2BarracksProductionController
         if (_pendingBarracksTag is ulong pendingTag)
         {
             var pendingProducer = barracks.Skip(1).FirstOrDefault(unit => unit.Tag == pendingTag);
-            var hasJob = _pendingJobId is long id && buildJobs.TryGet(id, out var pendingJob);
+            BuildJobContext pendingJob = null;
+            var hasJob = _pendingJobId is long id && buildJobs.TryGet(id, out pendingJob);
             if (hasJob && (pendingJob.IsExecuting || pendingJob.HasExecutionEvidence))
             {
                 ClearPending();

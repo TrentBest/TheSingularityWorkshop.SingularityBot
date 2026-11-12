@@ -142,7 +142,7 @@ public sealed class Sc2MarineRallyController
             var hasScoutDecision = decisions.Any(item => item.MarineTag == tag);
             var scoutDecision = decisions.FirstOrDefault(item => item.MarineTag == tag);
             if (hasScoutDecision && scoutDecision.Action == MarineTacticalAction.Hold &&
-                scoutDecision.TargetTag is null)
+                (scoutDecision.TargetTag is null || scoutDecision.IsOutsideLocalDefenseEnvelope))
             {
                 var threats = observation.Units
                     .Where(unit => unit.Alliance == UnitAlliance.Enemy && unit.IsLiveVisible && unit.HasPosition &&

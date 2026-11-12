@@ -31,8 +31,9 @@ public sealed class Sc2OpeningBuilderController
     private bool _buildSubmitted;
     private uint _buildRequestGameLoop;
     private PendingAction _pendingAction;
-    private bool _completed;
-    private long? _buildJobId;
+    private readonly BuildJobRuntime _ownedBuildJobs = new();
+    private BuildJobRuntime _activeBuildJobs;
+    private BuildJobContext _buildJob;
     private HashSet<ulong> _preexistingDepotTags;
     private bool _builderWasReturningMinerals;
     private uint? _lastObservedMinerals;
@@ -40,7 +41,7 @@ public sealed class Sc2OpeningBuilderController
     public Sc2OpeningBuilderController() { }
 
     public ulong? BuilderTag => _builderTag;
-    public bool IsCompleted => _completed;
+    public bool IsCompleted => _buildJob?.IsCompleted == true;
     public bool IsDispatched => _dispatched;
     public MapPoint? Placement => _placement;
     public int CandidateCount => _candidatePoints.Count;
@@ -63,7 +64,7 @@ public sealed class Sc2OpeningBuilderController
         ulong? barracksBuilderTag)
     {
         ArgumentNullException.ThrowIfNull(assignments);
-        if (!_completed || _builderTag is not ulong tag || tag == barracksBuilderTag)
+        if (!IsCompleted || _builderTag is not ulong tag || tag == barracksBuilderTag)
             return;
 
         assignments.Unreserve(tag);
@@ -74,7 +75,7 @@ public sealed class Sc2OpeningBuilderController
     public void ReleaseBuilderAfterBarracksHandoff(WorkerResourceAssignmentPlanner assignments)
     {
         ArgumentNullException.ThrowIfNull(assignments);
-        if (!_completed || _builderTag is not ulong tag)
+        if (!IsCompleted || _builderTag is not ulong tag)
             return;
         assignments.Unreserve(tag);
         Console.WriteLine($"[Opening] Released original Depot builder SCV {tag} after the first Barracks handoff.");
@@ -99,7 +100,12 @@ public sealed class Sc2OpeningBuilderController
         var previousMineralBank = _lastObservedMinerals;
         _lastObservedMinerals = observation.Minerals;
 
-        buildJobs?.ReconcileSupplyDepotConstruction(observation);
+        BuildJobRuntime.RegisterDefinition();
+        buildJobs ??= _ownedBuildJobs;
+        _activeBuildJobs = buildJobs;
+        buildJobs.ReconcileSupplyDepotConstruction(observation);
+        if (ReferenceEquals(buildJobs, _ownedBuildJobs))
+            buildJobs.Update();
         _preexistingDepotTags ??= observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
@@ -107,7 +113,7 @@ public sealed class Sc2OpeningBuilderController
             .Select(unit => unit.Tag)
             .ToHashSet();
 
-        if (_completed ||
+        if (IsCompleted ||
             gameData.SupplyDepotBuildAbilityId is not > 0 ||
             gameData.SupplyDepotMineralCost == 0 ||
             gameData.MoveAbilityId is not > 0 ||
@@ -258,7 +264,6 @@ public sealed class Sc2OpeningBuilderController
                 _buildSubmitted = true;
                 if (depot.BuildProgress >= 1f)
                 {
-                    _completed = true;
                     if (releaseBuilderOnCompletion && _builderTag is ulong completedBuilder)
                     {
                         assignments.Unreserve(completedBuilder);
@@ -303,9 +308,9 @@ public sealed class Sc2OpeningBuilderController
         {
             if (observation.GameLoop > _buildRequestGameLoop + 8)
             {
-                if (_buildJobId is long staleId && buildJobs is not null &&
-                    buildJobs.TryGet(staleId, out var staleJob) && !staleJob.IsCompleted && !staleJob.IsFailed)
-                    staleJob.Fail("Opening Supply Depot structure was not observed before build retry.", observation.GameLoop);
+                if (_buildJob is not null && !_buildJob.IsCompleted && !_buildJob.IsFailed)
+                    _buildJob.Fail("Opening Supply Depot structure was not observed before build retry.", observation.GameLoop);
+                _buildJob = null;
                 _buildSubmitted = false;
             }
             else
@@ -316,11 +321,11 @@ public sealed class Sc2OpeningBuilderController
 
         _buildSubmitted = true;
         _buildRequestGameLoop = observation.GameLoop;
-        _buildJobId = buildJobs?.CreateSupplyDepotConstruction(observation.GameLoop, builder.Tag,
+        _buildJob = buildJobs.CreateSupplyDepotConstruction(observation.GameLoop, builder.Tag,
             observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self &&
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)))
-                .Select(unit => unit.Tag)).Id;
+                .Select(unit => unit.Tag));
         _pendingAction = PendingAction.Build;
         return CreatePositionCommand(
             _builderTag.Value,
@@ -397,9 +402,9 @@ public sealed class Sc2OpeningBuilderController
             else if (_pendingAction == PendingAction.Build)
             {
                 _buildSubmitted = false;
-                if (_buildJobId is long id && buildJobs is not null && buildJobs.TryGet(id, out var job))
-                    job.Fail("SC2 rejected the opening Supply Depot construction command.", job.LastObservedGameLoop);
-                _buildJobId = null;
+                if (_buildJob is not null && !_buildJob.IsCompleted && !_buildJob.IsFailed)
+                    _buildJob.Fail("SC2 rejected the opening Supply Depot construction command.", _buildJob.LastObservedGameLoop);
+                _buildJob = null;
             }
         }
 

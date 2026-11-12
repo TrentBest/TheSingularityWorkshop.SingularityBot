@@ -13,7 +13,7 @@ public sealed class Sc2MarineRallyController
     private readonly Dictionary<ulong, uint> _lastRallyCommandLoops = new();
     private readonly Dictionary<ulong, MapPoint> _lastRallyTargets = new();
     private const uint RetryAfterGameLoops = 44;
-    private const uint PatrolRotationGameLoops = 224;
+    private const uint PatrolRotationGameLoops = 672;
     private const float ArrivalRadiusSquared = 4f;
     private const float RendezvousOffset = 5f;
     private bool _squadDispatched;
@@ -35,7 +35,7 @@ public sealed class Sc2MarineRallyController
             return Array.Empty<SC2APIProtocol.Action>();
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
-        var patrolPoints = FindFriendlyPatrolWaypoints(map);
+        var patrolPoints = GetFriendlyPatrolWaypoints(map);
 
         var actions = new List<SC2APIProtocol.Action>();
         var liveMarineTags = observation.Units
@@ -230,18 +230,22 @@ public sealed class Sc2MarineRallyController
             .FirstOrDefault();
     }
 
-    private static IReadOnlyList<MapPoint> FindFriendlyPatrolWaypoints(SpatialMap map)
+    /// <summary>
+    /// Builds a deterministic patrol screen across every friendly-side map sector.
+    /// Neutral/enemy territory is excluded; the first Marine's observation post
+    /// remains a separate assignment. Public so the tactical coverage can be
+    /// verified independently of SC2 command translation.
+    /// </summary>
+    public static IReadOnlyList<MapPoint> GetFriendlyPatrolWaypoints(SpatialMap map)
     {
-        var homeSector = map.GetSector(map.Side.FriendlyStart);
+        ArgumentNullException.ThrowIfNull(map);
         var scoutPoint = FindFriendlyObservationSector(map);
-        var sectors = map.GetNeighbors(homeSector.Id).Prepend(homeSector);
         var candidates = new List<MapPoint>();
 
-        // A 3x3 sector grid has only three neighbors at a corner spawn. Using
-        // each safe neighboring sector's inset 3x3 sample gives the squad enough
-        // distinct perimeter stations to patrol without stacking five Marines
-        // on the same two sector centers.
-        foreach (var sector in sectors)
+        // Sample the whole friendly half of the map, not just the spawn's
+        // immediate neighbors. The 3x3 inset samples give the squad a distributed
+        // security screen while keeping every station away from map-edge cells.
+        foreach (var sector in map.Sectors)
         {
             var insetX = MathF.Min(4f, sector.Bounds.Width * 0.15f);
             var insetY = MathF.Min(4f, sector.Bounds.Height * 0.15f);

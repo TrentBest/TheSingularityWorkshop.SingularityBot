@@ -32,7 +32,6 @@ public sealed class Sc2OpeningBuilderController
     private uint _buildRequestGameLoop;
     private PendingAction _pendingAction;
     private readonly BuildJobRuntime _ownedBuildJobs = new();
-    private BuildJobRuntime _activeBuildJobs;
     private BuildJobContext _buildJob;
     private HashSet<ulong> _preexistingDepotTags;
     private bool _builderWasReturningMinerals;
@@ -102,7 +101,6 @@ public sealed class Sc2OpeningBuilderController
 
         BuildJobRuntime.RegisterDefinition();
         buildJobs ??= _ownedBuildJobs;
-        _activeBuildJobs = buildJobs;
         buildJobs.ReconcileSupplyDepotConstruction(observation);
         if (ReferenceEquals(buildJobs, _ownedBuildJobs))
             buildJobs.Update();

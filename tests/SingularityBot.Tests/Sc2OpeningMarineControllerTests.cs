@@ -94,7 +94,7 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.True(controller.MarineTrainingStarted);
         Assert.False(controller.IsOpeningMarineTrainingPending);
 
-        var observedMarine = controller.TryCreateAction(Snapshot(0, 13, 15,
+        var observedMarine = controller.TryCreateAction(SnapshotAt(101, 0, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
             Fact(300, "Marine", 20, 20)), map, gameData, assignments, jobs);
 
@@ -106,7 +106,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         // The first Marine is now controlled defensively, but the Barracks must
         // continue filling its queue rather than stopping at one Marine.
-        var nextMarine = controller.TryCreateAction(SnapshotAt(101, 50, 13, 15,
+        var nextMarine = controller.TryCreateAction(SnapshotAt(102, 50, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),
             Fact(300, "Marine", 20, 20)), map, gameData, assignments, jobs);
         Assert.NotNull(nextMarine);

@@ -336,7 +336,12 @@ public sealed class Sc2OrbitalSupportControllerTests
         data.Units.Add(new UnitTypeData { UnitId = 132, Name = "OrbitalCommand", MineralCost = 550 });
         data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1 });
         if (includeOrbitalAbility)
+        {
             data.Abilities.Add(new AbilityData { AbilityId = 1516, LinkName = "UpgradeToOrbitalCommand" });
+            // Some ResponseData sets also expose the older compatibility alias.
+            // The canonical link name must remain authoritative.
+            data.Abilities.Add(new AbilityData { AbilityId = 1517, LinkName = "UpgradeToOrbital" });
+        }
         data.Abilities.Add(new AbilityData { AbilityId = 168, LinkName = "CalldownMULE", CastRange = 10 });
         return Sc2GameDataCatalog.Create(data);
     }

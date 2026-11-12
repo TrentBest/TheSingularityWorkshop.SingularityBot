@@ -47,7 +47,9 @@ public sealed class Sc2OpeningMarineController
         WorkerResourceAssignmentPlanner assignments,
         ulong? preferredBuilderTag = null,
         BuildJobRuntime buildJobs = null,
-        uint reservedMinerals = 0)
+        uint reservedMinerals = 0,
+        ulong? excludedBuilderTag = null,
+        bool allowConstruction = true)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -98,7 +100,7 @@ public sealed class Sc2OpeningMarineController
                 if (preferredBuilderTag is ulong preferredTag)
                 {
                     var preferredWorker = observation.Units.FirstOrDefault(unit =>
-                        unit.Tag == preferredTag && IsLiveScv(unit));
+                        unit.Tag == preferredTag && unit.Tag != excludedBuilderTag && IsLiveScv(unit));
                     if (preferredWorker is not null && !preferredWorker.HasCargo)
                     {
                         // Reuse the Depot builder when it is immediately available.
@@ -115,6 +117,7 @@ public sealed class Sc2OpeningMarineController
 
                 builder ??= observation.Units
                     .Where(IsLiveScv)
+                    .Where(unit => unit.Tag != excludedBuilderTag)
                     .Where(unit => !unit.HasCargo && !assignments.IsReserved(unit.Tag))
                     .OrderBy(unit => unit.Tag)
                     .FirstOrDefault();
@@ -156,7 +159,9 @@ public sealed class Sc2OpeningMarineController
                 return PositionCommand(worker.Tag, checked((int)gameData.MoveAbilityId.Value), _placement.Value);
             }
 
-            if (observation.Minerals < gameData.BarracksMineralCost)
+            // Reserve and stage the Barracks worker while the first Depot is
+            // under construction, but do not issue Build until the Depot is observed complete.
+            if (!allowConstruction || observation.Minerals < gameData.BarracksMineralCost)
                 return null;
             if (_buildSubmitted && observation.GameLoop <= _buildRequestGameLoop + 8)
                 return null;

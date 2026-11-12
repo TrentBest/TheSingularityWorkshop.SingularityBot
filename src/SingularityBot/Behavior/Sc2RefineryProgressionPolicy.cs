@@ -7,6 +7,14 @@ namespace SingularityBot.Behavior;
 /// </summary>
 public static class Sc2RefineryProgressionPolicy
 {
+    public static bool CanFundRefinery(
+        uint minerals,
+        uint refineryMineralCost,
+        uint reservedMinerals) =>
+        refineryMineralCost > 0 &&
+        minerals >= refineryMineralCost &&
+        minerals - refineryMineralCost >= reservedMinerals;
+
     public static bool ShouldConstruct(
         bool firstBarracksComplete,
         bool orbitalMorphingObserved,

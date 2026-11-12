@@ -121,6 +121,7 @@ public sealed class Sc2OpeningMarineControllerTests
     {
         var controller = new Sc2OpeningMarineController();
         var assignments = new WorkerResourceAssignmentPlanner();
+        var jobs = new BuildJobRuntime();
         const ulong depotBuilderTag = 10;
         const ulong barracksBuilderTag = 11;
         assignments.Reserve(depotBuilderTag);

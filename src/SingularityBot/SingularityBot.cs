@@ -408,7 +408,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 !normalized.DeadUnitTags.Contains(unit.Tag));
             // Four completed Barracks is the explicit expansion trigger. The
             // second Command Center is funded before optional Marine spending.
-            var expansionCommandCenterPending = _secondBarracks.IsComplete &&
+            var expansionCommandCenterPending = orbitalMorphingObserved && _secondBarracks.IsComplete &&
                 !_expansionCommandCenter.IsStarted && friendlyTownHallCount < 2;
 
             var reservedProductionMinerals = _economyAdvisor.GetReservedMinerals(
@@ -544,7 +544,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // Refresh after a builder reservation so this frame cannot emit a
             // stale gather intent for the worker now committed to construction.
             assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
-            if (builderAction is null && _openingBuilder.IsCompleted)
+            if (builderAction is null && _openingBuilder.IsCompleted && orbitalMorphingObserved)
             {
                 // The economy reservation protects the first Marine from SCV
                 // spending. Do not charge that same reservation against the Marine
@@ -579,7 +579,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Give the first Barracks opening room to settle before pulling
                 // another SCV. Four and a half seconds at SC2's 22.4 loops/sec.
                 const uint secondBarracksWorkerPullDelayLoops = 101;
-                if (normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
+                if (orbitalMorphingObserved &&
+                    normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
                     secondBarracksAction = _secondBarracks.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
@@ -622,9 +623,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _thirdSupplyDepotActionSubmitted = false;
                 }
 
-                // Orbital conversion remains a priority, but it must never deadlock
-                // the production/economy progression if its action is unavailable.
-                if (_secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete)
+                // Do not spend on the four-Barracks expansion or a second town hall
+                // until SC2 has observed the starting Command Center's Orbital morph
+                // order. This keeps the 150-mineral upgrade ahead of optional builds.
+                if (orbitalMorphingObserved && _secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
@@ -646,9 +648,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _thirdSupplyDepotActionSubmitted = false;
             }
 
-            // The Orbital upgrade unlocks MULE income and must not be starved
-            // forever by an always-busy Marine production line. Construction and
-            // the four-Barracks expansion milestone retain higher priority.
+            // The Orbital upgrade is the first post-prerequisite mineral commitment.
+            // Hold the first Marine and secondary Barracks until SC2 observes the
+            // morph order, so neither can consume the exact 150 minerals first.
             var orbitalCoordinatorBlockers = string.Join(",",
                 new[] {
                     builderAction is not null ? "builder" : null

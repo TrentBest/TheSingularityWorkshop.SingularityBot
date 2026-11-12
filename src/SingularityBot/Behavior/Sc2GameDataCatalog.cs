@@ -171,6 +171,16 @@ public sealed class Sc2GameDataCatalog
         var refinery = data.Units.FirstOrDefault(unit =>
             string.Equals(unit.Name, "Refinery", StringComparison.OrdinalIgnoreCase));
 
+        // OrbitalCommand UnitTypeData reports the cumulative unit value
+        // (Command Center + morph), not the incremental morph price. Derive
+        // the morph cost from both authoritative unit entries and fail closed
+        // when either value is missing or inconsistent.
+        var orbitalUpgradeMineralCost =
+            orbitalCommand is not null && commandCenter is not null &&
+            orbitalCommand.MineralCost > commandCenter.MineralCost
+                ? orbitalCommand.MineralCost - commandCenter.MineralCost
+                : 0;
+
         return new Sc2GameDataCatalog(
             unitNames,
             buffNames,
@@ -193,7 +203,7 @@ public sealed class Sc2GameDataCatalog
             ResolveSprayAbility(data.Abilities),
             ResolveAbility(data.Abilities, "Rally_Workers"),
             ResolveAbility(data.Abilities, "UpgradeToOrbitalCommand", "UpgradeToOrbital"),
-            orbitalCommand?.MineralCost ?? 0,
+            orbitalUpgradeMineralCost,
             ResolveAbility(data.Abilities, "CalldownMULE", "CallDownMULE"),
             commandCenter?.AbilityId is > 0 ? commandCenter.AbilityId : null,
             commandCenter?.MineralCost ?? 0,

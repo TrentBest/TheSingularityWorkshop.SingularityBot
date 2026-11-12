@@ -578,7 +578,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     buildJobs: _buildJobs,
                     reservedMinerals: marineReservedMinerals,
                     excludedBuilderTag: _openingBuilder.BuilderTag,
-                    allowConstruction: _openingBuilder.IsCompleted);
+                    allowConstruction: _openingBuilder.IsCompleted,
+                    allowMarineTraining: orbitalMorphingObserved);
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else

@@ -92,6 +92,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
     public IReadOnlyList<StrategicJobPosting> CurrentStrategicPlan => _strategicPlanner.GetPlan(_advisorJobBoard, _lastGameLoop);
 
+    /// <summary>Current FSM_API states for every capability attached to one observed unit.</summary>
+    public IReadOnlyDictionary<string, string> GetUnitFsmStates(ulong unitTag) =>
+        _unitBehaviors.GetStates(unitTag);
+
+    /// <summary>Live build and production jobs, including their authoritative FSM_API states and evidence.</summary>
+    public IReadOnlyCollection<BuildJobContext> CurrentBuildJobs => _buildJobs.Jobs;
+
+    /// <summary>Current SCV production request state.</summary>
+    public string OpeningScvProductionState => _openingProduction.CurrentState;
+
     /// <summary>Sets the user-authored goal plan before or during a match.</summary>
     public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)
     {

@@ -225,6 +225,8 @@ public sealed class Sc2OpeningMarineController : IDisposable
             order.AbilityId == gameData.MarineTrainAbilityId.Value);
         if (trainingOrderObserved)
             return null;
+        if (MarineTrainingStarted && !MarineObserved)
+            return null;
 
         // A submitted request is not enough to unlock the next opening phase.
         // Keep the gate closed until the Barracks order is actually observed.
@@ -315,6 +317,11 @@ public sealed class Sc2OpeningMarineController : IDisposable
 
         _pendingAction = PendingAction.None;
     }
+
+    public string BarracksBuildJobState => _barracksBuildJob?.CurrentState ?? "NoBuildJob";
+    public string MarineProductionJobState => _marineBuildJob?.CurrentState ?? "NoProductionJob";
+
+    public void Dispose() => _ownedBuildJobs.Clear();
 
     private static bool IsLiveScv(UnitObservationFacts unit) =>
         unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&

@@ -26,7 +26,8 @@ public sealed class Sc2MarineRallyController
         SpatialMap map,
         IReadOnlyList<MarineTacticalDecision> decisions,
         Sc2GameDataCatalog gameData,
-        bool fourthMarineInProduction = false)
+        bool fourthMarineInProduction = false,
+        SpatialTerrain terrain = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -35,7 +36,7 @@ public sealed class Sc2MarineRallyController
             return Array.Empty<SC2APIProtocol.Action>();
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
-        var patrolPoints = GetFriendlyPatrolWaypoints(map);
+        var patrolPoints = GetFriendlyPatrolWaypoints(map, terrain);
 
         var actions = new List<SC2APIProtocol.Action>();
         var liveMarineTags = observation.Units
@@ -68,7 +69,7 @@ public sealed class Sc2MarineRallyController
         var scoutActions = new List<SC2APIProtocol.Action>();
         if (_scoutTag is ulong scoutTag)
         {
-            _scoutTarget ??= FindFriendlyObservationSector(map);
+            _scoutTarget ??= FindFriendlyObservationSector(map, terrain);
             var hasScoutDecision = decisions.Any(item => item.MarineTag == scoutTag);
             var scoutDecision = decisions.FirstOrDefault(item => item.MarineTag == scoutTag);
             var scout = observation.Units.FirstOrDefault(unit =>
@@ -219,13 +220,14 @@ public sealed class Sc2MarineRallyController
         return scoutActions;
     }
 
-    private static MapPoint? FindFriendlyObservationSector(SpatialMap map)
+    private static MapPoint? FindFriendlyObservationSector(SpatialMap map, SpatialTerrain terrain)
     {
         var homeSector = map.GetSector(map.Side.FriendlyStart);
         return map.GetNeighbors(homeSector.Id)
             .Select(sector => sector.Center)
             .Where(map.Bounds.Contains)
             .Where(point => map.Side.Assess(point) != MapSide.Enemy)
+            .Where(point => IsPathable(point, terrain))
             .OrderByDescending(point => point.DistanceSquaredTo(map.Side.FriendlyStart))
             .ThenBy(point => point.X)
             .ThenBy(point => point.Y)
@@ -239,10 +241,12 @@ public sealed class Sc2MarineRallyController
     /// remains a separate assignment. Public so the tactical coverage can be
     /// verified independently of SC2 command translation.
     /// </summary>
-    public static IReadOnlyList<MapPoint> GetFriendlyPatrolWaypoints(SpatialMap map)
+    public static IReadOnlyList<MapPoint> GetFriendlyPatrolWaypoints(
+        SpatialMap map,
+        SpatialTerrain terrain = null)
     {
         ArgumentNullException.ThrowIfNull(map);
-        var scoutPoint = FindFriendlyObservationSector(map);
+        var scoutPoint = FindFriendlyObservationSector(map, terrain);
         var candidates = new List<MapPoint>();
 
         // Sample the whole friendly half of the map, not just the spawn's
@@ -263,7 +267,8 @@ public sealed class Sc2MarineRallyController
             foreach (var x in xSamples)
             {
                 var point = new MapPoint(x, y);
-                if (!map.Bounds.Contains(point) || map.Side.Assess(point) != MapSide.Friendly)
+                if (!map.Bounds.Contains(point) || map.Side.Assess(point) != MapSide.Friendly ||
+                    !IsPathable(point, terrain))
                     continue;
                 if (point.DistanceSquaredTo(map.Side.FriendlyStart) < 100f)
                     continue;
@@ -282,6 +287,13 @@ public sealed class Sc2MarineRallyController
                 point.X - map.Side.FriendlyStart.X))
             .ThenBy(point => point.DistanceSquaredTo(map.Side.FriendlyStart))
             .ToArray();
+    }
+
+    private static bool IsPathable(MapPoint point, SpatialTerrain terrain)
+    {
+        if (terrain is null)
+            return true;
+        return terrain.TryIsPathable(point, out var pathable) && pathable;
     }
 
     private static SC2APIProtocol.Action MoveCommand(ulong tag, int abilityId, MapPoint target) =>

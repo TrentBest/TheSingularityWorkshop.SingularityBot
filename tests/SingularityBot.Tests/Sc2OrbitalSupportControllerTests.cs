@@ -8,6 +8,36 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OrbitalSupportControllerTests
 {
     [Fact]
+    public void ReportsMorphReadyOnlyWhenTechAndMineralsAreAvailableAndScvQueueIsClear()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var ready = Snapshot(150,
+            Fact(1, "CommandCenter"),
+            Fact(2, "SupplyDepot"),
+            Fact(3, "Barracks"));
+
+        Assert.True(controller.IsUpgradeReadyToSubmit(ready, data, permittedCommandCenterTag: 1));
+        Assert.False(controller.IsUpgradeReadyToSubmit(
+            Snapshot(149, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks")),
+            data,
+            permittedCommandCenterTag: 1));
+        Assert.False(controller.IsUpgradeReadyToSubmit(
+            Snapshot(150, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot")),
+            data,
+            permittedCommandCenterTag: 1));
+
+        var training = Fact(1, "CommandCenter") with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(524, null, null, null) }
+        };
+        Assert.False(controller.IsUpgradeReadyToSubmit(
+            Snapshot(150, training, Fact(2, "SupplyDepot"), Fact(3, "Barracks")),
+            data,
+            permittedCommandCenterTag: 1));
+    }
+
+    [Fact]
     public void ReservesFirstCommandCenterWhileAnExistingScvOrderDrains()
     {
         var controller = new Sc2OrbitalSupportController();

@@ -72,6 +72,13 @@ public static class Sc2ActionTranslator
                         !worker.HasCargo || townHalls.Length == 0)
                         continue;
 
+                    var currentTargetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
+                    if (currentTargetTag is ulong currentTarget &&
+                        (townHalls.Any(hall => hall.Tag == currentTarget) ||
+                         visibleSelf.TryGetValue(currentTarget, out var currentTargetUnit) &&
+                         currentTargetUnit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase)))
+                        break;
+
                     var townHall = townHalls
                         .OrderBy(field => DistanceSquared(worker, field))
                         .ThenBy(field => field.Tag)

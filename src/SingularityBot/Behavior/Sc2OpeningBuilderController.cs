@@ -41,6 +41,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private bool _placementQueryPending;
     private MapPoint? _placement;
     private uint _moveRequestGameLoop;
+    private uint _firstMoveRequestGameLoop;
     private MapPoint? _moveTarget;
     private int _placementQueryAttempts;
     private uint _buildRequestGameLoop;
@@ -69,7 +70,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public bool IsMoveSubmitted => MovementState is MoveSubmitted or Moving;
     public bool IsMoveRetryReady => _moveRetryReady;
     public uint CurrentMovementGameLoop => _currentGameLoop;
-    public uint MoveRequestGameLoop => _moveRequestGameLoop;
+    public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
 
     private static void EnsureMovementDefinition(string processingGroup)
@@ -303,6 +304,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 return null;
 
             _builderTag = selected.Worker.Tag;
+            _firstMoveRequestGameLoop = 0;
             _builderReleasedOnCompletion = false;
             assignments.Reserve(_builderTag.Value);
             _placementQueryPending = true;
@@ -418,6 +420,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             }
 
             _moveTarget = movementTarget;
+            if (_firstMoveRequestGameLoop == 0)
+                _firstMoveRequestGameLoop = observation.GameLoop;
             _moveRequestGameLoop = observation.GameLoop;
             _moveSubmissionRequested = true;
             UpdateMovementFsm();

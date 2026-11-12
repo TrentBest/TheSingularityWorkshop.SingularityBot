@@ -103,9 +103,17 @@ public sealed class Sc2OrbitalSupportController
         // town halls must not steal the one-time opening upgrade, and their
         // existence must not make the starting base permanently ineligible.
         var firstBaseTownHall = townHalls.FirstOrDefault();
+        // A Command Center's persistent worker-rally order is not a production
+        // queue and must not block its Orbital morph. Only an observed SCV-train
+        // order makes the town hall busy for this transition. If SCV ability data
+        // is unavailable, retain the conservative HasOrders guard.
+        var hasScvTrainingOrder = gameData.ScvTrainAbilityId is > 0
+            ? firstBaseTownHall?.Orders.Any(order => order.AbilityId == gameData.ScvTrainAbilityId.Value) == true
+            : firstBaseTownHall?.HasOrders == true;
+
         if (firstBaseTownHall is not null && IsKind(firstBaseTownHall, "CommandCenter") &&
             orbitalTechReady && gameData.OrbitalUpgradeAbilityId is > 0 &&
-            gameData.OrbitalUpgradeMineralCost > 0 && !firstBaseTownHall.HasOrders &&
+            gameData.OrbitalUpgradeMineralCost > 0 && !hasScvTrainingOrder &&
             observation.Minerals >= gameData.OrbitalUpgradeMineralCost + reservedMinerals)
         {
             return Submit(firstBaseTownHall.Tag, gameData.OrbitalUpgradeAbilityId.Value,

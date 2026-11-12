@@ -67,6 +67,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public bool IsPlacementQueryPending => _placementQueryPending;
     public bool IsMoveSubmitted => MovementState is MoveSubmitted or Moving;
     public bool IsMoveRetryReady => _currentGameLoop > _moveRequestGameLoop + 22;
+    public uint CurrentMovementGameLoop => _currentGameLoop;
+    public uint MoveRequestGameLoop => _moveRequestGameLoop;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
 
     private static void EnsureMovementDefinition(string processingGroup)

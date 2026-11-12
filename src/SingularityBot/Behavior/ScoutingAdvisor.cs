@@ -62,13 +62,14 @@ public sealed class ScoutingAdvisor
                 .OrderBy(point => DistanceSquared(unit.PositionX, unit.PositionY, point.X, point.Y))
                 .ThenBy(point => point.X)
                 .ThenBy(point => point.Y)
+                .Select(point => (MapPoint?)point)
                 .FirstOrDefault();
 
-            if (target == default)
+            if (target is not MapPoint objective)
                 continue;
 
-            _assignments[unit.Tag] = target;
-            reserved.Add(PointKey(target));
+            _assignments[unit.Tag] = objective;
+            reserved.Add(PointKey(objective));
         }
 
         return new Dictionary<ulong, MapPoint>(_assignments);

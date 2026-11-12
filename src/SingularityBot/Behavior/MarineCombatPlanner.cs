@@ -82,7 +82,8 @@ public static class MarineCombatPlanner
     public static IReadOnlyList<MarineTacticalDecision> Plan(
         NormalizedObservation observation,
         IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType,
-        IReadOnlySet<ulong>? destructibleNeutralTags = null,\n        IReadOnlySet<ulong>? excludedUnitTags = null)
+        IReadOnlySet<ulong>? destructibleNeutralTags = null,
+        IReadOnlySet<ulong>? excludedUnitTags = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(weaponsByUnitType);
@@ -92,7 +93,8 @@ public static class MarineCombatPlanner
                            !observation.DeadUnitTags.Contains(unit.Tag))
             .ToArray();
         var marines = live.Where(unit => unit.Alliance == UnitAlliance.Self &&
-            unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase)).ToArray();
+            unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+            excludedUnitTags?.Contains(unit.Tag) != true).ToArray();
         var enemyTargets = live.Where(unit => unit.Alliance == UnitAlliance.Enemy).ToArray();
         // Neutral blockers are opportunistic only: a visible enemy always wins
         // over a rock or debris target, so clearing terrain cannot derail combat.

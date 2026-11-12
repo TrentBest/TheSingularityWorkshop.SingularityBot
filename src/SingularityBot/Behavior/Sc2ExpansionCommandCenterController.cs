@@ -23,9 +23,12 @@ public sealed class Sc2ExpansionCommandCenterController
     private PendingAction _pending;
     private BuildJobContext _job;
     private readonly HashSet<ulong> _preexistingCommandCenterTags = new();
+    private readonly List<MapPoint> _completedExpansionSites = new();
+    private uint _lastNoSiteGameLoop;
 
     public ulong? BuilderTag => _builderTag;
-    public MapPoint? ExpansionLocation => _site;
+    public MapPoint? ExpansionLocation => _site ?? _completedExpansionSites.LastOrDefault();
+    public IReadOnlyList<MapPoint> CompletedExpansionSites => _completedExpansionSites.ToArray();
     public bool IsPlacementQueryPending => _queryPending;
     public bool IsStarted { get; private set; }
     public bool IsComplete { get; private set; }
@@ -44,7 +47,10 @@ public sealed class Sc2ExpansionCommandCenterController
         ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(constructionCrewTags);
 
-        if (IsComplete || map is null || gameData.CommandCenterBuildAbilityId is not > 0 ||
+        if (IsComplete)
+            ResetForNextCycle();
+
+        if (map is null || gameData.CommandCenterBuildAbilityId is not > 0 ||
             gameData.CommandCenterMineralCost == 0 || gameData.MoveAbilityId is not > 0)
             return null;
 
@@ -69,6 +75,7 @@ public sealed class Sc2ExpansionCommandCenterController
                 if (structure.Unit.BuildProgress >= 1f)
                 {
                     IsComplete = true;
+                    _completedExpansionSites.Add(_site.Value);
                     if (_builderTag is ulong finishedBuilder)
                         assignments.Unreserve(finishedBuilder);
                     Console.WriteLine($"[Expansion] Command Center {structure.Unit.Tag} completed at preserved expansion site ({_site.Value.X:F1},{_site.Value.Y:F1}).");
@@ -94,7 +101,7 @@ public sealed class Sc2ExpansionCommandCenterController
             IsStarted = false;
         }
 
-        if (IsStarted || commandCenters.Length >= 2)
+        if (IsStarted)
             return null;
 
         if (_builderTag is null)
@@ -103,10 +110,13 @@ public sealed class Sc2ExpansionCommandCenterController
                 return null;
             _preexistingCommandCenterTags.Clear();
             foreach (var existing in commandCenters) _preexistingCommandCenterTags.Add(existing.Tag);
+            if (observation.GameLoop < _lastNoSiteGameLoop + 22)
+                return null;
             _candidates = ExpansionSitePlanner.FindCommandCenterCandidates(observation, map);
             if (_candidates.Count == 0)
             {
-                Console.WriteLine("[Expansion] No unoccupied friendly-side mineral expansion could be derived; Command Center construction remains safely disabled.");
+                _lastNoSiteGameLoop = observation.GameLoop;
+                Console.WriteLine("[Expansion] No unoccupied friendly-side mineral expansion could be derived; Command Center production will retry after a short poll interval.");
                 return null;
             }
 
@@ -171,6 +181,23 @@ public sealed class Sc2ExpansionCommandCenterController
         _job ??= buildJobs?.Create("CommandCenter", observation.GameLoop, workerTag: worker.Tag);
         Console.WriteLine($"[Expansion] Starting Command Center: SCV={worker.Tag}, minerals={observation.Minerals}, site=({_site.Value.X:F1},{_site.Value.Y:F1}).");
         return PositionCommand(worker.Tag, checked((int)gameData.CommandCenterBuildAbilityId.Value), _site.Value);
+    }
+
+    private void ResetForNextCycle()
+    {
+        _builderTag = null;
+        _candidates = Array.Empty<MapPoint>();
+        _site = null;
+        _queryPending = false;
+        _moveSubmitted = false;
+        _moveLoop = 0;
+        _buildSubmitted = false;
+        _buildLoop = 0;
+        _pending = PendingAction.None;
+        _job = null;
+        _preexistingCommandCenterTags.Clear();
+        IsStarted = false;
+        IsComplete = false;
     }
 
     public RequestQuery TakePlacementQuery(Sc2GameDataCatalog gameData)

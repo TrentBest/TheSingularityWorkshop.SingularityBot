@@ -53,46 +53,6 @@ public sealed class Sc2OrbitalSupportController
         return firstBaseTownHall.Tag;
     }
 
-    /// <summary>
-    /// Indicates that the starting Command Center can accept its Orbital morph
-    /// this frame. The opening uses this to prevent a new SCV order from being
-    /// submitted to the same producer in the same action batch.
-    /// </summary>
-    public bool IsUpgradeReadyToSubmit(
-        NormalizedObservation observation,
-        Sc2GameDataCatalog gameData,
-        ulong? permittedCommandCenterTag = null)
-    {
-        ArgumentNullException.ThrowIfNull(observation);
-        ArgumentNullException.ThrowIfNull(gameData);
-
-        if (permittedCommandCenterTag is not ulong permittedTag ||
-            gameData.OrbitalUpgradeAbilityId is not > 0 ||
-            gameData.OrbitalUpgradeMineralCost == 0 ||
-            observation.Minerals < gameData.OrbitalUpgradeMineralCost)
-            return false;
-
-        var commandCenter = observation.Units.FirstOrDefault(unit =>
-            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-            !observation.DeadUnitTags.Contains(unit.Tag) &&
-            unit.Tag == permittedTag &&
-            IsKind(unit, "CommandCenter"));
-        if (commandCenter is null)
-            return false;
-
-        var orbitalTechReady =
-            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && IsSupplyDepot(unit) && unit.BuildProgress >= 1f) &&
-            observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
-        if (!orbitalTechReady)
-            return false;
-
-        return gameData.ScvTrainAbilityId is > 0
-            ? !commandCenter.Orders.Any(order => order.AbilityId == gameData.ScvTrainAbilityId.Value)
-            : !commandCenter.HasOrders;
-    }
-
     public SC2APIProtocol.Action TryCreateAction(
         NormalizedObservation observation,
         Sc2GameDataCatalog gameData,

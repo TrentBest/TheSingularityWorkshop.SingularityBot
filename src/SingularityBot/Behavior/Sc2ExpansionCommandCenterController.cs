@@ -41,7 +41,9 @@ public sealed class Sc2ExpansionCommandCenterController
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
         BuildJobRuntime buildJobs = null,
-        ulong? preferredBuilderTag = null)
+        ulong? preferredBuilderTag = null,
+        MapPoint? excludedConstructionAreaCenter = null,
+        float excludedConstructionAreaRadius = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -113,7 +115,8 @@ public sealed class Sc2ExpansionCommandCenterController
             foreach (var existing in commandCenters) _preexistingCommandCenterTags.Add(existing.Tag);
             if (observation.GameLoop < _lastNoSiteGameLoop + 22)
                 return null;
-            _candidates = ExpansionSitePlanner.FindCommandCenterCandidates(observation, map);
+            _candidates = ExpansionSitePlanner.FindCommandCenterCandidates(
+                observation, map, excludedConstructionAreaCenter, excludedConstructionAreaRadius);
             if (_candidates.Count == 0)
             {
                 _lastNoSiteGameLoop = observation.GameLoop;

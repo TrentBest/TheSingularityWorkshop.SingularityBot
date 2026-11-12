@@ -1,6 +1,7 @@
 using SC2APIProtocol;
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
+using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
 
@@ -9,27 +10,37 @@ namespace SingularityBot.Behavior;
 /// cargo-bearing worker completes its return to the Command Center before being
 /// dispatched, preserving the mineral income that funds the opening.
 /// </summary>
-public sealed class Sc2OpeningBuilderController
+public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 {
+    public const string MovementFsmName = "SingularityBot.OpeningBuilderMovement";
+    public const string MovementProcessingGroup = "SingularityBot.OpeningBuilderMovement";
+    private const string MovementIdle = "Idle";
+    private const string MoveSubmitted = "MoveSubmitted";
+    private const string Moving = "Moving";
+    private const string Arrived = "Arrived";
 
-    private enum PendingAction
-    {
-        None,
-        Move,
-        Build
-    }
+    private readonly FSMHandle _movementHandle;
+    private bool _moveSubmissionRequested;
+    private bool _moveAccepted;
+    private bool _moveRejected;
+    private bool _builderLost;
+    private bool _moveTargetChanged;
+    private uint _currentGameLoop;
+    private float _movementDistanceSquared;
+    private bool _hasMovementTarget;
+
+    public string Name { get; set; } = "Opening Supply Depot builder";
+    public bool IsValid { get; set; } = true;
+    public string MovementState => _movementHandle.CurrentState;
 
     private ulong? _builderTag;
     private IReadOnlyList<MapPoint> _candidatePoints = Array.Empty<MapPoint>();
     private bool _placementQueryPending;
     private MapPoint? _placement;
-    private bool _moveSubmitted;
-    private bool _dispatched;
     private uint _moveRequestGameLoop;
     private MapPoint? _moveTarget;
     private int _placementQueryAttempts;
     private uint _buildRequestGameLoop;
-    private PendingAction _pendingAction;
     private readonly BuildJobRuntime _ownedBuildJobs = new();
     private BuildJobContext _buildJob;
     private HashSet<ulong> _preexistingDepotTags;
@@ -37,18 +48,97 @@ public sealed class Sc2OpeningBuilderController
     private bool _builderReleasedOnCompletion;
     private uint? _lastObservedMinerals;
 
-    public Sc2OpeningBuilderController() { }
+    public Sc2OpeningBuilderController()
+    {
+        EnsureMovementDefinition();
+        _movementHandle = FSM_API.Create.CreateInstance(MovementFsmName, this, MovementProcessingGroup);
+    }
 
     public ulong? BuilderTag => _builderTag;
     public bool IsCompleted => _buildJob?.IsCompleted == true;
     public string BuildJobState => _buildJob?.CurrentState ?? "NoBuildJob";
     public string BuildJobFailureReason => _buildJob?.FailureReason ?? string.Empty;
-    public bool IsDispatched => _dispatched;
+    public bool IsDispatched => MovementState is Moving or Arrived;
     public MapPoint? Placement => _placement;
     public int CandidateCount => _candidatePoints.Count;
     public bool IsPlacementQueryPending => _placementQueryPending;
-    public bool IsMoveSubmitted => _moveSubmitted;
+    public bool IsMoveSubmitted => MovementState is MoveSubmitted or Moving;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
+
+    private static void EnsureMovementDefinition()
+    {
+        if (FSM_API.Interaction.Exists(MovementFsmName, MovementProcessingGroup))
+            return;
+
+        FSM_API.Create.CreateFiniteStateMachine(
+                MovementFsmName,
+                processRate: -1,
+                processingGroup: MovementProcessingGroup)
+            .State(MovementIdle, null, null, null)
+            .State(MoveSubmitted, null, null, null)
+            .State(Moving, null, null, null)
+            .State(Arrived, null, null, null)
+            .WithInitialState(MovementIdle)
+            .Transition(MovementIdle, MoveSubmitted, HasMoveSubmission)
+            .Transition(MovementIdle, Arrived, HasReachedPlacement)
+            .Transition(MoveSubmitted, Moving, WasMoveAccepted)
+            .Transition(MoveSubmitted, MovementIdle, WasMoveRejected)
+            .Transition(MoveSubmitted, Arrived, HasReachedPlacement)
+            .Transition(MoveSubmitted, MovementIdle, WasBuilderLost)
+            .Transition(MoveSubmitted, MovementIdle, WasMoveTargetChanged)
+            .Transition(Moving, Arrived, HasReachedPlacement)
+            .Transition(Moving, MovementIdle, HasMoveRetryElapsed)
+            .Transition(Moving, MovementIdle, WasBuilderLost)
+            .Transition(Moving, MovementIdle, WasMoveTargetChanged)
+            .Transition(Arrived, MovementIdle, HasLeftPlacement)
+            .Transition(Arrived, MovementIdle, WasBuilderLost)
+            .Transition(Arrived, MovementIdle, WasMoveTargetChanged)
+            .BuildDefinition();
+    }
+
+    private static bool HasMoveSubmission(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder && builder._moveSubmissionRequested;
+
+    private static bool WasMoveAccepted(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder && builder._moveAccepted;
+
+    private static bool WasMoveRejected(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder && builder._moveRejected;
+
+    private static bool WasBuilderLost(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder && builder._builderLost;
+
+    private static bool WasMoveTargetChanged(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder && builder._moveTargetChanged;
+
+    private static bool HasReachedPlacement(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder &&
+        builder._hasMovementTarget && builder._movementDistanceSquared <= 2.25f;
+
+    private static bool HasLeftPlacement(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder &&
+        builder._hasMovementTarget && builder._movementDistanceSquared > 2.25f;
+
+    private static bool HasMoveRetryElapsed(IStateContext context) =>
+        context is Sc2OpeningBuilderController builder &&
+        builder._currentGameLoop > builder._moveRequestGameLoop + 22;
+
+    private void UpdateMovementFsm()
+    {
+        FSM_API.Interaction.Update(MovementProcessingGroup);
+        _moveSubmissionRequested = false;
+        _moveAccepted = false;
+        _moveRejected = false;
+        _builderLost = false;
+        _moveTargetChanged = false;
+    }
+
+    public void Dispose()
+    {
+        IsValid = false;
+        FSM_API.Interaction.DestroyInstance(_movementHandle);
+        _ownedBuildJobs.Clear();
+    }
 
     /// <summary>
     /// Releases the opening Depot worker after the first Barracks builder has
@@ -98,6 +188,7 @@ public sealed class Sc2OpeningBuilderController
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
 
+        _currentGameLoop = observation.GameLoop;
         var previousMineralBank = _lastObservedMinerals;
         _lastObservedMinerals = observation.Minerals;
 
@@ -142,11 +233,10 @@ public sealed class Sc2OpeningBuilderController
             _builderTag = null;
             _placement = null;
             _candidatePoints = Array.Empty<MapPoint>();
-            _placementQueryPending = false;
-            _moveSubmitted = false;
+            _builderLost = true;
+            UpdateMovementFsm();
             _moveTarget = null;
-            _dispatched = false;
-            _pendingAction = PendingAction.None;
+            _hasMovementTarget = false;
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
@@ -253,7 +343,11 @@ public sealed class Sc2OpeningBuilderController
         if (_moveTarget is null ||
             DistanceSquared(_moveTarget.Value.X, _moveTarget.Value.Y, movementTarget.X, movementTarget.Y) > 0.01f)
         {
-            _moveSubmitted = false;
+            if (_moveTarget is not null)
+            {
+                _moveTargetChanged = true;
+                UpdateMovementFsm();
+            }
             _moveTarget = movementTarget;
         }
 
@@ -291,21 +385,25 @@ public sealed class Sc2OpeningBuilderController
 
         var distanceSquared = DistanceSquared(
             builder.PositionX, builder.PositionY, movementTarget.X, movementTarget.Y);
+        _movementDistanceSquared = distanceSquared;
+        _hasMovementTarget = true;
+        var stateBeforeMovementUpdate = MovementState;
+        UpdateMovementFsm();
 
         if (distanceSquared > 2.25f)
         {
             // An accepted Move is not proof that the SCV reached the site.
             // Retry after a bounded travel window so pathing interruptions cannot stall the opening.
-            if (_moveSubmitted && observation.GameLoop <= _moveRequestGameLoop + 22)
+            if (IsMoveSubmitted)
                 return null;
 
-            if (_moveSubmitted)
+            if (stateBeforeMovementUpdate == Moving)
                 Console.WriteLine($"[Opening] Builder SCV {_builderTag} has not reached the Depot site; retrying Move (distance²={distanceSquared:F2}).");
 
-            _moveSubmitted = true;
             _moveTarget = movementTarget;
             _moveRequestGameLoop = observation.GameLoop;
-            _pendingAction = PendingAction.Move;
+            _moveSubmissionRequested = true;
+            UpdateMovementFsm();
             return CreatePositionCommand(
                 _builderTag.Value,
                 checked((int)gameData.MoveAbilityId.Value),
@@ -334,7 +432,6 @@ public sealed class Sc2OpeningBuilderController
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)))
                 .Select(unit => unit.Tag));
-        _pendingAction = PendingAction.Build;
         return CreatePositionCommand(
             _builderTag.Value,
             checked((int)gameData.SupplyDepotBuildAbilityId.Value),
@@ -394,28 +491,22 @@ public sealed class Sc2OpeningBuilderController
 
     public void OnActionResult(ActionResult? result, BuildJobRuntime buildJobs = null)
     {
-        if (_pendingAction == PendingAction.None)
-            return;
-
-        if (_pendingAction == PendingAction.Move && result == ActionResult.Success)
-            _dispatched = true;
-
-        if (result is null || result != ActionResult.Success)
+        if (MovementState == MoveSubmitted)
         {
-            if (_pendingAction == PendingAction.Move)
-            {
-                _moveSubmitted = false;
-                _dispatched = false;
-            }
-            else if (_pendingAction == PendingAction.Build)
-            {
-                if (_buildJob is not null && !_buildJob.IsCompleted && !_buildJob.IsFailed)
-                    _buildJob.Fail("SC2 rejected the opening Supply Depot construction command.", _buildJob.LastObservedGameLoop);
-                _buildJob = null;
-            }
+            if (result == ActionResult.Success)
+                _moveAccepted = true;
+            else
+                _moveRejected = true;
+            UpdateMovementFsm();
+            return;
         }
 
-        _pendingAction = PendingAction.None;
+        if (IsBuildSubmitted && (result is null || result != ActionResult.Success))
+        {
+            if (_buildJob is not null && !_buildJob.IsCompleted && !_buildJob.IsFailed)
+                _buildJob.Fail("SC2 rejected the opening Supply Depot construction command.", _buildJob.LastObservedGameLoop);
+            _buildJob = null;
+        }
     }
 
     private static bool IsGatheringMinerals(

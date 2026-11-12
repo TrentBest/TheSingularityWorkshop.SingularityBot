@@ -58,6 +58,7 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y)),
             map, gameData, assignments);
         Assert.NotNull(trainMarine);
+        Assert.False(controller.MarineTrainingOrderObserved);
         Assert.Equal(560, trainMarine.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(200UL, trainMarine.ActionRaw.UnitCommand.UnitTags[0]);
         controller.OnActionResult(ActionResult.Success);
@@ -70,6 +71,7 @@ public sealed class Sc2OpeningMarineControllerTests
         };
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
             Fact(10, "SCV", site.X, site.Y), trainingBarracks), map, gameData, assignments));
+        Assert.True(controller.MarineTrainingOrderObserved);
 
         var observedMarine = controller.TryCreateAction(Snapshot(0, 13, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(200, "Barracks", site.X, site.Y),

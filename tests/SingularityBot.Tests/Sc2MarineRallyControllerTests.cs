@@ -215,6 +215,27 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.Equal(6, targets.Distinct().Count());
     }
 
+    [Fact]
+    public void PatrolPlannerCoversFriendlySectorsBeyondTheImmediateSpawnNeighborhood()
+    {
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(10, 10), new MapPoint(90, 90));
+
+        var waypoints = Sc2MarineRallyController.GetFriendlyPatrolWaypoints(map);
+
+        Assert.True(waypoints.Count > 20);
+        Assert.Equal(waypoints.Count, waypoints.Distinct().Count());
+        Assert.All(waypoints, point =>
+        {
+            Assert.True(map.Bounds.Contains(point));
+            Assert.Equal(MapSide.Friendly, map.Side.Assess(point));
+            Assert.True(point.DistanceSquaredTo(map.Side.FriendlyStart) >= 100f);
+        });
+        var coveredSectors = waypoints.Select(point => map.GetSector(point).Id).Distinct().ToArray();
+        Assert.True(coveredSectors.Length > 3,
+            "The security screen must extend beyond the spawn sector and its immediate neighbors.");
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

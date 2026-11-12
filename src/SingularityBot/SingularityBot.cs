@@ -394,6 +394,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         RequestQuery sprayQuery = null;
         var allowWorkerActions = true;
         var reservedInfrastructureMinerals = 0u;
+        uint reservedProductionMinerals = 0;
         // Opening production and mineral routing are independent commands: the
         // first SCV request must not suppress the starting workers' first-frame spread.
         var allowWorkerBehaviorActions = true;
@@ -456,7 +457,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var expansionCommandCenterPending = orbitalMorphingObserved && _secondBarracks.IsComplete &&
                 !_expansionCommandCenter.IsStarted && friendlyTownHallCount < 2;
 
-            var reservedProductionMinerals = _economyAdvisor.GetReservedMinerals(
+            reservedProductionMinerals = _economyAdvisor.GetReservedMinerals(
                 new EconomyAdvisorFrame(
                     expansionCommandCenterPending,
                     _secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction,

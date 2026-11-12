@@ -124,9 +124,17 @@ public sealed class Sc2OpeningBuilderControllerTests
 
         // A later observation confirms the deposit (cargo is gone). Only now
         // may the reserved builder leave the mineral line for the Depot site.
+        // The worker FSM may already have queued the next mineral gather by
+        // the time the empty-cargo observation arrives. The completed deposit
+        // takes precedence; otherwise the reserved builder would mine forever.
+        var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
+        var nextGatherOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
         var dispatch = controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(10, "SCV", 5, 5),
             Fact(11, "SCV", 9, 9),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral },
+            Fact(10, "SCV", 5, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 

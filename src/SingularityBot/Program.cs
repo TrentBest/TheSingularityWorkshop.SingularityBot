@@ -1,5 +1,6 @@
 using SC2API_CSharp;
 using SC2APIProtocol;
+using System.Globalization;
 
 namespace SingularityBot;
 
@@ -14,7 +15,10 @@ public static class Program
     {
         var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
+        var designatedAreaArgument = args.FirstOrDefault(argument =>
+            argument.StartsWith("--cc-area=", StringComparison.Ordinal));
         var connectionArgs = args.Where(argument =>
+            !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal) &&
             !string.Equals(argument, "--diagnostics", StringComparison.Ordinal) &&
             !string.Equals(argument, "--no-diagnostics", StringComparison.Ordinal)).ToArray();
@@ -27,6 +31,21 @@ public static class Program
         var bot = new SingularityBot(
             passiveBaseline: passiveBaseline,
             writeDiagnostics: localRun && diagnostics);
+        if (designatedAreaArgument is not null)
+        {
+            var coordinates = designatedAreaArgument["--cc-area=".Length..]
+                .Split(',', StringSplitOptions.TrimEntries);
+            if (coordinates.Length != 3 ||
+                !float.TryParse(coordinates[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var centerX) ||
+                !float.TryParse(coordinates[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var centerY) ||
+                !float.TryParse(coordinates[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var radius) ||
+                !float.IsFinite(centerX) || !float.IsFinite(centerY) ||
+                !float.IsFinite(radius) || radius <= 0)
+                throw new ArgumentException("--cc-area must be supplied as --cc-area=centerX,centerY,radius using finite map coordinates and a positive radius.");
+
+            bot.ConfigureDesignatedCommandCenterConstructionArea(centerX, centerY, radius);
+        }
+
         var connection = new GameConnection();
         if (localRun)
             connection.RunSinglePlayer(bot, MapName, BotRace, OpponentRace, OpponentDifficulty).GetAwaiter().GetResult();

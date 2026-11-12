@@ -13,6 +13,7 @@ public sealed class ScoutingAdvisor
 {
     private const float ArrivalRadius = 4f;
     private readonly Dictionary<ulong, MapPoint> _assignments = new();
+    private readonly HashSet<string> _visitedObjectives = new(StringComparer.Ordinal);
 
     public IReadOnlyDictionary<ulong, MapPoint> Assignments => _assignments;
 
@@ -44,10 +45,15 @@ public sealed class ScoutingAdvisor
             if (!_assignments.TryGetValue(unit.Tag, out var target))
                 continue;
             if (DistanceSquared(unit.PositionX, unit.PositionY, target.X, target.Y) <= ArrivalRadius * ArrivalRadius)
+            {
+                _visitedObjectives.Add(PointKey(target));
                 _assignments.Remove(unit.Tag);
+            }
         }
 
-        var objectives = BuildObjectives(observation, map);
+        var objectives = BuildObjectives(observation, map)
+            .Where(point => !_visitedObjectives.Contains(PointKey(point)))
+            .ToArray();
         var reserved = _assignments.Values
             .Select(PointKey)
             .ToHashSet(StringComparer.Ordinal);

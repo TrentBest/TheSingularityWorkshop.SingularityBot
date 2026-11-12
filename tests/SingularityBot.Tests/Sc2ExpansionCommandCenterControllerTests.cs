@@ -26,6 +26,12 @@ public sealed class Sc2ExpansionCommandCenterControllerTests
         Assert.All(candidates, point => Assert.True(map.Bounds.Contains(point)));
         Assert.True(candidates[0].DistanceTo(new MapPoint(35.5f, 19f)) < 12f);
         Assert.Equal(MapSide.Friendly, map.Side.Assess(candidates[0]));
+
+        var excludingFirstSite = ExpansionSitePlanner.FindCommandCenterCandidates(
+            observation, map, new MapPoint(35.5f, 19f), 8f);
+        Assert.NotEmpty(excludingFirstSite);
+        Assert.All(excludingFirstSite,
+            point => Assert.True(point.DistanceSquaredTo(new MapPoint(35.5f, 19f)) > 64f));
     }
 
     [Fact]

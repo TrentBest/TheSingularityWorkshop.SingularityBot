@@ -165,39 +165,66 @@ public static class UnitBehaviorCatalog
             .BuildDefinition();
     }
 
+    private static bool CanRepairAssignedTarget(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.RepairTargetTag is not null && unit.IsRepairAssignmentSafe;
+
+    private static bool ShouldMoveTowardsTarget(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.MoveTowardsTargetTag is not null;
+
+    private static bool ShouldMoveAwayFromTarget(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.MoveAwayFromTargetTag is not null;
+
+    private static bool ShouldFollowTarget(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.FollowTargetTag is not null;
+
+    private static bool ShouldPatrolRoute(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.HasPatrolRoute;
+
+    private static bool ShouldFlankLeft(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.FlankTargetTag is not null && unit.FlankLeftRequested;
+
+    private static bool ShouldFlankRight(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.FlankTargetTag is not null && unit.FlankRightRequested;
+
+    private static bool ShouldAttackTarget(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.AttackTargetTag is not null;
+
+    private static bool ShouldScoutSector(UnitBehaviorContext unit) =>
+        unit.IsCurrentlyVisible && unit.GoalRole == GoalActionRole.Scout && unit.AssignedSector.HasValue;
+
     private static void RegisterRepair()
     {
         RegisterToggleCapability(RepairFsm, RepairProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.RepairTargetTag is not null && unit.IsRepairAssignmentSafe,
+            CanRepairAssignedTarget,
             BehaviorCommand.RepairAssignedTarget);
     }
 
     private static void RegisterMovementCapabilities()
     {
         RegisterToggleCapability(MoveTowardsFsm, LowDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.MoveTowardsTargetTag is not null,
+            ShouldMoveTowardsTarget,
             BehaviorCommand.MoveTowardsTarget);
         RegisterToggleCapability(MoveAwayFsm, LowDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.MoveAwayFromTargetTag is not null,
+            ShouldMoveAwayFromTarget,
             BehaviorCommand.MoveAwayFromTarget);
         RegisterToggleCapability(FollowFsm, LowDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.FollowTargetTag is not null,
+            ShouldFollowTarget,
             BehaviorCommand.FollowTarget);
         RegisterToggleCapability(PatrolFsm, LowDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.HasPatrolRoute,
+            ShouldPatrolRoute,
             BehaviorCommand.PatrolRoute);
         RegisterToggleCapability(FlankLeftFsm, LowDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.FlankTargetTag is not null && unit.FlankLeftRequested,
+            ShouldFlankLeft,
             BehaviorCommand.FlankLeftOfTarget);
         RegisterToggleCapability(FlankRightFsm, LowDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.FlankTargetTag is not null && unit.FlankRightRequested,
+            ShouldFlankRight,
             BehaviorCommand.FlankRightOfTarget);
     }
 
     private static void RegisterAttackTarget()
     {
         RegisterToggleCapability(AttackTargetFsm, HighDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.AttackTargetTag is not null,
+            ShouldAttackTarget,
             BehaviorCommand.AttackTarget);
     }
 
@@ -248,7 +275,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterScoutSector() =>
         RegisterToggleCapability(ScoutSectorFsm, LowDpsProcessingGroup,
-            unit => unit.IsCurrentlyVisible && unit.GoalRole == GoalActionRole.Scout && unit.AssignedSector.HasValue,
+            ShouldScoutSector,
             BehaviorCommand.ScoutSector);
 
     private static void RegisterStutterStep()
@@ -275,6 +302,25 @@ public static class UnitBehaviorCatalog
     private static bool IsStutterCooling(IStateContext ctx) =>
         IsStutterEnabled(ctx) && ctx is UnitBehaviorContext unit && unit.WeaponCooldownRemaining > 0;
 
+    private static bool ShouldRetreat(IStateContext context) =>
+        context is UnitBehaviorContext unit && unit.ShouldRetreat;
+
+    private static bool ShouldRegroup(IStateContext context) =>
+        context is UnitBehaviorContext unit && !unit.ShouldRetreat && unit.ShouldRegroup;
+
+    private static bool ShouldAdvance(IStateContext context) =>
+        context is UnitBehaviorContext unit && !unit.ShouldRetreat && !unit.ShouldRegroup && unit.HasObjective;
+
+    private static bool ShouldStopRetreating(IStateContext context) =>
+        context is UnitBehaviorContext unit && !unit.ShouldRetreat;
+
+    private static bool ShouldStopRegrouping(IStateContext context) =>
+        context is UnitBehaviorContext unit && !unit.ShouldRegroup && !unit.ShouldRetreat;
+
+    private static bool ShouldStopAdvancing(IStateContext context) =>
+        context is UnitBehaviorContext unit &&
+        (!unit.HasObjective || unit.ShouldRetreat || unit.ShouldRegroup);
+
     /// <summary>Tactical selection is represented by guarded FSM transitions, not an if/else chain.</summary>
     private static void RegisterCombatUnit()
     {
@@ -283,12 +329,12 @@ public static class UnitBehaviorCatalog
             .State("Retreating", ctx => Emit(ctx, BehaviorCommand.RetreatToSafety), null, null)
             .State("Regrouping", ctx => Emit(ctx, BehaviorCommand.RegroupWithArmy), null, null)
             .State("Advancing", ctx => Emit(ctx, BehaviorCommand.AdvanceToObjective), null, null)
-            .Transition("Assess", "Retreating", ctx => ctx is UnitBehaviorContext unit && unit.ShouldRetreat)
-            .Transition("Assess", "Regrouping", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat && unit.ShouldRegroup)
-            .Transition("Assess", "Advancing", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat && !unit.ShouldRegroup && unit.HasObjective)
-            .Transition("Retreating", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRetreat)
-            .Transition("Regrouping", "Assess", ctx => ctx is UnitBehaviorContext unit && !unit.ShouldRegroup && !unit.ShouldRetreat)
-            .Transition("Advancing", "Assess", ctx => ctx is UnitBehaviorContext unit && (!unit.HasObjective || unit.ShouldRetreat || unit.ShouldRegroup))
+            .Transition("Assess", "Retreating", ShouldRetreat)
+            .Transition("Assess", "Regrouping", ShouldRegroup)
+            .Transition("Assess", "Advancing", ShouldAdvance)
+            .Transition("Retreating", "Assess", ShouldStopRetreating)
+            .Transition("Regrouping", "Assess", ShouldStopRegrouping)
+            .Transition("Advancing", "Assess", ShouldStopAdvancing)
             .WithInitialState("Assess")
             .BuildDefinition();
     }

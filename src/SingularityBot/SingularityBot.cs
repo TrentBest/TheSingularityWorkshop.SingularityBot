@@ -104,6 +104,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public string OpeningScvProductionState => _openingProduction.CurrentState;
     public string OpeningDepotBuildJobState => _openingBuilder.BuildJobState;
     public string OpeningDepotBuildFailureReason => _openingBuilder.BuildJobFailureReason;
+    public string OpeningDepotMovementState => _openingBuilder.MovementState;
+    public bool OpeningDepotMoveRetryReady => _openingBuilder.IsMoveRetryReady;
     public IReadOnlyCollection<BuildingBehaviorContext> Buildings => _buildings.Buildings;
 
     public IReadOnlyDictionary<string, string> GetBuildingFsmStates(ulong buildingTag) =>

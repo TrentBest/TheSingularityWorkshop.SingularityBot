@@ -170,7 +170,8 @@ public sealed class Sc2OpeningBuilderControllerTests
         // Once loaded, the selected miner must first return its resources.
         var loadedReturn = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5, hasCargo: true, orders: miningOrder),
+            Fact(11, "SCV", 6, 5, hasCargo: true,
+                orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
             Fact(1, "CommandCenter", 10, 10),
             mineral), map, gameData, assignments, Crew(10, 11));
 
@@ -178,7 +179,7 @@ public sealed class Sc2OpeningBuilderControllerTests
 
         var depositedDispatch = controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5),
+            Fact(11, "SCV", 6, 5, orders: miningOrder),
             Fact(1, "CommandCenter", 10, 10),
             mineral), map, gameData, assignments, Crew(10, 11));
 

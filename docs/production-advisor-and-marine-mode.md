@@ -179,6 +179,52 @@ If an engagement is assessed as unwinnable, the commander initiates an orderly w
 
 Threat estimates must include visible enemy strength, range, weapon capability, health, terrain, reinforcement access and confidence in remembered contacts. The retreat state has hysteresis so small observation changes do not cause repeated advance/retreat oscillation.
 
+
+### Role-aware formation geometry
+
+A formation is defined by both shape and unit role. Position alone is insufficient: the commander must know which unit class belongs in each depth tier and preserve that role as the squad turns, splits, advances and reforms.
+
+The role-aware geometry contract assigns deterministic slots relative to the march vector:
+
+| Tier | Role | Intended placement |
+|---|---|---|
+| Forward | Vanguard | Marauders and other durable close/front-line units |
+| Main | Line | Marines delivering the primary infantry volley |
+| Rear 1 | Support | Support units protected behind the firing line |
+| Rear 2 | Artillery | Siege Tanks and other long-range artillery |
+| Rear 3 | AirCover | Air elements assigned to cover the ground force |
+
+The first implementation adds CombatFormationRole and MarineFormationPlanner.GetRoleAwareOffsets. It returns one stable slot per input role and rotates the role tiers with the travel vector. This is geometry only: it does not yet assign live unit tags to roles or issue movement orders. The next integration step is a force-composition planner that maps observed unit types to roles, preserves assignments across frames, and passes role slots into the squad movement controller.
+
+Formation changes are explicit state transitions: grid to line for a firing pass, line to wedge for an advance, column/half-step for a chokepoint, then reform. A formation rotation must preserve the unit-to-role mapping and avoid crossing paths or sending rear artillery through the front line.
+
+### Adaptive volley sizing and target allocation
+
+The fire-control planner should calculate volley size from actual weapon mechanics, not DPS alone. For each friendly weapon and enemy target type, it needs per-attack damage, number of attacks, weapon bonuses, target armor, armor upgrades, weapon upgrades, target health/shields, and relevant target attributes. The resulting effective damage per volley determines how many units should be assigned to a target to achieve the requested kill probability while controlling overkill.
+
+For example, if three Marines' effective volley damage is sufficient to remove a Zergling, allocate a three-Marine fire team rather than the whole squad. If a Roach requires a much larger volley, allocate a larger fire team or combine squads. These values must be derived from the current match's game data and observed upgrades; they must not be hard-coded from a matchup assumption. Recompute assignments when upgrades complete, target armor/health changes, new enemy types are observed, or friendly units join/leave the force.
+
+The commander allocates target groups across the two squads to prevent wraparound and preserve mutual support. A line formation is a firing geometry, not permission for individual units to chase. Units hold their slots between explicit movement, firing, or defensive orders.
+
+### Air-cover recovery and repair jobs
+
+Air units are force elements with their own health, role and recovery state. When a repairable mechanical air unit falls below 50% health, the air-cover controller should disengage it and route it to the nearest safe friendly town-hall area with an available repair path. A town hall is a rendezvous/defense anchor, not itself a repair structure: SCVs must perform the repair, and units that cannot be repaired by SCVs must use their actual recovery mechanic instead. The controller must not send an air unit through a threat corridor merely because a town hall is geometrically closer.
+
+Building damage creates a low-priority repair job. Escalation is based on current health as a fraction of maximum health:
+- Above 75%: retain the low-priority repair request without pulling workers from higher-value duties.
+- At or below 75%: Code Yellow; assign up to two eligible SCVs.
+- At or below 25%: Code Red; assign a third eligible SCV and raise the job's urgency.
+
+Repair assignments must be bounded by available SCVs, mineral availability, threat exposure and the value of the structure. They must be released when repair is complete, the building is lost, or the risk becomes unacceptable. Threshold transitions should have hysteresis so a small health fluctuation does not repeatedly add and remove repairers.
+
+### Observation-driven contingency planning
+
+Enemy sightings are evidence, not automatic movement orders. The strategic layer should maintain candidate contingencies for likely enemy paths and update their confidence as new observations arrive. A worker entering an intentionally lowered Depot ramp is a useful test case: record the first sighting, predict plausible routes, observe which route the worker actually takes, then choose a response.
+
+If the worker commits up the ramp, the commander may deliberately pull the flanking Marines away from the entrance to create an apparent opening, allow the worker to enter the kill zone, and close the trap once the target is committed. The plan must account for escape paths, friendly-fire/collision constraints, enemy reinforcements and the risk of allowing a real army through. If the worker does not take the predicted route, the squad keeps its hold order and the contingency expires or is reconsidered.
+
+This does not contradict the default hold rule. Units hold unless the commander issues a specific, bounded order. Contingencies are prepared in advance, but they become executable only when their trigger evidence is observed and their safety gates pass.
+
 ## Observability and acceptance
 
 Every production decision should explain: active build-order item, gate results, resource bank, reservations, supply forecast, candidate producers, selected producer, ability/cost, pending command identity, action result and observed completion evidence.

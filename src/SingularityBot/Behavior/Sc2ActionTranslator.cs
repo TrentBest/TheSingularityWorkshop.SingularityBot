@@ -82,6 +82,40 @@ public static class Sc2ActionTranslator
             }
         }
 
+        // A reserved construction worker has no mineral assignment, but it
+        // must still return a mineral load before it can leave the line. Retry a
+        // stale gather order until SC2 observes the return-to-town-hall order;
+        // unrelated active orders (notably Refinery returns) remain untouched.
+        if (TryGetAbilityId(smartAbilityId, out var cargoReturnSmartId))
+        {
+            foreach (var loadedWorker in visibleSelf.Values
+                         .Where(unit => IsWorker(unit.UnitKind) && unit.HasCargo)
+                         .OrderBy(unit => unit.Tag))
+            {
+                if (commanded.Contains(loadedWorker.Tag))
+                    continue;
+
+                var orderTarget = loadedWorker.Orders.FirstOrDefault()?.TargetUnitTag;
+                if (orderTarget is ulong targetTag && townHalls.Any(hall => hall.Tag == targetTag))
+                    continue;
+
+                var stillGatheringMinerals = orderTarget is ulong mineralTag &&
+                    mineralFields.ContainsKey(mineralTag);
+                if (loadedWorker.HasOrders && !stillGatheringMinerals)
+                    continue;
+
+                var townHall = townHalls
+                    .OrderBy(field => DistanceSquared(loadedWorker, field))
+                    .ThenBy(field => field.Tag)
+                    .FirstOrDefault();
+                if (townHall is null)
+                    continue;
+
+                commanded.Add(loadedWorker.Tag);
+                actions.Add(CreateUnitCommand(loadedWorker.Tag, cargoReturnSmartId, townHall.Tag));
+            }
+        }
+
         // FSM intents remain the normal command owner. Recover both sides of a
         // completed construction handoff: an idle loaded worker must first unload
         // at a town hall, while an idle empty worker resumes its mineral route.

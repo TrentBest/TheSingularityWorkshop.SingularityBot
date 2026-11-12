@@ -83,17 +83,20 @@ public sealed class Sc2SecondBarracksController
         if (RequiresCommandCenter)
             return null;
 
-        // As soon as Barracks two is observed under construction, use the
-        // released first-Barracks SCV to build the next Depot in parallel.
-        // Keep the second Barracks worker committed to its own structure and
-        // allow Barracks three to start as soon as its own builder and minerals are available.
+        // As soon as Barracks two is observed under construction, start the
+        // follow-up Depot sequence. Barracks three must wait until BOTH Depots
+        // have been observed complete; otherwise the extra production capacity
+        // can recreate the supply stall the sequence is intended to prevent.
         if (_targetBarracksCount == 2 && !_supplyDepotGateSatisfied &&
             barracks.Length >= 2 && completedCount < 2)
         {
             RequiresSupplyDepot = true;
-            Console.WriteLine("[Opening] OBSERVED: Barracks two is under construction; starting the follow-up Supply Depot in parallel before Barracks three.");
+            Console.WriteLine("[Opening] OBSERVED: Barracks two is under construction; starting the second-then-third Supply Depot sequence before Barracks three.");
             return null;
         }
+
+        if (_targetBarracksCount >= 3 && RequiresSupplyDepot)
+            return null;
 
         // The first Barracks is owned by the opening controller; this controller
         // grows the production line sequentially to the four-Barracks milestone.

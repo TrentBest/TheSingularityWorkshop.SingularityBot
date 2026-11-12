@@ -480,8 +480,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // or optional Marine queues. The third Depot is not represented by
             // the older advisor frame, so reserve its cost explicitly as soon
             // as Depot two is complete and until Depot three is observed complete.
-            var followupDepotPending = orbitalMorphingObserved &&
-                (!_supplyDepotExpansion.IsCompleted || !_thirdSupplyDepot.IsCompleted);
+            var followupDepotPending = _secondBarracks.RequiresSupplyDepot && !_thirdSupplyDepot.IsCompleted;
             if (followupDepotPending)
                 reservedProductionMinerals = Math.Max(
                     reservedProductionMinerals, _gameData.SupplyDepotMineralCost);
@@ -489,22 +488,22 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             reservedInfrastructureMinerals = reservedProductionMinerals;
             // The Orbital is the first post-Barracks mineral commitment. Do not let
             // optional Marine or follow-on infrastructure reservations starve it.
-            var fsmReadyTownHall = _buildings.Buildings
-                .Where(building => building.TownHallUpgradeState == "UpgradeReady")
-                .OrderBy(building => building.UnitTag)
-                .FirstOrDefault();
-            var orbitalReservedCommandCenter = fsmReadyTownHall?.UnitTag;
+            // Reserve the starting Command Center as soon as the observed
+            // Depot + completed-Barracks prerequisites are met. Do not depend
+            // on a separate town-hall FSM readiness label to protect the morph
+            // minerals or the SCV queue.
+            var orbitalReservedCommandCenter = _orbitalSupport.GetCommandCenterReservedForUpgrade(normalized, _gameData);
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible &&
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            orbitalMineralReservation = fsmReadyTownHall is not null &&
+            orbitalMineralReservation = orbitalReservedCommandCenter is not null &&
                 orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
-            var orbitalReservationReason = fsmReadyTownHall is null ? "town-hall-fsm-not-ready" :
+            var orbitalReservationReason = orbitalReservedCommandCenter is null ? "orbital-tech-or-starting-command-center-not-ready" :
                 orbitalAbility is not > 0 ? "orbital-ability-unavailable-or-ambiguous" :
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
@@ -653,19 +652,18 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // wave. Unlock it only after the starting Command Center's Orbital
                 // morph order is actually observed (not merely when the upgrade is
                 // affordable or requested).
-                if (orbitalMorphingObserved && !_supplyDepotExpansion.IsCompleted)
+                if (_secondBarracks.RequiresSupplyDepot && !_supplyDepotExpansion.IsCompleted)
                 {
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _openingMarine.ReleasedBuilderTag, releaseBuilderOnCompletion: true,
                         workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals);
                     _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
-                    if (_supplyDepotExpansion.IsCompleted)
-                        _secondBarracks.NotifySupplyDepotCompleted(_supplyDepotExpansion.BuilderTag);
+                    // Keep Barracks three gated until both sequential follow-up Depots are observed complete.
                     _thirdSupplyDepotActionSubmitted = false;
                     assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
                 }
-                else if (orbitalMorphingObserved && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted)
+                else if (_secondBarracks.RequiresSupplyDepot && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted)
                 {
                     // Depot two is the post-Orbital expansion Depot. Build Depot
                     // three next, reusing the released Depot-two worker when possible;
@@ -678,6 +676,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals);
                     _thirdSupplyDepotActionSubmitted = thirdDepotAction is not null;
                     thirdSupplyDepotPendingAction = thirdDepotAction;
+                    if (_thirdSupplyDepot.IsCompleted)
+                        _secondBarracks.NotifySupplyDepotCompleted(_thirdSupplyDepot.BuilderTag);
                     assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
                 }
                 else
@@ -727,37 +727,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 new[] {
                     builderAction is not null ? "builder" : null
                 }.Where(value => value is not null));
-            if (builderAction is null)
+            // The Orbital morph is an independent Command Center action. Do not
+            // suppress it because an SCV is moving/building elsewhere: doing so
+            // allowed the construction worker's repeated commands to starve the
+            // one-time 150-mineral upgrade indefinitely. The controller still
+            // verifies the observed Depot/Barracks prerequisites and SCV queue.
+            orbitalSupportAction = _orbitalSupport.TryCreateAction(
+                normalized, _gameData,
+                allowOrbitalUpgrade: startingTownHall is not null && startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase),
+                permittedCommandCenterTag: startingTownHall?.Tag,
+                reservedOrbitalTags: _buildings.ScanReservedOrbitalTags);
+            _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
+            if (orbitalSupportAction is not null)
             {
-                // Orbital readiness is governed by the controller's observed tech,
-                // Command Center, SCV-queue, and mineral guards. Marine production
-                // is deliberately independent: it is not an Orbital prerequisite.
-                var orbitalReadyTownHall = _buildings.Buildings
-                    .Where(building => building.TownHallUpgradeState == "UpgradeReady")
-                    .OrderBy(building => building.UnitTag)
-                    .FirstOrDefault();
-                orbitalSupportAction = _orbitalSupport.TryCreateAction(
-                    normalized, _gameData,
-                    allowOrbitalUpgrade: orbitalReadyTownHall is not null,
-                    permittedCommandCenterTag: orbitalReadyTownHall?.UnitTag,
-                    reservedOrbitalTags: _buildings.ScanReservedOrbitalTags);
-                _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
-                if (orbitalSupportAction is not null)
-                {
-                    var command = orbitalSupportAction.ActionRaw.UnitCommand;
-                    Console.WriteLine($"[Orbital] SUBMIT: unit={string.Join(",", command.UnitTags)}, ability={command.AbilityId}, minerals={normalized.Minerals}, reserved={reservedInfrastructureMinerals}, loop={normalized.GameLoop}.");
-                }
-            }
-            else
-            {
-                _orbitalSupportActionSubmitted = false;
-                var blockers = orbitalCoordinatorBlockers;
-                var diagnostic = $"coordinator-blocked={blockers};loop={normalized.GameLoop}";
-                if (!string.Equals(_lastOrbitalDiagnostic, diagnostic, StringComparison.Ordinal))
-                {
-                    Console.WriteLine("[Orbital] " + diagnostic + ".");
-                    _lastOrbitalDiagnostic = diagnostic;
-                }
+                var command = orbitalSupportAction.ActionRaw.UnitCommand;
+                Console.WriteLine($"[Orbital] SUBMIT: unit={string.Join(",", command.UnitTags)}, ability={command.AbilityId}, minerals={normalized.Minerals}, reserved={reservedInfrastructureMinerals}, loop={normalized.GameLoop}.");
             }
 
             // Gas infrastructure starts once the first Barracks is complete; an
@@ -814,10 +798,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 ? _openingMarine.TakePlacementQuery(_gameData)
                 : null;
             var secondBarracksPlacementQuery = _secondBarracks.TakePlacementQuery(_gameData);
-            var supplyDepotExpansionPlacementQuery = orbitalMorphingObserved && !_supplyDepotExpansion.IsCompleted
+            var supplyDepotExpansionPlacementQuery = _secondBarracks.RequiresSupplyDepot && !_supplyDepotExpansion.IsCompleted
                 ? _supplyDepotExpansion.TakePlacementQuery(_gameData)
                 : null;
-            var thirdSupplyDepotPlacementQuery = orbitalMorphingObserved && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted
+            var thirdSupplyDepotPlacementQuery = _secondBarracks.RequiresSupplyDepot && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted
                 ? _thirdSupplyDepot.TakePlacementQuery(_gameData)
                 : null;
             var expansionCommandCenterPlacementQuery = _secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete

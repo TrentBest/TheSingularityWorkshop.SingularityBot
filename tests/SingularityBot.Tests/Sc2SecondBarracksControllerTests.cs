@@ -171,7 +171,7 @@ public sealed class Sc2SecondBarracksControllerTests
     }
 
     [Fact]
-    public void StartsThirdBarracksWhileFollowupDepotIsStillPending()
+    public void HoldsThirdBarracksUntilBothFollowupDepotsAreObservedComplete()
     {
         var controller = new Sc2SecondBarracksController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -198,13 +198,26 @@ public sealed class Sc2SecondBarracksControllerTests
             map, data, assignments, crew));
         Assert.True(controller.RequiresSupplyDepot);
 
-        // A separate SCV is reserved for Barracks three while the Depot remains pending.
+        // Do not reserve another worker or begin Barracks three while either
+        // follow-up Depot is still pending.
         Assert.Null(controller.TryCreateAction(Snapshot(300,
             Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),
             Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
             map, data, assignments, crew));
         Assert.True(controller.RequiresSupplyDepot);
+        Assert.Null(controller.BuilderTag);
+        Assert.False(assignments.IsReserved(12));
+
+        // The orchestration layer calls this only after Depot two AND Depot
+        // three have both been observed complete.
+        controller.NotifySupplyDepotCompleted(12);
+        Assert.False(controller.RequiresSupplyDepot);
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(11, "SCV", 10, 10), Fact(12, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", 15, 15), Fact(201, "Barracks", 20, 20)),
+            map, data, assignments, crew));
         Assert.Equal(12UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(12));
 
@@ -224,7 +237,7 @@ public sealed class Sc2SecondBarracksControllerTests
         Assert.NotNull(build);
         Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(12UL, build.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.True(controller.RequiresSupplyDepot);
+        Assert.False(controller.RequiresSupplyDepot);
     }
 
     [Fact]

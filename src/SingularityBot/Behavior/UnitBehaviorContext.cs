@@ -94,6 +94,22 @@ public sealed class UnitBehaviorContext : IStateContext
     public int RepairDistanceManhattan { get; set; }
 
     public IReadOnlyCollection<string> Capabilities => _ownedHandles.Keys.ToArray();
+
+    /// <summary>Current FSM_API state for every capability attached to this entity.</summary>
+    public IReadOnlyDictionary<string, string> CurrentStates =>
+        _ownedHandles.ToDictionary(pair => pair.Key, pair => pair.Value.CurrentState, StringComparer.Ordinal);
+
+    public bool TryGetState(string fsmName, out string state)
+    {
+        if (_ownedHandles.TryGetValue(fsmName, out var handle))
+        {
+            state = handle.CurrentState;
+            return true;
+        }
+
+        state = null!;
+        return false;
+    }
     internal bool HasCapability(string name) => _ownedHandles.ContainsKey(name);
     internal void OwnHandle(string name, FSMHandle handle) => _ownedHandles.Add(name, handle);
 

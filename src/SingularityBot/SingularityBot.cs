@@ -353,6 +353,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // Opening production and mineral routing are independent commands: the
         // first SCV request must not suppress the starting workers' first-frame spread.
         var allowWorkerBehaviorActions = true;
+        // Compute this once per frame at the enclosing scope: the Orbital morph
+        // observation gates infrastructure below and must be visible outside
+        // the optional worker-action block.
+        var orbitalAbility = _gameData.OrbitalUpgradeAbilityId;
+        var orbitalMorphingObserved = startingTownHall is not null &&
+            (startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+             orbitalAbility is > 0 && startingTownHall.Orders.Any(order => order.AbilityId == orbitalAbility.Value));
 
         // Existing opening controllers are being migrated into FSM capabilities.
         // Until that migration is complete, their gates suppress competing actions,
@@ -431,12 +438,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
             var orbitalAbility = _gameData.OrbitalUpgradeAbilityId;
-            // SC2 may continue reporting the structure as a Command Center while
-            // the Orbital morph order is active. Treat that observed order as the
-            // unlock point; do not wait for the morph to finish.
-            var orbitalMorphingObserved = startingTownHall is not null &&
-                (startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
-                 orbitalAbility is > 0 && startingTownHall.Orders.Any(order => order.AbilityId == orbitalAbility.Value));
             var orbitalReservationReason = startingTownHall is null ? "no-live-town-hall" :
                 !startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ? "starting-town-hall-not-command-center" :
                 !orbitalDepotReady ? "supply-depot-incomplete-or-missing" :

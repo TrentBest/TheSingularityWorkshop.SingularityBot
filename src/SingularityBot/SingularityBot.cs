@@ -117,6 +117,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public bool RequestSupplyDepotPassage(ulong buildingTag, bool requested = true) =>
         _buildings.RequestDepotPassage(buildingTag, requested);
 
+    /// <summary>Queues a Scanner Sweep request on an Orbital Command at the supplied map position.</summary>
+    public bool RequestOrbitalScan(ulong orbitalTag, float targetX, float targetY) =>
+        _buildings.RequestOrbitalScan(orbitalTag, targetX, targetY);
+
     /// <summary>Defines the exclusion zone in which a landed Command Center must not morph to Orbital.</summary>
     public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius) =>
         _buildings.ConfigureDesignatedCommandCenterConstructionArea(centerX, centerY, radius);
@@ -725,7 +729,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 orbitalSupportAction = _orbitalSupport.TryCreateAction(
                     normalized, _gameData,
                     allowOrbitalUpgrade: orbitalReadyTownHall is not null,
-                    permittedCommandCenterTag: orbitalReadyTownHall?.UnitTag);
+                    permittedCommandCenterTag: orbitalReadyTownHall?.UnitTag,
+                    reservedOrbitalTags: _buildings.ScanReservedOrbitalTags);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
                 if (orbitalSupportAction is not null)
                 {
@@ -894,6 +899,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     var accessAction = CreateDepotAccessAction(buildingEvent);
                     if (accessAction is not null)
                         buildingAccessActions.Add(accessAction);
+                }
+                else if (buildingEvent.Kind == BuildingEventKind.ScanRequested)
+                {
+                    var scanAction = CreateOrbitalScanAction(buildingEvent);
+                    if (scanAction is not null && _buildings.MarkScanSubmitted(buildingEvent.BuildingTag, normalized.GameLoop))
+                        buildingAccessActions.Add(scanAction);
                 }
             }
             if (_writeDiagnostics)
@@ -1212,6 +1223,30 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     }
 
     private bool IsResearchAbility(uint abilityId) => IsResearchAbility(abilityId, _gameData);
+
+    private SC2APIProtocol.Action? CreateOrbitalScanAction(BuildingEvent buildingEvent)
+    {
+        if (buildingEvent.TargetX is not float x || buildingEvent.TargetY is not float y ||
+            SpatialMap is null || !SpatialMap.Bounds.Contains(new MapPoint(x, y)))
+            return null;
+
+        var abilityIds = _gameData.AbilitiesById.Values
+            .Where(ability => ability.LinkName.Contains("ScannerSweep", StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Distinct()
+            .ToArray();
+        if (abilityIds.Length != 1)
+            return null;
+
+        var command = new ActionRawUnitCommand
+        {
+            AbilityId = checked((int)abilityIds[0]),
+            TargetWorldSpacePos = new Point2D { X = x, Y = y },
+            QueueCommand = false
+        };
+        command.UnitTags.Add(buildingEvent.BuildingTag);
+        return new SC2APIProtocol.Action { ActionRaw = new ActionRaw { UnitCommand = command } };
+    }
 
     private SC2APIProtocol.Action? CreateDepotAccessAction(BuildingEvent buildingEvent)
     {

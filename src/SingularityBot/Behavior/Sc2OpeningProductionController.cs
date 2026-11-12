@@ -15,7 +15,8 @@ public sealed class Sc2OpeningProductionController
     public SC2APIProtocol.Action TryCreateScvTrainingAction(
         NormalizedObservation observation,
         Sc2GameDataCatalog gameData,
-        uint reservedMinerals = 0)
+        uint reservedMinerals = 0,
+        ulong? reservedCommandCenterTag = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -55,7 +56,8 @@ public sealed class Sc2OpeningProductionController
             observation.FoodCap - observation.FoodUsed < gameData.ScvFoodRequired)
             return null;
 
-        var idleCommandCenter = commandCenters.FirstOrDefault(center => !center.HasOrders);
+        var idleCommandCenter = commandCenters.FirstOrDefault(center =>
+            !center.HasOrders && center.Tag != reservedCommandCenterTag);
         if (idleCommandCenter is null)
             return null;
 

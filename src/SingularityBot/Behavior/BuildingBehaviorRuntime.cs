@@ -10,14 +10,17 @@ public enum BuildingEventKind
 {
     Operational,
     RaiseSupplyDepot,
-    LowerSupplyDepot
+    LowerSupplyDepot,
+    ScanRequested
 }
 
 public sealed record BuildingEvent(
     BuildingEventKind Kind,
     ulong BuildingTag,
     string BuildingId,
-    ulong? BuilderWorkerTag = null);
+    ulong? BuilderWorkerTag = null,
+    float? TargetX = null,
+    float? TargetY = null);
 
 /// <summary>
 /// Persistent match-local identity and observed facts for one structure.
@@ -29,6 +32,9 @@ public sealed class BuildingBehaviorContext : IStateContext
     private readonly Dictionary<string, FSMHandle> _handles = new(StringComparer.Ordinal);
     private readonly Action<BuildingEvent> _emit;
     private bool _operationalEventEmitted;
+    private bool _scanPending;
+    private uint _scanSubmittedAtGameLoop;
+    private float _scanEnergyAtSubmission;
 
     internal BuildingBehaviorContext(
         ulong tag, string unitKind, int ordinal, Action<BuildingEvent> emit)
@@ -50,6 +56,7 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool IsValid { get; set; }
     public uint LastObservedGameLoop { get; private set; }
     public float BuildProgress { get; private set; }
+    public float Energy { get; private set; }
     public bool IsVisible { get; private set; }
     public bool IsLanded { get; private set; }
     public bool IsProducing { get; private set; }
@@ -63,6 +70,12 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool IsInDesignatedCommandCenterConstructionArea { get; private set; }
     public bool IsOrbitalCommand { get; private set; }
     public bool IsPlanetaryFortress { get; private set; }
+    public bool ScanRequested { get; private set; }
+    public float ScanTargetX { get; private set; }
+    public float ScanTargetY { get; private set; }
+    public string OrbitalScanState => _handles.ContainsKey(BuildingBehaviorCatalog.OrbitalScanFsm)
+        ? CurrentState(BuildingBehaviorCatalog.OrbitalScanFsm)
+        : "NotOrbital";
     public bool HasScvTrainingOrder { get; private set; }
     public uint? OrbitalUpgradeAbilityId { get; private set; }
     public string TownHallUpgradeState => _handles.ContainsKey(BuildingBehaviorCatalog.TownHallUpgradeFsm)
@@ -98,6 +111,7 @@ public sealed class BuildingBehaviorContext : IStateContext
         LastObservedGameLoop = facts.GameLoop;
         IsVisible = facts.IsLiveVisible;
         BuildProgress = facts.BuildProgress;
+        Energy = facts.Energy;
         IsLanded = !facts.IsFlying;
         IsRaised = facts.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase);
         IsLowered = facts.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase);
@@ -109,6 +123,19 @@ public sealed class BuildingBehaviorContext : IStateContext
         IsPlanetaryFortress = facts.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase);
         OrbitalUpgradeAbilityId = orbitalUpgradeAbilityId;
         if (!facts.IsLiveVisible) return;
+
+        if (_scanPending)
+        {
+            if (Energy <= _scanEnergyAtSubmission - 50f)
+            {
+                _scanPending = false;
+                ScanRequested = false;
+            }
+            else if (facts.GameLoop > _scanSubmittedAtGameLoop + 8)
+            {
+                _scanPending = false;
+            }
+        }
 
         ObservedOrders = facts.Orders;
         HasScvTrainingOrder = scvTrainAbilityId is > 0 &&
@@ -131,6 +158,37 @@ public sealed class BuildingBehaviorContext : IStateContext
             raise ? BuildingEventKind.RaiseSupplyDepot : BuildingEventKind.LowerSupplyDepot,
             UnitTag, BuildingId));
     }
+
+    public void RequestScan(float x, float y)
+    {
+        if (!float.IsFinite(x) || !float.IsFinite(y))
+            throw new ArgumentOutOfRangeException(nameof(x), "Scan coordinates must be finite.");
+        if (!IsOrbitalCommand)
+            throw new InvalidOperationException("Only an Orbital Command can request a Scanner Sweep.");
+        ScanTargetX = x;
+        ScanTargetY = y;
+        ScanRequested = true;
+    }
+
+    internal void EmitScanRequest()
+    {
+        if (ScanRequested && !_scanPending && IsOrbitalCommand && Energy >= 50)
+            _emit(new BuildingEvent(BuildingEventKind.ScanRequested, UnitTag, BuildingId,
+                TargetX: ScanTargetX, TargetY: ScanTargetY));
+    }
+
+    internal void MarkScanSubmitted(uint gameLoop)
+    {
+        if (!ScanRequested || _scanPending) return;
+        _scanPending = true;
+        _scanSubmittedAtGameLoop = gameLoop;
+        _scanEnergyAtSubmission = Energy;
+    }
+
+    public bool CanScan => ScanRequested && !_scanPending && IsOrbitalCommand && Energy >= 50;
+    public bool IsScanPending => _scanPending;
+    public bool CanRetryScan => ScanRequested && !_scanPending && IsOrbitalCommand && Energy >= 50;
+    public bool IsScanComplete => !ScanRequested && !_scanPending;
 
     public bool CanUpgradeToOrbital =>
         UnitKind == "CommandCenter" && IsLanded && !IsOrbitalCommand && !IsPlanetaryFortress &&
@@ -245,6 +303,18 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Upgrading", "Orbital", IsOrbitalCommand)
                 .Transition("Upgrading", "UpgradeReady", UpgradeOrderNoLongerObserved)
                 .WithInitialState("WaitingForPrerequisites").BuildDefinition();
+
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.OrbitalScanFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.OrbitalScanFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+                .State("Idle", null, null, null)
+                .State("Ready", null, context => (context as BuildingBehaviorContext)?.EmitScanRequest(), null)
+                .State("AwaitingEvidence", null, null, null)
+                .Transition("Idle", "Ready", CanScan)
+                .Transition("Ready", "AwaitingEvidence", IsScanPending)
+                .Transition("AwaitingEvidence", "Idle", IsScanComplete)
+                .Transition("AwaitingEvidence", "Ready", CanRetryScan)
+                .WithInitialState("Idle").BuildDefinition();
     }
 
     private static bool IsOperational(IStateContext context) =>
@@ -273,6 +343,18 @@ public sealed class BuildingBehaviorRuntime
 
     private static bool UpgradeOrderNoLongerObserved(IStateContext context) =>
         context is BuildingBehaviorContext building && !building.IsOrbitalUpgradeOrderObserved && !building.IsOrbitalCommand;
+
+    private static bool CanScan(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.CanScan;
+
+    private static bool IsScanPending(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.IsScanPending;
+
+    private static bool IsScanComplete(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.IsScanComplete;
+
+    private static bool CanRetryScan(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.CanRetryScan;
 
     private static bool IsObservedRaised(IStateContext context) =>
         context is BuildingBehaviorContext building && building.IsRaised;
@@ -328,7 +410,10 @@ public sealed class BuildingBehaviorRuntime
                 if (kind == "SupplyDepot")
                     Attach(building, BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                 if (kind == "CommandCenter")
+                {
                     Attach(building, BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
+                    Attach(building, BuildingBehaviorCatalog.OrbitalScanFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
+                }
             }
 
             var nearbyEnemy = facts.HasPosition && enemies.Any(enemy =>
@@ -348,6 +433,22 @@ public sealed class BuildingBehaviorRuntime
 
     private static void Attach(BuildingBehaviorContext context, string fsmName, string group) =>
         context.Attach(fsmName, FSM_API.Create.CreateInstance(fsmName, context, group));
+
+    public bool RequestOrbitalScan(ulong buildingTag, float targetX, float targetY)
+    {
+        if (!_buildings.TryGetValue(buildingTag, out var building) || !building.IsOrbitalCommand)
+            return false;
+        building.RequestScan(targetX, targetY);
+        return true;
+    }
+
+    public bool MarkScanSubmitted(ulong buildingTag, uint gameLoop)
+    {
+        if (!_buildings.TryGetValue(buildingTag, out var building) || !building.ScanRequested)
+            return false;
+        building.MarkScanSubmitted(gameLoop);
+        return true;
+    }
 
     public bool RequestDepotPassage(ulong buildingTag, bool requested = true)
     {
@@ -411,4 +512,5 @@ public static class BuildingBehaviorCatalog
     public const string ActivityFsm = "SingularityBot.BuildingActivity";
     public const string DepotAccessFsm = "SingularityBot.SupplyDepotAccess";
     public const string TownHallUpgradeFsm = "SingularityBot.TownHallOrbitalUpgrade";
+    public const string OrbitalScanFsm = "SingularityBot.OrbitalScan";
 }

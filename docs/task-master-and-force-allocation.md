@@ -167,3 +167,117 @@ Implement in vertical slices with tests for identity/reappearance, site revisit 
 9. Add strategy-configurable operation scaling and prove one, two and larger concurrent groups through replay and local matches.
 
 The first implementation should preserve current Terran opening behavior and worker throughput. This architecture is a staged extension, not permission to destabilize the proven path with a speculative wholesale rewrite.
+
+
+## 11. Persistent enemy-unit ledger and fog-of-war memory
+
+Every enemy unit that has been observed becomes a persistent match entity keyed by its SC2 unit tag. Loss of vision changes what is known about that entity; it does not delete the entity or prove that it died.
+
+The enemy-unit record must separate:
+
+- **Identity:** match/player identity, stable unit tag, last observed unit type and any observed morph lineage.
+- **Last confirmed facts:** position, health/shields, energy when available, orders, buffs/upgrades when observable, cargo/transport state, and authoritative game-loop timestamp.
+- **Visibility:** currently visible, hidden by fog, or otherwise unobservable. Visibility is not a lifecycle state.
+- **Lifecycle evidence:** alive/unknown, confirmed destroyed, or match-ended. Only authoritative destruction evidence retires the unit.
+- **Belief state:** last-known location, candidate regions/routes, confidence, supporting observations, contradictory evidence and the next reevaluation time.
+- **Threat model:** weapon/range/siege state, detection capability, target preferences and strategic importance, derived from game data and observations rather than invented constants.
+- **Task relationship:** current watch, search, containment, escort or engagement assignment and its owner.
+
+A stale unit FSM remains alive as a memory-bearing entity. Its execution mode changes from direct observation to memory/reconciliation. It must not continue issuing commands that require current visibility or a current target position.
+
+### Search and fallback behavior
+
+When a high-value enemy unit disappears:
+
+1. Preserve its last confirmed position and game loop.
+2. Create or renew a scouting advisor posting for the last-known position and relevant nearby routes/terrain.
+3. Give the search task an evidence contract: reacquire this tag/type, inspect the suspected firing area, or establish that the area is currently clear.
+4. If the search fails, expand the candidate region according to reachable routes, elapsed game loops and known movement capability; do not teleport the remembered unit to a new coordinate.
+5. If evidence remains absent beyond the configured uncertainty horizon, include the opponent start location as a fallback hypothesis where tactically plausible. Retain the original last-known position and alternative hypotheses.
+6. Keep the unit in threat calculations until destruction is established or the match ends.
+
+For example, a Siege Tank last seen covering a ramp remains a known threat after it leaves vision. The army must respect its last confirmed siege envelope and avoid blindly marching into it. The scouting advisor searches that location and nearby plausible firing positions. If the Tank is not reacquired, the operational picture may assign probability to a defensive position near the opponent's start, but must not represent that estimate as a newly observed Tank.
+
+A location being visited is not proof that every approach or firing position was cleared. Search completion therefore records coverage, visibility and observation quality, not just arrival at a coordinate.
+
+## 12. Opponent technology and economy as a constraint graph
+
+The Intelligence advisor maintains an evidence graph of observed enemy units, structures, upgrades, production capabilities, resource constraints and inferred build history. It is a constraint-solving model, not a scripted build-order classifier.
+
+Keep three categories distinct:
+
+- **Observed facts:** a Banshee was seen at a specific game loop; a Starport or Tech Lab was directly observed; a structure's progress or an upgrade was visible.
+- **Required implications:** a unit type requires particular technology or production capabilities according to the match's authoritative game data.
+- **Hypotheses:** the number and timing of production structures, prior spending, hidden expansions, likely follow-up units and the opponent's intended strategy.
+
+A Banshee observation can strongly establish that the opponent has access to the required Starport technology path, even when the production structures themselves are hidden. It should update the inferred Barracks/Factory/Starport prerequisite graph and trigger targeted scouting for the missing structures, add-ons and follow-up technology. The model must not claim that every prerequisite structure is still standing or currently at its original location unless observed.
+
+### Backward production-time reasoning
+
+Use authoritative game data for:
+
+- structure build durations and prerequisites;
+- unit production durations and producer/add-on requirements;
+- research and morph durations;
+- resource costs, gas costs, supply and producer occupancy;
+- observed construction/research progress and game-loop timestamps.
+
+For each observed unit, derive a feasible production-time interval. Combine those intervals with prerequisite completion windows, available producer capacity, resource income/spending bounds and other sightings. Eliminate histories that cannot fit the evidence.
+
+For example, three Banshees do not by themselves prove two Starports. The solver must test whether one Starport could have produced the observed count within the feasible time window, accounting for production duration, add-ons, queues, interruptions and any relevant ability or upgrade. Only if the one-producer history is infeasible should the model infer a higher minimum production capacity. Preserve multiple feasible histories when evidence cannot distinguish them.
+
+Resource reconstruction is bounded inference, not exact omniscience. Account for known starting resources, likely worker count and income rates, observed expansions/refineries, known unit and structure costs, upgrades, travel/production windows and uncertainty about hidden spending. Output ranges and confidence, not fabricated exact bank balances.
+
+Each inference records its supporting observations, game-data rules, feasible time interval, alternatives, confidence and invalidation conditions. New evidence can revise or retract an inference without deleting the underlying observations.
+
+## 13. Coordinated raids, target packages and extraction
+
+A raid is a parent military task with a deliberately limited objective package, not a collection of units independently attacking whatever they encounter.
+
+A candidate operation may combine:
+
+- a feint or pressure task against an expansion to draw defenders away;
+- a transport group with a complete, atomically reserved passenger manifest;
+- a prioritized target list such as Starport, Engineering Bay, Armory or Ghost Academy;
+- a Ghost task with explicit cloak, detection assessment, nuke availability, deployment and extraction phases;
+- a Marine screen responsible for clearing or suppressing detectors and anti-air threats;
+- a transport recovery route, rally point and abort conditions.
+
+The strategy caster evaluates the expected value of crippling production/technology against the cost of the force, likely response, detection coverage, anti-air, travel time, target durability, repair/rebuild cost and the main army's exposure. A feint is authorized only when the force assigned to the feint can survive or disengage and the actual raid has a viable route and extraction plan.
+
+The Ghost is not assumed safe merely because it can cloak. Before deployment, assess known and inferred detectors, detection coverage, static defenses, enemy response time and escape routes. If detectors are present, the operation may stage a Marine screen to clear or suppress them before the Ghost enters. If detector coverage cannot be cleared or avoided, the Ghost task must wait, choose another route or abort. The Ghost's nuke must be confirmed available from observed ability/energy/game state; the target area and friendly-force separation must pass validation. The Ghost should deploy, execute the bounded objective and reboard/extract only through verified transport and action states.
+
+The transport group must preserve a complete passenger manifest and capacity constraints. Loading, transit, unloading, target engagement, reloading and extraction are separate evidence-backed phases. The Medivacs must not be treated as expendable path points: anti-air threat, damage, healing/support value and survival route are part of the operation's feasibility. Marine passengers are assigned explicit target priorities and do not drift into unrelated engagements.
+
+The initial raid implementation should prove one complete, recoverable operation before scaling to multiple transports or simultaneous raids. Failure to reach a target, loss of detection control, a blocked extraction route, or a main-force emergency triggers the defined abort/recovery behavior rather than an improvised continuation.
+
+## 14. Marine stutter-step and bounded engagement micro
+
+Marine micro is a unit-level execution behavior subordinate to squad intent and target allocation. It must preserve the squad's role, formation, objective and hold/withdraw orders.
+
+For a Marine with an authorized target:
+
+1. Read the weapon cooldown and target state from current observations.
+2. When the weapon is ready, issue an attack only if target validity, range, visibility and action legality pass.
+3. After the attack is issued/observed, move toward the squad's next safe micro waypoint while the weapon is cooling down.
+4. Reassess cooldown, target motion, range, threat and formation constraints every observation cycle.
+5. Fire again when ready and legally in range; otherwise continue a bounded reposition or return to the assigned slot.
+6. Stop micro and obey higher-priority retreat, transport, formation safety or commander hold orders immediately.
+
+This is controlled stutter-step, not continuous random movement and not an order to attack-move. The movement planner should choose waypoints that kite or close according to the authorized engagement policy, preserve spacing, avoid friendly collisions and respect enemy weapon envelopes. A Marine must not chase a target outside the squad's engagement boundary merely because its weapon cooldown completed.
+
+Target packages and fire-control allocation remain authoritative: Marines focus the assigned high-value structure or target group, avoid splitting damage across incidental enemies, and reallocate only when the target is destroyed, invalid, unreachable, or a higher-priority command supersedes it. The attack/move cadence must be driven by observed weapon cooldown and validated action results, not a guessed fixed frame delay.
+
+## 15. Implementation and proof sequence for opponent intelligence and operations
+
+1. Add a persistent enemy-unit ledger that survives fog-of-war absence and retires only on destruction evidence.
+2. Add typed last-known-location records and scouting-advisor search postings with coverage evidence.
+3. Add deterministic tests for stale Tank memory, search renewal, alternate-location hypotheses, fallback to opponent-start hypotheses and confirmed destruction.
+4. Add a prerequisite/production capability graph backed by SC2 game data.
+5. Add production-time interval reasoning and bounded resource reconstruction with contradictory-evidence tests.
+6. Add a one-target structure raid task with explicit force reservation, target priority, abort and extraction before introducing Ghost/nuke coordination.
+7. Add transport passenger lifecycle and Marine stutter-step under the existing action validator.
+8. Add Ghost detection assessment, nuke availability/target validation and verified reboarding.
+9. Validate each vertical slice with recorded observations and replay scenarios, then local matches. CI success alone does not establish fog-of-war reasoning or tactical success in live play.
+
+The ledger and inference engine must never convert an inference into an observation, and no strategic score may bypass hard action, visibility, detection, pathing, composition or recovery gates.

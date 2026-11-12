@@ -107,8 +107,8 @@ public sealed class Sc2MarineRallyControllerTests
         var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
             new MapPoint(10, 10), new MapPoint(90, 90));
         var decisions = Enumerable.Range(1, 4).Select(tag =>
-            new MarineTacticalDecision((ulong)tag, 2, MarineTacticalAction.Hold, 0, 0,
-                "Contact outside local defense envelope")).ToArray();
+            new MarineTacticalDecision((ulong)tag, 2, MarineTacticalAction.CloseToWeaponRange, 0, 0,
+                "Contact is inside the bounded local response envelope")).ToArray();
 
         Assert.Empty(controller.TryCreateActions(
             Snapshot(Fact(1, "Marine", 10, 10), Fact(2, "Marine", 11, 10),
@@ -234,6 +234,31 @@ public sealed class Sc2MarineRallyControllerTests
         var coveredSectors = waypoints.Select(point => map.GetSector(point).Id).Distinct().ToArray();
         Assert.True(coveredSectors.Length > 3,
             "The security screen must extend beyond the spawn sector and its immediate neighbors.");
+    }
+
+    [Fact]
+    public void KeepsDistributedPatrolMovingWhenVisibleContactIsOutsideLocalDefenseEnvelope()
+    {
+        var controller = new Sc2MarineRallyController();
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(10, 10), new MapPoint(90, 90));
+        var offsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4, 80, 80);
+        var marines = new List<UnitObservationFacts>
+        {
+            Fact(1, "Marine", 10, 10)
+        };
+        marines.AddRange(offsets.Select((offset, index) =>
+            Fact((ulong)(index + 2), "Marine", 10 + offset.X, 10 + offset.Y)));
+        var decisions = Enumerable.Range(1, 5).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, 99, MarineTacticalAction.Hold, 0, 0,
+                "Visible contact is outside the bounded local defense envelope", true)).ToArray();
+
+        var actions = controller.TryCreateActions(
+            Snapshot(marines.ToArray()), map, decisions, GameData());
+
+        Assert.Equal(5, actions.Count);
+        Assert.Equal(5, actions.Select(action =>
+            action.ActionRaw.UnitCommand.UnitTags.Single()).Distinct().Count());
     }
 
     private static Sc2GameDataCatalog GameData()

@@ -10,9 +10,8 @@ namespace SingularityBot.Behavior;
 /// Builds one Barracks with an available SCV and trains the first Marine.
 /// The Marine remains on the friendly side; combat control reacts to nearby contacts.
 /// </summary>
-public sealed class Sc2OpeningMarineController : IDisposable
+public sealed class Sc2OpeningMarineController
 {
-    private readonly BuildJobRuntime _ownedBuildJobs = new();
     private BuildJobContext _barracksBuildJob;
     private BuildJobContext _marineBuildJob;
     private ulong? _marineTag;
@@ -48,8 +47,8 @@ public sealed class Sc2OpeningMarineController : IDisposable
         SpatialMap map,
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
+        BuildJobRuntime buildJobs,
         ulong? preferredBuilderTag = null,
-        BuildJobRuntime buildJobs = null,
         uint reservedMinerals = 0,
         ulong? excludedBuilderTag = null,
         bool allowConstruction = true,
@@ -58,6 +57,7 @@ public sealed class Sc2OpeningMarineController : IDisposable
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
+        ArgumentNullException.ThrowIfNull(buildJobs);
 
         if (map is null || gameData.BarracksBuildAbilityId is not > 0 ||
             gameData.BarracksMineralCost == 0 || gameData.MarineTrainAbilityId is not > 0 ||
@@ -65,11 +65,8 @@ public sealed class Sc2OpeningMarineController : IDisposable
             return null;
 
         BuildJobRuntime.RegisterDefinition();
-        buildJobs ??= _ownedBuildJobs;
         buildJobs.ReconcileBarracks(observation);
         buildJobs.ReconcileMarineProduction(observation, gameData.MarineTrainAbilityId.Value);
-        if (ReferenceEquals(buildJobs, _ownedBuildJobs))
-            buildJobs.Update();
 
         var barracks = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
@@ -291,7 +288,7 @@ public sealed class Sc2OpeningMarineController : IDisposable
         Console.WriteLine("[Opening] SC2 did not accept a Barracks placement candidate; retrying.");
     }
 
-    public void OnActionResult(ActionResult? result, BuildJobRuntime buildJobs = null)
+    public void OnActionResult(ActionResult? result)
     {
         if (_pendingAction == PendingAction.None)
             return;
@@ -321,8 +318,6 @@ public sealed class Sc2OpeningMarineController : IDisposable
 
     public string BarracksBuildJobState => _barracksBuildJob?.CurrentState ?? "NoBuildJob";
     public string MarineProductionJobState => _marineBuildJob?.CurrentState ?? "NoProductionJob";
-
-    public void Dispose() => _ownedBuildJobs.Clear();
 
     private static bool IsLiveScv(UnitObservationFacts unit) =>
         unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&

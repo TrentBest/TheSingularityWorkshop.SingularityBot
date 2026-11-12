@@ -19,7 +19,7 @@ Normalized game facts + event stream
 Game ontology / capabilities
     |
     v
-FSM runtime (FSM_API, executed by FSM_Foundry)
+FSM runtime (FSM_API; FSM_Foundry integration is a later execution-layer step)
     |
     v
 Intent collection -> arbitration -> validation
@@ -44,6 +44,7 @@ The adapter owns protocol DTOs and protocol-specific details. The rest of the bo
 | FSM runtime | Match/player/entity contexts, lifecycle, transitions and execution cadence | SC2 protocol types |
 | Economy controller | Global worker assignments, reservations, build/production priorities | Per-frame duplicate assignment decisions |
 | Unit/route FSMs | Execute assigned work, track local phase, report facts and outcomes | Reassigning other workers or overriding economy constraints |
+| Building FSMs | Persistent building identity, construction lifecycle, production/research activity, structure-specific capabilities | Construction-job identity or protocol command submission |
 | Action pipeline | Intent arbitration, current-frame validation, translation and submission | Guessing missing abilities or targets |
 | Physics | Reusable distance, path and spatial calculations | A bot-specific parallel math library |
 | GUI | Edit/version definitions; inspect states, facts, intents, maps and diagnostics | A second runtime or direct game authority |
@@ -76,11 +77,25 @@ The same normalized observation sequence and versioned policy must produce the s
 - Time is measured in authoritative game loops. Predicted deadlines schedule reevaluation; they never prove that an event occurred.
 - Cached route geometry is keyed by map, worker movement profile, town hall and resource identity, and is invalidated when its assumptions change.
 
+## Building identity and lifecycle
+
+Every observed friendly structure receives a persistent building context keyed by its SC2 unit tag and a match-local display identity such as `SupplyDepot 3`. The identity survives Supply Depot raised/lowered morphs and Command Center to Orbital/Planetary morphs; destroyed tags retire their contexts. Numbering is assigned as structures are first reconciled from observations, with SC2 tags providing deterministic ordering when multiple structures first appear together.
+
+Each building owns independent FSM_API capabilities:
+
+- **Lifecycle:** `UnderConstruction -> Operational`. Entering `Operational` emits a one-time event. When the associated construction job identifies its SCV, the match loop releases that worker back to economy tasking.
+- **Activity:** `Idle`, `Producing`, or `Researching`, derived from observed orders and the match's ability catalog. The lifecycle FSM remains independent of activity.
+- **Supply Depot access:** `Assess`, `Raised`, and `Lowered`. A visible enemy within 10 game units requests a raised Depot. An explicit passage request takes precedence and requests lowering even while enemies remain nearby. The action adapter resolves Raise/Lower abilities from SC2 game data and emits no command when resolution is ambiguous or unavailable.
+
+A build job continues to represent the attempt and its evidence; it does not become the durable identity of the resulting building.
+
+Town Hall expansion policy, Orbital upgrade policy, MULE/Scan capability graphs and per-building SCV production are the next migration layer. Their existing controllers remain in place until the corresponding FSMs are authoritative and their behavior is covered by tests.
+
 ## Workshop integration
 
 - **FSM_API** is the reusable heartbeat and context/handle lifecycle.
-- **FSM_Foundry** executes the composed FSM workload.
-- **Physics** supplies shared spatial mathematics and path reasoning.
+- **FSM_Foundry** is the intended composed-workload executor; the current SingularityBot project does not yet reference it.
+- **Physics** is the intended shared owner for spatial mathematics and path reasoning; the current bot still contains its existing spatial implementation.
 - **GrammarAi / ProtocolAi** may provide canonical vocabulary and protocol knowledge; neither replaces the SC2 adapter.
 - **CommandAi** may decompose high-level orders into goals; deterministic FSMs and validators remain authoritative.
 - **GUI / Renderer / Visualize** provide authoring, inspection and visual presentation over the same runtime contracts.

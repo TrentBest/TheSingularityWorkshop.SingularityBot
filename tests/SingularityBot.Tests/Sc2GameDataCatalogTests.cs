@@ -180,6 +180,33 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ResolvesCommandCenterFlightAbilitiesOnlyWhenUnique()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData { AbilityId = 3678, LinkName = "LiftOff" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3679, LinkName = "Land" });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)3678, catalog.LiftOffAbilityId);
+        Assert.Equal((uint)3679, catalog.LandAbilityId);
+    }
+
+    [Fact]
+    public void Create_DisablesAmbiguousCommandCenterFlightAbilities()
+    {
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData { AbilityId = 3678, LinkName = "LiftOff" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3679, LinkName = "Land" });
+        data.Abilities.Add(new AbilityData { AbilityId = 3680, LinkName = "Land" });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal((uint)3678, catalog.LiftOffAbilityId);
+        Assert.Null(catalog.LandAbilityId);
+    }
+
+    [Fact]
     public void Create_LeavesMissingAbilityMetadataUnavailable()
     {
         var catalog = Sc2GameDataCatalog.Create(new ResponseData());

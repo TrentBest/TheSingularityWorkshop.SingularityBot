@@ -12,6 +12,7 @@ namespace SingularityBot.Behavior;
 public sealed class WorkerResourceAssignmentPlanner
 {
     public const int DefaultMineralSaturation = 2;
+    public const float DefaultMaximumLocalMineralDistance = 12f;
 
     private readonly Dictionary<ulong, WorkerResourceAssignment> _assignments = new();
     private uint _nextGeneration;
@@ -132,7 +133,8 @@ public sealed class WorkerResourceAssignmentPlanner
 
     public IReadOnlyDictionary<ulong, WorkerResourceAssignment> Reconcile(
         NormalizedObservation observation,
-        int mineralSaturation = DefaultMineralSaturation)
+        int mineralSaturation = DefaultMineralSaturation,
+        bool allowLongDistanceMining = false)
     {
         ArgumentNullException.ThrowIfNull(observation);
         if (mineralSaturation < 1)
@@ -154,6 +156,20 @@ public sealed class WorkerResourceAssignmentPlanner
             .Where(unit => IsTownHall(unit.UnitKind))
             .OrderBy(unit => unit.Tag)
             .ToArray();
+
+        // Minerals beyond the local mining radius do not belong to an existing
+        // base until a town hall is actually established there. This prevents
+        // main-base SCVs from being assigned to an unoccupied expansion.
+        if (!allowLongDistanceMining && townHalls.Length > 0)
+        {
+            foreach (var remoteMineral in minerals.Values
+                         .Where(mineral => townHalls.All(hall =>
+                             DistanceSquared(hall, mineral) >
+                             DefaultMaximumLocalMineralDistance * DefaultMaximumLocalMineralDistance))
+                         .Select(mineral => mineral.Tag)
+                         .ToArray())
+                minerals.Remove(remoteMineral);
+        }
 
         // Explicit death events invalidate a reservation. If a worker's current
         // order still targets that exact dead assigned mineral, it is safe to

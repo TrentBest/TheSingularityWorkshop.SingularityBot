@@ -24,6 +24,7 @@ public sealed class Sc2OpeningMarineController
     private bool _builderMoveSubmitted;
     private bool _barracksComplete;
     private bool _marineTrainingRequested;
+    private bool _marineTrainingOrderObserved;
     private uint _marineTrainingRequestGameLoop;
     private bool _deployed;
     private PendingAction _pendingAction;
@@ -35,6 +36,7 @@ public sealed class Sc2OpeningMarineController
     public bool BarracksComplete => _barracksComplete;
     public bool MarineObserved { get; private set; }
     public bool MarineTrainingStarted => _marineTrainingRequested || MarineObserved;
+    public bool MarineTrainingOrderObserved => _marineTrainingOrderObserved || MarineObserved;
     public bool MarineDeployed => _deployed;
     public int CandidateCount => _candidatePoints.Count;
 
@@ -217,8 +219,14 @@ public sealed class Sc2OpeningMarineController
         if (trainingOrderObserved)
         {
             _marineTrainingRequested = true;
+            _marineTrainingOrderObserved = true;
             return null;
         }
+
+        // A submitted request is not enough to unlock the next opening phase.
+        // Keep the gate closed until the Barracks order is actually observed.
+        if (!MarineObserved)
+            _marineTrainingOrderObserved = false;
 
         if (_marineTrainingRequested && observation.GameLoop <= _marineTrainingRequestGameLoop)
             return null;
@@ -308,6 +316,7 @@ public sealed class Sc2OpeningMarineController
                     break;
                 case PendingAction.TrainMarine:
                     _marineTrainingRequested = false;
+                    _marineTrainingOrderObserved = false;
                     if (_marineBuildJobId is long id && buildJobs is not null && buildJobs.TryGet(id, out var job))
                         job.Fail("SC2 rejected the opening Marine training command.", job.LastObservedGameLoop);
                     _marineBuildJobId = null;

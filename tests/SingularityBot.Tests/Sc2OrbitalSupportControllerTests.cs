@@ -214,6 +214,28 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void UpgradesTheExplicitlyPermittedStartingCommandCenter()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var observation = Snapshot(150,
+            Fact(1, "CommandCenter"),
+            Fact(2, "CommandCenter", 30, 30),
+            Fact(3, "SupplyDepot"),
+            Fact(4, "Barracks"),
+            loop: 100);
+
+        var action = controller.TryCreateAction(
+            observation,
+            data,
+            permittedCommandCenterTag: 2);
+
+        Assert.NotNull(action);
+        Assert.Equal(1516, action.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(new[] { 2UL }, action.ActionRaw.UnitCommand.UnitTags);
+    }
+
+    [Fact]
     public void CallsMuleOnNearestMineralWhenOrbitalHasEnoughEnergy()
     {
         var controller = new Sc2OrbitalSupportController();

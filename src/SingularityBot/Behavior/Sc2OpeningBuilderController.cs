@@ -423,6 +423,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             if (_firstMoveRequestGameLoop == 0)
                 _firstMoveRequestGameLoop = observation.GameLoop;
             _moveRequestGameLoop = observation.GameLoop;
+            _moveAccepted = false;
             _moveSubmissionRequested = true;
             UpdateMovementFsm();
             return CreatePositionCommand(

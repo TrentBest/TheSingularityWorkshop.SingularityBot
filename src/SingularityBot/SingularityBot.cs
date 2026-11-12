@@ -76,6 +76,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private bool _orbitalSupportActionSubmitted;
     private string _lastOrbitalDiagnostic;
     private string _lastStartingTownHallKind;
+    private uint? _firstBarracksObservedGameLoop;
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
@@ -418,8 +419,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _gameData.MarineMineralCost));
 
             reservedInfrastructureMinerals = reservedProductionMinerals;
+            // The Orbital is the first post-Barracks mineral commitment. Do not let
+            // optional Marine or follow-on infrastructure reservations starve it.
             var orbitalReservedCommandCenter = _orbitalSupport.GetCommandCenterReservedForUpgrade(
-                normalized, _gameData, reservedProductionMinerals);
+                normalized, _gameData);
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress >= 1f);
@@ -538,11 +541,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             if (firstBarracksObserved)
             {
-                // Start Barracks two as soon as Barracks one is observed under
-                // construction. It has its own SCV, so this overlaps the two
-                // construction timers instead of serializing them.
-                secondBarracksAction = _secondBarracks.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
+                _firstBarracksObservedGameLoop ??= normalized.GameLoop;
+                // Give the first Barracks opening room to settle before pulling
+                // another SCV. Four and a half seconds at SC2's 22.4 loops/sec.
+                const uint secondBarracksWorkerPullDelayLoops = 101;
+                if (normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
+                    secondBarracksAction = _secondBarracks.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
 
@@ -565,7 +570,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _supplyDepotExpansionActionSubmitted = false;
                 }
 
-                if (_secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete)
+                // The starting base's Orbital is a hard opening milestone. Do not
+                // let the four-Barracks expansion branch spend its 400 minerals first.
+                if (_secondBarracks.IsComplete && startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) && !_expansionCommandCenter.IsComplete)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
@@ -591,15 +598,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // the four-Barracks expansion milestone retain higher priority.
             var orbitalCoordinatorBlockers = string.Join(",",
                 new[] {
-                    secondBarracksAction is not null ? "second-barracks" : null,
-                    builderAction is not null ? "builder" : null,
-                    sprayAction is not null ? "spray" : null,
-                    expansionCommandCenterAction is not null ? "expansion-command-center" : null
+                    builderAction is not null ? "builder" : null
                 }.Where(value => value is not null));
-            if (secondBarracksAction is null && builderAction is null &&
-                sprayAction is null && expansionCommandCenterAction is null)
+            if (builderAction is null)
             {
-                orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData, reservedInfrastructureMinerals);
+                // Orbital conversion outranks the delayed second Barracks, gas,
+                // Marine production, and the expansion Command Center.
+                orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
                 if (orbitalSupportAction is not null)
                 {
@@ -632,8 +637,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 !normalized.DeadUnitTags.Contains(unit.Tag) &&
                 unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase));
-            var refineryConstructionAllowed = _openingMarine.BarracksComplete &&
-                (friendlyTownHallCount >= 2 || completedRefineryCount < 2);
+            var refineryUnderConstruction = normalized.Units.Any(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
+                unit.BuildProgress < 1f && !normalized.DeadUnitTags.Contains(unit.Tag));
+            var refineryConstructionAllowed = startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) &&
+                _openingMarine.BarracksComplete && completedRefineryCount < 2 && !refineryUnderConstruction;
             refineryActions = _refineries.ReconcileAndCreateActions(
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
                 allowConstruction: refineryConstructionAllowed);

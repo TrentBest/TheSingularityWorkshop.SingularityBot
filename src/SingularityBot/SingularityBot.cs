@@ -523,7 +523,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _gameData,
                 _workerAssignments,
                 constructionCrewTags,
-                _buildJobs);
+                _buildJobs,
+                workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals);
             _openingBuilderActionSubmitted = builderAction is not null;
             if (builderAction is not null)
             {
@@ -581,7 +582,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 {
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
-                        _buildJobs, _openingMarine.ReleasedBuilderTag, releaseBuilderOnCompletion: true);
+                        _buildJobs, _openingMarine.ReleasedBuilderTag, releaseBuilderOnCompletion: true,
+                        workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals);
                     _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
                     if (_supplyDepotExpansion.IsCompleted)
                         _secondBarracks.NotifySupplyDepotCompleted(_supplyDepotExpansion.BuilderTag);
@@ -597,7 +599,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _thirdSupplyDepotActionSubmitted = false;
                     var thirdDepotAction = _thirdSupplyDepot.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
-                        _buildJobs, _supplyDepotExpansion.BuilderTag, releaseBuilderOnCompletion: true);
+                        _buildJobs, _supplyDepotExpansion.BuilderTag, releaseBuilderOnCompletion: true,
+                        workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals);
                     _thirdSupplyDepotActionSubmitted = thirdDepotAction is not null;
                     thirdSupplyDepotPendingAction = thirdDepotAction;
                     assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);

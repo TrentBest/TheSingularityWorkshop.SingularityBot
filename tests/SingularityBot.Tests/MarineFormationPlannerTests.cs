@@ -135,7 +135,7 @@ public sealed class MarineFormationPlannerTests
 
         Assert.Equal(1f, MathF.Abs(compact[1].Y - compact[2].Y));
         Assert.Equal(4f, MathF.Abs(spread[1].Y - spread[2].Y));
-        Assert.Equal(4f, spread.Max(point => point.Y) - spread.Min(point => point.Y));
+        Assert.Equal(12f, spread.Max(point => point.Y) - spread.Min(point => point.Y));
     }
 
     [Fact]

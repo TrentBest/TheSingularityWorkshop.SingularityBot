@@ -988,7 +988,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
                     unit.Orders.Any(order => order.AbilityId == _gameData.MarineTrainAbilityId.Value));
             var marineRallyActions = _marineRally.TryCreateActions(
-                normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction);
+                normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction, SpatialTerrain);
             actions.AddRange(marineRallyActions);
             if (_writeDiagnostics)
                 foreach (var decision in combatDecisions)

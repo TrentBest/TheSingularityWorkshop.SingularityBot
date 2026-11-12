@@ -67,7 +67,8 @@ public sealed record MarineTacticalDecision(
     MarineTacticalAction Action,
     float FriendlyDps,
     float ThreatDps,
-    string Reason);
+    string Reason,
+    bool IsOutsideLocalDefenseEnvelope = false);
 
 /// <summary>
 /// Deterministic, observation-only Marine decision kernel. Weapon profiles must
@@ -168,10 +169,14 @@ public static class MarineCombatPlanner
             var distance = MathF.Sqrt((float)DistanceSquared(marine, target));
             MarineTacticalAction action;
             string reason;
+            var outsideLocalDefenseEnvelope =
+                distance > ownWeapon.GetRange(target.IsFlying) + MaxPursuitBeyondWeaponRange;
 
             // Vision is not an instruction to invade. A contact far outside
             // the Marine's local defensive envelope is observed, not pursued.
-            if (distance > ownWeapon.GetRange(target.IsFlying) + MaxPursuitBeyondWeaponRange)
+            // Keep this fact typed so patrol logic can continue its security
+            // route instead of freezing every Marine on a distant sighting.
+            if (outsideLocalDefenseEnvelope)
             {
                 action = MarineTacticalAction.Hold;
                 reason = "Visible contact is outside the bounded local defense envelope";
@@ -209,7 +214,8 @@ public static class MarineCombatPlanner
                 reason = "Target outside weapon range; approach while preserving local force";
             }
 
-            decisions.Add(new(marine.Tag, target.Tag, action, friendlyDps, threatDps, reason));
+            decisions.Add(new(marine.Tag, target.Tag, action, friendlyDps, threatDps, reason,
+                outsideLocalDefenseEnvelope));
         }
 
         return decisions;

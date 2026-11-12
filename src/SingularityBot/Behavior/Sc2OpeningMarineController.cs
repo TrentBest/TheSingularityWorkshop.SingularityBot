@@ -10,34 +10,36 @@ namespace SingularityBot.Behavior;
 /// Builds one Barracks with an available SCV and trains the first Marine.
 /// The Marine remains on the friendly side; combat control reacts to nearby contacts.
 /// </summary>
-public sealed class Sc2OpeningMarineController
+public sealed class Sc2OpeningMarineController : IDisposable
 {
+    private readonly BuildJobRuntime _ownedBuildJobs = new();
+    private BuildJobContext _barracksBuildJob;
+    private BuildJobContext _marineBuildJob;
+
     private enum PendingAction { None, MoveBuilder, BuildBarracks, TrainMarine }
 
     private readonly List<MapPoint> _candidatePoints = new();
     private ulong? _builderTag;
     private MapPoint? _placement;
     private bool _placementQueryPending;
-    private bool _buildSubmitted;
-    private uint _buildRequestGameLoop;
     private uint _builderMoveRequestGameLoop;
     private bool _builderMoveSubmitted;
-    private bool _barracksComplete;
-    private bool _marineTrainingRequested;
-    private bool _marineTrainingOrderObserved;
-    private uint _marineTrainingRequestGameLoop;
-    private bool _deployed;
     private PendingAction _pendingAction;
-    private long? _marineBuildJobId;
-    private long? _barracksBuildJobId;
 
     public ulong? BuilderTag => _builderTag;
     public ulong? ReleasedBuilderTag { get; private set; }
-    public bool BarracksComplete => _barracksComplete;
-    public bool MarineObserved { get; private set; }
-    public bool MarineTrainingStarted => _marineTrainingRequested || MarineObserved;
-    public bool MarineTrainingOrderObserved => _marineTrainingOrderObserved || MarineObserved;
-    public bool MarineDeployed => _deployed;
+    public bool BarracksComplete => _barracksBuildJob?.IsCompleted == true;
+    public bool MarineObserved => _marineTag.HasValue;
+    public bool MarineTrainingStarted => MarineObserved ||
+        _marineBuildJob?.HasExecutionEvidence == true || _marineBuildJob?.IsExecuting == true;
+    public bool MarineTrainingOrderObserved => MarineObserved ||
+        _marineBuildJob?.HasExecutionEvidence == true;
+    public bool IsOpeningMarineTrainingPending => _marineBuildJob is not null &&
+        !_marineBuildJob.IsFailed && !_marineBuildJob.HasFailureEvidence &&
+        !_marineBuildJob.HasExecutionEvidence && !MarineObserved;
+    public bool MarineDeployed => MarineObserved;
+    public bool IsBuildSubmitted => _barracksBuildJob is not null &&
+        !_barracksBuildJob.IsFailed && !_barracksBuildJob.HasFailureEvidence;
     public int CandidateCount => _candidatePoints.Count;
 
     public SC2APIProtocol.Action TryCreateAction(
@@ -61,9 +63,12 @@ public sealed class Sc2OpeningMarineController
             gameData.MarineMineralCost == 0 || gameData.MoveAbilityId is not > 0)
             return null;
 
-        buildJobs?.ReconcileBarracks(observation);
-        if (gameData.MarineTrainAbilityId is > 0)
-            buildJobs?.ReconcileMarineProduction(observation, gameData.MarineTrainAbilityId.Value);
+        BuildJobRuntime.RegisterDefinition();
+        buildJobs ??= _ownedBuildJobs;
+        buildJobs.ReconcileBarracks(observation);
+        buildJobs.ReconcileMarineProduction(observation, gameData.MarineTrainAbilityId.Value);
+        if (ReferenceEquals(buildJobs, _ownedBuildJobs))
+            buildJobs.Update();
 
         var barracks = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
@@ -91,7 +96,7 @@ public sealed class Sc2OpeningMarineController
                 _candidatePoints.Clear();
                 _placementQueryPending = false;
                 _builderMoveSubmitted = false;
-                _buildSubmitted = false;
+                _barracksBuildJob = null;
                 _pendingAction = PendingAction.None;
             }
 
@@ -164,19 +169,15 @@ public sealed class Sc2OpeningMarineController
             // under construction, but do not issue Build until the Depot is observed complete.
             if (!allowConstruction || observation.Minerals < gameData.BarracksMineralCost)
                 return null;
-            if (_buildSubmitted && observation.GameLoop <= _buildRequestGameLoop + 8)
+            if (IsBuildSubmitted && observation.GameLoop <= _barracksBuildJob.CreatedAtGameLoop + 8)
                 return null;
-            if (_buildSubmitted && _barracksBuildJobId is long staleJobId &&
-                buildJobs is not null && buildJobs.TryGet(staleJobId, out var staleJob) &&
-                !staleJob.IsCompleted && !staleJob.IsFailed)
-                staleJob.Fail("Opening Barracks structure was not observed before build retry.", observation.GameLoop);
+            if (IsBuildSubmitted)
+                _barracksBuildJob.Fail("Opening Barracks structure was not observed before build retry.", observation.GameLoop);
 
-            _buildSubmitted = true;
-            _buildRequestGameLoop = observation.GameLoop;
-            _barracksBuildJobId = buildJobs?.CreateBarracksConstruction(observation.GameLoop, worker.Tag,
+            _barracksBuildJob = buildJobs.CreateBarracksConstruction(observation.GameLoop, worker.Tag,
                 observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self &&
                     unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase))
-                    .Select(unit => unit.Tag)).Id;
+                    .Select(unit => unit.Tag));
             Console.WriteLine($"[Opening] Requesting Barracks: SCV={worker.Tag}, ability={gameData.BarracksBuildAbilityId}, minerals={observation.Minerals}, site=({_placement.Value.X:F1},{_placement.Value.Y:F1}).");
             _pendingAction = PendingAction.BuildBarracks;
             return PositionCommand(worker.Tag,
@@ -186,9 +187,8 @@ public sealed class Sc2OpeningMarineController
         if (barracks.BuildProgress < 1f)
             return null;
 
-        if (!_barracksComplete)
+        if (!BarracksComplete)
             Console.WriteLine($"[Opening] OBSERVED: Barracks {barracks.Tag} completed.");
-        _barracksComplete = true;
         if (_builderTag is ulong builderTag)
         {
             assignments.Unreserve(builderTag);
@@ -208,17 +208,15 @@ public sealed class Sc2OpeningMarineController
 
         if (marines.Length > 0)
         {
-            if (!MarineObserved)
+            if (_marineTag is null)
                 Console.WriteLine($"[Opening] OBSERVED: Marine {marines[0].Tag} produced.");
-            MarineObserved = true;
+            _marineTag = marines[0].Tag;
 
             // Production is the opening objective. Do not send a lone Marine
             // across the map or up an unknown enemy ramp. Hand it to the
             // defensive combat controller immediately; it will engage only
             // contacts that enter its bounded local pursuit envelope.
-            if (!_deployed)
-                Console.WriteLine($"[Opening] Marine {marines[0].Tag} remains on the friendly side; defensive control is active.");
-            _deployed = true;
+            Console.WriteLine($"[Opening] Marine {marines[0].Tag} remains on the friendly side; defensive control is active.");
             // Do not return here: the Barracks must keep producing Marines while
             // the existing force is being controlled by the combat planner.
         }
@@ -226,27 +224,15 @@ public sealed class Sc2OpeningMarineController
         var trainingOrderObserved = barracks.Orders.Any(order =>
             order.AbilityId == gameData.MarineTrainAbilityId.Value);
         if (trainingOrderObserved)
-        {
-            _marineTrainingRequested = true;
-            _marineTrainingOrderObserved = true;
             return null;
-        }
 
         // A submitted request is not enough to unlock the next opening phase.
         // Keep the gate closed until the Barracks order is actually observed.
-        if (!MarineObserved)
-            _marineTrainingOrderObserved = false;
-
-        if (_marineTrainingRequested && observation.GameLoop <= _marineTrainingRequestGameLoop)
+        if (IsOpeningMarineTrainingPending &&
+            observation.GameLoop <= _marineBuildJob.CreatedAtGameLoop + 8)
             return null;
-        if (_marineTrainingRequested && _marineBuildJobId is long pendingJobId &&
-            buildJobs is not null && buildJobs.TryGet(pendingJobId, out var pendingJob) &&
-            !pendingJob.IsExecuting && observation.GameLoop > _marineTrainingRequestGameLoop + 8)
-        {
-            pendingJob.Fail("Opening Barracks training order was not observed before retry timeout.", observation.GameLoop);
-            _marineBuildJobId = null;
-        }
-        _marineTrainingRequested = false;
+        if (IsOpeningMarineTrainingPending)
+            _marineBuildJob.Fail("Opening Barracks training order was not observed before retry timeout.", observation.GameLoop);
 
         if (observation.Minerals < gameData.MarineMineralCost ||
             observation.Minerals - gameData.MarineMineralCost < reservedMinerals ||
@@ -255,10 +241,8 @@ public sealed class Sc2OpeningMarineController
             barracks.HasOrders)
             return null;
 
-        _marineTrainingRequested = true;
-        _marineTrainingRequestGameLoop = observation.GameLoop;
-        _marineBuildJobId = buildJobs?.CreateMarineProduction(observation.GameLoop, barracks.Tag,
-            observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self && unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase)).Select(unit => unit.Tag)).Id;
+        _marineBuildJob = buildJobs.CreateMarineProduction(observation.GameLoop, barracks.Tag,
+            observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self && unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase)).Select(unit => unit.Tag));
         Console.WriteLine($"[Opening] Requesting first Marine: Barracks={barracks.Tag}, ability={gameData.MarineTrainAbilityId}, minerals={observation.Minerals}, supply={observation.FoodUsed}/{observation.FoodCap}.");
         _pendingAction = PendingAction.TrainMarine;
         return UnitCommand(barracks.Tag, checked((int)gameData.MarineTrainAbilityId.Value));
@@ -317,18 +301,14 @@ public sealed class Sc2OpeningMarineController
                     _builderMoveSubmitted = false;
                     break;
                 case PendingAction.BuildBarracks:
-                    _buildSubmitted = false;
-                    if (_barracksBuildJobId is long barracksJobId && buildJobs is not null &&
-                        buildJobs.TryGet(barracksJobId, out var barracksJob))
-                        barracksJob.Fail("SC2 rejected the opening Barracks construction command.", barracksJob.LastObservedGameLoop);
-                    _barracksBuildJobId = null;
+                    if (_barracksBuildJob is not null && !_barracksBuildJob.IsCompleted && !_barracksBuildJob.IsFailed)
+                        _barracksBuildJob.Fail("SC2 rejected the opening Barracks construction command.", _barracksBuildJob.LastObservedGameLoop);
+                    _barracksBuildJob = null;
                     break;
                 case PendingAction.TrainMarine:
-                    _marineTrainingRequested = false;
-                    _marineTrainingOrderObserved = false;
-                    if (_marineBuildJobId is long id && buildJobs is not null && buildJobs.TryGet(id, out var job))
-                        job.Fail("SC2 rejected the opening Marine training command.", job.LastObservedGameLoop);
-                    _marineBuildJobId = null;
+                    if (_marineBuildJob is not null && !_marineBuildJob.IsCompleted && !_marineBuildJob.IsFailed)
+                        _marineBuildJob.Fail("SC2 rejected the opening Marine training command.", _marineBuildJob.LastObservedGameLoop);
+                    _marineBuildJob = null;
                     break;
             }
         }

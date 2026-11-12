@@ -563,9 +563,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // Gas infrastructure starts once the first Barracks is complete.
             // Each geyser owns an independent FSM; construction targets the geyser
             // unit tag and completed Refineries receive up to three SCVs.
+            var friendlyTownHallCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !normalized.DeadUnitTags.Contains(unit.Tag) &&
+                (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase)));
+            var completedRefineryCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !normalized.DeadUnitTags.Contains(unit.Tag) &&
+                unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase));
+            var refineryConstructionAllowed = _openingMarine.BarracksComplete &&
+                (friendlyTownHallCount >= 2 || completedRefineryCount < 2);
             refineryActions = _refineries.ReconcileAndCreateActions(
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
-                allowConstruction: _openingMarine.BarracksComplete);
+                allowConstruction: refineryConstructionAllowed);
             assignments = _workerAssignments.Reconcile(normalized);
 
             // Secondary Barracks produce Marines whenever no higher-priority

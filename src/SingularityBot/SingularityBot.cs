@@ -431,6 +431,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
             var orbitalAbility = _gameData.OrbitalUpgradeAbilityId;
+            // SC2 may continue reporting the structure as a Command Center while
+            // the Orbital morph order is active. Treat that observed order as the
+            // unlock point; do not wait for the morph to finish.
+            var orbitalMorphingObserved = startingTownHall is not null &&
+                (startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+                 orbitalAbility is > 0 && startingTownHall.Orders.Any(order => order.AbilityId == orbitalAbility.Value));
             var orbitalReservationReason = startingTownHall is null ? "no-live-town-hall" :
                 !startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ? "starting-town-hall-not-command-center" :
                 !orbitalDepotReady ? "supply-depot-incomplete-or-missing" :
@@ -551,11 +557,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
 
-                // Start the follow-up Depot as soon as Barracks two is observed
-                // under construction. Do not serialize it behind Barracks one's
-                // completion: the Depot controller reserves a separate available SCV
-                // when the preferred Barracks builder has not yet been released.
-                if (_secondBarracks.RequiresSupplyDepot)
+                // The third Depot is part of the post-Orbital infrastructure
+                // wave. Unlock it only after the starting Command Center's Orbital
+                // morph order is actually observed (not merely when the upgrade is
+                // affordable or requested).
+                if (orbitalMorphingObserved && !_supplyDepotExpansion.IsCompleted)
                 {
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
@@ -642,8 +648,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress < 1f && !normalized.DeadUnitTags.Contains(unit.Tag));
-            var refineryConstructionAllowed = _openingMarine.BarracksComplete &&
-                completedRefineryCount < 2 && !refineryUnderConstruction;
+            // Refineries are deliberately held until the Orbital morph has
+            // started. This preserves the opening's mineral priority.
+            var refineryConstructionAllowed = orbitalMorphingObserved &&
+                _openingMarine.BarracksComplete && completedRefineryCount < 2 && !refineryUnderConstruction;
             refineryActions = _refineries.ReconcileAndCreateActions(
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
                 allowConstruction: refineryConstructionAllowed);
@@ -669,7 +677,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 ? _openingMarine.TakePlacementQuery(_gameData)
                 : null;
             var secondBarracksPlacementQuery = _secondBarracks.TakePlacementQuery(_gameData);
-            var supplyDepotExpansionPlacementQuery = _secondBarracks.RequiresSupplyDepot
+            var supplyDepotExpansionPlacementQuery = orbitalMorphingObserved && !_supplyDepotExpansion.IsCompleted
                 ? _supplyDepotExpansion.TakePlacementQuery(_gameData)
                 : null;
             var expansionCommandCenterPlacementQuery = _secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete

@@ -19,7 +19,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         Directory.CreateDirectory(directory);
         _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
         _writer = new StreamWriter(_path, false);
-        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete");
+        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete,thirdSupplyDepotBuilderTag,thirdSupplyDepotX,thirdSupplyDepotY,thirdSupplyDepotMoveSubmitted,thirdSupplyDepotBuildSubmitted,thirdSupplyDepotComplete");
         _writer.Flush();
         Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
     }
@@ -34,7 +34,8 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         Sc2ExpansionCommandCenterController expansion = null,
         Sc2OpeningMarineController openingMarine = null,
         Sc2SecondBarracksController secondBarracks = null,
-        Sc2OpeningBuilderController supplyDepot = null)
+        Sc2OpeningBuilderController supplyDepot = null,
+        Sc2OpeningBuilderController thirdSupplyDepot = null)
     {
         if (_writer is null)
             return;
@@ -90,7 +91,13 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             supplyDepot?.Placement?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             B(supplyDepot?.IsMoveSubmitted ?? false),
             B(supplyDepot?.IsBuildSubmitted ?? false),
-            B(supplyDepot?.IsCompleted ?? false)
+            B(supplyDepot?.IsCompleted ?? false),
+            thirdSupplyDepot?.BuilderTag?.ToString(CultureInfo.InvariantCulture) ?? "",
+            thirdSupplyDepot?.Placement?.X.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            thirdSupplyDepot?.Placement?.Y.ToString("F3", CultureInfo.InvariantCulture) ?? "",
+            B(thirdSupplyDepot?.IsMoveSubmitted ?? false),
+            B(thirdSupplyDepot?.IsBuildSubmitted ?? false),
+            B(thirdSupplyDepot?.IsCompleted ?? false)
         };
         _writer.WriteLine(string.Join(",", row));
     }

@@ -13,6 +13,19 @@ public enum MarineFormation
     HalfCircle
 }
 
+/// <summary>
+/// Tactical depth assigned by unit role. Lower tiers are closer to the
+/// direction of travel; higher tiers remain protected behind the line.
+/// </summary>
+public enum CombatFormationRole
+{
+    Vanguard,
+    Line,
+    Support,
+    Artillery,
+    AirCover
+}
+
 public static class MarineFormationPlanner
 {
     private const float SlotSpacing = 2f;
@@ -51,6 +64,60 @@ public static class MarineFormationPlanner
         return local.Select(point => (
             X: sideX * point.Item1 + forwardX * point.Item2,
             Y: sideY * point.Item1 + forwardY * point.Item2)).ToArray();
+    }
+
+    /// <summary>
+    /// Assigns deterministic, role-aware slots while preserving the input
+    /// order in the returned list. Vanguard units occupy the forward line,
+    /// infantry the main line, support behind them, and artillery at the rear.
+    /// Air cover is staged above/behind the ground force in a separate rear tier.
+    /// </summary>
+    public static IReadOnlyList<(float X, float Y)> GetRoleAwareOffsets(
+        IReadOnlyList<CombatFormationRole> roles,
+        float directionX,
+        float directionY,
+        float slotSpacing = SlotSpacing)
+    {
+        ArgumentNullException.ThrowIfNull(roles);
+        if (!float.IsFinite(slotSpacing) || slotSpacing <= 0)
+            throw new ArgumentOutOfRangeException(nameof(slotSpacing));
+        if (roles.Count == 0)
+            return Array.Empty<(float X, float Y)>();
+
+        var length = MathF.Sqrt(directionX * directionX + directionY * directionY);
+        if (!float.IsFinite(length) || length < 0.001f)
+            throw new ArgumentException("A finite, non-zero travel direction is required.");
+        var forwardX = directionX / length;
+        var forwardY = directionY / length;
+        var sideX = -forwardY;
+        var sideY = forwardX;
+        var result = new (float X, float Y)[roles.Count];
+
+        foreach (var roleGroup in roles
+                     .Select((role, index) => (Role: role, Index: index))
+                     .GroupBy(item => item.Role))
+        {
+            var tier = roleGroup.Key switch
+            {
+                CombatFormationRole.Vanguard => 1,
+                CombatFormationRole.Line => 0,
+                CombatFormationRole.Support => -1,
+                CombatFormationRole.Artillery => -2,
+                CombatFormationRole.AirCover => -3,
+                _ => throw new ArgumentOutOfRangeException(nameof(roles), "Unknown combat formation role.")
+            };
+            var members = roleGroup.OrderBy(item => item.Index).ToArray();
+            for (var index = 0; index < members.Length; index++)
+            {
+                var lateral = (index - (members.Length - 1) / 2f) * slotSpacing;
+                var forward = tier * slotSpacing;
+                result[members[index].Index] = (
+                    sideX * lateral + forwardX * forward,
+                    sideY * lateral + forwardY * forward);
+            }
+        }
+
+        return result;
     }
 
     /// <summary>

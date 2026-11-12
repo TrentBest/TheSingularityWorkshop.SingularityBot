@@ -27,7 +27,7 @@ public sealed class ScoutingAdvisorTests
 
         Assert.Equal(3, assignments.Count);
         Assert.DoesNotContain(1UL, assignments.Keys);
-        Assert.Equal(3, assignments.Values.Distinct().Count();
+        Assert.Equal(3, assignments.Values.Distinct().Count());
     }
 
     [Fact]

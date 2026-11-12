@@ -28,15 +28,16 @@ public sealed class Sc2OrbitalSupportController
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
 
-        var commandCenters = observation.Units
+        var townHalls = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-                !observation.DeadUnitTags.Contains(unit.Tag) && IsKind(unit, "CommandCenter"))
+                !observation.DeadUnitTags.Contains(unit.Tag) &&
+                (IsKind(unit, "CommandCenter") || IsKind(unit, "OrbitalCommand") ||
+                 IsKind(unit, "PlanetaryFortress")))
             .OrderBy(unit => unit.Tag)
             .ToArray();
-        var otherTownHalls = observation.Units.Count(unit =>
-            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-            !observation.DeadUnitTags.Contains(unit.Tag) &&
-            (IsKind(unit, "OrbitalCommand") || IsKind(unit, "PlanetaryFortress")));
+        // SC2 unit tags are stable and the starting town hall predates later
+        // expansions. Keep the first-base upgrade target stable as the economy grows.
+        var firstBaseTownHall = townHalls.FirstOrDefault();
 
         var orbitalTechReady =
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
@@ -44,13 +45,13 @@ public sealed class Sc2OrbitalSupportController
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
-        if (commandCenters.Length != 1 || otherTownHalls != 0 || !orbitalTechReady ||
-            gameData.OrbitalUpgradeAbilityId is not > 0 ||
+        if (firstBaseTownHall is null || !IsKind(firstBaseTownHall, "CommandCenter") ||
+            !orbitalTechReady || gameData.OrbitalUpgradeAbilityId is not > 0 ||
             gameData.OrbitalUpgradeMineralCost == 0 ||
             observation.Minerals < gameData.OrbitalUpgradeMineralCost + reservedMinerals)
             return null;
 
-        return commandCenters[0].Tag;
+        return firstBaseTownHall.Tag;
     }
 
     public SC2APIProtocol.Action TryCreateAction(
@@ -99,25 +100,17 @@ public sealed class Sc2OrbitalSupportController
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
-        // The opening Orbital conversion is a one-time first-base milestone.
-        // Later Command Centers are expansion assets; upgrading them here would
-        // compete with the flight/landing expansion cycle and can cause repeated
-        // lift-off/landing behavior in controllers that manage those assets.
-        var firstBaseOrbitalUpgradeEligible = townHalls.Length == 1 &&
-            IsKind(townHalls[0], "CommandCenter");
-
-        if (firstBaseOrbitalUpgradeEligible && orbitalTechReady &&
-            gameData.OrbitalUpgradeAbilityId is > 0 &&
-            gameData.OrbitalUpgradeMineralCost > 0)
+        // Convert only the original starting Command Center. Later expansion
+        // town halls must not steal the one-time opening upgrade, and their
+        // existence must not make the starting base permanently ineligible.
+        var firstBaseTownHall = townHalls.FirstOrDefault();
+        if (firstBaseTownHall is not null && IsKind(firstBaseTownHall, "CommandCenter") &&
+            orbitalTechReady && gameData.OrbitalUpgradeAbilityId is > 0 &&
+            gameData.OrbitalUpgradeMineralCost > 0 && !firstBaseTownHall.HasOrders &&
+            observation.Minerals >= gameData.OrbitalUpgradeMineralCost + reservedMinerals)
         {
-            var commandCenter = townHalls.FirstOrDefault(unit =>
-                IsKind(unit, "CommandCenter") && !unit.HasOrders);
-            if (commandCenter is not null &&
-                observation.Minerals >= gameData.OrbitalUpgradeMineralCost + reservedMinerals)
-            {
-                return Submit(commandCenter.Tag, gameData.OrbitalUpgradeAbilityId.Value,
-                    observation.GameLoop);
-            }
+            return Submit(firstBaseTownHall.Tag, gameData.OrbitalUpgradeAbilityId.Value,
+                observation.GameLoop);
         }
 
         if (gameData.MuleCallDownAbilityId is not > 0 ||

@@ -26,7 +26,7 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
-    public void DoesNotReserveCommandCenterBeforeOrbitalTechOrMineralGate()
+    public void DoesNotReserveCommandCenterBeforeOrbitalTechIsReady()
     {
         var controller = new Sc2OrbitalSupportController();
         var data = GameData();
@@ -34,9 +34,19 @@ public sealed class Sc2OrbitalSupportControllerTests
         Assert.Null(controller.GetCommandCenterReservedForUpgrade(
             Snapshot(500, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot")),
             data));
-        Assert.Null(controller.GetCommandCenterReservedForUpgrade(
-            Snapshot(149, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks")),
-            data));
+    }
+
+    [Fact]
+    public void ReservesCommandCenterBeforeOrbitalIsAffordableToPreventScvRefillStarvation()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+
+        var reservedTag = controller.GetCommandCenterReservedForUpgrade(
+            Snapshot(50, Fact(1, "CommandCenter"), Fact(2, "SupplyDepot"), Fact(3, "Barracks")),
+            data);
+
+        Assert.Equal(1UL, reservedTag);
     }
 
     [Fact]

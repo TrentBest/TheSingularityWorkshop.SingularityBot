@@ -279,6 +279,7 @@ public sealed class WorkerResourceAssignmentPlanner
                                     !_reservedWorkers.Contains(unit.Tag) &&
                                     (!unit.HasOrders ||
                                      workersWithStaleMineralOrders.Contains(unit.Tag) ||
+                                     IsReturningEmptyToTownHall(unit, observation) ||
                                      (unit.Orders.FirstOrDefault()?.TargetUnitTag is ulong targetTag &&
                                       minerals.ContainsKey(targetTag))))
                      .OrderBy(unit => unit.Tag))
@@ -604,6 +605,21 @@ public sealed class WorkerResourceAssignmentPlanner
 
     private IReadOnlyDictionary<ulong, WorkerResourceAssignment> Snapshot() =>
         new Dictionary<ulong, WorkerResourceAssignment>(_assignments);
+
+    private static bool IsReturningEmptyToTownHall(
+        UnitObservationFacts worker,
+        NormalizedObservation observation)
+    {
+        if (worker.HasCargo ||
+            worker.Orders.FirstOrDefault()?.TargetUnitTag is not ulong targetTag)
+            return false;
+
+        return observation.Units.Any(unit =>
+            unit.Tag == targetTag &&
+            unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible &&
+            IsTownHall(unit.UnitKind));
+    }
 
     private static bool IsWorker(string kind) =>
         kind.Equals("SCV", StringComparison.OrdinalIgnoreCase) ||

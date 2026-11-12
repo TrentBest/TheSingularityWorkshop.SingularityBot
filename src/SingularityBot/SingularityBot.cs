@@ -697,7 +697,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
-                        _buildJobs, _secondBarracks.PreferredBuilderTag);
+                        _buildJobs, _secondBarracks.PreferredBuilderTag,
+                        _buildings.DesignatedCommandCenterConstructionAreaCenter,
+                        _buildings.DesignatedCommandCenterConstructionAreaRadius);
                     _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
                     if (_expansionCommandCenter.IsStarted)
                         _secondBarracks.NotifyCommandCenterStarted();

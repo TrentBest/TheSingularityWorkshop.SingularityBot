@@ -47,7 +47,7 @@ public static class Sc2RampScoutPlanner
         directionX /= startDistance;
         directionY /= startDistance;
         var lowGroundMaximum = enemyHeight > 16 ? enemyHeight - 16 : 0;
-        var highGroundMinimum = enemyHeight > 8 ? enemyHeight - 8 : 0;
+        var highGroundMinimum = (byte)(enemyHeight > 8 ? enemyHeight - 8 : 0);
         var grid = terrain.Pathing;
         var cellWidth = grid.WorldWidth / grid.Width;
         var cellHeight = grid.WorldHeight / grid.Height;

@@ -66,7 +66,8 @@ public sealed class Sc2OrbitalSupportController
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
 
-        if (gameData.OrbitalUpgradeAbilityId is not > 0 ||
+        if (permittedCommandCenterTag is not ulong permittedTag ||
+            gameData.OrbitalUpgradeAbilityId is not > 0 ||
             gameData.OrbitalUpgradeMineralCost == 0 ||
             observation.Minerals < gameData.OrbitalUpgradeMineralCost)
             return false;
@@ -74,8 +75,8 @@ public sealed class Sc2OrbitalSupportController
         var commandCenter = observation.Units.FirstOrDefault(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&
-            IsKind(unit, "CommandCenter") &&
-            (permittedCommandCenterTag is null || unit.Tag == permittedCommandCenterTag.Value));
+            unit.Tag == permittedTag &&
+            IsKind(unit, "CommandCenter"));
         if (commandCenter is null)
             return false;
 
@@ -87,8 +88,9 @@ public sealed class Sc2OrbitalSupportController
         if (!orbitalTechReady)
             return false;
 
-        return !commandCenter.Orders.Any(order =>
-            gameData.ScvTrainAbilityId is > 0 && order.AbilityId == gameData.ScvTrainAbilityId.Value);
+        return gameData.ScvTrainAbilityId is > 0
+            ? !commandCenter.Orders.Any(order => order.AbilityId == gameData.ScvTrainAbilityId.Value)
+            : !commandCenter.HasOrders;
     }
 
     public SC2APIProtocol.Action TryCreateAction(

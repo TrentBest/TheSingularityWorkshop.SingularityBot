@@ -46,8 +46,7 @@ public sealed class Sc2OrbitalSupportController
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
         if (firstBaseTownHall is null || !IsKind(firstBaseTownHall, "CommandCenter") ||
-            !orbitalTechReady || gameData.OrbitalUpgradeAbilityId is not > 0 ||
-            gameData.OrbitalUpgradeMineralCost == 0)
+            !orbitalTechReady || gameData.OrbitalUpgradeMineralCost == 0)
             return null;
 
         return firstBaseTownHall.Tag;

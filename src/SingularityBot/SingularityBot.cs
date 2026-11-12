@@ -540,8 +540,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
             if (builderAction is null && _openingBuilder.IsCompleted)
             {
+                // The economy reservation protects the first Marine from SCV
+                // spending. Do not charge that same reservation against the Marine
+                // itself: its own 50-mineral cost is the first post-Barracks spend.
+                var firstMarinePriority = !_openingMarine.MarineTrainingStarted && !_openingMarine.MarineObserved;
+                var marineReservedMinerals = firstMarinePriority ? 0u : reservedInfrastructureMinerals;
                 marineAction = _openingMarine.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag, _buildJobs, reservedInfrastructureMinerals);
+                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag, _buildJobs, marineReservedMinerals);
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else
@@ -642,10 +647,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 new[] {
                     builderAction is not null ? "builder" : null
                 }.Where(value => value is not null));
-            if (builderAction is null)
+            if (builderAction is null && _openingMarine.MarineTrainingOrderObserved)
             {
-                // Orbital conversion outranks the delayed second Barracks, gas,
-                // Marine production, and the expansion Command Center.
+                // The first Marine must be observed in the Barracks queue before
+                // the Orbital morph can consume the next mineral bank.
                 orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
                 if (orbitalSupportAction is not null)
@@ -657,7 +662,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             else
             {
                 _orbitalSupportActionSubmitted = false;
-                var diagnostic = $"coordinator-blocked={orbitalCoordinatorBlockers};loop={normalized.GameLoop}";
+                var blockers = builderAction is not null ? orbitalCoordinatorBlockers : "waiting-for-observed-first-marine-order";
+                var diagnostic = $"coordinator-blocked={blockers};loop={normalized.GameLoop}";
                 if (!string.Equals(_lastOrbitalDiagnostic, diagnostic, StringComparison.Ordinal))
                 {
                     Console.WriteLine("[Orbital] " + diagnostic + ".");

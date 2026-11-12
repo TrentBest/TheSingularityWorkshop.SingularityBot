@@ -13,7 +13,7 @@ public sealed class Sc2MarineRallyController
     private readonly Dictionary<ulong, uint> _lastRallyCommandLoops = new();
     private readonly Dictionary<ulong, MapPoint> _lastRallyTargets = new();
     private const uint RetryAfterGameLoops = 44;
-    private const float RallyOffset = 30f;
+    private const uint PatrolRotationGameLoops = 224;
     private const float ArrivalRadiusSquared = 4f;
     private const float RendezvousOffset = 5f;
     private bool _squadDispatched;
@@ -35,7 +35,7 @@ public sealed class Sc2MarineRallyController
             return Array.Empty<SC2APIProtocol.Action>();
 
         var direction = (map.Side.EnemyStart - map.Side.FriendlyStart).Normalize();
-        var rallyPoint = map.Side.EnemyStart - direction * RallyOffset;
+        var patrolPoints = FindFriendlyPatrolSectors(map);
 
         var actions = new List<SC2APIProtocol.Action>();
         var liveMarineTags = observation.Units
@@ -95,7 +95,7 @@ public sealed class Sc2MarineRallyController
         // producing Barracks. Early Marines occupy distinct box slots around it;
         // the squad does not begin its cross-map advance until all four have
         // reached their assigned slots.
-        if (!map.Bounds.Contains(rallyPoint) || map.Side.Assess(rallyPoint) != MapSide.Enemy)
+        if (patrolPoints.Count == 0)
             return scoutActions;
 
         var squadTags = liveMarineTags
@@ -146,12 +146,17 @@ public sealed class Sc2MarineRallyController
         }
         else
         {
-            var formationOffsets = MarineFormationPlanner.GetOffsets(
-                MarineFormation.Box, squadTags.Length, direction.X, direction.Y);
+            // Once assembled, the Marines do not march into a single exposed
+            // map-edge rally point. They patrol distinct, map-derived sectors
+            // around the friendly base. The whole screen rotates one sector at
+            // a time so it keeps moving, maintains spacing, and repeatedly checks
+            // the approaches instead of becoming a stationary clump.
+            var patrolPhase = (int)((observation.GameLoop / PatrolRotationGameLoops) % patrolPoints.Count);
             for (var index = 0; index < squadTags.Length; index++)
-                targetsByTag[squadTags[index]] = (
-                    rallyPoint.X + formationOffsets[index].X,
-                    rallyPoint.Y + formationOffsets[index].Y);
+            {
+                var patrolPoint = patrolPoints[(index + patrolPhase) % patrolPoints.Count];
+                targetsByTag[squadTags[index]] = (patrolPoint.X, patrolPoint.Y);
+            }
         }
 
         foreach (var decision in decisions.Where(item =>
@@ -223,6 +228,23 @@ public sealed class Sc2MarineRallyController
             .ThenBy(point => point.Y)
             .Select(point => (MapPoint?)point)
             .FirstOrDefault();
+    }
+
+    private static IReadOnlyList<MapPoint> FindFriendlyPatrolSectors(SpatialMap map)
+    {
+        var homeSector = map.GetSector(map.Side.FriendlyStart);
+        var scoutPoint = FindFriendlyObservationSector(map);
+        return map.GetNeighbors(homeSector.Id)
+            .Select(sector => sector.Center)
+            .Where(map.Bounds.Contains)
+            .Where(point => map.Side.Assess(point) != MapSide.Enemy)
+            .Where(point => scoutPoint is null ||
+                point.DistanceSquaredTo(scoutPoint.Value) > 0.01f)
+            .OrderBy(point => MathF.Atan2(
+                point.Y - map.Side.FriendlyStart.Y,
+                point.X - map.Side.FriendlyStart.X))
+            .ThenBy(point => point.DistanceSquaredTo(map.Side.FriendlyStart))
+            .ToArray();
     }
 
     private static SC2APIProtocol.Action MoveCommand(ulong tag, int abilityId, MapPoint target) =>

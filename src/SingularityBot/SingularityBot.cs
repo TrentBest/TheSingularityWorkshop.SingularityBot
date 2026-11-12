@@ -1050,7 +1050,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             if (_openingBuilderActionSubmitted)
                 _openingBuilder.OnActionResult(null, _buildJobs);
             if (_openingMarineActionSubmitted)
-                _openingMarine.OnActionResult(null, _buildJobs);
+                _openingMarine.OnActionResult(null);
             if (_supplyDepotExpansionActionSubmitted)
                 _supplyDepotExpansion.OnActionResult(null, _buildJobs);
             if (_thirdSupplyDepotActionSubmitted)
@@ -1110,7 +1110,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
         if (_openingMarineActionSubmitted)
         {
-            _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
+            _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
             resultIndex++;
         }
         if (_supplyDepotExpansionActionSubmitted)

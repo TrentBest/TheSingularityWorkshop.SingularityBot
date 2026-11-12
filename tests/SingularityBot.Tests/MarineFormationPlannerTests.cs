@@ -93,4 +93,46 @@ public sealed class MarineFormationPlannerTests
                 new[] { -1, 2 }, 1, 0));
     }
 
+
+    [Fact]
+    public void RoleAwareFormationKeepsVanguardAheadOfLineAndArtilleryAtRear()
+    {
+        var roles = new[]
+        {
+            CombatFormationRole.Line,
+            CombatFormationRole.Artillery,
+            CombatFormationRole.Vanguard,
+            CombatFormationRole.Line
+        };
+
+        var offsets = MarineFormationPlanner.GetRoleAwareOffsets(roles, 1, 0);
+
+        Assert.Equal(4, offsets.Distinct().Count());
+        Assert.True(offsets[2].X > offsets[0].X);
+        Assert.True(offsets[0].X > offsets[1].X);
+        Assert.Equal(-1f, offsets[0].Y);
+        Assert.Equal(-4f, offsets[1].X);
+    }
+
+    [Fact]
+    public void RoleAwareFormationRotatesWithMarchDirection()
+    {
+        var roles = new[] { CombatFormationRole.Vanguard, CombatFormationRole.Artillery };
+        var east = MarineFormationPlanner.GetRoleAwareOffsets(roles, 1, 0);
+        var north = MarineFormationPlanner.GetRoleAwareOffsets(roles, 0, 1);
+
+        Assert.Equal(east[0].X, north[0].Y);
+        Assert.Equal(-east[0].Y, north[0].X);
+        Assert.True(east[0].X > east[1].X);
+    }
+
+    [Fact]
+    public void RoleAwareFormationRejectsInvalidSpacingAndDirection()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            MarineFormationPlanner.GetRoleAwareOffsets(new[] { CombatFormationRole.Line }, 1, 0, 0));
+        Assert.Throws<ArgumentException>(() =>
+            MarineFormationPlanner.GetRoleAwareOffsets(new[] { CombatFormationRole.Line }, 0, 0));
+    }
+
 }

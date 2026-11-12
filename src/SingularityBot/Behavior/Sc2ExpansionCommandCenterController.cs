@@ -27,7 +27,8 @@ public sealed class Sc2ExpansionCommandCenterController
     private uint _lastNoSiteGameLoop;
 
     public ulong? BuilderTag => _builderTag;
-    public MapPoint? ExpansionLocation => _site ?? _completedExpansionSites.LastOrDefault();
+    public MapPoint? ExpansionLocation => _site ??
+        (_completedExpansionSites.Count == 0 ? null : _completedExpansionSites[^1]);
     public IReadOnlyList<MapPoint> CompletedExpansionSites => _completedExpansionSites.ToArray();
     public bool IsPlacementQueryPending => _queryPending;
     public bool IsStarted { get; private set; }

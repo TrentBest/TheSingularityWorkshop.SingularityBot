@@ -136,13 +136,15 @@ public sealed class BuildingBehaviorRuntime
 
     public static void RegisterDefinitions()
     {
-        Register(BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.LifecycleFsm, processRate: -1,
+                processingGroup: UnitBehaviorCatalog.DataSyncProcessingGroup)
             .State("UnderConstruction", null, null, null)
             .State("Operational", context => (context as BuildingBehaviorContext)?.EmitOperational(), null, null)
             .Transition("UnderConstruction", "Operational", IsOperational)
             .WithInitialState("UnderConstruction").BuildDefinition();
 
-        Register(BuildingBehaviorCatalog.ActivityFsm, UnitBehaviorCatalog.ProductionProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ActivityFsm, processRate: -1,
+                processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
             .State("Idle", null, null, null)
             .State("Producing", null, null, null)
             .State("Researching", null, null, null)
@@ -154,19 +156,16 @@ public sealed class BuildingBehaviorRuntime
             .Transition("Researching", "Producing", IsProducing)
             .WithInitialState("Idle").BuildDefinition();
 
-        Register(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup)
+        FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
+                processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+            .State("Assess", null, null, null)
             .State("Lowered", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(false), null)
             .State("Raised", null, context => (context as BuildingBehaviorContext)?.EmitDepotAccess(true), null)
+            .Transition("Assess", "Raised", IsObservedRaised)
+            .Transition("Assess", "Lowered", IsObservedLowered)
             .Transition("Lowered", "Raised", ShouldRaiseDepot)
             .Transition("Raised", "Lowered", ShouldLowerDepot)
-            .WithInitialState("Lowered").BuildDefinition();
-    }
-
-    private static FiniteStateMachineBuilder Register(string name, string group)
-    {
-        if (FSM_API.Interaction.Exists(name, group))
-            return FSM_API.Create.CreateFiniteStateMachine(name, processRate: -1, processingGroup: group);
-        return FSM_API.Create.CreateFiniteStateMachine(name, processRate: -1, processingGroup: group);
+            .WithInitialState("Assess").BuildDefinition();
     }
 
     private static bool IsOperational(IStateContext context) =>
@@ -180,6 +179,12 @@ public sealed class BuildingBehaviorRuntime
 
     private static bool IsIdle(IStateContext context) =>
         context is BuildingBehaviorContext building && !building.IsProducing && !building.IsResearching;
+
+    private static bool IsObservedRaised(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.IsRaised;
+
+    private static bool IsObservedLowered(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.IsLowered;
 
     private static bool ShouldRaiseDepot(IStateContext context) =>
         context is BuildingBehaviorContext building && building.HasNearbyEnemy && !building.PassageRequested;

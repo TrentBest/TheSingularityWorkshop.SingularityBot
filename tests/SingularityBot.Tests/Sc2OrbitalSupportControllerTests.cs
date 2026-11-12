@@ -84,7 +84,7 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
-    public void DoesNotUpgradeExpansionCommandCentersAfterTheFirstBaseExists()
+    public void UpgradesTheOriginalStartingCommandCenterAfterExpansionExists()
     {
         var controller = new Sc2OrbitalSupportController();
         var data = GameData();
@@ -94,7 +94,19 @@ public sealed class Sc2OrbitalSupportControllerTests
             Fact(2, "CommandCenter", 30, 30),
             Fact(3, "SupplyDepot"),
             Fact(4, "Barracks"));
-        Assert.Null(controller.TryCreateAction(twoCommandCenters, data));
+        var action = controller.TryCreateAction(twoCommandCenters, data);
+        Assert.NotNull(action);
+        Assert.Equal(new[] { 1UL }, action.ActionRaw.UnitCommand.UnitTags);
+
+        var reservedTag = controller.GetCommandCenterReservedForUpgrade(twoCommandCenters, data);
+        Assert.Equal(1UL, reservedTag);
+    }
+
+    [Fact]
+    public void DoesNotUpgradeExpansionCommandCenterWhenStartingBaseIsAlreadyOrbital()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
 
         var firstBaseAlreadyOrbital = Snapshot(500,
             Fact(1, "OrbitalCommand"),
@@ -102,13 +114,23 @@ public sealed class Sc2OrbitalSupportControllerTests
             Fact(3, "SupplyDepot"),
             Fact(4, "Barracks"));
         Assert.Null(controller.TryCreateAction(firstBaseAlreadyOrbital, data));
+        Assert.Null(controller.GetCommandCenterReservedForUpgrade(firstBaseAlreadyOrbital, data));
+    }
 
-        var planetaryFortressExists = Snapshot(500,
+    [Fact]
+    public void CanUpgradeStartingCommandCenterWhenAnotherTownHallIsPlanetaryFortress()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var observation = Snapshot(500,
             Fact(1, "CommandCenter"),
             Fact(2, "PlanetaryFortress", 30, 30),
             Fact(3, "SupplyDepot"),
             Fact(4, "Barracks"));
-        Assert.Null(controller.TryCreateAction(planetaryFortressExists, data));
+
+        var action = controller.TryCreateAction(observation, data);
+        Assert.NotNull(action);
+        Assert.Equal(new[] { 1UL }, action.ActionRaw.UnitCommand.UnitTags);
     }
 
     [Fact]

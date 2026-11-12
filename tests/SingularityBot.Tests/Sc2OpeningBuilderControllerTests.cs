@@ -309,6 +309,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
+        Assert.True(controller.IsMoveRetryReady);
         Assert.Equal("MoveSubmitted", controller.MovementState);
         Assert.NotNull(retryMove);
         Assert.Equal(firstMove.ActionRaw.UnitCommand.AbilityId, retryMove.ActionRaw.UnitCommand.AbilityId);

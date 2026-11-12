@@ -49,6 +49,28 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void DoesNotPreferGasCargoOverAnAvailableMineralWorker()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var gameData = GameData();
+
+        // SCV 10 is loaded but returning to a Refinery; SCV 11 is empty.
+        // Generic HasCargo must not make the gas worker the Depot builder.
+        controller.TryCreateAction(Snapshot(80, 12, 15,
+            Fact(10, "SCV", 5, 5, hasCargo: true,
+                orders: new[] { new UnitOrderObservationFacts(295, 30, null, null) }),
+            Fact(11, "SCV", 9, 9),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(30, "Refinery", 12, 10)), Map(), gameData,
+            assignments, Crew(10, 11));
+
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.True(assignments.IsReserved(11));
+        Assert.False(assignments.IsReserved(10));
+    }
+
+    [Fact]
     public void FallsBackToAnUnreservedScvWhenConstructionCapabilitiesAreNotYetAssigned()
     {
         var controller = new Sc2OpeningBuilderController();

@@ -115,6 +115,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public bool RequestSupplyDepotPassage(ulong buildingTag, bool requested = true) =>
         _buildings.RequestDepotPassage(buildingTag, requested);
 
+    /// <summary>Defines the exclusion zone in which a landed Command Center must not morph to Orbital.</summary>
+    public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius) =>
+        _buildings.ConfigureDesignatedCommandCenterConstructionArea(centerX, centerY, radius);
+
     /// <summary>Sets the user-authored goal plan before or during a match.</summary>
     public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)
     {
@@ -712,7 +716,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // Orbital readiness is governed by the controller's observed tech,
                 // Command Center, SCV-queue, and mineral guards. Marine production
                 // is deliberately independent: it is not an Orbital prerequisite.
-                orbitalSupportAction = _orbitalSupport.TryCreateAction(normalized, _gameData);
+                var orbitalReadyTownHall = _buildings.Buildings
+                    .Where(building => building.TownHallUpgradeState == "UpgradeReady")
+                    .OrderBy(building => building.UnitTag)
+                    .FirstOrDefault();
+                orbitalSupportAction = _orbitalSupport.TryCreateAction(
+                    normalized, _gameData,
+                    allowOrbitalUpgrade: orbitalReadyTownHall is not null,
+                    permittedCommandCenterTag: orbitalReadyTownHall?.UnitTag);
                 _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
                 if (orbitalSupportAction is not null)
                 {
@@ -852,7 +863,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
         // Associate observed structures with their construction jobs after all
         // construction controllers have reconciled this frame's result evidence.
-        _buildings.Reconcile(normalized, _buildJobs.Jobs, IsResearchAbility);
+        _buildings.Reconcile(normalized, _buildJobs.Jobs, IsResearchAbility,
+            _gameData.ScvTrainAbilityId, _gameData.OrbitalUpgradeAbilityId);
 
         // The scheduler advances every registered group in declared order even
         // when an opening gate suppresses outgoing actions for this frame.

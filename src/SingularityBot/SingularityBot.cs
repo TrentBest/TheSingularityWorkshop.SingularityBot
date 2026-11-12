@@ -487,31 +487,26 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             reservedInfrastructureMinerals = reservedProductionMinerals;
             // The Orbital is the first post-Barracks mineral commitment. Do not let
             // optional Marine or follow-on infrastructure reservations starve it.
-            var orbitalReservedCommandCenter = _orbitalSupport.GetCommandCenterReservedForUpgrade(
-                normalized, _gameData);
+            var fsmReadyTownHall = _buildings.Buildings
+                .Where(building => building.TownHallUpgradeState == "UpgradeReady")
+                .OrderBy(building => building.UnitTag)
+                .FirstOrDefault();
+            var orbitalReservedCommandCenter = fsmReadyTownHall?.UnitTag;
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible &&
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            orbitalMineralReservation = startingTownHall is not null &&
-                startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) &&
-                orbitalDepotReady && orbitalBarracksReady && !orbitalMorphingObserved
+            orbitalMineralReservation = fsmReadyTownHall is not null &&
+                orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
-            var orbitalCommandCenterBusy = _gameData.ScvTrainAbilityId is > 0
-                ? startingTownHall?.Orders.Any(order => order.AbilityId == _gameData.ScvTrainAbilityId.Value) == true
-                : startingTownHall?.HasOrders == true;
-            var orbitalReservationReason = startingTownHall is null ? "no-live-town-hall" :
-                !startingTownHall.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ? "starting-town-hall-not-command-center" :
-                !orbitalDepotReady ? "supply-depot-incomplete-or-missing" :
-                !orbitalBarracksReady ? "barracks-incomplete-or-missing" :
+            var orbitalReservationReason = fsmReadyTownHall is null ? "town-hall-fsm-not-ready" :
                 orbitalAbility is not > 0 ? "orbital-ability-unavailable-or-ambiguous" :
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
-                orbitalCommandCenterBusy ? "waiting-for-current-scv-training-order-or-unresolved-order-metadata" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
-                "eligible";
+                "town-hall-fsm-ready";
             var firstRefineryPending = orbitalMineralReservation > 0 &&
                 _gameData.RefineryMineralCost > 0 &&
                 !normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&

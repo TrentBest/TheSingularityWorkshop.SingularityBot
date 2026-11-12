@@ -15,6 +15,7 @@ public sealed class Sc2OpeningMarineController : IDisposable
     private readonly BuildJobRuntime _ownedBuildJobs = new();
     private BuildJobContext _barracksBuildJob;
     private BuildJobContext _marineBuildJob;
+    private ulong? _marineTag;
 
     private enum PendingAction { None, MoveBuilder, BuildBarracks, TrainMarine }
 

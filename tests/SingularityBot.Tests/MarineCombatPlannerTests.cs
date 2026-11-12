@@ -46,7 +46,9 @@ public sealed class MarineCombatPlannerTests
     public void HoldsInsteadOfChasingAContactAcrossTheMap()
     {
         var result = Plan(Marine(1, 0, 0, 0), Enemy(2, 30, 0));
-        Assert.Equal(MarineTacticalAction.Hold, Assert.Single(result).Action);
+        var decision = Assert.Single(result);
+        Assert.Equal(MarineTacticalAction.Hold, decision.Action);
+        Assert.True(decision.IsOutsideLocalDefenseEnvelope);
     }
 
     [Fact]

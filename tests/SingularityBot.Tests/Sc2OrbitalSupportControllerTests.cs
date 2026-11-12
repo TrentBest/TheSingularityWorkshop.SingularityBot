@@ -67,6 +67,44 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void UpgradesCommandCenterWithPersistentWorkerRallyOrder()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var commandCenterWithRally = Fact(1, "CommandCenter") with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(3690, null, 10, 14) }
+        };
+
+        var action = controller.TryCreateAction(Snapshot(150,
+            commandCenterWithRally,
+            Fact(2, "SupplyDepot"),
+            Fact(3, "Barracks")), data);
+
+        Assert.NotNull(action);
+        Assert.Equal(1516, action.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(new[] { 1UL }, action.ActionRaw.UnitCommand.UnitTags);
+    }
+
+    [Fact]
+    public void WaitsForAnObservedScvTrainingOrderBeforeUpgrading()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var commandCenterTrainingScv = Fact(1, "CommandCenter") with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(524, null, null, null) }
+        };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            commandCenterTrainingScv,
+            Fact(2, "SupplyDepot"),
+            Fact(3, "Barracks")), data));
+    }
+
+    [Fact]
     public void UpgradesAfterTheFirstCompletedBarracksWithoutWaitingForASecond()
     {
         var controller = new Sc2OrbitalSupportController();
@@ -206,6 +244,7 @@ public sealed class Sc2OrbitalSupportControllerTests
         var data = new ResponseData();
         data.Units.Add(new UnitTypeData { UnitId = 18, Name = "CommandCenter", MineralCost = 400 });
         data.Units.Add(new UnitTypeData { UnitId = 132, Name = "OrbitalCommand", MineralCost = 550 });
+        data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1 });
         data.Abilities.Add(new AbilityData { AbilityId = 1516, LinkName = "UpgradeToOrbitalCommand" });
         data.Abilities.Add(new AbilityData { AbilityId = 168, LinkName = "CalldownMULE", CastRange = 10 });
         return Sc2GameDataCatalog.Create(data);

@@ -11,8 +11,9 @@ public sealed class Sc2OpeningMarineControllerTests
     [Fact]
     public void BuildsBarracksTrainsMarineAndKeepsItOnFriendlySide()
     {
-        using var controller = new Sc2OpeningMarineController();
+        var controller = new Sc2OpeningMarineController();
         var assignments = new WorkerResourceAssignmentPlanner();
+        var jobs = new BuildJobRuntime();
         assignments.Reserve(10);
         var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
             new MapPoint(10, 10), new MapPoint(54, 54));
@@ -20,7 +21,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, preferredBuilderTag: 10));
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, jobs, preferredBuilderTag: 10));
         Assert.Equal(10UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(10));
 
@@ -49,6 +50,8 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.True(controller.IsBuildSubmitted);
         Assert.False(controller.BarracksComplete);
         controller.OnActionResult(ActionResult.Success);
+        jobs.Update();
+        Assert.Equal("Assigned", controller.BarracksBuildJobState);
 
         Assert.Null(controller.TryCreateAction(Snapshot(0, 12, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
@@ -59,13 +62,15 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Null(controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y)),
-            map, gameData, assignments, allowMarineTraining: false));
+            map, gameData, assignments, jobs, allowMarineTraining: false));
+        jobs.Update();
         Assert.True(controller.BarracksComplete);
+        Assert.Equal("Completed", controller.BarracksBuildJobState);
 
         var trainMarine = controller.TryCreateAction(Snapshot(50, 12, 15,
             Fact(10, "SCV", site.X, site.Y), Fact(11, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", site.X, site.Y)),
-            map, gameData, assignments, allowMarineTraining: true);
+            map, gameData, assignments, jobs, allowMarineTraining: true);
         Assert.NotNull(trainMarine);
         Assert.False(controller.MarineTrainingOrderObserved);
         Assert.True(controller.IsOpeningMarineTrainingPending);
@@ -73,6 +78,8 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Equal(560, trainMarine.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(200UL, trainMarine.ActionRaw.UnitCommand.UnitTags[0]);
         controller.OnActionResult(ActionResult.Success);
+        jobs.Update();
+        Assert.Equal("Assigned", controller.MarineProductionJobState);
         Assert.False(assignments.IsReserved(10));
 
         var trainingBarracks = Fact(200, "Barracks", site.X, site.Y) with
@@ -93,6 +100,8 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.Null(observedMarine);
         Assert.True(controller.MarineObserved);
         Assert.True(controller.MarineDeployed);
+        jobs.Update();
+        Assert.Equal("Completed", controller.MarineProductionJobState);
 
         // The first Marine is now controlled defensively, but the Barracks must
         // continue filling its queue rather than stopping at one Marine.
@@ -102,12 +111,14 @@ public sealed class Sc2OpeningMarineControllerTests
         Assert.NotNull(nextMarine);
         Assert.Equal(560, nextMarine.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(200UL, nextMarine.ActionRaw.UnitCommand.UnitTags[0]);
+        jobs.Update();
+        jobs.Clear();
     }
 
     [Fact]
     public void StagesADifferentBarracksBuilderDuringDepotConstructionAndBuildsOnlyAfterCompletion()
     {
-        using var controller = new Sc2OpeningMarineController();
+        var controller = new Sc2OpeningMarineController();
         var assignments = new WorkerResourceAssignmentPlanner();
         const ulong depotBuilderTag = 10;
         const ulong barracksBuilderTag = 11;
@@ -122,7 +133,7 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10)),
-            map, gameData, assignments,
+            map, gameData, assignments, jobs,
             preferredBuilderTag: null,
             excludedBuilderTag: depotBuilderTag,
             allowConstruction: false));
@@ -144,7 +155,7 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10)),
-            map, gameData, assignments,
+            map, gameData, assignments, jobs,
             excludedBuilderTag: depotBuilderTag,
             allowConstruction: false);
         Assert.NotNull(move);
@@ -159,7 +170,7 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", site.X, site.Y),
             Fact(1, "CommandCenter", 10, 10)),
-            map, gameData, assignments,
+            map, gameData, assignments, jobs,
             excludedBuilderTag: depotBuilderTag,
             allowConstruction: false));
 
@@ -169,13 +180,15 @@ public sealed class Sc2OpeningMarineControllerTests
             Fact(barracksBuilderTag, "SCV", site.X, site.Y),
             Fact(1, "CommandCenter", 10, 10),
             Fact(300, "SupplyDepot", 20, 20)),
-            map, gameData, assignments,
+            map, gameData, assignments, jobs,
             excludedBuilderTag: depotBuilderTag,
             allowConstruction: true);
         Assert.NotNull(build);
         Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(barracksBuilderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.NotEqual(depotBuilderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
+        jobs.Update();
+        jobs.Clear();
     }
 
     private static Sc2GameDataCatalog GameData()

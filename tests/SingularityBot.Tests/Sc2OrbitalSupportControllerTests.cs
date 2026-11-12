@@ -244,6 +244,18 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void DoesNotSpendMuleEnergyReservedForAnOrbitalScan()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var orbital = Fact(1, "OrbitalCommand") with { Energy = 100 };
+        var mineral = Fact(10, "MineralField750", 12, 10) with { Alliance = UnitAlliance.Neutral };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(0, orbital, mineral), data,
+            reservedOrbitalTags: new HashSet<ulong> { 1 }));
+    }
+
+    [Fact]
     public void DoesNotCallMuleWithoutFiftyEnergyOrWithoutMineralTarget()
     {
         var controller = new Sc2OrbitalSupportController();

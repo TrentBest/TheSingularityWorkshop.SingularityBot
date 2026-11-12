@@ -78,6 +78,51 @@ public sealed class Sc2ActionTranslatorTests
     }
 
     [Fact]
+    public void RecoversReservedLoadedWorkerWithStaleMineralGatherOrder()
+    {
+        var loadedWorker = Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true) with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(295, 20, null, null) }
+        };
+        var observation = Snapshot(
+            loadedWorker,
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 8, 2));
+
+        var actions = Sc2ActionTranslator.Translate(
+            Array.Empty<KeyValuePair<ulong, BehaviorCommand>>(),
+            observation,
+            1);
+
+        var command = Assert.Single(actions).ActionRaw.UnitCommand;
+        Assert.Equal(1UL, command.TargetUnitTag);
+        Assert.Equal(1, command.AbilityId);
+        Assert.Equal(new[] { 10UL }, command.UnitTags);
+    }
+
+    [Fact]
+    public void DoesNotRedirectLoadedWorkerWithUnrelatedActiveOrder()
+    {
+        var loadedWorker = Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true) with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(295, 30, null, null) }
+        };
+        var observation = Snapshot(
+            loadedWorker,
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            Fact(30, "Refinery", UnitAlliance.Self, 8, 2));
+
+        var actions = Sc2ActionTranslator.Translate(
+            Array.Empty<KeyValuePair<ulong, BehaviorCommand>>(),
+            observation,
+            1);
+
+        Assert.Empty(actions);
+    }
+
+    [Fact]
     public void ReturnCargoIntentOverridesAnObservedMineralGatherOrder()
     {
         var loadedWorker = Fact(10, "SCV", UnitAlliance.Self, 2, 2, hasCargo: true) with

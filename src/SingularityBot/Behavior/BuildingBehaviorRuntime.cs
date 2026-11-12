@@ -517,7 +517,9 @@ public sealed class BuildingBehaviorRuntime
         CanonicalKind(kind) is "CommandCenter" or "SupplyDepot" or "Barracks" or "Refinery" or
             "EngineeringBay" or "Bunker" or "MissileTurret" or "Factory" or "Starport" or
             "Armory" or "GhostAcademy" or "FusionCore" or "SensorTower" or "PlanetaryFortress" or
-            "OrbitalCommand" or "TechLab" or "Reactor";
+            "OrbitalCommand" or "TechLab" or "Reactor" ||
+        kind.Contains("TechLab", StringComparison.OrdinalIgnoreCase) ||
+        kind.Contains("Reactor", StringComparison.OrdinalIgnoreCase);
 
     private static string CanonicalKind(string kind) => kind switch
     {

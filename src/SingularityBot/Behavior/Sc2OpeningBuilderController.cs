@@ -159,13 +159,16 @@ public sealed class Sc2OpeningBuilderController
                     EstimatedArrivalDistance = Math.Sqrt(DistanceSquared(
                         worker.PositionX, worker.PositionY,
                         stagingPoint.X, stagingPoint.Y)),
-                    IsConstructionCrew = constructionCrewTags.Contains(worker.Tag)
+                    IsConstructionCrew = constructionCrewTags.Contains(worker.Tag),
+                    IsReturningWithMinerals = worker.HasCargo && IsReturningToTownHall(worker, observation),
+                    IsCarryingOtherCargo = worker.HasCargo && !IsReturningToTownHall(worker, observation)
                 })
-                // Preserve an explicitly handed-off builder when one is supplied.
-                // Otherwise take a loaded mineral worker first, regardless of whether
-                // its optional construction capability has been registered yet.
-                .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag ? 0 : 1)
-                .ThenBy(candidate => candidate.Worker.HasCargo ? 0 : 1)
+                // Preserve a usable handoff builder. Otherwise prefer a confirmed
+                // mineral returner, not merely any SCV with cargo: gas cargo must not
+                // be mistaken for minerals once Refineries are operating.
+                .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag && !candidate.IsCarryingOtherCargo ? 0 : 1)
+                .ThenBy(candidate => candidate.IsReturningWithMinerals ? 0 : 1)
+                .ThenBy(candidate => candidate.IsCarryingOtherCargo ? 1 : 0)
                 .ThenBy(candidate => candidate.IsConstructionCrew ? 0 : 1)
                 .ThenBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
@@ -386,6 +389,16 @@ public sealed class Sc2OpeningBuilderController
             unit.Alliance == UnitAlliance.Neutral &&
             (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
              unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static bool IsReturningToTownHall(
+        UnitObservationFacts worker,
+        NormalizedObservation observation)
+    {
+        var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
+        return targetTag is ulong tag && observation.Units.Any(unit =>
+            unit.Tag == tag && unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible && IsTownHall(unit.UnitKind));
     }
 
     private static bool IsLiveScv(UnitObservationFacts unit) =>

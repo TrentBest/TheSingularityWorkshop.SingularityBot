@@ -471,7 +471,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             // Refresh after a builder reservation so this frame cannot emit a
             // stale gather intent for the worker now committed to construction.
-            assignments = _workerAssignments.Reconcile(normalized);
+            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
             if (builderAction is null && _openingBuilder.IsCompleted)
             {
                 marineAction = _openingMarine.TryCreateAction(
@@ -504,7 +504,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 secondBarracksAction = _secondBarracks.TryCreateAction(
                     normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
-                assignments = _workerAssignments.Reconcile(normalized);
+                assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
 
                 // Start the follow-up Depot as soon as Barracks two is observed
                 // under construction. Do not serialize it behind Barracks one's
@@ -518,7 +518,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
                     if (_supplyDepotExpansion.IsCompleted)
                         _secondBarracks.NotifySupplyDepotCompleted(_supplyDepotExpansion.BuilderTag);
-                    assignments = _workerAssignments.Reconcile(normalized);
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
                 }
                 else
                 {
@@ -533,7 +533,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
                     if (_expansionCommandCenter.IsStarted)
                         _secondBarracks.NotifyCommandCenterStarted();
-                    assignments = _workerAssignments.Reconcile(normalized);
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
                 }
                 else
                 {
@@ -578,7 +578,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             refineryActions = _refineries.ReconcileAndCreateActions(
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
                 allowConstruction: refineryConstructionAllowed);
-            assignments = _workerAssignments.Reconcile(normalized);
+            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
 
             // Secondary Barracks produce Marines whenever no higher-priority
             // infrastructure or Orbital action claimed this frame.

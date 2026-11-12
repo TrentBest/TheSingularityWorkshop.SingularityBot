@@ -45,6 +45,31 @@ public sealed class CapabilityFsmExecutionTests
     }
 
     [Fact]
+    public void WorkerFsmStateIsInspectableAndCargoConditionDrivesReturnBehavior()
+    {
+        UnitBehaviorCatalog.Register();
+        var runtime = new UnitBehaviorRuntime();
+        var emitted = new List<BehaviorCommand>();
+        var context = runtime.Attach(9001, UnitExpertiseProfiles.SCV, emitted.Add);
+
+        context.Apply(new UnitObservationFacts(
+            9001, 45, "SCV", 1, UnitAlliance.Self,
+            UnitVisibility.Visible,
+            45, 45, 0, 0, 1, 10, 10, true, true, false,
+            false, false, false, 1));
+
+        runtime.UpdateGroup(UnitBehaviorCatalog.MiningProcessingGroup);
+        runtime.UpdateGroup(UnitBehaviorCatalog.MiningProcessingGroup);
+
+        Assert.Contains(BehaviorCommand.ReturnCarriedResources, emitted);
+        Assert.True(runtime.TryGetState(9001, UnitBehaviorCatalog.WorkerFsm, out var state));
+        Assert.Equal("ReturningResources", state);
+        Assert.Equal("ReturningResources", runtime.GetStates(9001)[UnitBehaviorCatalog.WorkerFsm]);
+
+        runtime.RemoveAll();
+    }
+
+    [Fact]
     public void FlankCapability_RequiresTargetAndExpressesStrategicSideIntent()
     {
         UnitBehaviorCatalog.Register();

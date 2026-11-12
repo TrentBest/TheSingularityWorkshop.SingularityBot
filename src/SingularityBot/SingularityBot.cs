@@ -700,7 +700,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         _buildJobs, _secondBarracks.PreferredBuilderTag,
                         _buildings.DesignatedCommandCenterConstructionAreaCenter,
                         _buildings.DesignatedCommandCenterConstructionAreaRadius,
-                        reservedProductionMinerals + orbitalMineralReservation);
+                        reservedInfrastructureMinerals + orbitalMineralReservation);
                     _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
                     if (_expansionCommandCenter.IsStarted)
                         _secondBarracks.NotifyCommandCenterStarted();

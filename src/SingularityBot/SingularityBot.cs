@@ -692,14 +692,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         building.TownHallExpansionState == "StreamingCommandCenters");
                 var expansionProductionEnabled = _buildings.HasDesignatedCommandCenterConstructionArea
                     ? designatedAreaStreaming
-                    : orbitalMorphingObserved;
-                if (expansionProductionEnabled && _secondBarracks.IsComplete)
+                    : orbitalMorphingObserved && _secondBarracks.IsComplete;
+                if (expansionProductionEnabled)
                 {
                     expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _secondBarracks.PreferredBuilderTag,
                         _buildings.DesignatedCommandCenterConstructionAreaCenter,
-                        _buildings.DesignatedCommandCenterConstructionAreaRadius);
+                        _buildings.DesignatedCommandCenterConstructionAreaRadius,
+                        reservedProductionMinerals + orbitalMineralReservation);
                     _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
                     if (_expansionCommandCenter.IsStarted)
                         _secondBarracks.NotifyCommandCenterStarted();

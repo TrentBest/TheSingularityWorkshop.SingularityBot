@@ -31,6 +31,24 @@ public sealed class WorkerResourceAssignmentPlannerTests
     }
 
     [Fact]
+    public void ReassignsEmptyWorkerWhoseCompletedReturnOrderStillTargetsTownHall()
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var worker = Fact(10, "SCV", UnitAlliance.Self, 2, 0, hasOrders: true,
+            orders: new[] { new UnitOrderObservationFacts(3666, 1, null, null) });
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", UnitAlliance.Self, 0, 0),
+            worker,
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0),
+            Fact(21, "MineralField750", UnitAlliance.Neutral, 8, 0));
+
+        var assignments = planner.Reconcile(observation);
+
+        Assert.Contains(10UL, assignments.Keys);
+        Assert.Contains(assignments[10].MineralTag, new ulong[] { 20, 21 });
+    }
+
+    [Fact]
     public void AdoptsExistingMineralOrdersInsteadOfIgnoringAlreadyWorkingScvs()
     {
         var planner = new WorkerResourceAssignmentPlanner();

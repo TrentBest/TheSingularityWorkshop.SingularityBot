@@ -268,10 +268,12 @@ public sealed class BuildJobRuntime
                 job.MarkStarted(observation.GameLoop);
 
             // Observation reconciliation consumes execution evidence directly.
-            // The FSM may not have taken its next scheduled step yet, so waiting
-            // for CurrentState == Executing here would delay result association
-            // and can miss a result observed in the same frame as the order.
-            if (!job.HasExecutionEvidence || !producer.HasPosition) continue;
+            // The production request created this job with a snapshot of all
+            // pre-existing Marines. A newly observed, unclaimed Marine near its
+            // producer is therefore stronger execution/completion evidence than
+            // an intermediate order observation. Do not require that transient
+            // order to have been observed before associating the result.
+            if (!producer.HasPosition) continue;
             var excluded = _excludedMarineTags.TryGetValue(job.Id, out var known)
                 ? known : new HashSet<ulong>();
             var candidate = marines.Where(unit => !excluded.Contains(unit.Tag) && !_claimedResultTags.Contains(unit.Tag) &&

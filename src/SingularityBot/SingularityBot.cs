@@ -565,15 +565,20 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // Refresh after a builder reservation so this frame cannot emit a
             // stale gather intent for the worker now committed to construction.
             assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
-            if (builderAction is null && _openingBuilder.IsCompleted && orbitalMorphingObserved)
+            if (_openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted)
             {
-                // The economy reservation protects the first Marine from SCV
-                // spending. Do not charge that same reservation against the Marine
-                // itself: its own 50-mineral cost is the first post-Barracks spend.
+                // Stage a DIFFERENT SCV at the Barracks site while the Depot is
+                // building. The Barracks Build command remains gated on the Depot
+                // being observed complete, removing the old Orbital/Barracks cycle.
                 var firstMarinePriority = !_openingMarine.MarineTrainingStarted && !_openingMarine.MarineObserved;
                 var marineReservedMinerals = firstMarinePriority ? 0u : reservedInfrastructureMinerals;
                 marineAction = _openingMarine.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments, _openingBuilder.BuilderTag, _buildJobs, marineReservedMinerals);
+                    normalized, SpatialMap, _gameData, _workerAssignments,
+                    preferredBuilderTag: null,
+                    buildJobs: _buildJobs,
+                    reservedMinerals: marineReservedMinerals,
+                    excludedBuilderTag: _openingBuilder.BuilderTag,
+                    allowConstruction: _openingBuilder.IsCompleted);
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else
@@ -751,7 +756,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             }
 
             var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
-            var marinePlacementQuery = _openingBuilder.IsCompleted
+            var marinePlacementQuery = _openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted
                 ? _openingMarine.TakePlacementQuery(_gameData)
                 : null;
             var secondBarracksPlacementQuery = _secondBarracks.TakePlacementQuery(_gameData);

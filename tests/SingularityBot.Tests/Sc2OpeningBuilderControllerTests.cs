@@ -310,7 +310,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
         Assert.Equal(146u, controller.CurrentMovementGameLoop);
-        Assert.Equal(123u, controller.MoveRequestGameLoop);
+        Assert.Equal(146u, controller.MoveRequestGameLoop);
         Assert.True(controller.IsMoveRetryReady);
         Assert.Equal("MoveSubmitted", controller.MovementState);
         Assert.NotNull(retryMove);

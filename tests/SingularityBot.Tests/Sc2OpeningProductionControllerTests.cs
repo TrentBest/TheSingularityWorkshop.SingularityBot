@@ -22,6 +22,17 @@ public sealed class Sc2OpeningProductionControllerTests
     }
 
     [Fact]
+    public void DoesNotRefillCommandCenterReservedForOrbitalMorph()
+    {
+        var controller = new Sc2OpeningProductionController();
+        var action = controller.TryCreateScvTrainingAction(
+            Snapshot(500, 12, 15, Fact(100, "CommandCenter")),
+            GameData(), reservedCommandCenterTag: 100);
+
+        Assert.Null(action);
+    }
+
+    [Fact]
     public void PreservesReservedMineralsForTheOpeningSupplyDepot()
     {
         var controller = new Sc2OpeningProductionController();

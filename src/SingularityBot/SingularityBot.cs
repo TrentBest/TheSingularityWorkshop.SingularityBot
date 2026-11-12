@@ -1003,7 +1003,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     unit.Orders.Any(order => order.AbilityId == _gameData.MarineTrainAbilityId.Value));
             SpatialGridSnapshot visibilityGrid = null;
             if (SpatialMap is not null)
-                Sc2SpatialVisionFactory.TryCreate(response, SpatialMap, out visibilityGrid);
+                Sc2SpatialVisionFactory.TryCreate(observation, SpatialMap, out visibilityGrid);
             var marineRallyActions = _marineRally.TryCreateActions(
                 normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
                 SpatialTerrain, PathingTopology, visibilityGrid);

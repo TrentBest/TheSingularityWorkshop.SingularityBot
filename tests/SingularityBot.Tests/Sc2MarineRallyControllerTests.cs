@@ -282,6 +282,117 @@ public sealed class Sc2MarineRallyControllerTests
         });
     }
 
+    [Fact]
+    public void UsesTerrainValidatedRampFootAndReportsActualVisibilityWhenScoutArrives()
+    {
+        var controller = new Sc2MarineRallyController();
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(90.5f, 90.5f), new MapPoint(10.5f, 10.5f));
+        var terrain = CreateRampTerrain();
+        var topology = SpatialTopology.Build(terrain);
+        var offsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4,
+            map.Side.EnemyStart.X - map.Side.FriendlyStart.X,
+            map.Side.EnemyStart.Y - map.Side.FriendlyStart.Y);
+        var marines = new List<UnitObservationFacts>
+        {
+            Fact(1, "Marine", map.Side.FriendlyStart.X, map.Side.FriendlyStart.Y)
+        };
+        marines.AddRange(offsets.Select((offset, index) => Fact((ulong)(index + 2), "Marine",
+            map.Side.FriendlyStart.X + offset.X, map.Side.FriendlyStart.Y + offset.Y)));
+        var decisions = Enumerable.Range(1, 5).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "Dedicated scout or no visible attackable target")).ToArray();
+
+        var firstMoves = controller.TryCreateActions(
+            Snapshot(marines.ToArray()), map, decisions, GameData(),
+            terrain: terrain, topology: topology);
+        var scoutMove = Assert.Single(firstMoves,
+            move => move.ActionRaw.UnitCommand.UnitTags.Single() == 1UL);
+        var target = scoutMove.ActionRaw.UnitCommand.TargetWorldSpacePos;
+        var scoutTarget = new MapPoint(target.X, target.Y);
+        Assert.True(terrain.TryGetTerrainHeight(scoutTarget, out var scoutHeight));
+        Assert.Equal((byte)207, scoutHeight);
+        Assert.True(topology.AreConnected(map.Side.FriendlyStart, scoutTarget));
+        Assert.Equal("MovingToRampFoot", controller.ScoutStatus);
+
+        var visibilityCells = new byte[100 * 100];
+        Array.Fill(visibilityCells, (byte)2);
+        var visibility = new SpatialGridSnapshot(100, 100, 100, 100, visibilityCells);
+        var arrived = marines.Select(marine => marine.Tag == 1
+            ? Fact(1, "Marine", scoutTarget.X, scoutTarget.Y)
+            : marine).ToArray();
+        controller.TryCreateActions(
+            new NormalizedObservation(800, 1, arrived, new HashSet<ulong>()),
+            map, decisions, GameData(), terrain: terrain, topology: topology, visibility: visibility);
+
+        Assert.True(controller.TryTakeScoutStatusChange(out var status, out var details));
+        Assert.Equal("AtRampFoot", status);
+        Assert.Contains("rampEntranceVisibility=visible", details);
+        Assert.Contains("enemyTownHallVisible=False", details);
+    }
+
+    [Fact]
+    public void RetreatsDedicatedScoutToConnectedFriendlyGroundWhenEnemyThreatApproaches()
+    {
+        var controller = new Sc2MarineRallyController();
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(90.5f, 90.5f), new MapPoint(10.5f, 10.5f));
+        var terrain = CreateRampTerrain();
+        var topology = SpatialTopology.Build(terrain);
+        var offsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4,
+            map.Side.EnemyStart.X - map.Side.FriendlyStart.X,
+            map.Side.EnemyStart.Y - map.Side.FriendlyStart.Y);
+        var marines = new List<UnitObservationFacts>
+        {
+            Fact(1, "Marine", map.Side.FriendlyStart.X, map.Side.FriendlyStart.Y)
+        };
+        marines.AddRange(offsets.Select((offset, index) => Fact((ulong)(index + 2), "Marine",
+            map.Side.FriendlyStart.X + offset.X, map.Side.FriendlyStart.Y + offset.Y)));
+        var decisions = Enumerable.Range(1, 5).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "Dedicated scout or no visible attackable target")).ToArray();
+
+        var firstMoves = controller.TryCreateActions(
+            Snapshot(marines.ToArray()), map, decisions, GameData(),
+            terrain: terrain, topology: topology);
+        var scoutMove = Assert.Single(firstMoves,
+            move => move.ActionRaw.UnitCommand.UnitTags.Single() == 1UL);
+        var rampTarget = scoutMove.ActionRaw.UnitCommand.TargetWorldSpacePos;
+
+        var threatenedUnits = marines.Select(marine => marine.Tag == 1
+            ? Fact(1, "Marine", rampTarget.X, rampTarget.Y)
+            : marine).Append(new UnitObservationFacts(
+                90, 1, "Zealot", 100, UnitAlliance.Enemy, UnitVisibility.Visible,
+                45, 45, 0, 0, 1, rampTarget.X + 2, rampTarget.Y,
+                true, false, false, false, false, false, 100)).ToArray();
+        var retreatActions = controller.TryCreateActions(
+            new NormalizedObservation(900, 1, threatenedUnits, new HashSet<ulong>()),
+            map, decisions, GameData(), terrain: terrain, topology: topology);
+
+        var retreat = Assert.Single(retreatActions,
+            move => move.ActionRaw.UnitCommand.UnitTags.Single() == 1UL);
+        var retreatPoint = retreat.ActionRaw.UnitCommand.TargetWorldSpacePos;
+        var retreatTarget = new MapPoint(retreatPoint.X, retreatPoint.Y);
+        Assert.Equal(MapSide.Friendly, map.Side.Assess(retreatTarget));
+        Assert.True(retreatTarget.DistanceTo(new MapPoint(rampTarget.X + 2, rampTarget.Y)) >= 14f);
+        Assert.Equal("Retreating", controller.ScoutStatus);
+    }
+
+    private static SpatialTerrain CreateRampTerrain()
+    {
+        const int size = 100;
+        var pathing = new byte[size * size];
+        Array.Fill(pathing, (byte)1);
+        var heights = new byte[size * size];
+        for (var y = 0; y < size; y++)
+        for (var x = 0; x < size; x++)
+            heights[y * size + x] = x < 30 && y < 30 ? (byte)223 : (byte)207;
+        return new SpatialTerrain(
+            new SpatialGridSnapshot(size, size, size, size, pathing),
+            null,
+            new SpatialGridSnapshot(size, size, size, size, heights));
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

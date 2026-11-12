@@ -32,6 +32,8 @@ public sealed class Sc2RampScoutPlannerTests
         Assert.InRange(plan.DistanceFromEnemyStart, 24f, 52f);
         Assert.InRange(plan.CrossTrackDistance, 0f, 14f);
         Assert.Equal((byte)207, plan.TerrainHeight);
+        Assert.True(terrain.TryGetTerrainHeight(plan.RampEdgePoint, out var edgeHeight));
+        Assert.True(edgeHeight > plan.TerrainHeight);
         Assert.True(plan.ObservationPoint.X >= 30f);
         Assert.True(plan.ObservationPoint.Y >= 30f);
         Assert.True(topology.AreConnected(map.Side.FriendlyStart, plan.ObservationPoint));

@@ -292,6 +292,27 @@ public sealed class MarineCombatPlannerTests
         return Sc2GameDataCatalog.Create(data);
     }
 
+    [Fact]
+    public void DedicatedScoutHoldsOutOfCombatWhileTheSquadEngages()
+    {
+        var observation = Snapshot(
+            Marine(1, 0, 0, 0),
+            Marine(4, 1, 0, 0),
+            Enemy(2, 4, 0));
+        var decisions = MarineCombatPlanner.Plan(
+            observation, Weapons, excludedUnitTags: new HashSet<ulong> { 1 });
+
+        Assert.Equal(2, decisions.Count);
+        var scout = decisions.Single(decision => decision.MarineTag == 1);
+        Assert.Equal(MarineTacticalAction.Hold, scout.Action);
+        Assert.Null(scout.TargetTag);
+        Assert.Contains("scout", scout.Reason, StringComparison.OrdinalIgnoreCase);
+
+        var squad = decisions.Single(decision => decision.MarineTag == 4);
+        Assert.Equal(MarineTacticalAction.Fire, squad.Action);
+        Assert.Equal(2UL, squad.TargetTag);
+    }
+
     private static IReadOnlyList<MarineTacticalDecision> Plan(
         UnitObservationFacts marine,
         UnitObservationFacts enemy,

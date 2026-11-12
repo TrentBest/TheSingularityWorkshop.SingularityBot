@@ -179,7 +179,8 @@ public sealed class Sc2MarineRallyController
                     var distanceSquared = DistanceSquared(
                         scout.PositionX, scout.PositionY, target.X, target.Y);
                     if (distanceSquared > ArrivalRadiusSquared &&
-                        (!_lastRallyCommandLoops.TryGetValue(tag, out var scoutLastCommand) ||
+                        (_scoutRetreatTarget is not null ||
+                         !_lastRallyCommandLoops.TryGetValue(tag, out var scoutLastCommand) ||
                          observation.GameLoop >= scoutLastCommand + RetryAfterGameLoops))
                     {
                         _lastRallyCommandLoops[tag] = observation.GameLoop;
@@ -398,7 +399,11 @@ public sealed class Sc2MarineRallyController
     private static bool IsEnemyTownHall(string unitKind) =>
         unitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
         unitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
-        unitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase);
+        unitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase) ||
+        unitKind.Equals("Nexus", StringComparison.OrdinalIgnoreCase) ||
+        unitKind.Equals("Hatchery", StringComparison.OrdinalIgnoreCase) ||
+        unitKind.Equals("Lair", StringComparison.OrdinalIgnoreCase) ||
+        unitKind.Equals("Hive", StringComparison.OrdinalIgnoreCase);
 
     private static MapPoint? FindFriendlyObservationSector(SpatialMap map, SpatialTerrain terrain)
     {

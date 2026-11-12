@@ -5,9 +5,9 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Keeps starting SCVs mining until the Supply Depot is affordable, then diverts
-/// a cargo-bearing worker directly to the accepted build site, sacrificing its load
-/// to avoid wasting the return trip to the Command Center.
+/// Keeps starting SCVs mining until the Supply Depot is affordable. A selected
+/// cargo-bearing worker completes its return to the Command Center before being
+/// dispatched, preserving the mineral income that funds the opening.
 /// </summary>
 public sealed class Sc2OpeningBuilderController
 {
@@ -194,11 +194,15 @@ public sealed class Sc2OpeningBuilderController
         if (builder is null)
             return null;
 
-        // Keep an empty worker on its active mineral trip until it has cargo.
-        // Once loaded, interrupt the return-to-town-hall order and send it directly
-        // to the accepted Depot site. Losing this one load is intentional: the
-        // saved return trip gets the supply structure started sooner.
-        if (!builder.HasCargo && IsGatheringMinerals(builder, observation))
+        // Never sacrifice a carried resource load for construction. The worker
+        // FSM owns the return-to-town-hall command while this builder reservation
+        // is active; wait until a later observation confirms the cargo was
+        // deposited before dispatching the SCV to the accepted Depot site.
+        if (builder.HasCargo)
+            return null;
+
+        // Keep an empty worker on its active mineral trip until it has harvested.
+        if (IsGatheringMinerals(builder, observation))
             return null;
 
         // Do not send the builder to a speculative staging point. SC2's placement

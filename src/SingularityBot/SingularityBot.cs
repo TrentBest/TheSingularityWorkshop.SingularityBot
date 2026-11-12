@@ -539,7 +539,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             reservedInfrastructureMinerals = (uint)Math.Min(
                 uint.MaxValue,
                 (ulong)reservedProductionMinerals + reservedStrategicMinerals);
-            var reservedScvMinerals = reservedInfrastructureMinerals;
+            // When the Orbital is affordable and the Command Center's existing
+            // SCV order has drained, reserve one additional SCV cost for this
+            // frame. Otherwise the opening can submit SCV training and the
+            // Orbital morph to the same producer in one action batch; the later
+            // command can replace the morph or leave the upgrade unissued.
+            var orbitalMorphReadyToSubmit = _orbitalSupport.IsUpgradeReadyToSubmit(
+                normalized, _gameData, orbitalReservedCommandCenter);
+            var reservedScvMinerals = orbitalMorphReadyToSubmit
+                ? (uint)Math.Min(uint.MaxValue, (ulong)reservedInfrastructureMinerals + _gameData.ScvMineralCost)
+                : reservedInfrastructureMinerals;
 
             // While building Depot two, preserve the next Depot's cost as well.
             // Once Depot two is observed complete, its own cost is released and

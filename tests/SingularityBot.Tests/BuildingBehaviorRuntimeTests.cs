@@ -1,5 +1,6 @@
 using SingularityBot.Behavior;
 using SingularityBot.Observation;
+using TheSingularityWorkshop.FSM_API;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -16,6 +17,7 @@ public sealed class BuildingBehaviorRuntimeTests
         var second = Depot(1002, "SupplyDepot", 1f);
 
         runtime.Reconcile(Observation(10, first, second), Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateLifecycle();
         runtime.UpdateLifecycle();
         runtime.UpdateLifecycle();
 
@@ -46,10 +48,12 @@ public sealed class BuildingBehaviorRuntimeTests
             jobs.Jobs, _ => false);
         runtime.UpdateLifecycle();
         runtime.UpdateLifecycle();
+        runtime.UpdateLifecycle();
         Assert.Empty(runtime.DrainEvents());
 
         runtime.Reconcile(Observation(12, Depot(2001, "SupplyDepot", 1f)),
             jobs.Jobs, _ => false);
+        runtime.UpdateLifecycle();
         runtime.UpdateLifecycle();
         runtime.UpdateLifecycle();
 
@@ -76,6 +80,7 @@ public sealed class BuildingBehaviorRuntimeTests
             id => id == 501);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Researching", Assert.Single(runtime.Buildings).ActivityState);
 
         var production = barracks with
@@ -85,6 +90,7 @@ public sealed class BuildingBehaviorRuntimeTests
         };
         runtime.Reconcile(Observation(21, production), Array.Empty<BuildJobContext>(),
             _ => false);
+        runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Producing", Assert.Single(runtime.Buildings).ActivityState);
@@ -106,10 +112,12 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.Reconcile(Observation(30, raisedDepot, enemy), Array.Empty<BuildJobContext>(), _ => false);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
         Assert.Equal("Raised", Assert.Single(runtime.Buildings).AccessState);
         Assert.Empty(runtime.DrainEvents());
 
         Assert.True(runtime.RequestDepotPassage(4001));
+        runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Lowered", Assert.Single(runtime.Buildings).AccessState);
@@ -121,8 +129,10 @@ public sealed class BuildingBehaviorRuntimeTests
             Array.Empty<BuildJobContext>(), _ => false);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
 
         runtime.RequestDepotPassage(4001, false);
+        runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Raised", Assert.Single(runtime.Buildings).AccessState);

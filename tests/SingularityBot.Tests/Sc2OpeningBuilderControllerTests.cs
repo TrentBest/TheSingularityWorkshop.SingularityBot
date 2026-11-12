@@ -31,6 +31,24 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void ReservesBuilderAtEightyMineralsBeforeDepotIsAffordable()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var gameData = GameData();
+
+        var action = controller.TryCreateAction(Snapshot(80, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
+            assignments, Crew(10, 11));
+
+        Assert.Null(action);
+        Assert.NotNull(controller.BuilderTag);
+        Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
+    }
+
+    [Fact]
     public void FallsBackToAnUnreservedScvWhenConstructionCapabilitiesAreNotYetAssigned()
     {
         var controller = new Sc2OpeningBuilderController();
@@ -109,6 +127,20 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.Null(move);
         Assert.Equal(11UL, controller.BuilderTag);
         Assert.True(assignments.IsReserved(11));
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        SetValidPlacement(controller);
+
+        // Once the selected miner has cargo, do not wait for the unload at the
+        // Command Center. Interrupt the return and dispatch to the Depot site.
+        var loadedMove = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5, hasCargo: true, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10),
+            mineral), map, gameData, assignments, Crew(10, 11));
+
+        Assert.NotNull(loadedMove);
+        Assert.Equal(16, loadedMove.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, loadedMove.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]

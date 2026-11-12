@@ -648,10 +648,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress < 1f && !normalized.DeadUnitTags.Contains(unit.Tag));
-            // Refineries are deliberately held until the Orbital morph has
-            // started. This preserves the opening's mineral priority.
+            // The first Refinery may begin during the Orbital morph. The
+            // third Supply Depot must be completed before we take the second geyser;
+            // this keeps the supply investment ahead of the second gas commitment.
+            var refinerySequenceReady = completedRefineryCount == 0 || _supplyDepotExpansion.IsCompleted;
             var refineryConstructionAllowed = orbitalMorphingObserved &&
-                _openingMarine.BarracksComplete && completedRefineryCount < 2 && !refineryUnderConstruction;
+                _openingMarine.BarracksComplete && refinerySequenceReady &&
+                completedRefineryCount < 2 && !refineryUnderConstruction;
             refineryActions = _refineries.ReconcileAndCreateActions(
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
                 allowConstruction: refineryConstructionAllowed);

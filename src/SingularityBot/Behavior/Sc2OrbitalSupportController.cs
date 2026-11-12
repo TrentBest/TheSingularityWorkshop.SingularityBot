@@ -41,7 +41,7 @@ public sealed class Sc2OrbitalSupportController
 
         var orbitalTechReady =
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && IsKind(unit, "SupplyDepot") && unit.BuildProgress >= 1f) &&
+                unit.IsLiveVisible && IsSupplyDepot(unit) && unit.BuildProgress >= 1f) &&
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
@@ -95,7 +95,7 @@ public sealed class Sc2OrbitalSupportController
         // waiting for a second Barracks delays the first energy/MULE utility.
         var orbitalTechReady =
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible && IsKind(unit, "SupplyDepot") && unit.BuildProgress >= 1f) &&
+                unit.IsLiveVisible && IsSupplyDepot(unit) && unit.BuildProgress >= 1f) &&
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
@@ -186,6 +186,9 @@ public sealed class Sc2OrbitalSupportController
         _pendingAbilityId = 0;
         _pendingGameLoop = 0;
     }
+
+    private static bool IsSupplyDepot(UnitObservationFacts unit) =>
+        IsKind(unit, "SupplyDepot") || IsKind(unit, "SupplyDepotLowered");
 
     private static bool IsKind(UnitObservationFacts unit, string kind) =>
         unit.UnitKind.Equals(kind, StringComparison.OrdinalIgnoreCase);

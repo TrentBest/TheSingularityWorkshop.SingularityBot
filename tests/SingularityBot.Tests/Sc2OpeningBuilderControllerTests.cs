@@ -465,6 +465,46 @@ public sealed class Sc2OpeningBuilderControllerTests
             (target.Y - centerY) * (target.Y - centerY)), 3.5f, 6f);
     }
 
+    [Fact]
+    public void PreservesReservedOrbitalMineralsWhenBuildingFollowupDepot()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var data = GameData();
+        var units = new[]
+        {
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)
+        };
+
+        // Do not pull a worker until the strategic reserve plus the configured
+        // worker-pull threshold is available.
+        Assert.Null(controller.TryCreateAction(Snapshot(329, 12, 15, units),
+            map, data, assignments, Crew(10, 11), reservedMinerals: 250));
+        Assert.Null(controller.BuilderTag);
+
+        Assert.Null(controller.TryCreateAction(Snapshot(330, 12, 15, units),
+            map, data, assignments, Crew(10, 11), reservedMinerals: 250));
+        Assert.NotNull(controller.BuilderTag);
+        var query = controller.TakePlacementQuery(data);
+        Assert.NotNull(query);
+        SetValidPlacement(controller);
+        var site = controller.Placement!.Value;
+        var builderTag = controller.BuilderTag!.Value;
+
+        Assert.Null(controller.TryCreateAction(Snapshot(349, 12, 15,
+            Fact(builderTag, "SCV", site.X, site.Y), Fact(1, "CommandCenter", 10, 10)),
+            map, data, assignments, Crew(10, 11), reservedMinerals: 250));
+
+        var build = controller.TryCreateAction(Snapshot(350, 12, 15,
+            Fact(builderTag, "SCV", site.X, site.Y), Fact(1, "CommandCenter", 10, 10)),
+            map, data, assignments, Crew(10, 11), reservedMinerals: 250);
+        Assert.NotNull(build);
+        Assert.Equal(319, build.ActionRaw.UnitCommand.AbilityId);
+    }
+
     private static void SelectBuilder(
         Sc2OpeningBuilderController controller,
         WorkerResourceAssignmentPlanner assignments,

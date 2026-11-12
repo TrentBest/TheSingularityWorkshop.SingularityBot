@@ -485,7 +485,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 reservedProductionMinerals = Math.Max(
                     reservedProductionMinerals, _gameData.SupplyDepotMineralCost);
 
-            reservedInfrastructureMinerals = reservedProductionMinerals;
+            // The Orbital and the first Refinery are strategic commitments, not
+            // optional spending capacity. Include both before any follow-on build
+            // or Marine controller receives its mineral budget.
             // The Orbital is the first post-Barracks mineral commitment. Do not let
             // optional Marine or follow-on infrastructure reservations starve it.
             // Reserve the starting Command Center as soon as the observed
@@ -507,7 +509,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 orbitalAbility is not > 0 ? "orbital-ability-unavailable-or-ambiguous" :
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
-                "town-hall-fsm-ready";
+                "orbital-priority-reserved";
             var firstRefineryPending = orbitalMineralReservation > 0 &&
                 _gameData.RefineryMineralCost > 0 &&
                 !normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
@@ -519,9 +521,26 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var firstRefineryMineralReservation = firstRefineryPending
                 ? _gameData.RefineryMineralCost
                 : 0u;
-            var reservedScvMinerals = (uint)Math.Min(
+            var reservedStrategicMinerals = (uint)Math.Min(
                 uint.MaxValue,
-                (ulong)reservedProductionMinerals + orbitalMineralReservation + firstRefineryMineralReservation);
+                (ulong)orbitalMineralReservation + firstRefineryMineralReservation);
+            reservedInfrastructureMinerals = (uint)Math.Min(
+                uint.MaxValue,
+                (ulong)reservedProductionMinerals + reservedStrategicMinerals);
+            var reservedScvMinerals = reservedInfrastructureMinerals;
+
+            // While building Depot two, preserve the next Depot's cost as well.
+            // Once Depot two is observed complete, its own cost is released and
+            // the same reserve protects Depot three instead.
+            var remainingFollowupReserve = reservedProductionMinerals > _gameData.SupplyDepotMineralCost
+                ? reservedProductionMinerals - _gameData.SupplyDepotMineralCost
+                : 0u;
+            var depotTwoReservedMinerals = (uint)Math.Min(
+                uint.MaxValue,
+                (ulong)reservedStrategicMinerals + remainingFollowupReserve + _gameData.SupplyDepotMineralCost);
+            var depotThreeReservedMinerals = (uint)Math.Min(
+                uint.MaxValue,
+                (ulong)reservedStrategicMinerals + remainingFollowupReserve);
             var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};refineryReserve={firstRefineryMineralReservation};scvReserve={reservedScvMinerals};loop={normalized.GameLoop}";
             if (!string.Equals(_lastOrbitalDiagnostic, orbitalDiagnostic, StringComparison.Ordinal))
             {
@@ -644,20 +663,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 const uint secondBarracksWorkerPullDelayLoops = 101;
                 if (normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
                     secondBarracksAction = _secondBarracks.TryCreateAction(
-                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs);
+                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs,
+                        reservedMinerals: reservedInfrastructureMinerals);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
 
-                // The third Depot is part of the post-Orbital infrastructure
-                // wave. Unlock it only after the starting Command Center's Orbital
-                // morph order is actually observed (not merely when the upgrade is
-                // affordable or requested).
+                // Start Depot two as soon as Barracks two is observed under
+                // construction, then start Depot three only after Depot two is
+                // observed complete. Both builders preserve the strategic reserve.
                 if (_secondBarracks.RequiresSupplyDepot && !_supplyDepotExpansion.IsCompleted)
                 {
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _openingMarine.ReleasedBuilderTag, releaseBuilderOnCompletion: true,
-                        workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals);
+                        workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals,
+                        reservedMinerals: depotTwoReservedMinerals);
                     _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
                     // Keep Barracks three gated until both sequential follow-up Depots are observed complete.
                     _thirdSupplyDepotActionSubmitted = false;
@@ -673,7 +693,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     var thirdDepotAction = _thirdSupplyDepot.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _supplyDepotExpansion.BuilderTag, releaseBuilderOnCompletion: true,
-                        workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals);
+                        workerPullMinerals: _economyAdvisor.Settings.SupplyDepotWorkerPullMinerals,
+                        reservedMinerals: depotThreeReservedMinerals);
                     _thirdSupplyDepotActionSubmitted = thirdDepotAction is not null;
                     thirdSupplyDepotPendingAction = thirdDepotAction;
                     if (_thirdSupplyDepot.IsCompleted)
@@ -702,7 +723,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         _buildJobs, _secondBarracks.PreferredBuilderTag,
                         _buildings.DesignatedCommandCenterConstructionAreaCenter,
                         _buildings.DesignatedCommandCenterConstructionAreaRadius,
-                        orbitalMineralReservation);
+                        reservedStrategicMinerals);
                     _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
                     if (_expansionCommandCenter.IsStarted)
                         _secondBarracks.NotifyCommandCenterStarted();

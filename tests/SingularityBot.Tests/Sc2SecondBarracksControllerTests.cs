@@ -305,6 +305,51 @@ public sealed class Sc2SecondBarracksControllerTests
         Assert.False(assignments.IsReserved(10));
     }
 
+    [Fact]
+    public void PreservesReservedOrbitalMineralsWhenStartingSecondBarracks()
+    {
+        var controller = new Sc2SecondBarracksController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        assignments.Reserve(10);
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var data = GameData();
+        var crew = new HashSet<ulong> { 10, 11 };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(300,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
+            map, data, assignments, crew, reservedMinerals: 150));
+        Assert.Equal(11UL, controller.BuilderTag);
+
+        var query = controller.TakePlacementQuery(data);
+        Assert.NotNull(query);
+        var result = new ResponseQuery();
+        result.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        controller.OnPlacementQueryResult(result);
+        var site = new MapPoint(query.Placements[0].TargetPos.X, query.Placements[0].TargetPos.Y);
+
+        var move = controller.TryCreateAction(Snapshot(300,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
+            map, data, assignments, crew, reservedMinerals: 150);
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        controller.OnActionResult(ActionResult.Success);
+
+        Assert.Null(controller.TryCreateAction(Snapshot(299,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
+            map, data, assignments, crew, reservedMinerals: 150));
+
+        var build = controller.TryCreateAction(Snapshot(300,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10), Fact(200, "Barracks", 15, 15)),
+            map, data, assignments, crew, reservedMinerals: 150);
+        Assert.NotNull(build);
+        Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

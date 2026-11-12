@@ -196,7 +196,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         BuildJobRuntime buildJobs = null,
         ulong? preferredBuilderTag = null,
         bool releaseBuilderOnCompletion = false,
-        uint workerPullMinerals = 80)
+        uint workerPullMinerals = 80,
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -259,7 +260,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         // while the bank accumulates. The threshold is policy data; the authoritative
         // game-data cost still gates the actual Build command below.
         var builderPullThreshold = Math.Min(workerPullMinerals, gameData.SupplyDepotMineralCost);
-        if (_builderTag is null && observation.Minerals < builderPullThreshold)
+        var builderPullBudget = (uint)Math.Min(
+            uint.MaxValue, (ulong)reservedMinerals + builderPullThreshold);
+        if (_builderTag is null && observation.Minerals < builderPullBudget)
             return null;
 
         if (_builderTag is null)
@@ -432,7 +435,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 movementTarget);
         }
 
-        if (observation.Minerals < gameData.SupplyDepotMineralCost)
+        if (observation.Minerals < gameData.SupplyDepotMineralCost ||
+            observation.Minerals - gameData.SupplyDepotMineralCost < reservedMinerals)
             return null;
 
         if (_buildJob is not null && !_buildJob.IsCompleted && !_buildJob.IsFailed)

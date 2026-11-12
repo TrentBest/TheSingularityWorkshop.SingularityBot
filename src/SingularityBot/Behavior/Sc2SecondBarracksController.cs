@@ -41,7 +41,8 @@ public sealed class Sc2SecondBarracksController
         Sc2GameDataCatalog gameData,
         WorkerResourceAssignmentPlanner assignments,
         IReadOnlySet<ulong> constructionCrewTags,
-        BuildJobRuntime buildJobs = null)
+        BuildJobRuntime buildJobs = null,
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -183,6 +184,7 @@ public sealed class Sc2SecondBarracksController
         }
 
         if (observation.Minerals < gameData.BarracksMineralCost ||
+            observation.Minerals - gameData.BarracksMineralCost < reservedMinerals ||
             (_buildSubmitted && observation.GameLoop <= _buildLoop + 8))
             return null;
 

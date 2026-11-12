@@ -14,6 +14,8 @@ public sealed class EconomyAdvisorSettings
     public bool PrioritizeOpeningInfrastructure { get; init; } = true;
     public bool HoldWorkerProductionForFirstDepot { get; init; } = true;
     public bool AllowLongDistanceMining { get; init; }
+    /// <summary>Mineral bank at which a Supply Depot builder is reserved and dispatched; build legality still uses live game data.</summary>
+    public uint SupplyDepotWorkerPullMinerals { get; init; } = 80;
 
     public IReadOnlyList<string> Validate()
     {
@@ -21,6 +23,8 @@ public sealed class EconomyAdvisorSettings
         if (Version != 1) errors.Add("$.version: only version 1 is supported.");
         if (MineralSaturation is < 1 or > 4)
             errors.Add("$.mineralSaturation: must be between 1 and 4 workers per mineral node.");
+        if (SupplyDepotWorkerPullMinerals > 1000)
+            errors.Add("$.supplyDepotWorkerPullMinerals: must be between 0 and 1000.");
         return errors;
     }
 }

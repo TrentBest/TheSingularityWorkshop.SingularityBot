@@ -99,6 +99,68 @@ public sealed class BuildingBehaviorRuntimeTests
     }
 
     [Fact]
+    public void TownHallOrbitalUpgradeIsAnFsmDecisionAndHonorsTheConstructionArea()
+    {
+        UnitBehaviorCatalog.Register();
+        BuildingBehaviorRuntime.RegisterDefinitions();
+        var runtime = new BuildingBehaviorRuntime();
+        var commandCenter = Depot(5001, "CommandCenter", 1f);
+        var barracks = Depot(5002, "Barracks", 1f);
+        var depot = Depot(5003, "SupplyDepot", 1f);
+
+        runtime.Reconcile(Observation(40, commandCenter, barracks, depot),
+            Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("UpgradeReady", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+
+        runtime.ConfigureDesignatedCommandCenterConstructionArea(10, 10, 3);
+        runtime.Reconcile(Observation(41, commandCenter, barracks, depot),
+            Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("WaitingForPrerequisites", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+
+        runtime.ClearDesignatedCommandCenterConstructionArea();
+        var scvProducing = commandCenter with
+        {
+            GameLoop = 42,
+            Orders = new[] { new UnitOrderObservationFacts(100, null, null, null) }
+        };
+        runtime.Reconcile(Observation(42, scvProducing, barracks, depot),
+            Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("WaitingForPrerequisites", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+
+        runtime.Reconcile(Observation(43, commandCenter with { GameLoop = 43 }, barracks, depot),
+            Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("UpgradeReady", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+
+        var upgradeOrder = commandCenter with
+        {
+            GameLoop = 44,
+            Orders = new[] { new UnitOrderObservationFacts(5600, null, null, null) }
+        };
+        runtime.Reconcile(Observation(44, upgradeOrder, barracks, depot),
+            Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("Upgrading", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+
+        var orbital = Depot(5001, "OrbitalCommand", 1f) with { GameLoop = 45 };
+        runtime.Reconcile(Observation(45, orbital, barracks, depot),
+            Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("Orbital", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
+
+        runtime.Clear();
+    }
+
+    [Fact]
     public void ExplicitDepotPassageOverridesEnemyThreatAndLowersTheDepot()
     {
         UnitBehaviorCatalog.Register();

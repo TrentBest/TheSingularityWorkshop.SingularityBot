@@ -123,7 +123,8 @@ public sealed class BuildingBehaviorContext : IStateContext
         HasCompletedBarracks = hasCompletedBarracks;
         HasCompletedSupplyDepot = hasCompletedSupplyDepot;
         IsInDesignatedCommandCenterConstructionArea = isInDesignatedCommandCenterConstructionArea;
-        IsOrbitalCommand = facts.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase);
+        IsOrbitalCommand = facts.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+            facts.UnitKind.Equals("OrbitalCommandFlying", StringComparison.OrdinalIgnoreCase);
         IsPlanetaryFortress = facts.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase);
         OrbitalUpgradeAbilityId = orbitalUpgradeAbilityId;
         if (!facts.IsLiveVisible) return;
@@ -524,12 +525,20 @@ public sealed class BuildingBehaviorRuntime
             "Armory" or "GhostAcademy" or "FusionCore" or "SensorTower" or "PlanetaryFortress" or
             "OrbitalCommand" or "TechLab" or "Reactor" ||
         kind.Contains("TechLab", StringComparison.OrdinalIgnoreCase) ||
-        kind.Contains("Reactor", StringComparison.OrdinalIgnoreCase);
+        kind.Contains("Reactor", StringComparison.OrdinalIgnoreCase) ||
+        kind.Equals("CommandCenterFlying", StringComparison.OrdinalIgnoreCase) ||
+        kind.Equals("OrbitalCommandFlying", StringComparison.OrdinalIgnoreCase) ||
+        kind.Equals("BarracksFlying", StringComparison.OrdinalIgnoreCase) ||
+        kind.Equals("FactoryFlying", StringComparison.OrdinalIgnoreCase) ||
+        kind.Equals("StarportFlying", StringComparison.OrdinalIgnoreCase);
 
     private static string CanonicalKind(string kind) => kind switch
     {
         "SupplyDepotLowered" => "SupplyDepot",
-        "OrbitalCommand" or "PlanetaryFortress" => "CommandCenter",
+        "CommandCenterFlying" or "OrbitalCommand" or "OrbitalCommandFlying" or "PlanetaryFortress" => "CommandCenter",
+        "BarracksFlying" => "Barracks",
+        "FactoryFlying" => "Factory",
+        "StarportFlying" => "Starport",
         _ => kind
     };
 

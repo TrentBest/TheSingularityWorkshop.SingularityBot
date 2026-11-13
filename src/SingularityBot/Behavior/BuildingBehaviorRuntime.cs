@@ -65,6 +65,11 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool IsRaised { get; private set; }
     public bool IsLowered { get; private set; }
     public bool HasNearbyEnemy { get; private set; }
+    public float NearestEnemyDistanceSquared { get; private set; } = float.PositiveInfinity;
+    public bool HasEnemyWithin10 => NearestEnemyDistanceSquared <= 100f;
+    public bool HasEnemyWithin5 => NearestEnemyDistanceSquared <= 25f;
+    public string ThreatState => _handles.ContainsKey(BuildingBehaviorCatalog.ThreatFsm)
+        ? CurrentState(BuildingBehaviorCatalog.ThreatFsm) : "Unknown";
     public bool PassageRequested { get; private set; }
     public bool HasCompletedBarracks => CompletedBarracksCount > 0;
     public int CompletedBarracksCount { get; private set; }
@@ -110,7 +115,7 @@ public sealed class BuildingBehaviorContext : IStateContext
 
     internal void Apply(
         UnitObservationFacts facts,
-        bool hasNearbyEnemy,
+        float nearestEnemyDistanceSquared,
         Func<uint, bool> isResearchAbility,
         int completedBarracksCount,
         bool hasCompletedSupplyDepot,
@@ -125,7 +130,8 @@ public sealed class BuildingBehaviorContext : IStateContext
         IsLanded = !facts.IsFlying;
         IsRaised = facts.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase);
         IsLowered = facts.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase);
-        HasNearbyEnemy = hasNearbyEnemy;
+        NearestEnemyDistanceSquared = nearestEnemyDistanceSquared;
+        HasNearbyEnemy = nearestEnemyDistanceSquared <= 100f;
         CompletedBarracksCount = completedBarracksCount;
         HasCompletedSupplyDepot = hasCompletedSupplyDepot;
         IsInDesignatedCommandCenterConstructionArea = isInDesignatedCommandCenterConstructionArea;
@@ -306,6 +312,20 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Researching", "Idle", IsNotResearching)
                 .WithInitialState("Idle").BuildDefinition();
 
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ThreatFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ThreatFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+                .State("Clear", null, null, null)
+                .State("EnemyWithin10", null, null, null)
+                .State("EnemyWithin5", null, null, null)
+                .Transition("Clear", "EnemyWithin5", HasEnemyWithin5)
+                .Transition("Clear", "EnemyWithin10", HasEnemyWithin10)
+                .Transition("EnemyWithin10", "EnemyWithin5", HasEnemyWithin5)
+                .Transition("EnemyWithin10", "Clear", HasNoEnemyWithin10)
+                .Transition("EnemyWithin5", "EnemyWithin10", HasEnemyWithin10ButNot5)
+                .Transition("EnemyWithin5", "Clear", HasNoEnemyWithin10)
+                .WithInitialState("Clear").BuildDefinition();
+
         if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
@@ -404,6 +424,18 @@ public sealed class BuildingBehaviorRuntime
     private static bool CanRetryScan(IStateContext context) =>
         context is BuildingBehaviorContext building && building.CanRetryScan;
 
+    private static bool HasEnemyWithin5(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.HasEnemyWithin5;
+
+    private static bool HasEnemyWithin10(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.HasEnemyWithin10;
+
+    private static bool HasEnemyWithin10ButNot5(IStateContext context) =>
+        context is BuildingBehaviorContext building && building.HasEnemyWithin10 && !building.HasEnemyWithin5;
+
+    private static bool HasNoEnemyWithin10(IStateContext context) =>
+        context is BuildingBehaviorContext building && !building.HasEnemyWithin10;
+
     private static bool IsObservedRaised(IStateContext context) =>
         context is BuildingBehaviorContext building && building.IsRaised;
 
@@ -455,6 +487,7 @@ public sealed class BuildingBehaviorRuntime
                 building = new BuildingBehaviorContext(facts.Tag, kind, ordinal, _events.Enqueue);
                 _buildings.Add(facts.Tag, building);
                 Attach(building, BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup);
+                Attach(building, BuildingBehaviorCatalog.ThreatFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                 if (CanProduceUnits(kind))
                     Attach(building, BuildingBehaviorCatalog.ProductionFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                 if (CanResearch(kind))
@@ -469,12 +502,15 @@ public sealed class BuildingBehaviorRuntime
                 }
             }
 
-            var nearbyEnemy = facts.HasPosition && enemies.Any(enemy =>
-                DistanceSquared(facts.PositionX, facts.PositionY, enemy.PositionX, enemy.PositionY) <= 100f);
+            var nearestEnemyDistanceSquared = facts.HasPosition
+                ? enemies.Select(enemy => DistanceSquared(
+                    facts.PositionX, facts.PositionY, enemy.PositionX, enemy.PositionY))
+                    .DefaultIfEmpty(float.PositiveInfinity).Min()
+                : float.PositiveInfinity;
             var inDesignatedArea = _designatedCommandCenterArea is { } area &&
                 facts.HasPosition &&
                 DistanceSquared(facts.PositionX, facts.PositionY, area.X, area.Y) <= area.Radius * area.Radius;
-            building.Apply(facts, nearbyEnemy, isResearchAbility,
+            building.Apply(facts, nearestEnemyDistanceSquared, isResearchAbility,
                 completedBarracksCount, hasCompletedSupplyDepot,
                 scvTrainAbilityId, orbitalUpgradeAbilityId, inDesignatedArea);
         }
@@ -581,6 +617,7 @@ public static class BuildingBehaviorCatalog
     public const string LifecycleFsm = "SingularityBot.BuildingLifecycle";
     public const string ProductionFsm = "SingularityBot.BuildingProduction";
     public const string ResearchFsm = "SingularityBot.BuildingResearch";
+    public const string ThreatFsm = "SingularityBot.BuildingThreatProximity";
     public const string DepotAccessFsm = "SingularityBot.SupplyDepotAccess";
     public const string TownHallUpgradeFsm = "SingularityBot.TownHallOrbitalUpgrade";
     public const string OrbitalScanFsm = "SingularityBot.OrbitalScan";

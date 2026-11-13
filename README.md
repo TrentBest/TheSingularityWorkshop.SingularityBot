@@ -32,11 +32,11 @@ The first worker, construction and production stages have progressed beyond the 
 
 | Responsibility | Owner |
 |---|---|
-| Protocol connection, observations, game data and action submission | SC2 adapter |
-| Unit/ability/race vocabulary and capability facts | Bot game ontology |
+| SC2 connection, callbacks, frame lifecycle and action submission | SC2 Runner / protocol adapter |
+| Bot lifecycle, decisions, action translation and runtime authority | SingularityBot.dll |
+| User-specific strategy and capability selection | Compiled Bot Definition within SingularityBot.dll |
 | Capability composition and dependency resolution | FSM_COS |
-| Persistent contexts and hierarchical execution | FSM_API |
-| Shared executor / processing cadence | FSM_Foundry |
+| Persistent contexts and hierarchical behavior mechanics | FSM_API |
 | Distances, routes and spatial queries | Physics |
 | Authoring, inspection and map presentation | GUI / Renderer / Visualize |
 | Match history and durable experience | DataWarehouse |
@@ -48,7 +48,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 
 - [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](docs/bot-definition-v1.md)
 
-The live runner uses a typed `BotDefinitionCatalog` compiled into the bot assembly. JSON remains an editor/import/export format; the match runtime does not load strategy files or executable assemblies.
+The live bot must be a self-contained compiled DLL. Its user-specific Bot Definition is compiled into that DLL and instantiated/composed in memory at startup; JSON is an authoring/import/export representation only. The SC2 Runner is the host that drives the bot lifecycle and frame callbacks. It is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
 - [CommandAi integration v1: bot-owned command vocabulary and validation boundary](docs/commandai-integration-v1.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)

@@ -69,6 +69,55 @@ public sealed class MilitaryPlanDefinitionTests
         Assert.Contains(errors, error => error.Contains("cycle"));
     }
 
+
+    [Fact]
+    public void MilitaryPlanRuntime_HoldsSecondStrikeUntilFirstOperationCompletionIsObserved()
+    {
+        var runtime = new MilitaryPlanRuntime();
+        var plan = new MilitaryPlanDefinition
+        {
+            Id = "pincer",
+            Name = "Mineral line pincer",
+            Locations =
+            [
+                new("main", "Opponent main mineral line", 100, 80),
+                new("natural", "Opponent expansion mineral line", 80, 110)
+            ],
+            Routes =
+            [
+                new("main-route", "Evasive main route", [new("a", 0, 0), new("b", 100, 80)],
+                    MilitaryRouteConstraints.AvoidKnownThreats | MilitaryRouteConstraints.AvoidContact),
+                new("jump-route", "Jump route", [new("c", 40, 40), new("d", 80, 110)])
+            ],
+            Operations =
+            [
+                new("first-bc", "Position first Battlecruiser", MilitaryForceRole.Harass,
+                    "main-route", "main", SynchronizationGroup: "pincer"),
+                new("second-bc", "Jump second Battlecruiser", MilitaryForceRole.Harass,
+                    "jump-route", "natural", DependsOn: new[] { "first-bc" },
+                    RequiredAbility: "TacticalJump", SynchronizationGroup: "pincer")
+            ]
+        };
+
+        Assert.Empty(runtime.AddPlan(plan));
+        Assert.True(runtime.TryGetIntent("first-bc", out var firstIntent));
+        Assert.Equal("main-route", firstIntent.RouteId);
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+
+        Assert.True(runtime.MarkSubmitted("first-bc", 100));
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+        Assert.True(runtime.ObserveStarted("first-bc", 101));
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+
+        Assert.False(runtime.ObserveCompletion("first-bc", false, 120));
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+        Assert.True(runtime.ObserveCompletion("first-bc", true, 121));
+
+        Assert.True(runtime.TryGetIntent("second-bc", out var secondIntent));
+        Assert.Equal("TacticalJump", secondIntent.RequiredAbility);
+        Assert.Equal("natural", secondIntent.ObjectiveLocationId);
+    }
+
     [Fact]
     public void MilitaryPlanParser_ReadsNamedRoutesAndStringEnums()
     {

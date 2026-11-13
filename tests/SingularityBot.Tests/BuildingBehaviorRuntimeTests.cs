@@ -241,12 +241,21 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         Assert.Equal("EnemyWithin5", building.ThreatState);
 
-        enemy = enemy with { GameLoop = 32, PositionX = 30 };
-        runtime.Reconcile(Observation(32, depot with { GameLoop = 32 }, enemy),
+        // Losing vision is not evidence that the threat has disappeared.
+        runtime.Reconcile(Observation(32, depot with { GameLoop = 32 }),
+            Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("Unobserved", building.ThreatState);
+        Assert.Equal("Raised", building.AccessState);
+
+        enemy = enemy with { GameLoop = 33, PositionX = 30 };
+        runtime.Reconcile(Observation(33, depot with { GameLoop = 33 }, enemy),
             Array.Empty<BuildJobContext>(), _ => false);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         Assert.Equal("Clear", building.ThreatState);
+        Assert.Equal("Lowered", building.AccessState);
 
         runtime.Clear();
     }

@@ -12,11 +12,26 @@ namespace SC2API_CSharp
         private string ladderServer;
         private Race computerRace = Race.NoRace;
         private Difficulty computerDifficulty = Difficulty.Unset;
+        private bool createGame;
+        private string mapPath;
 
         public CLArgs(string[] args)
         {
-            for (int i = 0; i < args.Count(); i += 2)
+            createGame = args.Contains("--CreateGame");
+            int mapIndex = System.Array.IndexOf(args, "--Map");
+            if (mapIndex >= 0 && mapIndex + 1 < args.Length)
+                mapPath = args[mapIndex + 1];
+
+            var connectionArgs = args.Where((argument, index) =>
+                argument != "--CreateGame" &&
+                argument != "--Map" &&
+                !(index > 0 && args[index - 1] == "--Map")).ToArray();
+
+            for (int i = 0; i < connectionArgs.Length; i += 2)
             {
+                if (i + 1 >= connectionArgs.Length)
+                    throw new System.ArgumentException("Ladder arguments must be supplied as name/value pairs.");
+                args = connectionArgs;
                 if (args[i] == "-g" || args[i] == "--GamePort")
                     gamePort = int.Parse(args[i + 1]);
                 else if (args[i] == "-o" || args[i] == "--StartPort")
@@ -92,6 +107,8 @@ namespace SC2API_CSharp
             }
         }
 
+        public bool CreateGame { get => createGame; set => createGame = value; }
+        public string MapPath { get => mapPath; set => mapPath = value; }
         public int GamePort { get => gamePort; set => gamePort = value; }
         public int StartPort { get => startPort; set => startPort = value; }
         public string LadderServer { get => ladderServer; set => ladderServer = value; }

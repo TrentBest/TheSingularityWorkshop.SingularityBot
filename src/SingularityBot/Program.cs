@@ -17,14 +17,14 @@ public static class Program
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
         var designatedAreaArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--cc-area=", StringComparison.Ordinal));
-        var connectionArgs = args.Where(argument =>
+        var connectionArgs = args.Where((argument, index) =>
             !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
             !string.Equals(argument, "--Map", StringComparison.Ordinal) &&
             !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal) &&
             !string.Equals(argument, "--diagnostics", StringComparison.Ordinal) &&
             !string.Equals(argument, "--no-diagnostics", StringComparison.Ordinal) &&
-            !(Array.IndexOf(args, argument) > 0 && args[Array.IndexOf(args, argument) - 1] == "--Map")).ToArray();
+            !(index > 0 && args[index - 1] == "--Map")).ToArray();
         var localRun = connectionArgs.Length == 0;
         if (passiveBaseline && !localRun)
             throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.");

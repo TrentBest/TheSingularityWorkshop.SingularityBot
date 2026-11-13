@@ -66,7 +66,8 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool IsLowered { get; private set; }
     public bool HasNearbyEnemy { get; private set; }
     public bool PassageRequested { get; private set; }
-    public bool HasCompletedBarracks { get; private set; }
+    public bool HasCompletedBarracks => CompletedBarracksCount > 0;
+    public int CompletedBarracksCount { get; private set; }
     public bool HasCompletedSupplyDepot { get; private set; }
     public bool IsInDesignatedCommandCenterConstructionArea { get; private set; }
     public bool IsOrbitalCommand { get; private set; }
@@ -106,7 +107,7 @@ public sealed class BuildingBehaviorContext : IStateContext
         UnitObservationFacts facts,
         bool hasNearbyEnemy,
         Func<uint, bool> isResearchAbility,
-        bool hasCompletedBarracks,
+        int completedBarracksCount,
         bool hasCompletedSupplyDepot,
         uint? scvTrainAbilityId,
         uint? orbitalUpgradeAbilityId,
@@ -120,7 +121,7 @@ public sealed class BuildingBehaviorContext : IStateContext
         IsRaised = facts.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase);
         IsLowered = facts.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase);
         HasNearbyEnemy = hasNearbyEnemy;
-        HasCompletedBarracks = hasCompletedBarracks;
+        CompletedBarracksCount = completedBarracksCount;
         HasCompletedSupplyDepot = hasCompletedSupplyDepot;
         IsInDesignatedCommandCenterConstructionArea = isInDesignatedCommandCenterConstructionArea;
         IsOrbitalCommand = facts.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
@@ -202,7 +203,7 @@ public sealed class BuildingBehaviorContext : IStateContext
 
     public bool CanUpgradeToOrbital =>
         UnitKind == "CommandCenter" && IsLanded && !IsOrbitalCommand && !IsPlanetaryFortress &&
-        HasCompletedBarracks && HasCompletedSupplyDepot &&
+        CompletedBarracksCount == 1 && HasCompletedSupplyDepot &&
         !IsInDesignatedCommandCenterConstructionArea && !HasScvTrainingOrder;
 
     public bool IsOrbitalUpgradeOrderObserved =>
@@ -416,9 +417,10 @@ public sealed class BuildingBehaviorRuntime
             Remove(deadTag);
 
         var enemies = observation.Units.Where(unit =>
-            unit.Alliance == UnitAlliance.Enemy && unit.IsLiveVisible && unit.HasPosition).ToArray();
-        var hasCompletedBarracks = observation.Units.Any(unit =>
+            unit.Alliance == UnitAlliance.Enemy && unit.IsLiveVisible && unit.HasPosition && !unit.IsFlying).ToArray();
+        var completedBarracksCount = observation.Units.Count(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            !observation.DeadUnitTags.Contains(unit.Tag) &&
             unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) && unit.BuildProgress >= 1f);
         var hasCompletedSupplyDepot = observation.Units.Any(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
@@ -456,7 +458,7 @@ public sealed class BuildingBehaviorRuntime
                 facts.HasPosition &&
                 DistanceSquared(facts.PositionX, facts.PositionY, area.X, area.Y) <= area.Radius * area.Radius;
             building.Apply(facts, nearbyEnemy, isResearchAbility,
-                hasCompletedBarracks, hasCompletedSupplyDepot,
+                completedBarracksCount, hasCompletedSupplyDepot,
                 scvTrainAbilityId, orbitalUpgradeAbilityId, inDesignatedArea);
         }
 

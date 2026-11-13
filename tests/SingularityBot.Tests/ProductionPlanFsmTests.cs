@@ -133,6 +133,7 @@ public sealed class ProductionPlanFsmTests
         runtime.Update();
 
         Assert.Single(emitted);
+        depot.MarkSubmitted();
         depot.ApplyObservation(11, 0, 1, true, true, true);
         Assert.False(barracks.DependenciesSatisfied);
     }

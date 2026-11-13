@@ -46,8 +46,15 @@ public sealed class Sc2OrbitalSupportController
             observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && IsKind(unit, "Barracks") && unit.BuildProgress >= 1f);
 
+        var orbitalMorphAlreadyQueued = firstBaseTownHall is not null &&
+            gameData.OrbitalUpgradeAbilityId is > 0 &&
+            firstBaseTownHall.Orders.Any(order =>
+                order.AbilityId == gameData.OrbitalUpgradeAbilityId.Value);
+
+        // Release the mineral/producer reservation as soon as the morph order
+        // is observed. The main loop can then reserve the first Refinery instead.
         if (firstBaseTownHall is null || !IsKind(firstBaseTownHall, "CommandCenter") ||
-            !orbitalTechReady || gameData.OrbitalUpgradeMineralCost == 0)
+            !orbitalTechReady || gameData.OrbitalUpgradeMineralCost == 0 || orbitalMorphAlreadyQueued)
             return null;
 
         return firstBaseTownHall.Tag;

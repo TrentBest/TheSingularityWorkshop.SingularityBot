@@ -84,7 +84,10 @@ public sealed class Sc2OpeningMarineController
             if (inProgress)
                 return null;
 
-            // Do not reserve, stage, or move a Barracks SCV until the Supply Depot\n            // is observed complete. This preserves the opening worker economy.\n            if (!allowConstruction)\n                return null;\n\n            if (_builderTag is ulong existing &&
+            // Do not reserve, stage, or move a Barracks SCV until the Supply Depot
+            // is observed complete. This preserves the opening worker economy.
+            if (!allowConstruction)
+                return null;\n\n            if (_builderTag is ulong existing &&
                 (observation.DeadUnitTags.Contains(existing) ||
                  !observation.Units.Any(unit => unit.Tag == existing && IsLiveScv(unit))))
             {
@@ -163,8 +166,7 @@ public sealed class Sc2OpeningMarineController
                 return PositionCommand(worker.Tag, checked((int)gameData.MoveAbilityId.Value), _placement.Value);
             }
 
-            // Reserve and stage the Barracks worker while the first Depot is
-            // under construction, but do not issue Build until the Depot is observed complete.
+            // The Supply Depot completion gate was checked before selecting or staging this worker.
             if (!allowConstruction || observation.Minerals < gameData.BarracksMineralCost)
                 return null;
             if (IsBuildSubmitted && observation.GameLoop <= _barracksBuildJob.CreatedAtGameLoop + 8)

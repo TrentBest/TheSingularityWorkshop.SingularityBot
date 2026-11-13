@@ -64,6 +64,11 @@ public static class ProductionPlanValidator
         {
             var step = steps[index];
             var path = $"$.steps[{index}]";
+            if (step is null)
+            {
+                errors.Add($"{path}: a production step cannot be null.");
+                continue;
+            }
             if (string.IsNullOrWhiteSpace(step.Id))
                 errors.Add($"{path}.id: a stable step id is required.");
             else if (!ids.Add(step.Id))
@@ -82,8 +87,9 @@ public static class ProductionPlanValidator
                 errors.Add($"{path}.lane: unsupported production lane.");
         }
 
-        var knownIds = steps.Select(step => step.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (var step in steps)
+        var knownIds = steps.Where(step => step is not null)
+            .Select(step => step.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var step in steps.Where(step => step is not null))
         {
             foreach (var dependency in step.DependsOn ?? Array.Empty<string>())
             {

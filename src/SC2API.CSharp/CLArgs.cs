@@ -21,6 +21,8 @@ namespace SC2API_CSharp
             int mapIndex = System.Array.IndexOf(args, "--Map");
             if (mapIndex >= 0 && mapIndex + 1 < args.Length)
                 mapPath = args[mapIndex + 1];
+            if (createGame && string.IsNullOrWhiteSpace(mapPath))
+                throw new System.ArgumentException("--CreateGame requires --Map <trusted-map-path>.");
 
             var connectionArgs = args.Where((argument, index) =>
                 argument != "--CreateGame" &&

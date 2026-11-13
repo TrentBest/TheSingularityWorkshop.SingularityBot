@@ -24,6 +24,7 @@ public sealed class IntelligenceAdvisorTests
 
         Assert.Empty(errors);
         Assert.Equal(0u, advisor.GetMuleScanEnergyReserve());
+        Assert.Equal(50u, advisor.GetMuleScanEnergyReserve(economyAlsoRequestsPreservation: true));
     }
 
     [Fact]
@@ -36,6 +37,7 @@ public sealed class IntelligenceAdvisorTests
 
         Assert.Empty(errors);
         Assert.Equal(100u, advisor.GetMuleScanEnergyReserve());
+        Assert.Equal(100u, advisor.GetMuleScanEnergyReserve(economyAlsoRequestsPreservation: true));
     }
 
     [Fact]

@@ -9,6 +9,7 @@ namespace SingularityBot.Behavior;
 public sealed class ProductionStepContext : IStateContext
 {
     private readonly Action<ProductionIntent> _emit;
+    private Func<bool> _dependenciesSatisfied = static () => true;
 
     public ProductionStepContext(ProductionStepDefinition definition, Action<ProductionIntent> emit)
     {
@@ -28,6 +29,12 @@ public sealed class ProductionStepContext : IStateContext
     public bool PrerequisitesSatisfied { get; private set; }
     public bool ResourceRequirementsSatisfied { get; private set; }
     public bool RequestPending { get; private set; }
+
+    /// <summary>
+    /// Dependencies are complete only when their observed completed counts meet
+    /// their configured targets. In-progress work and submitted commands do not count.
+    /// </summary>
+    public bool DependenciesSatisfied => _dependenciesSatisfied();
     public bool IsComplete => CurrentCount >= Definition.DesiredCount;
     public bool CanIssue => IsValid &&
         !IsComplete &&
@@ -36,7 +43,11 @@ public sealed class ProductionStepContext : IStateContext
         ProducerAvailable &&
         PrerequisitesSatisfied &&
         ResourceRequirementsSatisfied &&
+        DependenciesSatisfied &&
         !RequestPending;
+
+    internal void SetDependencyResolver(Func<bool> resolver) =>
+        _dependenciesSatisfied = resolver ?? throw new ArgumentNullException(nameof(resolver));
 
     /// <summary>Called by the observation adapter once per game observation.</summary>
     public void ApplyObservation(

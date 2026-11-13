@@ -943,10 +943,15 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 if (buildingEvent.Kind == BuildingEventKind.Operational &&
                     buildingEvent.BuilderWorkerTag is ulong builderTag)
                 {
+                    // The building lifecycle owns the handoff boundary. Return the
+                    // actual worker FSM to Assess so it chooses its next task from
+                    // current observations rather than inheriting a stale mining state.
+                    if (_unitBehaviors.TryGetHandle(builderTag, UnitBehaviorCatalog.WorkerFsm, out var workerHandle))
+                        workerHandle.TransitionTo("Assess");
                     _workerAssignments.Unreserve(builderTag);
-                    Console.WriteLine($"[Building] {buildingEvent.BuildingId} is operational; SCV {builderTag} returned to worker tasking.");
+                    Console.WriteLine($"[Building] {buildingEvent.BuildingId} is operational; SCV {builderTag} returned to worker assessment.");
                 }
-                else if (buildingEvent.Kind is BuildingEventKind.RaiseSupplyDepot or BuildingEventKind.LowerSupplyDepot)
+                if (buildingEvent.Kind is BuildingEventKind.RaiseSupplyDepot or BuildingEventKind.LowerSupplyDepot)
                 {
                     var accessAction = CreateDepotAccessAction(buildingEvent);
                     if (accessAction is not null)

@@ -1,3 +1,4 @@
+using TheSingularityWorkshop.FSM_COS;
 using TheSingularityWorkshop.MicroBundleDomain;
 namespace SingularityBot.Behavior;
 public sealed class BotCommandVocabularyMicroBundle : IMicroBundle

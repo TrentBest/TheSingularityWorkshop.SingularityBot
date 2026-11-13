@@ -4,32 +4,42 @@
 
 SingularityBot is a StarCraft II player. Its primary product is a reliable decision-and-action runtime that can complete a real opening. Authoring, visualization, replay analysis and learning support that runtime; they are not alternate execution paths.
 
+## Composition and execution boundary
+
+The default definition is created by `BotDefinitionCatalog` as typed C# data compiled into the bot assembly. The runner performs no strategy-file read and no dynamic assembly load.
+
+`BotRuntimeComposer` submits a versioned `RuntimeManifest` to FSM_COS. The compiled bot-definition MicroBundle declares its dependency on the bot-owned CommandAi vocabulary MicroBundle. FSM_COS validates and loads that dependency graph and returns a `RuntimeAssembly`; the host retrieves the typed definition and vocabulary from that assembly.
+
+FSM_COS composes capabilities; it does not run the StarCraft match. The host owns the SC2 connection and frame lifecycle, while FSM_API owns the bot's state/context mechanics and behavior updates. The existing action pipeline remains the only authority for translating and submitting SC2 commands.
+
+Foundry's current contract is a host-neutral workflow executor with its own workflow definition, handler registry, lifecycle, and result model. It is not interchangeable with an FSM_COS `RuntimeAssembly` or the synchronous per-frame game loop. It may later orchestrate bounded scenario/replay evaluation workflows, but it is deliberately not inserted into unit action execution.
+
 ## Runtime boundary
 
 ```text
-StarCraft II
+Compiled BotDefinition + static capability catalog
     |
     v
-SC2 protocol adapter
-    |  observations, game data, legal-action results
+FSM_COS composition
+    |  validated dependency closure
     v
-Normalized game facts + event stream
+RuntimeAssembly
     |
     v
-Game ontology / capabilities
+SingularityBot host
+    |  normalized observations / domain intents
+    v
+FSM_API-backed behavior and entity lifecycles
     |
     v
-FSM runtime (FSM_API; FSM_Foundry integration is a later execution-layer step)
-    |
-    v
-Intent collection -> arbitration -> validation
-    |
-    v
-SC2 action translation and submission
+Intent arbitration -> legality validation -> SC2 adapter
     |
     +---- decision/event trace -> replay and evaluation
     |
-    +---- versioned definitions/configuration -> GUI authoring
+    +---- versioned definition + capability metadata -> Forge GUI
+
+Foundry: bounded host-neutral workflows for scenario/evaluation orchestration;
+         not the per-frame StarCraft unit-action executor.
 ```
 
 The adapter owns protocol DTOs and protocol-specific details. The rest of the bot consumes stable domain facts and emits domain intents. An intent is a request, not authorization to issue an action.

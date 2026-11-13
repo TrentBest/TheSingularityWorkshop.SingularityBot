@@ -34,6 +34,7 @@ The first worker, construction and production stages have progressed beyond the 
 |---|---|
 | Protocol connection, observations, game data and action submission | SC2 adapter |
 | Unit/ability/race vocabulary and capability facts | Bot game ontology |
+| Capability composition and dependency resolution | FSM_COS |
 | Persistent contexts and hierarchical execution | FSM_API |
 | Shared executor / processing cadence | FSM_Foundry |
 | Distances, routes and spatial queries | Physics |
@@ -79,6 +80,7 @@ The bot builds against active ecosystem source branches. CI checks out CommandAi
 mkdir -p dependencies
 git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git dependencies/CommandAi
 git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_Serialization.git dependencies/FSM_Serialization
+git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_COS.git dependencies/FSM_COS
 dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj
 ```
 

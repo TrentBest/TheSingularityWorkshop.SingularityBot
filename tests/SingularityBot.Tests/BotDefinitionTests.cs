@@ -38,6 +38,12 @@ public sealed class BotDefinitionTests
         Assert.Equal(definition.Id, bot.Definition.Id);
         Assert.NotNull(bot.Manifest);
         Assert.NotNull(bot.OpeningPlan);
+        Assert.Equal(2, bot.ComposedRuntime.Bundles.Count);
+        Assert.Equal(BotCommandVocabulary.Actions.SetProductionTarget,
+            bot.AvailableActions.Single(action => action.Name == "SetProductionTarget").Id);
+        Assert.True(bot.ComposedRuntime.TryGetBundle<BotDefinitionMicroBundle>(
+            BotDefinitionMicroBundle.BundleId, out var composedDefinition));
+        Assert.True(composedDefinition!.IsLoaded);
     }
 
     [Fact]

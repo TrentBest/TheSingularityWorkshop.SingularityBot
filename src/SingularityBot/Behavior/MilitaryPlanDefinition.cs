@@ -111,14 +111,19 @@ public static class MilitaryPlanValidator
         if (routes.Count == 0) errors.Add("$.routes: at least one named route is required.");
         if (operations.Count == 0) errors.Add("$.operations: at least one operation is required.");
 
-        var locationIds = UniqueIds(locations.Select(item => item.Id), "$.locations", errors);
-        var routeIds = UniqueIds(routes.Select(item => item.Id), "$.routes", errors);
-        var operationIds = UniqueIds(operations.Select(item => item.Id), "$.operations", errors);
+        var locationIds = UniqueIds(locations.Select(item => item?.Id), "$.locations", errors);
+        var routeIds = UniqueIds(routes.Select(item => item?.Id), "$.routes", errors);
+        var operationIds = UniqueIds(operations.Select(item => item?.Id), "$.operations", errors);
 
         for (var index = 0; index < locations.Count; index++)
         {
             var location = locations[index];
             var path = $"$.locations[{index}]";
+            if (location is null)
+            {
+                errors.Add($"{path}: a location cannot be null.");
+                continue;
+            }
             if (string.IsNullOrWhiteSpace(location.Name)) errors.Add($"{path}.name: a display name is required.");
             if (!float.IsFinite(location.X) || !float.IsFinite(location.Y))
                 errors.Add($"{path}: coordinates must be finite.");
@@ -130,6 +135,11 @@ public static class MilitaryPlanValidator
         {
             var route = routes[index];
             var path = $"$.routes[{index}]";
+            if (route is null)
+            {
+                errors.Add($"{path}: a route cannot be null.");
+                continue;
+            }
             if (string.IsNullOrWhiteSpace(route.Name)) errors.Add($"{path}.name: a display name is required.");
             if (route.Waypoints is null || route.Waypoints.Count < 2)
             {
@@ -139,10 +149,15 @@ public static class MilitaryPlanValidator
             if ((route.Constraints & ~KnownConstraints) != 0)
                 errors.Add($"{path}.constraints: contains unsupported route constraints.");
 
-            var waypointIds = UniqueIds(route.Waypoints.Select(point => point.Id), $"{path}.waypoints", errors);
+            _ = UniqueIds(route.Waypoints.Select(point => point?.Id), $"{path}.waypoints", errors);
             for (var pointIndex = 0; pointIndex < route.Waypoints.Count; pointIndex++)
             {
                 var point = route.Waypoints[pointIndex];
+                if (point is null)
+                {
+                    errors.Add($"{path}.waypoints[{pointIndex}]: a waypoint cannot be null.");
+                    continue;
+                }
                 if (!float.IsFinite(point.X) || !float.IsFinite(point.Y))
                     errors.Add($"{path}.waypoints[{pointIndex}]: coordinates must be finite.");
             }
@@ -152,6 +167,11 @@ public static class MilitaryPlanValidator
         {
             var operation = operations[index];
             var path = $"$.operations[{index}]";
+            if (operation is null)
+            {
+                errors.Add($"{path}: an operation cannot be null.");
+                continue;
+            }
             if (string.IsNullOrWhiteSpace(operation.Name)) errors.Add($"{path}.name: a display name is required.");
             if (!Enum.IsDefined(operation.Role)) errors.Add($"{path}.role: unknown force role.");
             if (!Enum.IsDefined(operation.Completion)) errors.Add($"{path}.completion: unknown completion condition.");

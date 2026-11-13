@@ -1508,6 +1508,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var allAtObjective = assigned.Length >= definition.RequiredUnitCount &&
                 assigned.All(unit => DistanceSquared(
                     unit.PositionX, unit.PositionY, targetX, targetY) <= targetRadius * targetRadius);
+            if (allAtObjective && !operation.IsStarted &&
+                definition.Completion is MilitaryCompletionCondition.AtObjective or
+                    MilitaryCompletionCondition.AllAssignedUnitsArrived)
+                _militaryPlanRuntime.ObserveStarted(definition.Id, observation.GameLoop);
             if (allAtObjective && operation.IsStarted &&
                 definition.Completion is MilitaryCompletionCondition.AtObjective or
                     MilitaryCompletionCondition.AllAssignedUnitsArrived)

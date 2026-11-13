@@ -101,20 +101,23 @@ public static class MilitaryPlanValidator
     {
         ArgumentNullException.ThrowIfNull(plan);
         var errors = new List<string>();
+        var locations = plan.Locations ?? Array.Empty<MilitaryLocationDefinition>();
+        var routes = plan.Routes ?? Array.Empty<MilitaryRouteDefinition>();
+        var operations = plan.Operations ?? Array.Empty<MilitaryOperationDefinition>();
         if (plan.Version != 1) errors.Add("$.version: only version 1 is supported.");
         if (string.IsNullOrWhiteSpace(plan.Id)) errors.Add("$.id: a stable plan id is required.");
         if (string.IsNullOrWhiteSpace(plan.Name)) errors.Add("$.name: a plan name is required.");
-        if (plan.Locations.Count == 0) errors.Add("$.locations: at least one named location is required.");
-        if (plan.Routes.Count == 0) errors.Add("$.routes: at least one named route is required.");
-        if (plan.Operations.Count == 0) errors.Add("$.operations: at least one operation is required.");
+        if (locations.Count == 0) errors.Add("$.locations: at least one named location is required.");
+        if (routes.Count == 0) errors.Add("$.routes: at least one named route is required.");
+        if (operations.Count == 0) errors.Add("$.operations: at least one operation is required.");
 
-        var locationIds = UniqueIds(plan.Locations.Select(item => item.Id), "$.locations", errors);
-        var routeIds = UniqueIds(plan.Routes.Select(item => item.Id), "$.routes", errors);
-        var operationIds = UniqueIds(plan.Operations.Select(item => item.Id), "$.operations", errors);
+        var locationIds = UniqueIds(locations.Select(item => item.Id), "$.locations", errors);
+        var routeIds = UniqueIds(routes.Select(item => item.Id), "$.routes", errors);
+        var operationIds = UniqueIds(operations.Select(item => item.Id), "$.operations", errors);
 
-        for (var index = 0; index < plan.Locations.Count; index++)
+        for (var index = 0; index < locations.Count; index++)
         {
-            var location = plan.Locations[index];
+            var location = locations[index];
             var path = $"$.locations[{index}]";
             if (string.IsNullOrWhiteSpace(location.Name)) errors.Add($"{path}.name: a display name is required.");
             if (!float.IsFinite(location.X) || !float.IsFinite(location.Y))
@@ -123,9 +126,9 @@ public static class MilitaryPlanValidator
                 errors.Add($"{path}.radius: must be finite and non-negative.");
         }
 
-        for (var index = 0; index < plan.Routes.Count; index++)
+        for (var index = 0; index < routes.Count; index++)
         {
-            var route = plan.Routes[index];
+            var route = routes[index];
             var path = $"$.routes[{index}]";
             if (string.IsNullOrWhiteSpace(route.Name)) errors.Add($"{path}.name: a display name is required.");
             if (route.Waypoints is null || route.Waypoints.Count < 2)
@@ -145,9 +148,9 @@ public static class MilitaryPlanValidator
             }
         }
 
-        for (var index = 0; index < plan.Operations.Count; index++)
+        for (var index = 0; index < operations.Count; index++)
         {
-            var operation = plan.Operations[index];
+            var operation = operations[index];
             var path = $"$.operations[{index}]";
             if (string.IsNullOrWhiteSpace(operation.Name)) errors.Add($"{path}.name: a display name is required.");
             if (!Enum.IsDefined(operation.Role)) errors.Add($"{path}.role: unknown force role.");
@@ -170,7 +173,7 @@ public static class MilitaryPlanValidator
             }
         }
 
-        if (operationIds.Count == plan.Operations.Count && HasDependencyCycle(plan.Operations))
+        if (operationIds.Count == operations.Count && HasDependencyCycle(operations))
             errors.Add("$.operations: dependency graph contains a cycle.");
         return errors;
     }

@@ -222,6 +222,41 @@ public sealed class BuildingBehaviorRuntimeTests
     }
 
     [Fact]
+    public void BuildingThreatFsmTracksIndependentFiveAndTenUnitBands()
+    {
+        UnitBehaviorCatalog.Register();
+        BuildingBehaviorRuntime.RegisterDefinitions();
+        var runtime = new BuildingBehaviorRuntime();
+        var depot = Depot(4050, "SupplyDepot", 1f);
+        var enemy = new UnitObservationFacts(
+            9050, 1, "Marine", 2, UnitAlliance.Enemy, UnitVisibility.Visible,
+            45, 45, 0, 0, 1, 18, 10, true, false, false,
+            false, false, false, 30);
+
+        runtime.Reconcile(Observation(30, depot, enemy), Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        var building = Assert.Single(runtime.Buildings);
+        Assert.Equal("EnemyWithin10", building.ThreatState);
+
+        enemy = enemy with { GameLoop = 31, PositionX = 14 };
+        runtime.Reconcile(Observation(31, depot with { GameLoop = 31 }, enemy),
+            Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("EnemyWithin5", building.ThreatState);
+
+        enemy = enemy with { GameLoop = 32, PositionX = 30 };
+        runtime.Reconcile(Observation(32, depot with { GameLoop = 32 }, enemy),
+            Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        Assert.Equal("Clear", building.ThreatState);
+
+        runtime.Clear();
+    }
+
+    [Fact]
     public void FlyingEnemiesDoNotRaiseSupplyDepots()
     {
         UnitBehaviorCatalog.Register();

@@ -30,15 +30,15 @@ public sealed class Sc2MilitaryOperationActionTranslator
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
 
+        var errors = MilitaryPlanValidator.Validate(plan);
+        if (errors.Count != 0)
+            return Blocked("Military plan failed validation: " + string.Join(" ", errors));
         var operation = plan.Operations.FirstOrDefault(item =>
             string.Equals(item.Id, intent.OperationId, StringComparison.Ordinal));
         var route = plan.Routes.FirstOrDefault(item =>
             string.Equals(item.Id, intent.RouteId, StringComparison.Ordinal));
         var location = plan.Locations.FirstOrDefault(item =>
             string.Equals(item.Id, intent.ObjectiveLocationId, StringComparison.Ordinal));
-        var errors = MilitaryPlanValidator.Validate(plan);
-        if (errors.Count != 0)
-            return Blocked("Military plan failed validation: " + string.Join(" ", errors));
         if (operation is null || route is null || location is null)
             return Blocked("Operation, route or objective location is missing from the supplied plan.");
         if (!string.Equals(operation.RouteId, intent.RouteId, StringComparison.Ordinal) ||

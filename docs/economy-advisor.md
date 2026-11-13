@@ -22,7 +22,9 @@ Configuration is versioned and applied atomically: invalid JSON or invalid value
   "prioritizeOpeningInfrastructure": true,
   "holdWorkerProductionForFirstDepot": true,
   "supplyDepotWorkerPullMinerals": 80,
-  "allowLongDistanceMining": false
+  "allowLongDistanceMining": false,
+  "enableMules": true,
+  "muleCallDownPolicy": "PreserveScan"
 }
 ```
 
@@ -31,8 +33,10 @@ Configuration is versioned and applied atomically: invalid JSON or invalid value
 - `holdWorkerProductionForFirstDepot`: when enabled, prevent additional SCV training from consuming the first Depot's mineral budget after initial SCV production has begun.
 - `supplyDepotWorkerPullMinerals`: reserve and dispatch a Depot builder when the mineral bank reaches this threshold (default 80; valid range 0–1000). This does not authorize construction early: the actual Depot command still waits for its authoritative game-data cost and an accepted SC2 placement.
 - `allowLongDistanceMining`: defaults to `false`; when disabled, mineral fields more than 14 map units from every completed Command Center, Orbital Command, or Planetary Fortress are excluded from worker assignments. This keeps workers on established base mineral lines instead of sending them to unoccupied expansions.
+- `enableMules`: defaults to `true`. When disabled, the opening does not morph the starting Command Center to an Orbital and no MULE call-down is issued. When enabled, the opening sequence is completed Barracks → observed first Marine → Orbital Command.
+- `muleCallDownPolicy`: `PreserveScan` (default) keeps the Intelligence Advisor energy reserve before spending 50 energy on a MULE; `Immediate` allows a MULE as soon as 50 energy is available.
 
-The current infrastructure priority is: expansion Command Center, follow-up Depot plus an SCV reserve, first Depot, first Barracks, then Marine production. These are mineral reservations, not promises that the corresponding job is ready.
+Opening production is sequenced as first Barracks, first observed Marine, then the starting Orbital morph (when `enableMules` is true). The first Marine receives its 50-mineral commitment before the 150-mineral Orbital reserve becomes active. Other infrastructure reservations remain subject to observed prerequisites and the production command gate.
 
 ## Persistent mineral-node contexts
 

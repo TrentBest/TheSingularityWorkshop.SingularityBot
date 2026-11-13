@@ -119,6 +119,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public BotManifest Manifest => _manifest;
     /// <summary>The validated authoring artifact selected for this match, when supplied by the host.</summary>
     public BotDefinition Definition => _definition;
+    /// <summary>Configured maximum observed Marine force size; defaults to the runtime's 60-Marine policy.</summary>
+    public int DesiredMarineCount => _desiredMarineCount;
     /// <summary>The opening plan carried by the selected definition. Its live production adapter is host-owned.</summary>
     public ProductionPlanDefinition OpeningPlan => _definition?.Opening;
     /// <summary>The active user-authored goal policy consumed by GoalActionPlanner.</summary>

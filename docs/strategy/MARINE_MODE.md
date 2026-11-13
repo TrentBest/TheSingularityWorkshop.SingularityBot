@@ -22,7 +22,7 @@ Marine Mode optimizes for sustained map pressure and the fastest reliable delive
 - Complete the first Depot without stranding its builder.
 - Construct the first Barracks, then dispatch Barracks two as soon as its 150-mineral cost is available while Barracks one is still building. Do not wait for the first Marine to enter production.
 - Choose the unreserved SCV with the shortest trip to the Barracks placement cluster; return the first Barracks builder to mineral mining as soon as its structure completes.
-- Start gas collection as soon as the production plan can sustain the worker and Refinery investment. Add Barracks as mineral income and supply permit.
+- Start the first Marine training order as soon as the completed Barracks, resources and supply permit. Once that order is observed, immediately begin the starting Command Center's Orbital morph; do not wait for the Marine unit to finish. After the Orbital morph order is observed, unlock Refinery construction and gas collection. This ordering is intentional: Marine production started → Orbital morph started → Refineries.
 - Measure worker idle time, builder idle time, production downtime, supply-block duration, and time to first Marine.
 
 ### 2. Establish Marine control
@@ -45,14 +45,15 @@ A Marine is controlled from current observations, not a one-time move order.
 ### 3. Scale the Marine economy
 
 - Continue Marine production across available Barracks and spend resource float on the next affordable, placement-validated infrastructure or production action instead of allowing minerals to accumulate. Do not reserve 400 minerals for a Command Center merely to unlock Barracks three.
-- Establish Refinery gas income early enough to support the Tech Lab, Marauders, and Marine upgrades; balance gas workers against the mineral income needed to sustain four Barracks.
-- Once four Marines are available, prioritize a Tech Lab on one Barracks, then add Reactors to the remaining production facilities as soon as the gas/mineral budget and add-on clearance allow. The initial production milestone is four Barracks, not an unconditional jump to eight.
+- After the Orbital morph has started, establish Refinery gas income early enough to support the Tech Lab and Marine upgrades; balance gas workers against the mineral income needed to sustain four Barracks.
+- As soon as the Tech Lab is affordable without starving SCVs, supply, Marines or the Orbital/Refinery commitments, attach it to one Barracks. Prioritize the Marine Combat Shield upgrade first. Then begin adding Reactors to the other Barracks as the resource budget and add-on clearance permit. Do not make the other Barracks wait for the Combat Shield research to finish if their Reactors can be funded without jeopardizing the upgrade or core production.
+- At the four-Barracks production milestone, evaluate Marine Mode's next evolution. One branch may expand toward eight Barracks; another may improve the existing Marine force or its support/economy. This is an in-mode evolution decision, not a transition-out-of-Marine-Mode decision. Do not run a generic strategy-transition evaluation merely because this checkpoint is reached.
 - Add a Reaper as a dedicated mobile scout when prerequisites and resource budget permit. Preserve it: avoid unfavorable fights, retreat from threats, and use safe alternate routes or another jump point rather than forcing a bad engagement.
 - Introduce a small Marauder contingent from the Tech Lab to absorb pressure and slow armored ground threats while Marines provide sustained DPS.
 - Use damage-aware focus fire: estimate allied damage over a short firing window, assign only enough attackers to finish a target, and allocate remaining damage to another viable target. Maintain focus on a chosen target until its predicted remaining health reaches the kill threshold; avoid wasting a full volley as overkill.
 - Treat the first few dozen Marines as the initial mass-building phase; do not let early add-on construction interrupt the force before the economy can sustain it.
 - Do not make an expansion Command Center a prerequisite for Barracks three or four. Expand toward eight Barracks total as the resource and supply model supports it; town-hall expansion is a separate economic decision and must not hold up production.
-- The intended add-on mix is one Tech Lab-capable Barracks and seven Reactor Barracks. The Tech Lab timing is a measured decision based on gas income, production saturation, and the value of adding Marauders; it is not a fixed opening timestamp.
+- The eight-Barracks branch's intended add-on mix is one Tech Lab-capable Barracks and seven Reactor Barracks. This is a branch-specific target, not the default Marine Mode destination. The Tech Lab timing is governed by gas income, production saturation, Combat Shield priority and the value of additional Marine upgrades; it is not a fixed opening timestamp.
 - Add two Engineering Bays around the twenty-Marine scale only when doing so does not collapse Marine production or cause a supply/resource stall. Research weapon and armor upgrades concurrently when gas and income support both.
 
 These counts are strategic targets, not unconditional build commands. The planner must account for current resources, construction commitments, add-on availability, supply, and production utilization.

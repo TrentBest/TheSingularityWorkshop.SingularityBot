@@ -76,13 +76,13 @@ public sealed class EconomyAdvisorTests
     {
         var advisor = new EconomyAdvisor();
 
-        Assert.False(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: false));
-        Assert.True(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: true));
+        Assert.False(advisor.ShouldEnableOrbitalMorph(firstMarineTrainingOrderObserved: false));
+        Assert.True(advisor.ShouldEnableOrbitalMorph(firstMarineTrainingOrderObserved: true));
 
         var errors = advisor.ConfigureJson(
             "{\"version\":1,\"enableMules\":false}");
         Assert.Empty(errors);
-        Assert.False(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: true));
+        Assert.False(advisor.ShouldEnableOrbitalMorph(firstMarineTrainingOrderObserved: true));
     }
 
     [Fact]
@@ -91,11 +91,11 @@ public sealed class EconomyAdvisorTests
         var advisor = new EconomyAdvisor();
 
         Assert.Equal(0u, advisor.GetMarineActionReservedMinerals(
-            50, firstMarineReady: true, firstMarineObserved: false, marineMineralCost: 50));
+            50, firstMarineReady: true, firstMarineTrainingOrderObserved: false, marineMineralCost: 50));
         Assert.Equal(150u, advisor.GetMarineActionReservedMinerals(
-            150, firstMarineReady: true, firstMarineObserved: false, marineMineralCost: 50));
+            150, firstMarineReady: true, firstMarineTrainingOrderObserved: false, marineMineralCost: 50));
         Assert.Equal(50u, advisor.GetMarineActionReservedMinerals(
-            50, firstMarineReady: true, firstMarineObserved: true, marineMineralCost: 50));
+            50, firstMarineReady: true, firstMarineTrainingOrderObserved: true, marineMineralCost: 50));
     }
 
     [Fact]

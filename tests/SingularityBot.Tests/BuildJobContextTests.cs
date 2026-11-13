@@ -1,4 +1,5 @@
 using SingularityBot.Behavior;
+using SingularityBot.Observation;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -98,6 +99,80 @@ public sealed class BuildJobContextTests
 
         runtime.Clear();
     }
+
+
+    [Fact]
+    public void GenericStructureJobAssociatesOnlyNewObservedStructureAndTracksProgress()
+    {
+        var runtime = new BuildJobRuntime();
+        var job = runtime.CreateStructureConstruction("Factory", 100, 11, new ulong[] { 9000 });
+        var observation = new NormalizedObservation(
+            120, 1,
+            new[]
+            {
+                Unit(11, "SCV", 10, 10),
+                Unit(9000, "Factory", 9, 10, 1f),
+                Unit(9001, "Factory", 12, 10, 0.42f)
+            },
+            new HashSet<ulong>());
+
+        runtime.ReconcileStructureConstruction(observation, "Factory");
+
+        Assert.Equal(9001UL, job.ResultUnitTag);
+        Assert.Equal(42f, job.Progress);
+        Assert.True(job.HasExecutionEvidence);
+
+        runtime.Update();
+        Assert.Equal("Executing", job.CurrentState);
+
+        runtime.ReconcileStructureConstruction(new NormalizedObservation(
+            180, 1,
+            new[]
+            {
+                Unit(11, "SCV", 10, 10),
+                Unit(9001, "Factory", 12, 10, 1f)
+            },
+            new HashSet<ulong>()), "Factory");
+        runtime.Update();
+
+        Assert.True(job.IsCompleted);
+        Assert.Equal("Completed", job.CurrentState);
+        runtime.Clear();
+    }
+
+    [Fact]
+    public void GenericUnitProductionReconcilesObservedResultForNonMarineUnit()
+    {
+        var runtime = new BuildJobRuntime();
+        var job = runtime.CreateUnitProduction("Marauder", 200, 700);
+        var producer = Unit(700, "Barracks", 10, 10) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(123, null, null, null) }
+        };
+        var marauder = Unit(9002, "Marauder", 12, 10, 1f);
+
+        runtime.ReconcileUnitProduction(
+            new NormalizedObservation(240, 1, new[] { producer, marauder }, new HashSet<ulong>()),
+            "Marauder",
+            123);
+        runtime.Update();
+
+        Assert.Equal(9002UL, job.ResultUnitTag);
+        Assert.True(job.HasExecutionEvidence);
+        Assert.True(job.IsCompleted);
+        Assert.Equal("Completed", job.CurrentState);
+        runtime.Clear();
+    }
+
+    private static UnitObservationFacts Unit(
+        ulong tag,
+        string kind,
+        float x,
+        float y,
+        float buildProgress = 1f) =>
+        new(tag, 1, kind, 1, UnitAlliance.Self, UnitVisibility.Visible,
+            100, 100, 0, 0, buildProgress, x, y,
+            true, false, false, false, false, false, 100);
 
     [Fact]
     public void ResultIdentityCannotChangeAfterAssociation()

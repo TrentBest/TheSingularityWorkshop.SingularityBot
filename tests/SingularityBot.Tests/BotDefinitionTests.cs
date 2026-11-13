@@ -31,8 +31,8 @@ public sealed class BotDefinitionTests
         Assert.Equal(60, definition.Opening.Steps
             .Where(step => step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))
             .Max(step => step.DesiredCount));
-        Assert.Equal(GoalActionRole.Contain, definition.DefaultGoals.DefaultRole);
-        Assert.Equal(4, definition.DefaultGoals.ScoutCount);
+        Assert.Equal(GoalActionRole.Engage, definition.DefaultGoals.DefaultRole);
+        Assert.Equal(0, definition.DefaultGoals.ScoutCount);
 
         var bot = new global::SingularityBot.SingularityBot();
         Assert.Equal(definition.Id, bot.Definition.Id);

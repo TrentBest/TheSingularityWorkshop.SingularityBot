@@ -65,6 +65,7 @@ public sealed class BuildingBehaviorContext : IStateContext
     public bool IsRaised { get; private set; }
     public bool IsLowered { get; private set; }
     public bool HasNearbyEnemy { get; private set; }
+    public bool HasVisibleGroundEnemy { get; private set; }
     public float NearestEnemyDistanceSquared { get; private set; } = float.PositiveInfinity;
     public bool HasEnemyWithin10 => NearestEnemyDistanceSquared <= 100f;
     public bool HasEnemyWithin5 => NearestEnemyDistanceSquared <= 25f;
@@ -115,6 +116,7 @@ public sealed class BuildingBehaviorContext : IStateContext
 
     internal void Apply(
         UnitObservationFacts facts,
+        bool hasVisibleGroundEnemy,
         float nearestEnemyDistanceSquared,
         Func<uint, bool> isResearchAbility,
         int completedBarracksCount,
@@ -130,6 +132,7 @@ public sealed class BuildingBehaviorContext : IStateContext
         IsLanded = !facts.IsFlying;
         IsRaised = facts.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase);
         IsLowered = facts.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase);
+        HasVisibleGroundEnemy = hasVisibleGroundEnemy;
         NearestEnemyDistanceSquared = nearestEnemyDistanceSquared;
         HasNearbyEnemy = nearestEnemyDistanceSquared <= 100f;
         CompletedBarracksCount = completedBarracksCount;
@@ -318,12 +321,18 @@ public sealed class BuildingBehaviorRuntime
                 .State("Clear", null, null, null)
                 .State("EnemyWithin10", null, null, null)
                 .State("EnemyWithin5", null, null, null)
+                .State("Unobserved", null, null, null)
                 .Transition("Clear", "EnemyWithin5", HasEnemyWithin5)
                 .Transition("Clear", "EnemyWithin10", HasEnemyWithin10)
                 .Transition("EnemyWithin10", "EnemyWithin5", HasEnemyWithin5)
-                .Transition("EnemyWithin10", "Clear", HasNoEnemyWithin10)
+                .Transition("EnemyWithin10", "Clear", HasVisibleEnemyOutside10)
+                .Transition("EnemyWithin10", "Unobserved", HasNoVisibleEnemy)
                 .Transition("EnemyWithin5", "EnemyWithin10", HasEnemyWithin10ButNot5)
-                .Transition("EnemyWithin5", "Clear", HasNoEnemyWithin10)
+                .Transition("EnemyWithin5", "Clear", HasVisibleEnemyOutside10)
+                .Transition("EnemyWithin5", "Unobserved", HasNoVisibleEnemy)
+                .Transition("Unobserved", "EnemyWithin5", HasEnemyWithin5)
+                .Transition("Unobserved", "EnemyWithin10", HasEnemyWithin10)
+                .Transition("Unobserved", "Clear", HasVisibleEnemyOutside10)
                 .WithInitialState("Clear").BuildDefinition();
 
         if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
@@ -433,8 +442,12 @@ public sealed class BuildingBehaviorRuntime
     private static bool HasEnemyWithin10ButNot5(IStateContext context) =>
         context is BuildingBehaviorContext building && building.HasEnemyWithin10 && !building.HasEnemyWithin5;
 
-    private static bool HasNoEnemyWithin10(IStateContext context) =>
-        context is BuildingBehaviorContext building && !building.HasEnemyWithin10;
+    private static bool HasVisibleEnemyOutside10(IStateContext context) =>
+        context is BuildingBehaviorContext building &&
+        building.HasVisibleGroundEnemy && !building.HasEnemyWithin10;
+
+    private static bool HasNoVisibleEnemy(IStateContext context) =>
+        context is BuildingBehaviorContext building && !building.HasVisibleGroundEnemy;
 
     private static bool IsObservedRaised(IStateContext context) =>
         context is BuildingBehaviorContext building && building.IsRaised;
@@ -443,10 +456,13 @@ public sealed class BuildingBehaviorRuntime
         context is BuildingBehaviorContext building && building.IsLowered;
 
     private static bool ShouldRaiseDepot(IStateContext context) =>
-        context is BuildingBehaviorContext building && building.HasNearbyEnemy && !building.PassageRequested;
+        context is BuildingBehaviorContext building &&
+        building.ThreatState is "EnemyWithin10" or "EnemyWithin5" &&
+        !building.PassageRequested;
 
     private static bool ShouldLowerDepot(IStateContext context) =>
-        context is BuildingBehaviorContext building && (building.PassageRequested || !building.HasNearbyEnemy);
+        context is BuildingBehaviorContext building &&
+        (building.PassageRequested || building.ThreatState == "Clear");
 
     public void Reconcile(
         NormalizedObservation observation,
@@ -510,7 +526,7 @@ public sealed class BuildingBehaviorRuntime
             var inDesignatedArea = _designatedCommandCenterArea is { } area &&
                 facts.HasPosition &&
                 DistanceSquared(facts.PositionX, facts.PositionY, area.X, area.Y) <= area.Radius * area.Radius;
-            building.Apply(facts, nearestEnemyDistanceSquared, isResearchAbility,
+            building.Apply(facts, enemies.Length > 0, nearestEnemyDistanceSquared, isResearchAbility,
                 completedBarracksCount, hasCompletedSupplyDepot,
                 scvTrainAbilityId, orbitalUpgradeAbilityId, inDesignatedArea);
         }

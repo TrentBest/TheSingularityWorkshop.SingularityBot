@@ -649,7 +649,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // the starting Command Center's Orbital morph (or higher-priority
                 // infrastructure). Releasing this reserve here can spend the exact
                 // 150 minerals before the independent Orbital action is submitted.
-                var marineReservedMinerals = reservedInfrastructureMinerals;
+                var marineReservedMinerals = _economyAdvisor.GetMarineActionReservedMinerals(
+                    reservedInfrastructureMinerals,
+                    firstMarineReady: _openingMarine.BarracksComplete && !_openingMarine.MarineTrainingStarted,
+                    firstMarineObserved: _openingMarine.MarineObserved,
+                    marineMineralCost: _gameData.MarineMineralCost);
                 marineAction = _openingMarine.TryCreateAction(
                     normalized, SpatialMap, _gameData, _workerAssignments,
                     preferredBuilderTag: null,

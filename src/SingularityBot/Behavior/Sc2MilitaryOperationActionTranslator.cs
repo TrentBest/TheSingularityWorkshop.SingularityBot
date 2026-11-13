@@ -36,13 +36,6 @@ public sealed class Sc2MilitaryOperationActionTranslator
             string.Equals(item.Id, intent.RouteId, StringComparison.Ordinal));
         var location = plan.Locations.FirstOrDefault(item =>
             string.Equals(item.Id, intent.ObjectiveLocationId, StringComparison.Ordinal));
-        if (operation is null || route is null || location is null ||
-            !MilitaryPlanValidator.Validate(plan).Equals(Array.Empty<string>()))
-        {
-            // The validator returns a new list, so use its count rather than
-            // reference equality. This branch is replaced below before use.
-        }
-
         var errors = MilitaryPlanValidator.Validate(plan);
         if (errors.Count != 0)
             return Blocked("Military plan failed validation: " + string.Join(" ", errors));
@@ -59,7 +52,7 @@ public sealed class Sc2MilitaryOperationActionTranslator
             return Blocked($"Only {assigned.Length} of {intent.RequiredUnitCount} required assigned units are currently visible.");
 
         if (!string.IsNullOrWhiteSpace(intent.RequiredAbility))
-            return TranslatePointAbility(intent, location, assigned, observation, gameData, terrain);
+            return TranslatePointAbility(intent, location, assigned, gameData, terrain);
 
         if (gameData.MoveAbilityId is not > 0)
             return Blocked("The authoritative generic Move ability is unavailable.");
@@ -103,7 +96,6 @@ public sealed class Sc2MilitaryOperationActionTranslator
         MilitaryOperationIntent intent,
         MilitaryLocationDefinition location,
         IReadOnlyList<UnitObservationFacts> assigned,
-        NormalizedObservation observation,
         Sc2GameDataCatalog gameData,
         SpatialTerrain terrain)
     {
@@ -114,7 +106,9 @@ public sealed class Sc2MilitaryOperationActionTranslator
         if (!ability.Available || ability.Target is not (AbilityData.Types.Target.Point or
             AbilityData.Types.Target.PointOrUnit or AbilityData.Types.Target.PointOrNone))
             return Blocked($"Required ability '{intent.RequiredAbility}' is unavailable or does not accept a point target.");
-        if (terrain?.TryIsPathable(new MapPoint(location.X, location.Y), out var pathable) != true || !pathable)
+        if (terrain is null ||
+            !terrain.TryIsPathable(new MapPoint(location.X, location.Y), out var pathable) ||
+            !pathable)
             return Blocked("The ability objective is not confirmed pathable by the cached terrain snapshot.");
 
         var actions = new List<SC2APIProtocol.Action>();
@@ -192,7 +186,9 @@ public sealed class Sc2MilitaryOperationActionTranslator
             foreach (var enemy in enemies)
             {
                 var weaponRange = gameData.WeaponsByUnitType.TryGetValue(enemy.UnitTypeId, out var weapons)
-                    ? weapons.Where(weapon => weapon.TargetType is Weapon.Types.TargetType.Air or Weapon.Types.TargetType.Any)
+                    ? weapons.Where(weapon => unit.IsFlying
+                            ? weapon.TargetType is Weapon.Types.TargetType.Air or Weapon.Types.TargetType.Any
+                            : weapon.TargetType is Weapon.Types.TargetType.Ground or Weapon.Types.TargetType.Any)
                         .Select(weapon => weapon.Range).DefaultIfEmpty(0).Max()
                     : 0;
                 var clearance = avoidContact

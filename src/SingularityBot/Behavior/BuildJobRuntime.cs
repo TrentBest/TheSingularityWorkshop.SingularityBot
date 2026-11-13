@@ -172,10 +172,11 @@ public sealed class BuildJobRuntime
         string structureKind,
         uint gameLoop,
         ulong workerTag,
-        IEnumerable<ulong>? existingStructureTags = null)
+        IEnumerable<ulong> existingStructureTags)
     {
+        ArgumentNullException.ThrowIfNull(existingStructureTags);
         var job = Create(structureKind, gameLoop, workerTag: workerTag);
-        _excludedResultTags[job.Id] = existingStructureTags?.ToHashSet() ?? new HashSet<ulong>();
+        _excludedResultTags[job.Id] = existingStructureTags.ToHashSet();
         return job;
     }
 
@@ -273,10 +274,11 @@ public sealed class BuildJobRuntime
         string unitKind,
         uint gameLoop,
         ulong producerTag,
-        IEnumerable<ulong>? existingUnitTags = null)
+        IEnumerable<ulong> existingUnitTags)
     {
+        ArgumentNullException.ThrowIfNull(existingUnitTags);
         var job = Create(unitKind, gameLoop, producerTag: producerTag);
-        _excludedUnitTags[job.Id] = existingUnitTags?.ToHashSet() ?? new HashSet<ulong>();
+        _excludedUnitTags[job.Id] = existingUnitTags.ToHashSet();
         return job;
     }
 

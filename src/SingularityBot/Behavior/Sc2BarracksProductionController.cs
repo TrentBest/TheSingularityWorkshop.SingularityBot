@@ -19,7 +19,8 @@ public sealed class Sc2BarracksProductionController
         NormalizedObservation observation,
         Sc2GameDataCatalog gameData,
         BuildJobRuntime buildJobs,
-        uint reservedMinerals = 0)
+        uint reservedMinerals = 0,
+        int desiredMarineCount = 60)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -81,7 +82,7 @@ public sealed class Sc2BarracksProductionController
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
             !observation.DeadUnitTags.Contains(unit.Tag));
-        if (marineCount >= 60)
+        if (marineCount >= Math.Max(1, desiredMarineCount))
             return null;
 
         if (observation.Minerals < gameData.MarineMineralCost ||

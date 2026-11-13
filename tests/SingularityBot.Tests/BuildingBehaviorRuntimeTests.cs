@@ -84,7 +84,10 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
-        Assert.Equal("Researching", Assert.Single(runtime.Buildings).ActivityState);
+        var building = Assert.Single(runtime.Buildings);
+        Assert.Equal("Researching", building.ActivityState);
+        Assert.Equal("Idle", building.CurrentStates[BuildingBehaviorCatalog.ProductionFsm]);
+        Assert.Equal("Researching", building.CurrentStates[BuildingBehaviorCatalog.ResearchFsm]);
 
         var production = barracks with
         {
@@ -96,7 +99,10 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
-        Assert.Equal("Producing", Assert.Single(runtime.Buildings).ActivityState);
+        building = Assert.Single(runtime.Buildings);
+        Assert.Equal("Producing", building.ActivityState);
+        Assert.Equal("Producing", building.CurrentStates[BuildingBehaviorCatalog.ProductionFsm]);
+        Assert.Equal("Idle", building.CurrentStates[BuildingBehaviorCatalog.ResearchFsm]);
 
         runtime.Clear();
     }

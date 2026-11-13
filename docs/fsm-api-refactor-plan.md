@@ -24,7 +24,7 @@ The ladder artifact must be self-contained: all runtime code, FSM definitions, c
 ### 1. Source and API audit
 - [ ] Inventory current FSM definitions, contexts, handles, processing groups, update calls, and cleanup paths.
 - [ ] Inventory imperative controllers and distinguish behavior decisions from SC2 observation/action adapter responsibilities.
-- [ ] Verify exact FSM_API signatures and semantics against source and SimpleDemos, including multiple FSMs on one context.
+- [x] Verify exact FSM_API signatures and semantics against source and SimpleDemos, including multiple FSMs on one context.
 - [ ] Verify FSM_Foundry availability, package/version, and intended execution lifecycle before assigning it ownership.
 - [ ] Record baseline build/test status and current branch head.
 
@@ -33,7 +33,7 @@ The ladder artifact must be self-contained: all runtime code, FSM definitions, c
 - [ ] Ensure every building receives common lifecycle behavior.
 - [ ] Attach optional production, research, town-hall, access, repair/integrity, threat-response, and other FSMs by capability.
 - [ ] Ensure units receive common unit behavior plus optional movement, combat, worker, construction, repair, scouting, and survival capabilities.
-- [ ] Add composition tests proving multiple independent FSM_API handles share one context and transition independently.
+- [x] Add composition tests proving multiple independent FSM_API handles share one context and transition independently (building production/research FSMs).
 
 ### 3. FSM/API-first behavior migration
 - [ ] Move imperative behavior decisions into real FSM_API definitions where stateful behavior is appropriate.
@@ -61,7 +61,7 @@ The ladder artifact must be self-contained: all runtime code, FSM definitions, c
 ### 6. Verification and documentation
 - [ ] Add tests for shared-context composition, independent transitions, scheduler determinism, conflict arbitration, handle cleanup, and manifest fail-closed behavior.
 - [ ] Retain and extend existing building, unit, production, navigation, and threat-response tests.
-- [ ] Run full solution build and test suite; capture CI/replay evidence where available.
+- [x] Run full solution build and test suite; capture CI evidence where available (GitHub Build #1178 passed at commit `12748e444e2191b42a62960ae7373a44b03bfdb7`).
 - [ ] Update architecture and behavior docs from implemented definitions, not aspirational catalogs.
 - [ ] Generate FSM diagrams/catalogues from definitions where practical.
 
@@ -78,3 +78,13 @@ The ladder artifact must be self-contained: all runtime code, FSM definitions, c
 ## Execution notes
 
 Work on `development` only. Implement in small, buildable increments. Keep this plan updated as evidence changes; do not mark an item complete based on documentation alone.
+
+## Progress evidence
+
+- Refactor plan committed at `fec14362240c8000232b54142d9a052336eb8381`.
+- Building capability slice committed at `12513af5737bcc7357940e397a42caaad99ebb4c`: replaced the monolithic BuildingActivity FSM with independently attached BuildingProduction and BuildingResearch FSM definitions. Every building retains BuildingLifecycle; production/research handles are attached according to building capability.
+- Regression assertions committed at `12748e444e2191b42a62960ae7373a44b03bfdb7`: a Barracks context simultaneously owns both handles; research observations transition only the research FSM, and production observations transition only the production FSM.
+- GitHub Build #1178 completed successfully for `12748e444e2191b42a62960ae7373a44b03bfdb7`, including restore, Release build, and test suite.
+- FSM_API source confirms `CreateInstance(string, IStateContext, string processingGroup = "Update")` creates a distinct handle for the supplied shared context. This is the intended composition primitive.
+- Current `TheSingularityWorkshop.FSM_Foundry` repository is only a scaffold (README plus policy assets/workflow; no project or runtime source). Do not add a fictional Foundry dependency. Until Foundry has an executable runtime, the bot's single `OnStep` processing-group loop remains the actual scheduler owner and calls `FSM_API.Interaction.Update(group)` once per declared group.
+- Remaining audit: imperative opening/expansion/Orbital controllers, production plan runtime, advisor/strategy scheduling, and spatial/navigation behavior still need migration classification and sequencing.

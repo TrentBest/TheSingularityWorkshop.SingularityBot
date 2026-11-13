@@ -75,6 +75,13 @@ An advisor may request a scout for a location, but it cannot select a worker alr
 
 Similarly, Science may recommend an upgrade, Base Engineering may request a defensive structure, and Military may request a defending force. Their recommendations are not commands and do not bypass shared resource or unit allocation.
 
+## Direct strategy evidence collection
+
+The live frame path now retains one narrowly defined, directly observed opponent-tech fact:
+`enemy.structure.roach-warren` for subject `enemy`. It is created only from a currently visible enemy `RoachWarren`, keeps its original game-loop timestamp while the structure is fogged, and is removed when SC2 reports the unit tag dead. The bot exposes this evidence snapshot for host inspection and transition-policy evaluation.
+
+This is intentionally not a complete transition pipeline. It does not infer unseen structures, estimate strategic advantage, establish production/defense/resource hard guards, or adopt a strategy. Those guard producers and the shared FSM adoption handoff remain separate required work. A stale retained fact must fail the transition evaluator's age requirement; it must never be refreshed merely because the structure remains remembered.
+
 ## Implementation status and next slices
 
 Implemented in this pass:

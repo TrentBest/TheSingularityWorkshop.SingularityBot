@@ -16,11 +16,18 @@ public sealed class Sc2RefineryProgressionPolicyTests
             minerals, refineryCost, orbitalReserve));
 
     [Fact]
-    public void StartsFirstRefineryAfterBarracksWithoutWaitingForOrbital()
+    public void HoldsFirstRefineryUntilOrbitalMorphOrderIsObserved()
     {
-        Assert.True(Sc2RefineryProgressionPolicy.ShouldConstruct(
+        Assert.False(Sc2RefineryProgressionPolicy.ShouldConstruct(
             firstBarracksComplete: true,
             orbitalMorphingObserved: false,
+            completedRefineryCount: 0,
+            thirdSupplyDepotComplete: false,
+            refineryUnderConstruction: false));
+
+        Assert.True(Sc2RefineryProgressionPolicy.ShouldConstruct(
+            firstBarracksComplete: true,
+            orbitalMorphingObserved: true,
             completedRefineryCount: 0,
             thirdSupplyDepotComplete: false,
             refineryUnderConstruction: false));
@@ -43,7 +50,7 @@ public sealed class Sc2RefineryProgressionPolicyTests
         Assert.False(Sc2RefineryProgressionPolicy.ShouldConstruct(
             false, false, 0, false, false));
         Assert.False(Sc2RefineryProgressionPolicy.ShouldConstruct(
-            true, false, 0, false, true));
+            true, true, 0, false, true));
         Assert.False(Sc2RefineryProgressionPolicy.ShouldConstruct(
             true, true, 2, true, false));
     }

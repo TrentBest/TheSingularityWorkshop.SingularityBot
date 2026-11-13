@@ -250,7 +250,9 @@ namespace SC2API_CSharp
                 }
                 if (response.Status == Status.Ended || response.Status == Status.Quit)
                 {
-                    bot.OnEnd(observation, observation.PlayerResult[(int)playerId - 1].Result);
+                    var finalResult = observation.PlayerResult[(int)playerId - 1].Result;
+                    Console.WriteLine($"SC2_RESULT playerId={playerId} result={finalResult}");
+                    bot.OnEnd(observation, finalResult);
                     break;
                 }
 
@@ -320,11 +322,15 @@ namespace SC2API_CSharp
                 await Connect(clargs.GamePort);
                 await CreateLadderGame(clargs.MapPath);
                 uint hostPlayerId = await JoinGameLadder(myRace, clargs.StartPort);
+                Console.WriteLine($"SC2_JOINED playerId={hostPlayerId}");
                 await Run(bot, hostPlayerId, clargs.OpponentID);
                 return;
             }
 
-            await RunLadder(bot, myRace, clargs.GamePort, clargs.StartPort, clargs.OpponentID);
+            await Connect(clargs.GamePort);
+            uint playerId = await JoinGameLadder(myRace, clargs.StartPort);
+            Console.WriteLine($"SC2_JOINED playerId={playerId}");
+            await Run(bot, playerId, clargs.OpponentID);
         }
     }
 }

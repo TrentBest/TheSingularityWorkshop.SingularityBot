@@ -366,7 +366,7 @@ public sealed class BuildJobRuntime
         if (!_jobs.Remove(id, out var job)) return false;
         job.IsValid = false;
         _excludedResultTags.Remove(id);
-        _excludedMarineTags.Remove(id);
+        _excludedUnitTags.Remove(id);
         if (_handles.Remove(id, out var handle)) FSM_API.Interaction.DestroyInstance(handle);
         return true;
     }

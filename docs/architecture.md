@@ -6,11 +6,11 @@ SingularityBot is a StarCraft II player. Its primary product is a reliable decis
 
 ## Composition and execution boundary
 
-The bot is a self-contained compiled DLL. Its user-specific strategy definition is part of that assembly—not a runtime JSON file, script, or dynamically loaded plugin. At startup, the bot instantiates and composes that compiled definition into its in-memory runtime. Different users can build different bot DLLs from the same engine by supplying different compiled strategy definitions.
+The bot is a self-contained compiled DLL. The current startup path selects `BotDefinitionCatalog.CreateDefault()`, a typed C# data aggregate compiled into the assembly; it does not load a runtime JSON file or dynamically loaded plugin. That aggregate describes identity, advisor settings, an opening plan, default goals and transition data. It is not yet a replaceable compiled strategy implementation: the live decision behavior remains in the shared SingularityBot controllers and planners. The active refactor is to establish a real compiled personality boundary so different users can build different bot DLLs from the same engine with different strategy implementations. Until that boundary is implemented, documentation must not describe the catalog as the completed personality architecture.
 
 The SC2 Runner is the host/execution driver: it owns the SC2 connection, callbacks, frame lifecycle and protocol action submission. It invokes the bot; it does not supply a separate strategy engine. SingularityBot owns its runtime lifecycle, state, decisions, intent arbitration and action translation. The bot's compiled personality is the replaceable user-specific portion of the DLL.
 
-FSM_COS may compose the bot's compiled capabilities and resolve their dependencies at startup. It does not own the match loop or become a second execution model. FSM_API supplies persistent contexts and hierarchical behavior mechanics; the bot decides how those mechanics are used. The existing action pipeline remains the only authority for validating and submitting SC2 commands.
+FSM_COS currently composes a BotDefinition microbundle and the CommandAi vocabulary microbundle at startup, and verifies that they load. This is startup composition, not execution of the bot's strategy; it does not own the match loop or become a second execution model. FSM_API supplies persistent contexts and hierarchical behavior mechanics; the bot decides how those mechanics are used. The existing action pipeline remains the only authority for validating and submitting SC2 commands.
 
 FSM_Foundry is not part of live SC2 execution. Its workflow-executor contract may be useful later for bounded external scenario/replay evaluation, but it must not be inserted between the Runner's frame callbacks and the bot's decisions or unit actions.
 
@@ -22,10 +22,12 @@ SC2 Runner (host)
     v
 SingularityBot.dll
     |  owns match runtime and execution decisions
-    +---- compiled user-specific Bot Definition
-    |         instantiated/composed in memory at startup
+    +---- compiled BotDefinition data (current implementation)
+    |         selected from BotDefinitionCatalog at startup
+    |         NOT YET the replaceable compiled strategy implementation
     |
-    +---- FSM_COS capability composition (optional mechanism)
+    +---- FSM_COS startup composition
+    |         BotDefinition + CommandAi vocabulary microbundles
     |
     +---- FSM_API contexts and hierarchical behavior mechanics
     |
@@ -48,7 +50,7 @@ The adapter owns protocol DTOs and protocol-specific details. The rest of the bo
 | SC2 Runner / adapter | Connection lifecycle, callbacks, frame delivery, protocol conversion, game-data lookup, action submission/results | Strategy decisions |
 | Observation model | Stable tags, ownership, visibility, orders, cargo, resources, structures, game-loop time, destruction evidence | Protocol transport or policy |
 | Game ontology | Unit/structure/ability identities, race, costs, prerequisites, capabilities | Match-specific mutable state |
-| SingularityBot runtime | Match/player/entity contexts, bot lifecycle, decisions, transitions and execution cadence | SC2 protocol transport details |
+| SingularityBot runtime | Match/player/entity contexts, bot lifecycle, decisions, transitions and execution cadence; current shared controllers still own strategy behavior | SC2 protocol transport details |
 | Economy controller | Global worker assignments, reservations, build/production priorities | Per-frame duplicate assignment decisions |
 | Unit/route FSMs | Execute assigned work, track local phase, report facts and outcomes | Reassigning other workers or overriding economy constraints |
 | Building FSMs | Persistent building identity, construction lifecycle, production/research activity, structure-specific capabilities | Construction-job identity or protocol command submission |
@@ -109,7 +111,8 @@ Supply Depot passage is an explicit event request through the bot API. Movement/
 
 - **SC2 Runner** is the live host and frame driver for this bot; no separate Foundry execution layer is needed.
 - **FSM_API** supplies reusable context/handle lifecycle and hierarchical behavior mechanics.
-- **FSM_COS** may compose compiled capabilities at startup; it does not drive the live match.
+- **FSM_COS** currently composes the compiled BotDefinition and CommandAi vocabulary at startup; this is not yet a compiled strategy implementation and does not drive the live match.
+- **Compiled personality refactor** is in progress: move user-specific strategy behavior behind a statically compiled strategy contract while retaining the shared bot engine and validated action pipeline.
 - **Physics** is the intended shared owner for spatial mathematics and path reasoning; the current bot still contains its existing spatial implementation.
 - **GrammarAi / ProtocolAi** may provide canonical vocabulary and protocol knowledge; neither replaces the SC2 adapter.
 - **CommandAi** may decompose high-level orders into goals; deterministic FSMs and validators remain authoritative.

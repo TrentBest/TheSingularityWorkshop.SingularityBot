@@ -222,6 +222,20 @@ Hard constraints—legal actions, current ownership, visibility requirements, pa
 
 Doctrine is declarative intent. FSMs and planners implement it through the existing observation-to-intent-to-validation pipeline. The doctrine layer must not submit raw SC2 protocol actions or bypass action arbitration.
 
+## Named operation and route authoring contract
+
+The repository now has a validated, declarative military-plan model alongside the existing goal/action posture model. It provides stable identities for:
+
+- **Locations:** named map-space objective anchors, including an optional radius for an objective area.
+- **Routes:** reusable ordered waypoint paths with explicit constraints such as avoiding known threats, avoiding contact, and preferring pathable terrain.
+- **Operations:** named force tasks with a role, route, objective location, required force count, optional semantic ability requirement, synchronization group, completion condition and operation dependencies.
+
+Operation dependencies are hard plan barriers: the model validates references and rejects dependency cycles. A map editor can author or rename locations and waypoints without encoding screen pixels or protocol-specific ability IDs. A semantic ability such as `TacticalJump` must be resolved against the active SC2 game-data catalog by an execution adapter; it is not itself an executable ability ID.
+
+For example, a Battlecruiser mineral-line pincer can describe a first Battlecruiser taking an evasive, avoid-contact route to the opponent's main mineral line, followed by a second Battlecruiser operation that depends on the first positioning operation and requires the semantic `TacticalJump` capability to reach the expansion mineral line. Both operations can share a synchronization-group name so the commander/editor can present them as one coordinated strike.
+
+This is an authoring and validation contract, not yet a military operation executor. The current model does not calculate a threat-aware path, prove that a route is concealed or safe, select units, invoke Tactical Jump, or verify arrival. Those require observation-backed route planning, game-data ability resolution, force assignment and action-pipeline integration. The contract deliberately keeps those responsibilities separate rather than pretending that a list of waypoints is already a working tactical plan.
+
 ## 9. Implementation sequence
 
 Do not attempt to implement the entire doctrine in one step. Keep the first playable Terran economy as the near-term runtime gate. Then add capabilities in observable, testable slices:

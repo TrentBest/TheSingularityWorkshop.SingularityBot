@@ -105,7 +105,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private bool _orbitalSupportActionSubmitted;
     private string _lastOrbitalDiagnostic;
     private string _lastStartingTownHallKind;
-    private uint? _firstBarracksObservedGameLoop;
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
     private MilitaryPlanDefinition _militaryPlan;
     private MilitaryPlanRuntime _militaryPlanRuntime = new();

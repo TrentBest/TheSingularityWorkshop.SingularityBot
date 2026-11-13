@@ -41,4 +41,4 @@ SC2 Runner is the live host: it owns the connection, callbacks, frame lifecycle 
 
 ## Design rule
 
-**The bot plays first; tools support it.** Strategy and configuration remain versioned data, FSM execution remains code, and every SC2 action must pass current-observation validation. A test pass is not a match result; a match result is not ladder readiness.
+**The bot plays first; tools support it.** Authoring data is validated and compiled into the bot's statically linked strategy implementation; the live runtime does not load external strategy files or dynamic assemblies. The compiled personality boundary is still being built, so the current catalog must not be mistaken for its completion. Every SC2 action must pass current-observation validation. A test pass is not a match result; a match result is not ladder readiness.

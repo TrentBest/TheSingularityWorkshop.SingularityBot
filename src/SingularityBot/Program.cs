@@ -33,12 +33,13 @@ public static class Program
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
             throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.");
 
-        var definition = BotDefinitionCatalog.CreateDefault();
-        Console.WriteLine($"[BotDefinition] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
+        var strategy = new AdaptiveMarineStrategy();
+        var definition = strategy.Definition;
+        Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
         var bot = new SingularityBot(
             passiveBaseline: passiveBaseline,
             writeDiagnostics: localRun && diagnostics,
-            botDefinition: definition);
+            compiledStrategy: strategy);
 
         if (designatedAreaArgument is not null)
         {

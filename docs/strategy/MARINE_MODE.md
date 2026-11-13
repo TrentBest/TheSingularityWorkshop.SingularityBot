@@ -69,6 +69,22 @@ These counts are strategic targets, not unconditional build commands. The planne
 
 The long-term formation model treats Marines as a spatial distribution: spread to maximize coverage and information while contact is absent; contract toward mutual support when contact occurs. This is bounded dispersion, not unlimited separation.
 
+## Supporting force doctrine
+
+Marine Mode names the primary combat actor, not an exclusive unit whitelist. Supporting units are selected because they multiply Marine effectiveness:
+
+- **Medivacs** keep the Marine force alive through healing and provide tactical lift/transport. A transport plan must count passenger capacity, reserve a safe pickup point, validate the destination landing zone, preserve an extraction route, and avoid committing the whole force into an unscouted firing envelope. Multi-wave ferrying is valid: unload the first element, reassess, then bring the remaining force or a specialist team.
+- **Vikings** provide air control and high-ground vision. Their scouting task is to reveal enemy units and structures without requiring Marines to climb an unknown ramp. Do not interpret vision as proof that the destination is safe; update the threat map and landing/approach plan from what is actually visible.
+- **Other support** (including repair, detection, or siege-breaking assets where the opponent demands them) is chosen by observed threats and the tactical job. It must not displace Marines as the principal force in this mode.
+
+Orbital Commands are economic and information assets. A landed Orbital assigned to a base is a return/production anchor. A mobile Orbital may scout near, but not recklessly ahead of, the Marine force; it should land only at a validated safe site, call down available MULEs when energy and safety permit, then lift and continue its vision task. It must retain a safe return/landing plan and never strand the bot without sufficient grounded town halls or SCV production. MULE deployment is not a blind spam rule: evaluate energy, available mineral patches, landing exposure, and the value of preserving energy for scans.
+
+Marine Mode's production scale is an economic decision, not a fixed eight- or twenty-Barracks destination. Add Barracks and Reactors only when observed mineral/gas income, supply, add-on cost, production utilization, and expected Marine demand support them. Measure the marginal Marine throughput gained against the opportunity cost of add-ons, upgrades, expansions, and support. The planner may choose eight, twenty, or a smaller number; it must justify that choice from observed resource flow and production saturation.
+
+## Alternate mode example: Marauder Mode
+
+Marauder Mode is a separate composition doctrine, not a subroutine of Marine Mode. Its Barracks prefer Tech Labs and Marauder production, with Marines retained as a supporting fire team. Vikings provide vision and air support; Medivacs provide healing and transport; heavier support such as Thors is selected from the opponent's observed composition and the economy's capacity. Tactics are mode-specific: when a defensive structure's weapon cannot threaten the Marauder force, the planner can use a Medivac insertion to attack a production-enabling structure or another high-value objective, provided scouting, unload safety, and extraction are validated. Do not assume any composition is unbeatable; evaluate counters and retreat conditions from live observations.
+
 ## Marine micro decision order
 
 For each Marine, evaluate in this order:

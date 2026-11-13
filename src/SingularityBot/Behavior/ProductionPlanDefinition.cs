@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SingularityBot.Behavior;
 
@@ -14,9 +15,12 @@ public sealed class ProductionPlanDefinition
     {
         if (string.IsNullOrWhiteSpace(json))
             throw new ArgumentException("Production plan JSON is required.", nameof(json));
-        return JsonSerializer.Deserialize<ProductionPlanDefinition>(
-            json,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true })
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+        return JsonSerializer.Deserialize<ProductionPlanDefinition>(json, options)
             ?? throw new InvalidOperationException("Production plan JSON did not contain a plan.");
     }
 }

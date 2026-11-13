@@ -14,7 +14,7 @@ public sealed class MilitaryPlanRuntime
         _operations.Values.ToArray();
 
     public IReadOnlyList<MilitaryOperationContext> ReadyOperations =>
-        _operations.Values.Where(operation => operation.CanStart).ToArray();
+        _operations.Values.Where(operation => operation.CanIssue).ToArray();
 
     public IReadOnlyList<string> AddPlan(MilitaryPlanDefinition plan)
     {
@@ -40,7 +40,7 @@ public sealed class MilitaryPlanRuntime
     public bool TryGetIntent(string operationId, out MilitaryOperationIntent intent)
     {
         intent = null;
-        if (!_operations.TryGetValue(operationId, out var operation) || !operation.CanStart)
+        if (!_operations.TryGetValue(operationId, out var operation) || !operation.CanIssue)
             return false;
 
         var definition = operation.Definition;
@@ -59,7 +59,7 @@ public sealed class MilitaryPlanRuntime
     /// <summary>Latch an intent accepted by the host action pipeline.</summary>
     public bool MarkSubmitted(string operationId, uint gameLoop)
     {
-        if (!_operations.TryGetValue(operationId, out var operation) || !operation.CanStart)
+        if (!_operations.TryGetValue(operationId, out var operation) || !operation.CanIssue)
             return false;
         operation.MarkSubmitted(gameLoop);
         return true;
@@ -125,6 +125,8 @@ public sealed class MilitaryOperationContext
     public bool IsStarted => HasExecutionEvidence;
     public bool IsComplete => HasCompletionEvidence;
     public bool CanStart => !RequestPending && !IsStarted && !IsComplete && DependenciesComplete;
+    /// <summary>Allows an active operation to issue its next waypoint or ability action until completion.</summary>
+    public bool CanIssue => !RequestPending && !IsComplete && DependenciesComplete;
 
     internal void SetDependencyResolver(Func<bool> resolver) =>
         _dependenciesComplete = resolver ?? throw new ArgumentNullException(nameof(resolver));

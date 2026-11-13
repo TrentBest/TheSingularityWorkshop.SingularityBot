@@ -60,7 +60,8 @@ public sealed class Sc2OrbitalSupportController
         bool allowOrbitalUpgrade = true,
         ulong? permittedCommandCenterTag = null,
         IReadOnlySet<ulong>? reservedOrbitalTags = null,
-        uint reservedEnergyForScan = 0)
+        uint reservedEnergyForScan = 0,
+        bool allowMules = true)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -137,7 +138,7 @@ public sealed class Sc2OrbitalSupportController
                 observation.GameLoop);
         }
 
-        if (gameData.MuleCallDownAbilityId is not > 0 ||
+        if (!allowMules || gameData.MuleCallDownAbilityId is not > 0 ||
             !gameData.TryGetAbility(gameData.MuleCallDownAbilityId.Value, out var muleAbility) ||
             !float.IsFinite(muleAbility.CastRange) || muleAbility.CastRange <= 0)
             return null;

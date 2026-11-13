@@ -77,6 +77,11 @@
               "type": "string",
               "minLength": 1
             }
+          },
+          "lane": {
+            "type": "string",
+            "enum": ["buildings", "units"],
+            "default": "units"
           }
         }
       }

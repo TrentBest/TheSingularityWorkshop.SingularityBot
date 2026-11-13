@@ -65,8 +65,8 @@ public sealed class BotAiPolicy
     public bool Enabled { get; init; }
     public string Provider { get; init; } = string.Empty;
     public string Model { get; init; } = string.Empty;
-    public int MaxOnStartCalls { get; init; } = 1;
-    public int MaxInMatchCalls { get; init; } = 3;
+    public int MaxOnStartCalls { get; init; } = 0;
+    public int MaxInMatchCalls { get; init; } = 0;
     public int TimeoutMilliseconds { get; init; } = 15000;
     public int MinimumGameLoopSpacing { get; init; } = 448;
     public IReadOnlyList<string> AllowedTriggers { get; init; } = Array.Empty<string>();

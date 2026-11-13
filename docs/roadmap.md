@@ -13,6 +13,18 @@ Evidence levels must remain distinct:
 3. **CI-verified** — the exact candidate SHA has complete, successful required workflow evidence, observable through [CiAi](ciai-evidence.md).
 4. **Match-verified** — a local SC2 match/replay demonstrates observed state transitions, action results, movement and arrival, and the intended outcome.
 5. **Release-authorized** — the owner explicitly authorizes promotion/publication/deployment for the exact candidate. CI or model output never supplies this authorization.
+## 0. Establish the compiled personality boundary
+
+The current `BotDefinitionCatalog` is compiled typed data; it does not yet provide a replaceable executable strategy personality. The shared SingularityBot controllers and planners still contain the live strategy behavior. The target is one shared bot engine with different user-specific strategy implementations statically compiled into each user's bot DLL. SC2 Runner remains the host/frame driver; FSM_COS is startup composition only; FSM_API supplies persistent contexts and hierarchical behavior mechanics. No runtime strategy file or dynamic assembly loading is planned.
+
+- [x] Remove the obsolete runner help claim for loading `--bot-definition=<path>`; the live runner selects its compiled default.
+- [x] Correct the architecture index and BotDefinition documentation so current implementation is not described as the completed personality boundary.
+- [ ] Define a typed compiled strategy contract that the shared bot engine consumes.
+- [ ] Move user-specific goal/objective/transition composition behind the compiled strategy contract without duplicating the frame loop or action pipeline.
+- [ ] Keep authoring JSON as a build/editor interchange format; validate and generate/compile the selected personality before runtime.
+- [ ] Add tests proving two compiled strategy implementations can select different behavior through the same engine and action-validation boundary.
+- [ ] Update docs in the same commits as each implementation step; do not mark the personality refactor complete until the live bot uses the compiled strategy contract.
+
 ## 1. Observation-to-action foundation
 
 - [x] Integrate deterministic observation normalization into `development`.

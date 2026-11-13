@@ -117,7 +117,7 @@ public sealed class Sc2OpeningMarineControllerTests
     }
 
     [Fact]
-    public void StagesADifferentBarracksBuilderDuringDepotConstructionAndBuildsOnlyAfterCompletion()
+    public void DoesNotReserveOrStageBarracksBuilderUntilDepotIsObservedComplete()
     {
         var controller = new Sc2OpeningMarineController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -129,66 +129,32 @@ public sealed class Sc2OpeningMarineControllerTests
             new MapPoint(10, 10), new MapPoint(54, 54));
         var gameData = GameData();
 
-        // The Depot worker is explicitly excluded. A second, empty SCV is
-        // reserved for the Barracks while the Depot is still being built.
+        // While the Depot is incomplete, the Barracks controller must not pull
+        // another worker, reserve it, request placement, or issue a move.
         Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", 11, 10),
-            Fact(1, "CommandCenter", 10, 10)),
-            map, gameData, assignments, jobs,
-            preferredBuilderTag: null,
-            excludedBuilderTag: depotBuilderTag,
-            allowConstruction: false));
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, jobs,
+            excludedBuilderTag: depotBuilderTag, allowConstruction: false));
+
+        Assert.Null(controller.BuilderTag);
+        Assert.False(assignments.IsReserved(barracksBuilderTag));
+        Assert.True(assignments.IsReserved(depotBuilderTag));
+        Assert.Null(controller.TakePlacementQuery(gameData));
+
+        // An observed completed Depot opens the gate. Only now may the
+        // controller reserve a different SCV and begin the placement flow.
+        Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(depotBuilderTag, "SCV", 10, 10),
+            Fact(barracksBuilderTag, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(300, "SupplyDepot", 20, 20)), map, gameData, assignments, jobs,
+            excludedBuilderTag: depotBuilderTag, allowConstruction: true));
 
         Assert.Equal(barracksBuilderTag, controller.BuilderTag);
         Assert.True(assignments.IsReserved(barracksBuilderTag));
         Assert.True(assignments.IsReserved(depotBuilderTag));
-        var placementQuery = controller.TakePlacementQuery(gameData);
-        Assert.NotNull(placementQuery);
-
-        var placementResult = new ResponseQuery();
-        placementResult.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
-        controller.OnPlacementQueryResult(placementResult);
-        var site = new MapPoint(placementQuery.Placements[0].TargetPos.X,
-            placementQuery.Placements[0].TargetPos.Y);
-
-        // The selected Barracks worker moves while the Depot is incomplete.
-        var move = controller.TryCreateAction(Snapshot(150, 12, 15,
-            Fact(depotBuilderTag, "SCV", 10, 10),
-            Fact(barracksBuilderTag, "SCV", 11, 10),
-            Fact(1, "CommandCenter", 10, 10)),
-            map, gameData, assignments, jobs,
-            excludedBuilderTag: depotBuilderTag,
-            allowConstruction: false);
-        Assert.NotNull(move);
-        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(barracksBuilderTag, move.ActionRaw.UnitCommand.UnitTags[0]);
-        site = new MapPoint(move.ActionRaw.UnitCommand.TargetWorldSpacePos.X,
-            move.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
-        controller.OnActionResult(ActionResult.Success);
-
-        // Reaching the site is not permission to build before the Depot completes.
-        Assert.Null(controller.TryCreateAction(Snapshot(150, 12, 15,
-            Fact(depotBuilderTag, "SCV", 10, 10),
-            Fact(barracksBuilderTag, "SCV", site.X, site.Y),
-            Fact(1, "CommandCenter", 10, 10)),
-            map, gameData, assignments, jobs,
-            excludedBuilderTag: depotBuilderTag,
-            allowConstruction: false));
-
-        // Once the Depot completion gate opens, the already-staged SCV builds.
-        var build = controller.TryCreateAction(Snapshot(150, 12, 15,
-            Fact(depotBuilderTag, "SCV", 10, 10),
-            Fact(barracksBuilderTag, "SCV", site.X, site.Y),
-            Fact(1, "CommandCenter", 10, 10),
-            Fact(300, "SupplyDepot", 20, 20)),
-            map, gameData, assignments, jobs,
-            excludedBuilderTag: depotBuilderTag,
-            allowConstruction: true);
-        Assert.NotNull(build);
-        Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(barracksBuilderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.NotEqual(depotBuilderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
         jobs.Update();
         jobs.Clear();
     }

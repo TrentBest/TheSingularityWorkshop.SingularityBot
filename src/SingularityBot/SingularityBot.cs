@@ -770,10 +770,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _thirdSupplyDepotActionSubmitted = false;
             }
 
-            // The Orbital upgrade is the first post-prerequisite mineral commitment.
-            // The first Marine's observed training order opens this morph; Marine
-            // completion is deliberately not a prerequisite. Hold secondary
-            // production until SC2 observes the Orbital morph order.
+            // The Command Center FSM is authoritative: exactly one completed
+            // Barracks, a completed Depot, no SCV training order, and no expansion-area
+            // conflict. Marine production is deliberately not an Orbital prerequisite.
             var orbitalCoordinatorBlockers = string.Join(",",
                 new[] {
                     builderAction is not null ? "builder" : null
@@ -785,9 +784,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // verifies the observed Depot/Barracks prerequisites and SCV queue.
             orbitalSupportAction = _orbitalSupport.TryCreateAction(
                 normalized, _gameData,
-                allowOrbitalUpgrade: _economyAdvisor.ShouldEnableOrbitalMorph(_openingMarine.MarineTrainingOrderObserved) &&
+                allowOrbitalUpgrade: _economyAdvisor.ShouldEnableOrbitalMorph() &&
                     startingTownHall is not null &&
-                    startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase),
+                    startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) &&
+                    _buildings.Buildings.Any(building =>
+                        building.UnitTag == startingTownHall.Tag &&
+                        building.TownHallUpgradeState == "UpgradeReady"),
                 permittedCommandCenterTag: startingTownHall?.Tag,
                 reservedOrbitalTags: _buildings.ScanReservedOrbitalTags,
                 reservedEnergyForScan: _intelligenceAdvisor.GetMuleScanEnergyReserve(

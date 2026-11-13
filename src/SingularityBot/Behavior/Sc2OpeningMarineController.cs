@@ -89,6 +89,14 @@ public sealed class Sc2OpeningMarineController
             if (!allowConstruction)
                 return null;
 
+            // Do not pull the Barracks SCV as soon as the Depot completes.
+            // Keep that worker mining until the 150-mineral build is fundable
+            // after strategic reservations; then its travel time overlaps the
+            // final resource accumulation instead of leaving it idle at site.
+            if (observation.Minerals < gameData.BarracksMineralCost ||
+                observation.Minerals - gameData.BarracksMineralCost < reservedMinerals)
+                return null;
+
             if (_builderTag is ulong existing &&
                 (observation.DeadUnitTags.Contains(existing) ||
                  !observation.Units.Any(unit => unit.Tag == existing && IsLiveScv(unit))))
@@ -169,7 +177,9 @@ public sealed class Sc2OpeningMarineController
             }
 
             // The Supply Depot completion gate was checked before selecting or staging this worker.
-            if (!allowConstruction || observation.Minerals < gameData.BarracksMineralCost)
+            if (!allowConstruction ||
+                observation.Minerals < gameData.BarracksMineralCost ||
+                observation.Minerals - gameData.BarracksMineralCost < reservedMinerals)
                 return null;
             if (IsBuildSubmitted && observation.GameLoop <= _barracksBuildJob.CreatedAtGameLoop + 8)
                 return null;

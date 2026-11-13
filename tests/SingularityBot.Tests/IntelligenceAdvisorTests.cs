@@ -20,7 +20,7 @@ public sealed class IntelligenceAdvisorTests
         var advisor = new IntelligenceAdvisor();
 
         var errors = advisor.ConfigureJson(
-            "{\\"version\\":1,\\"preserveOrbitalScanBeforeMules\\":false}");
+            "{\"version\":1,\"preserveOrbitalScanBeforeMules\":false}");
 
         Assert.Empty(errors);
         Assert.Equal(0u, advisor.GetMuleScanEnergyReserve());
@@ -32,7 +32,7 @@ public sealed class IntelligenceAdvisorTests
         var advisor = new IntelligenceAdvisor();
 
         var errors = advisor.ConfigureJson(
-            "{\\"version\\":1,\\"orbitalScanEnergyReserve\\":100}");
+            "{\"version\":1,\"orbitalScanEnergyReserve\":100}");
 
         Assert.Empty(errors);
         Assert.Equal(100u, advisor.GetMuleScanEnergyReserve());
@@ -44,7 +44,7 @@ public sealed class IntelligenceAdvisorTests
         var advisor = new IntelligenceAdvisor();
 
         var errors = advisor.ConfigureJson(
-            "{\\"version\\":1,\\"orbitalScanEnergyReserve\\":201}");
+            "{\"version\":1,\"orbitalScanEnergyReserve\":201}");
 
         Assert.NotEmpty(errors);
         Assert.Equal(50u, advisor.GetMuleScanEnergyReserve());

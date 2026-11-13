@@ -35,7 +35,7 @@ The first worker, construction and production stages have progressed beyond the 
 | SC2 connection, callbacks, frame lifecycle and action submission | SC2 Runner / protocol adapter |
 | Bot lifecycle, decisions, action translation and runtime authority | SingularityBot.dll |
 | Bot identity, opening, goals and advisor settings (current compiled data) | BotDefinitionCatalog / BotDefinition |
-| User-specific executable strategy personality | Planned statically compiled strategy contract (refactor in progress) |
+| User-specific executable strategy personality | `ICompiledBotStrategy` / statically linked `AdaptiveMarineStrategy` (first slice implemented) |
 | Capability composition and dependency resolution | FSM_COS |
 | Persistent contexts and hierarchical behavior mechanics | FSM_API |
 | Distances, routes and spatial queries | Physics |
@@ -49,7 +49,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 
 - [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](docs/bot-definition-v1.md)
 
-The live bot is a self-contained compiled DLL. Today, BotDefinitionCatalog supplies a compiled typed data aggregate, and FSM_COS composes that data with the CommandAi vocabulary at startup; this does not yet make the strategy a replaceable compiled personality. The active refactor will establish that code boundary while preserving one shared bot engine. JSON remains an authoring/import/export representation, not a live runtime file. The SC2 Runner drives the bot lifecycle and frame callbacks; it is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
+The live bot is a self-contained compiled DLL. Today, the Runner selects a statically linked `AdaptiveMarineStrategy` through `ICompiledBotStrategy`; the shared engine consumes its validated definition and executable initial-goal composition. Two compiled strategies are regression-tested through the same engine and action vocabulary. This is the first personality-boundary slice, not completion: objective/transition composition and most macro/tactical policy still need to move behind the contract. FSM_COS composes the definition and CommandAi vocabulary at startup. The active refactor will expand that code boundary while preserving one shared bot engine. JSON remains an authoring/import/export representation, not a live runtime file. The SC2 Runner drives the bot lifecycle and frame callbacks; it is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
 - [CommandAi integration v1: bot-owned command vocabulary and validation boundary](docs/commandai-integration-v1.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)

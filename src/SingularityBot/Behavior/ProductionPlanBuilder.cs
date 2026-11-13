@@ -100,6 +100,14 @@ public sealed class ProductionLineBuilder
         return this;
     }
 
+
+    /// <summary>Inserts a completion barrier and returns to the plan so another lane can continue authoring.</summary>
+    public ProductionPlanBuilder WhenComplete(
+        string stepId,
+        string prerequisiteStepId,
+        ProductionStepDefinition step) =>
+        _owner.WhenComplete(stepId, prerequisiteStepId, step);
+
     /// <summary>Adds a target-count objective; issuance stops when completed plus in-progress reaches the count.</summary>
     public ProductionLineBuilder AddUntil(
         string id,

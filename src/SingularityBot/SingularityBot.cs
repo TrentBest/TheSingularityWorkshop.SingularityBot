@@ -39,13 +39,24 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public SingularityBot(
         bool passiveBaseline = false,
         bool writeDiagnostics = false,
-        BotDefinition botDefinition = null)
+        BotDefinition botDefinition = null,
+        ICompiledBotStrategy compiledStrategy = null)
     {
-        var selectedDefinition = botDefinition ?? BotDefinitionCatalog.CreateDefault();
+        if (botDefinition is not null && compiledStrategy is not null)
+            throw new ArgumentException("Supply either a compiled strategy or a definition, not both.");
+
+        var selectedStrategy = compiledStrategy ?? new DefinitionBackedBotStrategy(
+            botDefinition ?? new AdaptiveMarineStrategy().Definition);
+        var selectedDefinition = selectedStrategy.Definition
+            ?? throw new ArgumentException("The compiled strategy must supply a definition.", nameof(compiledStrategy));
         _runtimeComposition = BotRuntimeComposer.Compose(selectedDefinition);
         _definition = _runtimeComposition.Definition;
         _manifest = _definition.Runtime;
-        _goalActionPlan = _definition.DefaultGoals;
+        _goalActionPlan = selectedStrategy.CreateInitialGoalPlan()
+            ?? throw new ArgumentException("The compiled strategy must supply an initial goal plan.", nameof(compiledStrategy));
+        var goalErrors = _goalActionPlan.Validate();
+        if (goalErrors.Count != 0)
+            throw new ArgumentException("The compiled strategy returned an invalid goal plan: " + string.Join(" ", goalErrors), nameof(compiledStrategy));
         _desiredMarineCount = _definition.Opening.Steps
             .Where(step => step is not null &&
                 step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))

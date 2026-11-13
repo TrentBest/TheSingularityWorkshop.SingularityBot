@@ -1,14 +1,7 @@
 name: Publish documentation
 
 on:
-  push:
-    branches: [master, development]
-    paths:
-      - "docs/**"
-      - "strategies/**"
-      - "military-plans/**"
-      - "schemas/**"
-      - ".github/workflows/pages.yml"
+  # Publishing is deliberately manual; development commits must never deploy Pages.
   workflow_dispatch:
 
 permissions:

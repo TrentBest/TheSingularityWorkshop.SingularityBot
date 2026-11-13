@@ -35,6 +35,36 @@ The first opening configuration should express only what the working runtime can
 
 Do not encode assumed optimal timings as facts. The scheduler must respond to current resources, supply, prerequisites, production queues and observations.
 
+## Production plan runtime: named steps and completion barriers
+
+The production runtime supports a first executable slice of named, dependency-aware steps. A plan still compiles to one production runtime and one shared action pipeline; the authoring lanes do not create competing schedulers.
+
+- Every step has a stable textual ID, target, producer, desired completed count, timing floor, priority and optional dependency IDs.
+- `Buildings` and `Units` are distinct authoring lanes. They compile into the same plan so the existing observation, resource, supply and action arbitration remain authoritative.
+- A dependency is a hard completion barrier. A downstream step remains ineligible until the prerequisite's observed completed count reaches its configured desired count.
+- A submitted command, producer order or in-progress construction/training does not satisfy a completion dependency.
+- `AddUntil` expresses a target count. The step stops requesting additional work when observed completed plus in-progress count reaches that target; dependent steps still wait for the completed count.
+- Missing dependency IDs and dependency cycles fail validation. A plan is registered as a whole before its runtime update begins, so declaration order does not determine dependency resolution.
+
+The fluent authoring surface is available through `ProductionPlanBuilder`:
+
+```csharp
+var plan = new ProductionPlanBuilder("terran-opening", "Terran Opening")
+    .Buildings.Add("FirstSupplyDepot", "SupplyDepot", "SCV")
+    .Buildings.Add("FirstBarracks", "Barracks", "SCV")
+    .WhenComplete(
+        "OrbitalCommand",
+        "FirstBarracks",
+        new ProductionStepDefinition(
+            "OrbitalCommand", "OrbitalCommand", "CommandCenter", 1, 0, 90))
+    .Units.AddUntil("MarineWave", "Marine", "Barracks", 40)
+    .Build();
+```
+
+The barrier introduced by `WhenComplete` also applies to subsequently authored steps across both lanes. In this example, Orbital Command and the later Marine wave cannot become eligible until the First Barracks is observed complete. The Marine target itself may be produced incrementally; the barrier does not claim that 40 Marines must exist before the Orbital Command step.
+
+This production slice does not yet provide a complete strategy compiler, automatic SC2 game-data resolution, or a generalized military doctrine executor. It establishes named identities and observed-evidence barriers that those systems can reuse without bypassing the existing action pipeline.
+
 ## Compilation and validation direction
 
 When the compiler is implemented, it should:

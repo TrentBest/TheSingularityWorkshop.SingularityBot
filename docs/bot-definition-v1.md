@@ -6,6 +6,16 @@
 
 The first implementation deliberately targets the current Terran runtime. The schema is versioned so additional races, team formats, and capability families can be introduced without pretending they are implemented today.
 
+## Bot, match, and ladder are separate scopes
+
+Do not turn one BotDefinition into a tournament configuration file. Keep three versioned artifacts:
+
+- **BotDefinition:** one participant's identity, compiled capabilities, opening, goals, strategy policies, and AI consultation policy.
+- **MatchDefinition:** one game instance's map, game mode, player slots, team membership, race assignments, and match rules. It may reference multiple BotDefinitions.
+- **LadderDefinition:** the competition's map pool, match format, rounds, pairing policy, scoring, tie-breaks, and permitted BotDefinition versions.
+
+That separation lets the same bot compete in 1v1, 2v2, 3v3, FFA, and multi-team formats without copying its strategy definition. Team roles and shared objectives are match-scoped inputs; each participant keeps its own observations, authority, FSM runtime, and AI call budget. A future ladder host can compare many BotDefinitions while preserving a reproducible record of the exact bot and match versions used.
+
 ## What it contains
 
 | Section | Responsibility | Existing owner |

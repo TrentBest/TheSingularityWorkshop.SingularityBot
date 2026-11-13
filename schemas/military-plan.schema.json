@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thesingularityworkshop.dev/schemas/military-plan.schema.json",
+  "title": "SingularityBot military plan",
+  "description": "Named map locations, reusable routes and synchronized military operations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "name", "locations", "routes", "operations"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "locations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/location" }
+    },
+    "routes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/route" }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/operation" }
+    }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "x", "y"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "radius": { "type": "number", "minimum": 0, "default": 0 }
+      }
+    },
+    "waypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "x", "y"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "waypoints"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "constraints": {
+          "type": "string",
+          "enum": [
+            "none",
+            "avoidKnownThreats",
+            "avoidContact",
+            "preferPathableTerrain",
+            "avoidKnownThreats, avoidContact",
+            "avoidKnownThreats, preferPathableTerrain",
+            "avoidContact, preferPathableTerrain",
+            "avoidKnownThreats, avoidContact, preferPathableTerrain"
+          ],
+          "default": "preferPathableTerrain"
+        },
+        "waypoints": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/waypoint" }
+        }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "role", "routeId", "objectiveLocationId"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "role": {
+          "type": "string",
+          "enum": ["mainForce", "vanguard", "screen", "flank", "harass", "escort", "reserve", "scout", "siege"]
+        },
+        "routeId": { "type": "string", "minLength": 1 },
+        "objectiveLocationId": { "type": "string", "minLength": 1 },
+        "requiredUnitCount": { "type": "integer", "minimum": 1, "default": 1 },
+        "dependsOn": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "requiredAbility": { "type": ["string", "null"], "minLength": 1 },
+        "synchronizationGroup": { "type": ["string", "null"], "minLength": 1 },
+        "completion": {
+          "type": "string",
+          "enum": ["atObjective", "targetNeutralized", "allAssignedUnitsArrived", "manualRelease"],
+          "default": "atObjective"
+        }
+      }
+    }
+  }
+}

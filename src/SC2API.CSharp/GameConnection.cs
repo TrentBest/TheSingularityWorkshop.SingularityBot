@@ -143,6 +143,9 @@ namespace SC2API_CSharp
             Response response = await proxy.SendRequest(request);
             if (response == null || response.CreateGame == null)
                 throw new InvalidOperationException("The SC2 host did not acknowledge multiplayer game creation.");
+            if (response.CreateGame.Error != ResponseCreateGame.Types.Error.Unset)
+                throw new InvalidOperationException(
+                    $"The SC2 host rejected multiplayer game creation: {response.CreateGame.Error} {response.CreateGame.ErrorDetails}".Trim());
         }
 
         public async Task<uint> JoinGame(Race race)
@@ -183,6 +186,8 @@ namespace SC2API_CSharp
             request.JoinGame = joinGame;
 
             Response response = await proxy.SendRequest(request);
+            if (response?.JoinGame == null || response.JoinGame.PlayerId == 0)
+                throw new InvalidOperationException("The SC2 client did not return a valid multiplayer player ID.");
             return response.JoinGame.PlayerId;
         }
 

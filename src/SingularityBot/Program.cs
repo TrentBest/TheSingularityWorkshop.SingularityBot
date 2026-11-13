@@ -67,6 +67,6 @@ public static class Program
         if (localRun)
             connection.RunSinglePlayer(bot, MapName, BotRace, OpponentRace, OpponentDifficulty).GetAwaiter().GetResult();
         else
-            connection.RunLadder(bot, BotRace, args).GetAwaiter().GetResult();
+            connection.RunLadder(bot, BotRace, connectionArgs).GetAwaiter().GetResult();
     }
 }

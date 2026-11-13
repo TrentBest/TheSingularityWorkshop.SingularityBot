@@ -57,7 +57,26 @@ public sealed class StrategyEvidenceCollectorTests
         var evidence = Assert.Single(collector.Apply(Observation(120, second)));
 
         Assert.Equal(120u, evidence.ObservedAtGameLoop);
-        Assert.IsNotType<StrategyEvidence[]>(collector.Apply(Observation(120)));
+
+        var readOnlySnapshot = Assert.IsAssignableFrom<IList<StrategyEvidence>>(
+            collector.Apply(Observation(120)));
+        Assert.True(readOnlySnapshot.IsReadOnly);
+    }
+
+    [Fact]
+    public void FallsBackToOlderLiveStructureWhenFreshestStructureDies()
+    {
+        var collector = new StrategyEvidenceCollector();
+        collector.Apply(Observation(100,
+            Unit(1, "RoachWarren", UnitAlliance.Enemy, UnitVisibility.Visible)));
+        collector.Apply(Observation(120,
+            Unit(2, "RoachWarren", UnitAlliance.Enemy, UnitVisibility.Visible)));
+
+        var evidence = Assert.Single(collector.Apply(
+            Observation(130, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 2 })));
+
+        Assert.Equal(100u, evidence.ObservedAtGameLoop);
+        Assert.True(evidence.IsObservedFact);
     }
 
     [Fact]

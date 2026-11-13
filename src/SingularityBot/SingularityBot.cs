@@ -16,6 +16,7 @@ namespace SingularityBot;
 /// </summary>
 public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
 {
+    private readonly BotManifest _manifest = BotManifest.LoadEmbeddedDefault();
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly BuildingBehaviorRuntime _buildings = new();
     private GoalActionPlanDefinition _goalActionPlan = new();
@@ -85,6 +86,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
+    public BotManifest Manifest => _manifest;
     public SpatialMap SpatialMap { get; private set; }
     public SpatialIntelligence SpatialIntelligence { get; private set; }
     /// <summary>Immutable pathing, placement and elevation layers cached from SC2 OnStart data.</summary>

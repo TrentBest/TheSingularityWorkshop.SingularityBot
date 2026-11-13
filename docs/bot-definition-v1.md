@@ -51,6 +51,12 @@ The first Marine force keeps a dedicated ramp scout. The remaining squad assembl
 
 This is an initial assault posture, not a claim of a complete macro strategy. It does not yet adapt composition, choose attack timing from opponent strength, or guarantee a win. A local match and replay remain necessary evidence.
 
+## Opening worker timing
+
+The first Barracks builder is not dispatched when the Supply Depot merely starts. The opening waits until the Depot is observed complete and the full Barracks mineral cost is available after strategic reservations. Only then does it reserve an eligible SCV and request a legal placement; the cost and reserve are checked again before the build command. This overlaps worker travel with the final approach to the resource threshold without leaving the worker idle at a speculative build site.
+
+The second-Barracks controller follows the same resource-before-dispatch rule and selects the closest eligible unreserved SCV. The fixed post-first-Barracks delay has been removed; construction is paced by observed prerequisites and the actual mineral reserve rather than an arbitrary game-loop timer.
+
 ## The AI consultation model
 
 The model is a strategic adviser, not a per-frame controller.

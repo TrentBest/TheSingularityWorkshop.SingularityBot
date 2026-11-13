@@ -26,6 +26,22 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void ReleasesStartingCommandCenterReservationWhenOrbitalMorphOrderIsObserved()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var morphingCommandCenter = Fact(1, "CommandCenter") with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(1516, null, null, null) }
+        };
+
+        Assert.Null(controller.GetCommandCenterReservedForUpgrade(
+            Snapshot(500, morphingCommandCenter, Fact(2, "SupplyDepot"), Fact(3, "Barracks")),
+            data));
+    }
+
+    [Fact]
     public void KeepsStartingCommandCenterReservedWhenOrbitalAbilityMetadataIsMissing()
     {
         var controller = new Sc2OrbitalSupportController();

@@ -64,7 +64,7 @@ public sealed class EconomyAdvisorTests
         Assert.Equal("PreserveScan", advisor.Settings.MuleCallDownPolicy);
 
         var valid = advisor.ConfigureJson(
-            "{\\"version\\":1,\\"enableMules\\":false,\\"muleCallDownPolicy\\":\\"Immediate\\"}");
+            "{\"version\":1,\"enableMules\":false,\"muleCallDownPolicy\":\"Immediate\"}");
 
         Assert.Empty(valid);
         Assert.False(advisor.Settings.EnableMules);
@@ -80,7 +80,7 @@ public sealed class EconomyAdvisorTests
         Assert.True(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: true));
 
         var errors = advisor.ConfigureJson(
-            "{\\"version\\":1,\\"enableMules\\":false}");
+            "{\"version\":1,\"enableMules\":false}");
         Assert.Empty(errors);
         Assert.False(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: true));
     }
@@ -104,7 +104,7 @@ public sealed class EconomyAdvisorTests
         var advisor = new EconomyAdvisor();
 
         var errors = advisor.ConfigureJson(
-            "{\\"version\\":1,\\"muleCallDownPolicy\\":\\"SpendEverything\\"}");
+            "{\"version\":1,\"muleCallDownPolicy\":\"SpendEverything\"}");
 
         Assert.NotEmpty(errors);
         Assert.Equal("PreserveScan", advisor.Settings.MuleCallDownPolicy);

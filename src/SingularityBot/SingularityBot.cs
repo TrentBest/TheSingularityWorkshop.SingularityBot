@@ -1155,7 +1155,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Sc2SpatialVisionFactory.TryCreate(observation, SpatialMap, out visibilityGrid);
             var marineRallyActions = _marineRally.TryCreateActions(
                 normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
-                SpatialTerrain, PathingTopology, visibilityGrid);
+                SpatialTerrain, PathingTopology, visibilityGrid,
+                advanceToEnemyStart: _goalActionPlan.DefaultRole == GoalActionRole.Engage);
             actions.AddRange(marineRallyActions);
             if (_writeDiagnostics &&
                 _marineRally.TryTakeScoutStatusChange(out var scoutStatus, out var scoutDetails))

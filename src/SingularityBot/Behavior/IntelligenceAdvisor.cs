@@ -63,6 +63,8 @@ public sealed class IntelligenceAdvisor : IStrategicAdvisor
     /// <summary>
     /// Energy that Economy must leave available before authorizing a MULE.
     /// </summary>
-    public uint GetMuleScanEnergyReserve() =>
-        Settings.PreserveOrbitalScanBeforeMules ? Settings.OrbitalScanEnergyReserve : 0;
+    public uint GetMuleScanEnergyReserve(bool economyAlsoRequestsPreservation = false) =>
+        Settings.PreserveOrbitalScanBeforeMules || economyAlsoRequestsPreservation
+            ? Settings.OrbitalScanEnergyReserve
+            : 0;
 }

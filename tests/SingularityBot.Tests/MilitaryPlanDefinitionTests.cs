@@ -107,6 +107,7 @@ public sealed class MilitaryPlanDefinitionTests
         Assert.True(runtime.MarkSubmitted("first-bc", 100));
         Assert.False(runtime.TryGetIntent("second-bc", out _));
         Assert.True(runtime.ObserveStarted("first-bc", 101));
+        Assert.True(runtime.TryGetIntent("first-bc", out _)); // active operation may issue its next route step
         Assert.False(runtime.TryGetIntent("second-bc", out _));
 
         Assert.False(runtime.ObserveCompletion("first-bc", false, 120));

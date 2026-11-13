@@ -155,6 +155,8 @@ public sealed class BuildingBehaviorContext : IStateContext
         if (_operationalEventEmitted) return;
         _operationalEventEmitted = true;
         _emit(new BuildingEvent(BuildingEventKind.Operational, UnitTag, BuildingId, BuilderWorkerTag));
+        if (UnitKind == "SupplyDepot" && !IsLowered)
+            _emit(new BuildingEvent(BuildingEventKind.LowerSupplyDepot, UnitTag, BuildingId));
     }
 
     internal void EmitDepotAccess(bool raise)

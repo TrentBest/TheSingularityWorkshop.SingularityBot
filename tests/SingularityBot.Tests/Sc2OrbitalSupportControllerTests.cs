@@ -302,6 +302,37 @@ public sealed class Sc2OrbitalSupportControllerTests
     }
 
     [Fact]
+    public void PreservesConfiguredScanEnergyBeforeCallingMule()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var mineral = Fact(10, "MineralField750", 12, 10) with { Alliance = UnitAlliance.Neutral };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(0,
+            Fact(1, "OrbitalCommand") with { Energy = 99 }, mineral), data,
+            reservedEnergyForScan: 50));
+
+        var action = controller.TryCreateAction(Snapshot(0,
+            Fact(1, "OrbitalCommand") with { Energy = 100 }, mineral), data,
+            reservedEnergyForScan: 50);
+
+        Assert.NotNull(action);
+        Assert.Equal(168, action.ActionRaw.UnitCommand.AbilityId);
+    }
+
+    [Fact]
+    public void EconomyCanDisableMuleCallDownEvenWhenEnergyAndTargetAreAvailable()
+    {
+        var controller = new Sc2OrbitalSupportController();
+        var data = GameData();
+        var mineral = Fact(10, "MineralField750", 12, 10) with { Alliance = UnitAlliance.Neutral };
+
+        Assert.Null(controller.TryCreateAction(Snapshot(0,
+            Fact(1, "OrbitalCommand") with { Energy = 200 }, mineral), data,
+            allowMules: false));
+    }
+
+    [Fact]
     public void DoesNotCallMuleWithoutFiftyEnergyOrWithoutMineralTarget()
     {
         var controller = new Sc2OrbitalSupportController();

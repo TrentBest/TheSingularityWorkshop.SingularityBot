@@ -216,6 +216,29 @@ public sealed class BuildingBehaviorRuntimeTests
     }
 
     [Fact]
+    public void FlyingEnemiesDoNotRaiseSupplyDepots()
+    {
+        UnitBehaviorCatalog.Register();
+        BuildingBehaviorRuntime.RegisterDefinitions();
+        var runtime = new BuildingBehaviorRuntime();
+        var loweredDepot = Depot(4101, "SupplyDepotLowered", 1f);
+        var flyingEnemy = new UnitObservationFacts(
+            9101, 1, "Viking", 2, UnitAlliance.Enemy, UnitVisibility.Visible,
+            125, 125, 0, 0, 1, 14, 10, true, false, false,
+            true, false, false, 30);
+
+        runtime.Reconcile(Observation(30, loweredDepot, flyingEnemy),
+            Array.Empty<BuildJobContext>(), _ => false);
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+        runtime.UpdateActivityAndAccess();
+
+        Assert.Equal("Lowered", Assert.Single(runtime.Buildings).AccessState);
+        Assert.Empty(runtime.DrainEvents());
+        runtime.Clear();
+    }
+
+    [Fact]
     public void ExplicitDepotPassageOverridesEnemyThreatAndLowersTheDepot()
     {
         UnitBehaviorCatalog.Register();

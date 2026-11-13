@@ -97,7 +97,7 @@ Before issuing a command, the advisor checks:
 7. no equivalent command is already pending, observed or complete;
 8. the target, placement and action semantics are valid for the specific command.
 
-Resource reservations are explicit and explainable. The 150-mineral Orbital Command morph is a first-class reserved strategic commitment in Marine Mode. A worker pull, Marine queue, add-on or expansion must not consume that reserve. The advisor should schedule construction workers using predicted travel and return time: reserve and dispatch a builder only when its estimated arrival aligns with the earliest legal, affordable construction window. Do not send a worker early merely because a future build item exists.
+Resource reservations are explicit and explainable. The opening sequence is strict: complete the first Barracks, train and observe the first Marine, then morph the starting Command Center into an Orbital when Economy Advisor `enableMules` is true. Reserve the Marine cost first; activate the 150-mineral Orbital commitment only after the Marine is observed. A worker pull, add-on or expansion must not consume the active reserve. The advisor should schedule construction workers using predicted travel and return time: reserve and dispatch a builder only when its estimated arrival aligns with the earliest legal, affordable construction window. Do not send a worker early merely because a future build item exists.
 
 Supply scheduling should be predictive. The advisor estimates queued and in-progress unit supply, production rates and construction lead time, then schedules Depots before the force reaches the cap. It must not overbuild based on a stale forecast; each new action is revalidated against the current observation.
 
@@ -117,7 +117,7 @@ For example, observing a Roach Warren after an opponent's 1-1-1 can raise the pr
 
 ## Marine Mode: production doctrine
 
-Marine Mode is a deliberately Marine-heavy Terran profile. Its initial production target is four Barracks, with one Tech Lab and three Reactors, followed by an Engineering Bay and additional Supply Depots as forecast demand requires. The starting Command Center's 150-mineral Orbital upgrade remains reserved and takes precedence at its defined gate. The second Command Center is a later economic commitment, not permission to starve the Orbital morph.
+Marine Mode is a deliberately Marine-heavy Terran profile. Its initial production target is four Barracks, with one Tech Lab and three Reactors, followed by an Engineering Bay and additional Supply Depots as forecast demand requires. The starting Command Center's 150-mineral Orbital upgrade follows the first observed Marine and is enabled by the Economy Advisor `enableMules` setting. The second Command Center is a later economic commitment, not permission to starve the Orbital morph.
 
 The advisor schedules the add-on distribution and verifies each attachment before assigning production roles. Reactors provide additional Marine throughput only when the producer and add-on are observed in the correct state. The Tech Lab is a technology capability and future composition option; it does not silently change the Marine-first policy. The Engineering Bay opens infantry upgrades when their costs, prerequisites and strategic timing are supported.
 
@@ -249,3 +249,15 @@ Formation spacing is a live tactical input, not a fixed constant. The same role-
 For a line attack such as a Colossus thermal lance, the combat layer must first derive the finite attack segment from observed attacker/weapon state and the best available target or attack direction. It then tests each Marine against the beam corridor. A Marine inside the corridor receives a local escape target on a perpendicular to the beam, with the side selected by the nearest available formation gap. Marines already outside the corridor keep their positions. Once the attack corridor clears, the squad reforms using its current role and spacing profile.
 
 The current planner implements deterministic spacing selection and finite-line geometry for a single unit. It does not yet read Colossus weapon state, predict the live beam endpoint, detect the active wind-up, issue SC2 movement actions, coordinate collision-safe gap reservations, or trigger reformation. Those remain integration work. Beam width, attack timing, pathability, collision radius, and other Marines occupying the candidate gap must be supplied by authoritative game observations/data; do not substitute arbitrary fixed assumptions.
+
+
+## Orbital energy policy: Economy × Intelligence
+
+Economy Advisor owns whether MULE use is enabled and the spending mode. `enableMules=false` suppresses both the starting Orbital morph and all MULE commands. When enabled, the first Barracks and first Marine are completed before the starting Command Center morph is submitted.
+
+The Economy Advisor's `muleCallDownPolicy` supports:
+
+- `Immediate`: spend 50 energy as soon as an eligible Orbital and mineral target are available.
+- `PreserveScan`: ask the Intelligence Advisor for its Orbital scan reserve before authorizing the 50-energy MULE. With the default 50-energy reserve, an Orbital at 50–99 energy holds for a scan; at 100 or more it may call a MULE and retain 50 energy.
+
+The Intelligence Advisor owns `preserveOrbitalScanBeforeMules` and `orbitalScanEnergyReserve` (default 50). Disabling preservation releases that reserve; increasing it raises the energy threshold. Economy still validates actual energy, mineral target, ability metadata and pending MULE orders before submitting. Neither advisor issues the protocol command directly.

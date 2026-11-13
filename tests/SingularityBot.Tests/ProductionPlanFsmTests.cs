@@ -49,6 +49,94 @@ public sealed class ProductionPlanFsmTests
         Assert.Single(emitted);
     }
 
+
+    [Fact]
+    public void ProductionPlanRuntime_BlocksDependentStepsUntilPrerequisiteIsObservedComplete()
+    {
+        var emitted = new List<ProductionIntent>();
+        using var runtime = new ProductionPlanRuntime(emitted.Add);
+        var plan = new ProductionPlanDefinition
+        {
+            Id = "opening",
+            Name = "Opening",
+            Race = "Terran",
+            Steps =
+            [
+                new("first-barracks", "Barracks", "SCV", 1, 0, 90, Lane: ProductionLane.Buildings),
+                new("orbital-command", "OrbitalCommand", "CommandCenter", 1, 0, 90, new[] { "first-barracks" }, ProductionLane.Units)
+            ]
+        };
+
+        Assert.Empty(runtime.AddPlan(plan));
+        Assert.True(runtime.TryGetStep("first-barracks", out var barracks));
+        Assert.True(runtime.TryGetStep("orbital-command", out var orbital));
+
+        barracks.ApplyObservation(100, 0, 1, true, true, true);
+        orbital.ApplyObservation(100, 0, 0, true, true, true);
+        runtime.Update();
+        runtime.Update();
+
+        Assert.Single(emitted);
+        Assert.Equal("first-barracks", emitted[0].StepId);
+        Assert.False(orbital.DependenciesSatisfied);
+
+        barracks.ApplyObservation(120, 1, 0, true, true, true);
+        runtime.Update();
+        runtime.Update();
+
+        Assert.Equal(new[] { "first-barracks", "orbital-command" }, emitted.Select(intent => intent.StepId));
+        Assert.True(orbital.DependenciesSatisfied);
+    }
+
+    [Fact]
+    public void ProductionPlanBuilder_SeparatesLanesAndCarriesCompletionBarrierForward()
+    {
+        var orbitalCommand = new ProductionStepDefinition(
+            "unused-id", "OrbitalCommand", "CommandCenter", 1, 0, 80);
+
+        var plan = new ProductionPlanBuilder("terran-opening", "Terran Opening")
+            .Buildings.Add("FirstBarracks", "Barracks", "SCV")
+            .WhenComplete("OrbitalCommand", "FirstBarracks", orbitalCommand)
+            .Units.AddUntil("MarineWave", "Marine", "Barracks", 40)
+            .Build();
+
+        Assert.Equal(ProductionLane.Buildings, plan.Steps[0].Lane);
+        Assert.Equal("OrbitalCommand", plan.Steps[1].Id);
+        Assert.Contains("FirstBarracks", plan.Steps[1].DependsOn);
+        Assert.Contains("FirstBarracks", plan.Steps[2].DependsOn);
+        Assert.Equal(40, plan.Steps[2].DesiredCount);
+        Assert.Empty(ProductionPlanValidator.Validate(plan));
+    }
+
+    [Fact]
+    public void ProductionPlanRuntime_DoesNotReleaseBarrierForSubmittedOrInProgressPrerequisite()
+    {
+        var emitted = new List<ProductionIntent>();
+        using var runtime = new ProductionPlanRuntime(emitted.Add);
+        var plan = new ProductionPlanDefinition
+        {
+            Id = "barrier",
+            Name = "Barrier",
+            Steps =
+            [
+                new("depot", "SupplyDepot", "SCV", 1, 0, 90, Lane: ProductionLane.Buildings),
+                new("barracks", "Barracks", "SCV", 1, 0, 90, new[] { "depot" }, ProductionLane.Buildings)
+            ]
+        };
+        Assert.Empty(runtime.AddPlan(plan));
+        runtime.TryGetStep("depot", out var depot);
+        runtime.TryGetStep("barracks", out var barracks);
+
+        depot.ApplyObservation(10, 0, 1, true, true, true);
+        depot.MarkSubmitted();
+        barracks.ApplyObservation(10, 0, 0, true, true, true);
+        runtime.Update();
+        runtime.Update();
+
+        Assert.Single(emitted);
+        Assert.False(barracks.DependenciesSatisfied);
+    }
+
     [Fact]
     public void ProductionPlanValidator_RejectsDuplicateStepIdsAndInvalidCounts()
     {

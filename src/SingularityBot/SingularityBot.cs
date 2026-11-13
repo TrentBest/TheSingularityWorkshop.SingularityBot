@@ -804,14 +804,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             if (firstBarracksObserved)
             {
-                _firstBarracksObservedGameLoop ??= normalized.GameLoop;
-                // Give the first Barracks opening room to settle before pulling
-                // another SCV. Four and a half seconds at SC2's 22.4 loops/sec.
-                const uint secondBarracksWorkerPullDelayLoops = 101;
-                if (normalized.GameLoop >= _firstBarracksObservedGameLoop.Value + secondBarracksWorkerPullDelayLoops)
-                    secondBarracksAction = _secondBarracks.TryCreateAction(
-                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs,
-                        reservedMinerals: reservedInfrastructureMinerals);
+                // The Barracks controller itself is the timing gate: it keeps
+                // every SCV mining until the next 150 minerals are available
+                // after strategic reservations, then selects the nearest legal
+                // worker and starts the placement trip. A fixed post-Barracks
+                // delay only wastes mineral income and delays the second facility.
+                secondBarracksAction = _secondBarracks.TryCreateAction(
+                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs,
+                    reservedMinerals: reservedInfrastructureMinerals);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
                 assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
 

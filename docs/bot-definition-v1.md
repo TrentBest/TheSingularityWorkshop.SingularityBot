@@ -45,6 +45,12 @@ A structurally valid definition is not a promise that every requested capability
 
 No definition field contains C#, scripts, reflection names, arbitrary method names, shell commands, or executable expressions. Settings are data interpreted by a known compiled capability.
 
+## Marine posture and offensive dispatch
+
+The first Marine force keeps a dedicated ramp scout. The remaining squad assembles into its initial formation before dispatch. With the default `contain` goal role, the squad continues its distributed friendly-side patrol. Selecting `engage` explicitly changes the rally controller to advance the assembled squad toward the observed enemy start position; SC2 pathfinding owns movement, while the combat planner still requires live target observations and revalidates attack range before issuing an attack. The example definition selects `engage` with `scoutCount: 0` because the ramp scout is assigned by the match controller independently of goal-role scouting.
+
+This is an initial assault posture, not a claim of a complete macro strategy. It does not yet adapt composition, choose attack timing from opponent strength, or guarantee a win. A local match and replay remain necessary evidence.
+
 ## The AI consultation model
 
 The model is a strategic adviser, not a per-frame controller.

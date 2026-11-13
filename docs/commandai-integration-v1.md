@@ -37,18 +37,17 @@ Optional parameter:
 |---:|---|---|---|
 | 2003 | `ProductionPriority` | Literal text | Integer from 0 through 100 |
 
-The action and parameter IDs are stable SingularityBot identities. Identifier values refer to bot-owned catalogs or definitions; they are not raw SC2 unit, ability, or order IDs.
+The action and parameter IDs are stable SingularityBot identities. Identifier values refer to bot-owned catalogs or definitions; they are not raw SC2 unit, ability, or order IDs. Validation currently confirms that an identifier is structurally valid, not that its target exists in the active game ontology.
 
 ## Initial scope and deliberate gaps
 
-This commit establishes the vocabulary only. It does not yet consume `TheSingularityWorkshop.CommandAi` types or execute proposals.
+SingularityBot now consumes the actual `TheSingularityWorkshop.CommandAi` project from its `development` branch. The project reference is `dependencies/CommandAi/TheSingularityWorkshop.CommandAi.csproj`; GitHub Actions checks out that repository into the matching path before restore/build. Local setup instructions are in the repository README. No NuGet publication is required for active development.
 
-The CommandAi source repository currently exposes protocol `CommandAi/1` and package version `0.1.0-alpha.2`, but the package is not currently verifiable as available from the configured NuGet distribution. SingularityBot must not copy the protocol classes or create a parallel proposal codec to work around that dependency. The thin type adapter should be added when the actual CommandAi assembly can be consumed through an approved dependency path.
+`BotCommandProposalValidator` accepts real `CommandProposal` objects and validates each instruction against the bot-owned vocabulary. It rejects unknown action IDs, undeclared parameters, missing required parameters, incorrect value kinds, invalid desired counts, and priorities outside 0–100. It returns validated, typed command descriptions; it does not authorize execution, resolve ontology IDs, create jobs, or dispatch SC2 actions.
 
 The following remain future work:
-- Map actual `CommandProposal` / `CommandInstruction` values to the bot-owned vocabulary.
-- Reject unknown actions, unknown parameters, missing required parameters, wrong value kinds, and invalid literal values.
 - Resolve target identifiers against the active BotDefinition and match catalogs.
+- Map the validated production request into the existing production goal/job contracts.
 - Convert accepted proposals into existing goal/job contracts; do not add a second scheduler.
 - Implement proposal idempotency and lifecycle records in SingularityBot.
 - Connect the first `SetProductionTarget(Marine, N)` proposal to the existing production runtime.
@@ -66,4 +65,4 @@ The following remain future work:
 
 ## Verification
 
-`BotCommandVocabularyTests` checks stable positive action/parameter identities, uniqueness, required parameter typing, and fail-closed lookup of unknown action IDs.
+`BotCommandVocabularyTests` checks stable positive action/parameter identities, uniqueness, required parameter typing, and fail-closed lookup of unknown action IDs. `BotCommandProposalValidatorTests` exercises the real CommandAi builder/types and covers valid Marine-production-shaped proposals, unknown actions/parameters, missing required values, invalid counts, and invalid priorities.

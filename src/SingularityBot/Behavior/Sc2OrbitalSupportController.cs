@@ -59,7 +59,8 @@ public sealed class Sc2OrbitalSupportController
         uint reservedMinerals = 0,
         bool allowOrbitalUpgrade = true,
         ulong? permittedCommandCenterTag = null,
-        IReadOnlySet<ulong>? reservedOrbitalTags = null)
+        IReadOnlySet<ulong>? reservedOrbitalTags = null,
+        uint reservedEnergyForScan = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -150,7 +151,7 @@ public sealed class Sc2OrbitalSupportController
             return null;
 
         var orbital = townHalls
-            .Where(unit => IsKind(unit, "OrbitalCommand") && unit.Energy >= 50 &&
+            .Where(unit => IsKind(unit, "OrbitalCommand") && unit.Energy >= 50u + reservedEnergyForScan &&
                 !(reservedOrbitalTags?.Contains(unit.Tag) ?? false) &&
                 !unit.Orders.Any(order => order.AbilityId == gameData.MuleCallDownAbilityId.Value))
             .OrderByDescending(unit => unit.Energy)

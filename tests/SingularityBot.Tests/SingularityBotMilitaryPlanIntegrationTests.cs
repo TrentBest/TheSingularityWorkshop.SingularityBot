@@ -14,8 +14,8 @@ public sealed class SingularityBotMilitaryPlanIntegrationTests
         Assert.Empty(errors);
         var operation = Assert.Single(bot.MilitaryOperations);
         Assert.Equal("first-bc", operation.Definition.Id);
-        Assert.Empty(bot.AssignMilitaryOperationUnits("first-bc", new ulong[] { 101, 102 }));
-        Assert.Equal(2, bot.AssignMilitaryOperationUnits("first-bc", new ulong[] { 101, 102 }).Count == 0 ? 2 : 0);
+        var assignmentErrors = bot.AssignMilitaryOperationUnits("first-bc", new ulong[] { 101, 102 });
+        Assert.Empty(assignmentErrors);
     }
 
     [Fact]

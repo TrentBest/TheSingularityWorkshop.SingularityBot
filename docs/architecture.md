@@ -6,7 +6,7 @@ SingularityBot is a StarCraft II player. Its primary product is a reliable decis
 
 ## Composition and execution boundary
 
-The bot is a self-contained compiled DLL. The current startup path selects `BotDefinitionCatalog.CreateDefault()`, a typed C# data aggregate compiled into the assembly; it does not load a runtime JSON file or dynamically loaded plugin. That aggregate describes identity, advisor settings, an opening plan, default goals and transition data. It is not yet a replaceable compiled strategy implementation: the live decision behavior remains in the shared SingularityBot controllers and planners. The active refactor is to establish a real compiled personality boundary so different users can build different bot DLLs from the same engine with different strategy implementations. Until that boundary is implemented, documentation must not describe the catalog as the completed personality architecture.
+The bot is a self-contained compiled DLL. The Runner selects the statically linked `AdaptiveMarineStrategy`, which implements `ICompiledBotStrategy`. The contract supplies a validated `BotDefinition` and executable initial-goal composition; `SingularityBot` consumes that contract while retaining one shared runtime and action pipeline. `BotDefinitionCatalog` remains compiled typed data, not the strategy class itself. The contract is the first working slice of the replaceable personality boundary: most macro/tactical policy still resides in shared controllers and planners, and objective/transition composition remains to be moved behind the contract. Runtime JSON files, reflection-based discovery and dynamic assembly loading are not used.
 
 The SC2 Runner is the host/execution driver: it owns the SC2 connection, callbacks, frame lifecycle and protocol action submission. It invokes the bot; it does not supply a separate strategy engine. SingularityBot owns its runtime lifecycle, state, decisions, intent arbitration and action translation. The bot's compiled personality is the replaceable user-specific portion of the DLL.
 
@@ -50,7 +50,7 @@ The adapter owns protocol DTOs and protocol-specific details. The rest of the bo
 | SC2 Runner / adapter | Connection lifecycle, callbacks, frame delivery, protocol conversion, game-data lookup, action submission/results | Strategy decisions |
 | Observation model | Stable tags, ownership, visibility, orders, cargo, resources, structures, game-loop time, destruction evidence | Protocol transport or policy |
 | Game ontology | Unit/structure/ability identities, race, costs, prerequisites, capabilities | Match-specific mutable state |
-| SingularityBot runtime | Match/player/entity contexts, bot lifecycle, decisions, transitions and execution cadence; current shared controllers still own strategy behavior | SC2 protocol transport details |
+| SingularityBot runtime | Match/player/entity contexts, bot lifecycle, shared decisions, intent arbitration and execution cadence; consumes `ICompiledBotStrategy` | SC2 protocol transport details |
 | Economy controller | Global worker assignments, reservations, build/production priorities | Per-frame duplicate assignment decisions |
 | Unit/route FSMs | Execute assigned work, track local phase, report facts and outcomes | Reassigning other workers or overriding economy constraints |
 | Building FSMs | Persistent building identity, construction lifecycle, production/research activity, structure-specific capabilities | Construction-job identity or protocol command submission |

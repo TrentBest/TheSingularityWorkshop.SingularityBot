@@ -208,3 +208,15 @@ Distance bands are reusable spatial behavior, not hard-coded per advisor. A defi
 7. Add staged threat filtering and advisor query APIs; prove candidate filtering returns the same relevant results as brute force while evaluating fewer pairs.
 
 No play-test request until a coherent mining slice builds and passes CI. No publish, merge, release, deployment, or branch deletion without explicit authorization.
+
+### Gather-command timing acceptance criteria (2026-11-13)
+
+The mining optimization is specifically a command-latency optimization, not merely a waypoint optimization.
+
+- A worker first receives a movement command to the calculated approach waypoint. It must not issue the mineral interaction command while still outside the validated gather-acceptance envelope.
+- On each authoritative observation, evaluate the worker/mineral interaction geometry using the actual observed positions and validated SC2 collision/interaction semantics. Submit the mineral-targeted gather action on the first observation where the command is eligible; do not add a conservative distance buffer or wait for a later FSM/advisor cadence.
+- Keep the mineral unit tag as the action target. The tangent waypoint is never substituted as the harvest target.
+- Record three separate game-loop timestamps per trip: first observed eligible/in-range frame, frame the gather action is placed in the outgoing action batch, and first observation showing the mineral-targeted gather order. This separates bot-side scheduling delay from SC2 action acceptance/observation delay.
+- Report the distribution of eligible-to-submission delay in game loops (including median, p95, and maximum), not a claimed sub-frame saving. The bot cannot act between observation/action boundaries; the target is zero avoidable game-loop delay.
+- Compare the timing optimization against the current direct-Smart baseline over the same map, opening, and game-speed conditions. Also compare first resource acquisition, return timing, income, idle frames, and command count so a faster first command does not hide a worse overall mining cycle.
+- Do not ask for a play-test until the staged approach → first-eligible-frame gather path is implemented, its exact-boundary tests pass, and CI confirms the build/test suite.

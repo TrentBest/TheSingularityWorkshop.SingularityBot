@@ -75,34 +75,29 @@ public sealed class BuildingBehaviorRuntimeTests
         UnitBehaviorCatalog.Register();
         BuildingBehaviorRuntime.RegisterDefinitions();
         var runtime = new BuildingBehaviorRuntime();
-        var barracks = Depot(3001, "Barracks", 1f) with
+        var techLab = Depot(3001, "BarracksTechLab", 1f) with
         {
             Orders = new[] { new UnitOrderObservationFacts(501, null, null, null) }
         };
-        runtime.Reconcile(Observation(20, barracks), Array.Empty<BuildJobContext>(),
+        var barracks = Depot(3002, "Barracks", 1f) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(502, null, null, null) }
+        };
+        runtime.Reconcile(Observation(20, techLab, barracks), Array.Empty<BuildJobContext>(),
             id => id == 501);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
-        var building = Assert.Single(runtime.Buildings);
-        Assert.Equal("Researching", building.ActivityState);
-        Assert.Equal("Idle", building.CurrentStates[BuildingBehaviorCatalog.ProductionFsm]);
-        Assert.Equal("Researching", building.CurrentStates[BuildingBehaviorCatalog.ResearchFsm]);
 
-        var production = barracks with
-        {
-            GameLoop = 21,
-            Orders = new[] { new UnitOrderObservationFacts(502, null, null, null) }
-        };
-        runtime.Reconcile(Observation(21, production), Array.Empty<BuildJobContext>(),
-            _ => false);
-        runtime.UpdateActivityAndAccess();
-        runtime.UpdateActivityAndAccess();
-        runtime.UpdateActivityAndAccess();
-        building = Assert.Single(runtime.Buildings);
-        Assert.Equal("Producing", building.ActivityState);
-        Assert.Equal("Producing", building.CurrentStates[BuildingBehaviorCatalog.ProductionFsm]);
-        Assert.Equal("Idle", building.CurrentStates[BuildingBehaviorCatalog.ResearchFsm]);
+        var researchBuilding = runtime.Buildings.Single(item => item.UnitTag == 3001);
+        Assert.Equal("Researching", researchBuilding.ActivityState);
+        Assert.Equal("NotProductionCapable", researchBuilding.ProductionState);
+        Assert.Equal("Researching", researchBuilding.ResearchState);
+
+        var productionBuilding = runtime.Buildings.Single(item => item.UnitTag == 3002);
+        Assert.Equal("Producing", productionBuilding.ActivityState);
+        Assert.Equal("Producing", productionBuilding.ProductionState);
+        Assert.Equal("NotResearchCapable", productionBuilding.ResearchState);
 
         runtime.Clear();
     }

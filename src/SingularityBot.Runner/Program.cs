@@ -9,6 +9,7 @@ if (args.Length == 1 && args[0] is "--help" or "-h")
     Console.WriteLine("--no-diagnostics: disable local diagnostic capture.");
     Console.WriteLine("--cc-area=centerX,centerY,radius: configure the designated Command Center construction zone in map coordinates.");
     Console.WriteLine("Ladder arguments: --GamePort <port> --StartPort <port> --OpponentId <id>.");
+    Console.WriteLine("--bot-definition=<path>: load a validated BotDefinition v1 JSON file for this match.");
     Console.WriteLine("Designated host: add --CreateGame --Map <trusted-map-path> to create the multiplayer game before joining.");
     return;
 }

@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "id": "battlecruiser-mineral-line-pincer",
+  "name": "Battlecruiser Mineral Line Pincer",
+  "locations": [
+    {
+      "id": "OpponentMainMineralLine",
+      "name": "Opponent main mineral line",
+      "x": 100,
+      "y": 80,
+      "radius": 6
+    },
+    {
+      "id": "OpponentExpansionMineralLine",
+      "name": "Opponent expansion mineral line",
+      "x": 78,
+      "y": 112,
+      "radius": 6
+    }
+  ],
+  "routes": [
+    {
+      "id": "FirstBattlecruiserEvasiveRoute",
+      "name": "First Battlecruiser evasive approach",
+      "constraints": "avoidKnownThreats, avoidContact, preferPathableTerrain",
+      "waypoints": [
+        { "id": "FriendlyApproach", "x": 30, "y": 35 },
+        { "id": "NorthernFlank", "x": 62, "y": 44 },
+        { "id": "MainMineralLine", "x": 100, "y": 80 }
+      ]
+    },
+    {
+      "id": "SecondBattlecruiserJump",
+      "name": "Second Battlecruiser jump landing",
+      "constraints": "preferPathableTerrain",
+      "waypoints": [
+        { "id": "JumpOrigin", "x": 66, "y": 72 },
+        { "id": "ExpansionMineralLine", "x": 78, "y": 112 }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "FirstBattlecruiser",
+      "name": "Position first Battlecruiser over the main mineral line",
+      "role": "harass",
+      "routeId": "FirstBattlecruiserEvasiveRoute",
+      "objectiveLocationId": "OpponentMainMineralLine",
+      "requiredUnitCount": 1,
+      "synchronizationGroup": "MineralLinePincer",
+      "completion": "atObjective"
+    },
+    {
+      "id": "SecondBattlecruiser",
+      "name": "Jump second Battlecruiser over the expansion mineral line",
+      "role": "harass",
+      "routeId": "SecondBattlecruiserJump",
+      "objectiveLocationId": "OpponentExpansionMineralLine",
+      "requiredUnitCount": 1,
+      "dependsOn": ["FirstBattlecruiser"],
+      "requiredAbility": "TacticalJump",
+      "synchronizationGroup": "MineralLinePincer",
+      "completion": "atObjective"
+    }
+  ]
+}

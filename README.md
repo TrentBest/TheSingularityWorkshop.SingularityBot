@@ -34,7 +34,8 @@ The first worker, construction and production stages have progressed beyond the 
 |---|---|
 | SC2 connection, callbacks, frame lifecycle and action submission | SC2 Runner / protocol adapter |
 | Bot lifecycle, decisions, action translation and runtime authority | SingularityBot.dll |
-| User-specific strategy and capability selection | Compiled Bot Definition within SingularityBot.dll |
+| Bot identity, opening, goals and advisor settings (current compiled data) | BotDefinitionCatalog / BotDefinition |
+| User-specific executable strategy personality | Planned statically compiled strategy contract (refactor in progress) |
 | Capability composition and dependency resolution | FSM_COS |
 | Persistent contexts and hierarchical behavior mechanics | FSM_API |
 | Distances, routes and spatial queries | Physics |
@@ -48,7 +49,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 
 - [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](docs/bot-definition-v1.md)
 
-The live bot must be a self-contained compiled DLL. Its user-specific Bot Definition is compiled into that DLL and instantiated/composed in memory at startup; JSON is an authoring/import/export representation only. The SC2 Runner is the host that drives the bot lifecycle and frame callbacks. It is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
+The live bot is a self-contained compiled DLL. Today, BotDefinitionCatalog supplies a compiled typed data aggregate, and FSM_COS composes that data with the CommandAi vocabulary at startup; this does not yet make the strategy a replaceable compiled personality. The active refactor will establish that code boundary while preserving one shared bot engine. JSON remains an authoring/import/export representation, not a live runtime file. The SC2 Runner drives the bot lifecycle and frame callbacks; it is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
 - [CommandAi integration v1: bot-owned command vocabulary and validation boundary](docs/commandai-integration-v1.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)

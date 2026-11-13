@@ -144,6 +144,12 @@ public sealed class Sc2GameDataCatalogTests
         Assert.Equal((uint)560, catalog.MarineTrainAbilityId);
         Assert.Equal((uint)50, catalog.MarineMineralCost);
         Assert.Equal(1f, catalog.MarineFoodRequired);
+        Assert.True(catalog.TryGetUniqueUnit("Barracks", out var barracks));
+        Assert.Equal((uint)21, barracks.UnitId);
+        Assert.Equal((uint)321, barracks.AbilityId);
+        Assert.True(catalog.TryGetUniqueUnit("Marine", out var marine));
+        Assert.Equal(1f, marine.FoodRequired);
+        Assert.Equal(2, catalog.UnitsById.Count);
     }
 
     [Fact]
@@ -205,6 +211,19 @@ public sealed class Sc2GameDataCatalogTests
 
         Assert.Equal((uint)3678, catalog.LiftOffAbilityId);
         Assert.Null(catalog.LandAbilityId);
+    }
+
+    [Fact]
+    public void FindUnits_RejectsAmbiguousNamesInsteadOfChoosingAnArbitraryUnitType()
+    {
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData { UnitId = 21, Name = "SiegeTank", AbilityId = 1 });
+        data.Units.Add(new UnitTypeData { UnitId = 32, Name = "SiegeTank", AbilityId = 2 });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.Equal(2, catalog.FindUnits("SiegeTank").Count);
+        Assert.False(catalog.TryGetUniqueUnit("SiegeTank", out _));
     }
 
     [Fact]

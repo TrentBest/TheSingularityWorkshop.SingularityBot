@@ -25,17 +25,17 @@ Vocabulary identity: `SingularityBot.Commands/1`
 
 | Action ID | Action | Required parameters |
 |---:|---|---|
-| 1001 | `SetProductionTarget` | Target (2001, identifier), DesiredCount (2002, positive integer text) |
-| 1002 | `ConstructBuilding` | Target (2001, building identifier), DesiredCount (2002, positive integer text) |
-| 1003 | `AssignScout` | Target (2001, sector identifier) |
-| 1004 | `AssignMilitaryOperation` | Operation (2004, authored operation identifier) |
-| 1005 | `TransitionStrategy` | Strategy (2005, strategy transition identifier) |
+| 1001 | `SetProductionTarget` | ProductionTarget (2001, identifier), ProductionDesiredCount (2002, positive integer text) |
+| 1002 | `ConstructBuilding` | BuildingTarget (2011, identifier), BuildingDesiredCount (2012, positive integer text) |
+| 1003 | `AssignScout` | ScoutSector (2021, sector identifier) |
+| 1004 | `AssignMilitaryOperation` | MilitaryOperation (2031, authored operation identifier) |
+| 1005 | `TransitionStrategy` | StrategyTransition (2041, strategy transition identifier) |
 
 Optional parameter:
 
 | Parameter ID | Name | Type | Constraint |
 |---:|---|---|---|
-| 2003 | `Priority` | Literal text | Integer from 0 through 100 |
+| 2003 | `ProductionPriority` | Literal text | Integer from 0 through 100 |
 
 The action and parameter IDs are stable SingularityBot identities. Identifier values refer to bot-owned catalogs or definitions; they are not raw SC2 unit, ability, or order IDs.
 

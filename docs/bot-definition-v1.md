@@ -124,7 +124,7 @@ For ladder mode, pass the same option alongside the SC2 ladder connection argume
 SingularityBot.Runner.exe --bot-definition=C:\\Bots\\terran-adaptive-marine.v1.json --GamePort 5000 --StartPort 5001 --OpponentId opponent
 ```
 
-The runner parses and validates the file before connecting. The selected definition's `DefaultGoals` are now the live policy consumed by the existing `GoalActionPlanner`; `Runtime` is exposed as the bot's selected manifest, and `Opening` is exposed for the production adapter. The opening plan is **not yet the active SC2 production scheduler**: its observation adapter still needs game-data recipe wiring and integration with the existing action-arbitration pipeline. This distinction is deliberate; a loaded plan must not be mistaken for executed build orders.
+The runner parses and validates the file before connecting. The selected definition's `DefaultGoals` are now the live policy consumed by the existing `GoalActionPlanner`; `Runtime` is exposed as the bot's selected manifest, and `Opening` is exposed for the production adapter. The opening plan's Marine target is now enforced by both the first-Barracks and secondary-Barracks production paths; the example target of eight replaces the former hard-coded 60-Marine ceiling. Supply Depot and Barracks construction still use the existing fixed opening controllers, and arbitrary plan steps are not yet translated into live actions. The opening plan is therefore **not yet a general-purpose SC2 production scheduler**: its observation adapter still needs game-data recipe wiring and integration with the existing action-arbitration pipeline. This distinction is deliberate; a loaded plan must not be mistaken for executed build orders.
 
 ## Current implementation boundary
 

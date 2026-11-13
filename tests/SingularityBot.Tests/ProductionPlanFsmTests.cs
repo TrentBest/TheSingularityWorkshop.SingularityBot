@@ -169,7 +169,7 @@ public sealed class ProductionPlanFsmTests
           "name": "Slow Push",
           "race": "Terran",
           "steps": [
-            { "id": "factory", "target": "Factory", "producer": "SCV", "desiredCount": 1, "earliestGameLoop": 0, "priority": 90 },
+            { "id": "factory", "target": "Factory", "producer": "SCV", "desiredCount": 1, "earliestGameLoop": 0, "priority": 90, "lane": "buildings" },
             { "id": "tanks", "target": "SiegeTank", "producer": "Factory", "desiredCount": 2, "earliestGameLoop": 0, "priority": 90, "dependsOn": ["factory"] }
           ]
         }
@@ -179,6 +179,8 @@ public sealed class ProductionPlanFsmTests
 
         Assert.Empty(ProductionPlanValidator.Validate(plan));
         Assert.Equal("factory", Assert.Single(plan.Steps[1].DependsOn));
+        Assert.Equal(ProductionLane.Buildings, plan.Steps[0].Lane);
+        Assert.Equal(ProductionLane.Units, plan.Steps[1].Lane);
     }
 
     [Fact]

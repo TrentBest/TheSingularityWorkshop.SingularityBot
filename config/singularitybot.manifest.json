@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "bot": {
+    "race": "Terran",
+    "strategyProfile": "terran.marine-economy.v1",
+    "deterministicScheduling": true
+  },
+  "advisors": [
+    {
+      "id": "military",
+      "definition": "advisor.military.v1",
+      "enabled": true,
+      "processGroup": "SingularityBot.Advisor.Military",
+      "priority": 500,
+      "settings": {}
+    },
+    {
+      "id": "economy",
+      "definition": "advisor.economy.v1",
+      "enabled": true,
+      "processGroup": "SingularityBot.Advisor.Economy",
+      "priority": 700,
+      "settings": {
+        "mineralWorkersPerNode": 2,
+        "gasWorkersPerRefinery": 3,
+        "miningAuthority": "Custom",
+        "enableMules": true,
+        "muleEnergyReserve": 50,
+        "mulePolicy": "PreserveScan"
+      }
+    },
+    {
+      "id": "research",
+      "definition": "advisor.research.v1",
+      "enabled": true,
+      "processGroup": "SingularityBot.Advisor.Research",
+      "priority": 400,
+      "settings": {}
+    },
+    {
+      "id": "base-layout",
+      "definition": "advisor.base-layout.v1",
+      "enabled": true,
+      "processGroup": "SingularityBot.Advisor.BaseLayout",
+      "priority": 600,
+      "settings": {}
+    },
+    {
+      "id": "intelligence",
+      "definition": "advisor.intelligence.v1",
+      "enabled": true,
+      "processGroup": "SingularityBot.Advisor.Intelligence",
+      "priority": 450,
+      "settings": {
+        "preserveOrbitalScanBeforeMules": true,
+        "orbitalScanEnergyReserve": 50
+      }
+    }
+  ]
+}

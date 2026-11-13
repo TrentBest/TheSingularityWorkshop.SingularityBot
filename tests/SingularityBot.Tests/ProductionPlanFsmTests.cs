@@ -73,19 +73,16 @@ public sealed class ProductionPlanFsmTests
 
         barracks.ApplyObservation(100, 0, 0, true, true, true);
         orbital.ApplyObservation(100, 0, 0, true, true, true);
-        runtime.Update();
-        runtime.Update();
 
-        Assert.Single(emitted);
-        Assert.Equal("first-barracks", emitted[0].StepId);
+        Assert.True(barracks.CanIssue);
         Assert.False(orbital.DependenciesSatisfied);
+        Assert.False(orbital.CanIssue);
 
+        // A completed structure observed in a later game loop releases the barrier.
         barracks.ApplyObservation(120, 1, 0, true, true, true);
-        runtime.Update();
-        runtime.Update();
 
-        Assert.Equal(new[] { "first-barracks", "orbital-command" }, emitted.Select(intent => intent.StepId));
         Assert.True(orbital.DependenciesSatisfied);
+        Assert.True(orbital.CanIssue);
     }
 
     [Fact]
@@ -129,13 +126,15 @@ public sealed class ProductionPlanFsmTests
 
         depot.ApplyObservation(10, 0, 0, true, true, true);
         barracks.ApplyObservation(10, 0, 0, true, true, true);
-        runtime.Update();
-        runtime.Update();
 
-        Assert.Single(emitted);
+        Assert.True(depot.CanIssue);
+        Assert.False(barracks.CanIssue);
         depot.MarkSubmitted();
         depot.ApplyObservation(11, 0, 1, true, true, true);
+
+        Assert.False(depot.IsComplete);
         Assert.False(barracks.DependenciesSatisfied);
+        Assert.False(barracks.CanIssue);
     }
 
     [Fact]

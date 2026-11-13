@@ -118,3 +118,43 @@ Work on `development` only. Implement in small, buildable increments. Keep this 
 - Added manifest validation tests in `tests/SingularityBot.Tests/BotManifestTests.cs` at `5a42f528ac0babd58aac513a663067c9d39a6668`. They cover embedded resource loading, default advisor selection, duplicate group ownership, unknown definitions, and deterministic scheduling.
 - Nullable analysis was enabled for the new loader in commit `6896d084b8f5a9eac2b3a23c5a763d4f4ce1b00f`.
 - Verification caveat: GitHub combined-status queries for the manifest/schema/loader/test commits returned no status entries at the time of this update. No successful CI result has been observed for this slice yet; tests remain pending and this work item is not marked complete.
+
+
+## Entity-owned spatial facts and complete Terran coverage (2026-11-13)
+
+### Spatial update contract
+
+- Entity contexts are the owners of their spatial facts. The frame pipeline first reconciles observations and updates entity-owned spatial facts; advisors must not independently recalculate those facts.
+- Each positioned entity caches its current map point, sector, quadrant, half-map/side classification, and squared distance to relevant immutable centers. Map geometry and center coordinates are match-immutable.
+- A mobile unit refreshes position-dependent facts when a new visible position is observed. A remembered enemy retains its last-known position and cached classification, explicitly marked remembered rather than current.
+- A non-flying structure computes spatial facts when first observed/created and only recomputes when its observed position changes. A flying structure recomputes position-dependent facts on every fresh observation while airborne; on landing it settles into the static path.
+- SCV Worker capability owns its resource-distance fact for its current assigned mineral node/refinery. Assignment changes invalidate the old fact. Economic Advisor consumes worker facts and resource-node staffing counts; it does not calculate every worker-to-resource distance itself.
+- Enemy units are included in the same entity spatial phase. Their tactical distance fact is distance-squared from their located sector center, not an advisor-side repeated calculation.
+- All distance thresholds use squared distances. Avoid square roots unless a display/output genuinely requires linear distance. Cache invariant center coordinates and precomputed transforms; preserve necessary arithmetic and prove equivalence with tests.
+- Frame barrier: all friendly, neutral/resource, and enemy entity facts are updated before the first advisor executes. Advisor priority affects decision order only, never which snapshot a decision sees.
+- Spatial snapshots carry game-loop/version provenance so tests can prove no advisor reads mixed-frame facts. Fog-of-war retains remembered data and never silently converts unknown into clear/safe.
+
+### Complete Terran entity coverage
+
+- Build a canonical inventory from the active SC2 game-data/unit-type catalogue, not a hand-maintained partial list. Include every Terran unit and structure type exposed by that catalogue, including flying/landed forms, lowered/raised forms, add-ons, morphs, temporary/summoned entities, and other variants exposed by the selected game mode.
+- Every catalogued Terran type must resolve to an explicit compiled entity definition. Definitions may initially contain scaffold capabilities with explicit NotImplemented/no-op behavior, but may not be absent or silently fall through to an unknown generic type.
+- Keep type identity separate from capability composition: a type definition declares race/category/forms/capabilities; shared compiled capability definitions are reused across types, while each observed entity owns independent FSM_API handles.
+- Every definition declares which capabilities are implemented, scaffolded, or intentionally unsupported, with tests preventing omissions when the game-data catalogue changes.
+- The first coverage gate is exhaustive enumeration and resolution, not complete strategic intelligence. A scaffold must not emit commands or pretend to know unfinished behavior.
+
+### Next implementation order
+
+1. Add the canonical Terran type inventory and exhaustive coverage tests against the SC2 game-data catalogue.
+2. Add cached spatial facts to persistent unit/building contexts and make the entity-update phase populate them before advisor execution.
+3. Move SCV resource-distance updates into Worker capability facts; update on assignment/resource-position changes and at the configured worker cadence.
+4. Update enemy sector-center distance facts in the same pre-advisor phase.
+5. Replace full-contact spatial reclassification with incremental entity-owned updates while retaining a deterministic read-only sector index for advisor queries.
+6. Convert advisor scheduling to consume one completed spatial snapshot and test stable priority ordering plus exactly-once group advancement.
+
+### Current audit findings
+
+- UnitBehaviorContext already stores assignment/resource context, sector identity, and sector-center coordinates, but does not yet own cached distances/quadrant/half-map facts.
+- UnitBehaviorRuntime.Reconcile updates persistent unit observations and preserves contexts through fog-of-war; ApplyWorkerAssignments binds workers to persistent mineral-node contexts.
+- SpatialMap.MapPoint already exposes DistanceSquaredTo; however, SpatialIntelligence.RebuildIndexes currently recalculates sector, quadrant, and side classification for every known contact on each update. This is the behavior to replace, not a completed optimization.
+- UnitDefinitions and UnitExpertiseProfiles currently expose only a small initial mixed-race sample (SCV, Probe, Drone, Zealot, Marine, Marauder, Zergling). They are not an exhaustive Terran inventory. Do not claim Terran coverage until the catalogue-driven gate passes.
+- BuildingBehaviorContext currently receives nearest visible ground-enemy distance-squared from its runtime, so building threat already avoids square roots. It does not yet own cached sector/quadrant/half-map distances.

@@ -89,7 +89,12 @@ public sealed class BuildingBehaviorContext : IStateContext
     public ulong? BuilderWorkerTag { get; private set; }
     public bool IsOperational => CurrentState(BuildingBehaviorCatalog.LifecycleFsm) == "Operational";
     public string LifecycleState => CurrentState(BuildingBehaviorCatalog.LifecycleFsm);
-    public string ActivityState => CurrentState(BuildingBehaviorCatalog.ActivityFsm);
+    public string ProductionState => _handles.ContainsKey(BuildingBehaviorCatalog.ProductionFsm)
+        ? CurrentState(BuildingBehaviorCatalog.ProductionFsm) : "NotProductionCapable";
+    public string ResearchState => _handles.ContainsKey(BuildingBehaviorCatalog.ResearchFsm)
+        ? CurrentState(BuildingBehaviorCatalog.ResearchFsm) : "NotResearchCapable";
+    public string ActivityState => ResearchState == "Researching" ? ResearchState :
+        ProductionState == "Producing" ? ProductionState : "Idle";
     public string? AccessState => _handles.ContainsKey(BuildingBehaviorCatalog.DepotAccessFsm)
         ? CurrentState(BuildingBehaviorCatalog.DepotAccessFsm)
         : null;
@@ -283,18 +288,22 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("UnderConstruction", "Operational", IsOperational)
                 .WithInitialState("UnderConstruction").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ActivityFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ActivityFsm, processRate: -1,
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ProductionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ProductionFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Idle", null, null, null)
                 .State("Producing", null, null, null)
-                .State("Researching", null, null, null)
                 .Transition("Idle", "Producing", IsProducing)
+                .Transition("Producing", "Idle", IsNotProducing)
+                .WithInitialState("Idle").BuildDefinition();
+
+        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ResearchFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ResearchFsm, processRate: -1,
+                    processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
+                .State("Idle", null, null, null)
+                .State("Researching", null, null, null)
                 .Transition("Idle", "Researching", IsResearching)
-                .Transition("Producing", "Idle", IsIdle)
-                .Transition("Producing", "Researching", IsResearching)
-                .Transition("Researching", "Idle", IsIdle)
-                .Transition("Researching", "Producing", IsProducing)
+                .Transition("Researching", "Idle", IsNotResearching)
                 .WithInitialState("Idle").BuildDefinition();
 
         if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
@@ -356,8 +365,11 @@ public sealed class BuildingBehaviorRuntime
     private static bool IsResearching(IStateContext context) =>
         context is BuildingBehaviorContext building && building.IsResearching;
 
-    private static bool IsIdle(IStateContext context) =>
-        context is BuildingBehaviorContext building && !building.IsProducing && !building.IsResearching;
+    private static bool IsNotProducing(IStateContext context) =>
+        context is BuildingBehaviorContext building && !building.IsProducing;
+
+    private static bool IsNotResearching(IStateContext context) =>
+        context is BuildingBehaviorContext building && !building.IsResearching;
 
     private static bool CanStreamCommandCenters(IStateContext context) =>
         context is BuildingBehaviorContext building && building.CanStreamCommandCenters;
@@ -443,7 +455,10 @@ public sealed class BuildingBehaviorRuntime
                 building = new BuildingBehaviorContext(facts.Tag, kind, ordinal, _events.Enqueue);
                 _buildings.Add(facts.Tag, building);
                 Attach(building, BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup);
-                Attach(building, BuildingBehaviorCatalog.ActivityFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
+                if (CanProduceUnits(kind))
+                    Attach(building, BuildingBehaviorCatalog.ProductionFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
+                if (CanResearch(kind))
+                    Attach(building, BuildingBehaviorCatalog.ResearchFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                 if (kind == "SupplyDepot")
                     Attach(building, BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup);
                 if (kind == "CommandCenter")
@@ -468,6 +483,13 @@ public sealed class BuildingBehaviorRuntime
             if (_buildings.TryGetValue(job.ResultUnitTag!.Value, out var building))
                 building.SetBuilder(job.WorkerTag);
     }
+
+    private static bool CanProduceUnits(string kind) =>
+        kind is "CommandCenter" or "Barracks" or "Factory" or "Starport";
+
+    private static bool CanResearch(string kind) =>
+        kind is "Barracks" or "Factory" or "Starport" or "EngineeringBay" or
+            "Armory" or "GhostAcademy" or "FusionCore" or "TechLab";
 
     private static void Attach(BuildingBehaviorContext context, string fsmName, string group) =>
         context.Attach(fsmName, FSM_API.Create.CreateInstance(fsmName, context, group));
@@ -557,7 +579,8 @@ public sealed class BuildingBehaviorRuntime
 public static class BuildingBehaviorCatalog
 {
     public const string LifecycleFsm = "SingularityBot.BuildingLifecycle";
-    public const string ActivityFsm = "SingularityBot.BuildingActivity";
+    public const string ProductionFsm = "SingularityBot.BuildingProduction";
+    public const string ResearchFsm = "SingularityBot.BuildingResearch";
     public const string DepotAccessFsm = "SingularityBot.SupplyDepotAccess";
     public const string TownHallUpgradeFsm = "SingularityBot.TownHallOrbitalUpgrade";
     public const string OrbitalScanFsm = "SingularityBot.OrbitalScan";

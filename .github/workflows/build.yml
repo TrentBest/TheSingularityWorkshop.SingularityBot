@@ -36,6 +36,12 @@ jobs:
           repository: TrentBest/TheSingularityWorkshop.FSM_Serialization
           ref: development
           path: dependencies/FSM_Serialization
+      - name: Check out FSM_COS development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_COS
+          ref: development
+          path: dependencies/FSM_COS
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x

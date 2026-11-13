@@ -18,6 +18,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 {
     private readonly BotManifest _manifest;
     private readonly BotDefinition _definition;
+    private readonly BotRuntimeComposition _runtimeComposition;
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly BuildingBehaviorRuntime _buildings = new();
     private GoalActionPlanDefinition _goalActionPlan;
@@ -40,13 +41,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         bool writeDiagnostics = false,
         BotDefinition botDefinition = null)
     {
-        _definition = botDefinition ?? BotDefinitionCatalog.CreateDefault();
-        var errors = _definition.Validate();
-        if (errors.Count != 0)
-            throw new ArgumentException(
-                "Bot definition is invalid: " + string.Join(" ", errors),
-                nameof(botDefinition));
-
+        var selectedDefinition = botDefinition ?? BotDefinitionCatalog.CreateDefault();
+        _runtimeComposition = BotRuntimeComposer.Compose(selectedDefinition);
+        _definition = _runtimeComposition.Definition;
         _manifest = _definition.Runtime;
         _goalActionPlan = _definition.DefaultGoals;
         _desiredMarineCount = _definition.Opening.Steps
@@ -115,6 +112,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public BotManifest Manifest => _manifest;
     /// <summary>The validated authoring artifact selected for this match, when supplied by the host.</summary>
     public BotDefinition Definition => _definition;
+    public TheSingularityWorkshop.FSM_COS.RuntimeAssembly ComposedRuntime => _runtimeComposition.Assembly;
+    public IReadOnlyList<BotCommandVocabulary.ActionDefinition> AvailableActions => _runtimeComposition.Actions;
     /// <summary>Configured maximum observed Marine force size; defaults to the runtime's 60-Marine policy.</summary>
     public int DesiredMarineCount => _desiredMarineCount;
     /// <summary>The opening plan carried by the selected definition. Its live production adapter is host-owned.</summary>

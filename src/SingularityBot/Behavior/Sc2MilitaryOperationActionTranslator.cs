@@ -83,7 +83,7 @@ public sealed class Sc2MilitaryOperationActionTranslator
                 continue;
 
             var target = route.Waypoints[waypointIndex];
-            if (HasPositionOrderNear(unit, moveAbilityId, target.X, target.Y))
+            if (HasPositionOrderNear(unit, gameData.MoveAbilityId.Value, gameData, target.X, target.Y))
                 continue;
             actions.Add(PositionCommand(unit.Tag, moveAbilityId, target.X, target.Y));
         }
@@ -128,7 +128,7 @@ public sealed class Sc2MilitaryOperationActionTranslator
                 continue;
             if (ability.CastRange > 0 && distanceSquared > ability.CastRange * ability.CastRange)
                 return Blocked($"Assigned unit {unit.Tag} is outside the authoritative cast range for '{intent.RequiredAbility}'.");
-            if (HasPositionOrderNear(unit, checked((int)ability.AbilityId), location.X, location.Y))
+            if (HasPositionOrderNear(unit, ability.AbilityId, gameData, location.X, location.Y))
                 continue;
             actions.Add(PositionCommand(unit.Tag, checked((int)ability.AbilityId), location.X, location.Y));
         }
@@ -276,10 +276,22 @@ public sealed class Sc2MilitaryOperationActionTranslator
         return point.DistanceSquaredTo(closest);
     }
 
-    private static bool HasPositionOrderNear(UnitObservationFacts unit, int abilityId, float x, float y) =>
-        unit.Orders.Any(order => order.AbilityId == (uint)abilityId &&
+    private static bool HasPositionOrderNear(
+        UnitObservationFacts unit,
+        uint abilityId,
+        Sc2GameDataCatalog gameData,
+        float x,
+        float y)
+    {
+        var remappedAbilityId = gameData.TryGetAbility(abilityId, out var ability)
+            ? ability.RemapsToAbilityId
+            : 0;
+        return unit.Orders.Any(order =>
+            (order.AbilityId == abilityId ||
+             remappedAbilityId > 0 && order.AbilityId == remappedAbilityId) &&
             order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
             DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value, x, y) <= 2.25f);
+    }
 
     private static SC2APIProtocol.Action PositionCommand(ulong unitTag, int abilityId, float x, float y) => new()
     {

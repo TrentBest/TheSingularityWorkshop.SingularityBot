@@ -12,7 +12,7 @@ That does **not** establish live-match success. Four-Barracks sustainability, sa
 
 ## Architecture
 
-SC2 protocol handling stays at the adapter boundary. FSM_API owns reusable lifecycle and behavior; FSM_Foundry executes the composed FSM workload. The bot runtime is authoritative. GUI/Renderer/Visualize are supporting authoring and inspection surfaces, not alternate execution engines. CiAi is a read-only CI evidence observer; it does not replace GitHub Actions or grant release authorization.
+SC2 Runner is the live host: it owns the connection, callbacks, frame lifecycle and protocol action submission. SingularityBot.dll owns match state, decisions, intent arbitration and action translation. FSM_API supplies reusable context and hierarchical behavior mechanics. FSM_COS currently performs startup composition of the compiled definition and CommandAi vocabulary; it does not drive the match loop or execute a second strategy engine. The current BotDefinition is compiled typed data, not yet the replaceable compiled strategy implementation targeted by the active refactor. FSM_Foundry is not part of live SC2 execution. GUI/Renderer/Visualize are supporting authoring and inspection surfaces, not alternate execution engines. CiAi is a read-only CI evidence observer; it does not replace GitHub Actions or grant release authorization.
 
 ## Explore
 

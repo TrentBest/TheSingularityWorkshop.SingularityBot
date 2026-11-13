@@ -101,6 +101,9 @@ public sealed class ProductionLineBuilder
     }
 
 
+    /// <summary>Validates and materializes the complete plan from a fluent lane chain.</summary>
+    public ProductionPlanDefinition Build() => _owner.Build();
+
     /// <summary>Inserts a completion barrier and returns to the plan so another lane can continue authoring.</summary>
     public ProductionPlanBuilder WhenComplete(
         string stepId,

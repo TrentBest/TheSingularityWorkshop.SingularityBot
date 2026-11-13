@@ -5,11 +5,13 @@ namespace SingularityBot.Tests;
 
 public sealed class MatchBuilderTests
 {
-    private static ProductionPlanDefinition Opening() =>
-        new ProductionPlanBuilder("terran-opening", "Terran Opening")
-            .Buildings.Add("supply-depot", "SupplyDepot", "SCV")
-            .Buildings.Add("barracks", "Barracks", "SCV")
-            .Build();
+    private static ProductionPlanDefinition Opening()
+    {
+        var builder = new ProductionPlanBuilder("terran-opening", "Terran Opening");
+        builder.Buildings.Add("supply-depot", "SupplyDepot", "SCV");
+        builder.Buildings.Add("barracks", "Barracks", "SCV");
+        return builder.Build();
+    }
 
     private static StrategyTransitionDefinition BansheeDefense() =>
         new(
@@ -18,7 +20,7 @@ public sealed class MatchBuilderTests
             new[]
             {
                 new StrategyEvidenceRequirement(
-                    "enemy-structure-observed", "RoachWarren", 0.9f, 32)
+                    "enemy-structure-observed", "RoachWarren", 0.9f, 32, RequiresObservedFact: true)
             },
             new[] { "banshee-tech-path-available", "natural-defense-covered", "anti-air-risk-acceptable" },
             MinimumAdvantage: 0.15,

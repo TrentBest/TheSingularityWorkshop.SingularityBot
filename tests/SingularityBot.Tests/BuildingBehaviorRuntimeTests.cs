@@ -145,16 +145,10 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateActivityAndAccess();
         Assert.Equal("UpgradeReady", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
 
-        // A second completed Barracks blocks the starting Command Center's
-        // Orbital morph; the prerequisite is exactly one, not one-or-more.
+        // A second completed Barracks must not invalidate Orbital tech.
+        // The SC2 prerequisite is at least one completed Barracks, not exactly one.
         var secondBarracks = Depot(5004, "Barracks", 1f);
         runtime.Reconcile(Observation(431, commandCenter with { GameLoop = 431 }, barracks, secondBarracks, depot),
-            Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
-        runtime.UpdateActivityAndAccess();
-        runtime.UpdateActivityAndAccess();
-        Assert.Equal("WaitingForPrerequisites", Assert.Single(runtime.Buildings.Where(item => item.UnitTag == 5001)).TownHallUpgradeState);
-
-        runtime.Reconcile(Observation(432, commandCenter with { GameLoop = 432 }, barracks, depot),
             Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();
@@ -165,7 +159,7 @@ public sealed class BuildingBehaviorRuntimeTests
             GameLoop = 44,
             Orders = new[] { new UnitOrderObservationFacts(5600, null, null, null) }
         };
-        runtime.Reconcile(Observation(44, upgradeOrder, barracks, depot),
+        runtime.Reconcile(Observation(44, upgradeOrder, barracks, secondBarracks, depot),
             Array.Empty<BuildJobContext>(), _ => false, scvTrainAbilityId: 100, orbitalUpgradeAbilityId: 5600);
         runtime.UpdateActivityAndAccess();
         runtime.UpdateActivityAndAccess();

@@ -112,10 +112,12 @@ public sealed class Sc2MilitaryOperationActionTranslator
         if (!ability.Available || ability.Target is not (AbilityData.Types.Target.Point or
             AbilityData.Types.Target.PointOrUnit or AbilityData.Types.Target.PointOrNone))
             return Blocked($"Required ability '{intent.RequiredAbility}' is unavailable or does not accept a point target.");
-        if (terrain is null ||
-            !terrain.TryIsPathable(new MapPoint(location.X, location.Y), out var pathable) ||
-            !pathable)
-            return Blocked("The ability objective is not confirmed pathable by the cached terrain snapshot.");
+        var objectivePoint = new MapPoint(location.X, location.Y);
+        if (terrain?.Pathing is null || !terrain.Pathing.TryGetCellIndex(objectivePoint, out _))
+            return Blocked("The ability objective is outside the cached map bounds.");
+        if (assigned.Any(unit => !unit.IsFlying) &&
+            (!terrain.TryIsPathable(objectivePoint, out var pathable) || !pathable))
+            return Blocked("The ground-unit ability objective is not confirmed pathable by the cached terrain snapshot.");
 
         var actions = new List<SC2APIProtocol.Action>();
         foreach (var unit in assigned)
@@ -145,9 +147,15 @@ public sealed class Sc2MilitaryOperationActionTranslator
     {
         reason = string.Empty;
         var requiresPathing = (route.Constraints & MilitaryRouteConstraints.PreferPathableTerrain) != 0;
-        if (requiresPathing && (terrain?.Pathing is null || topology is null))
+        var groundUnits = assigned.Where(unit => !unit.IsFlying).ToArray();
+        if (requiresPathing && terrain?.Pathing is null)
         {
-            reason = "Route requires pathing data, but the cached pathing snapshot or topology is unavailable.";
+            reason = "Route requires map bounds/pathing data, but the cached pathing snapshot is unavailable.";
+            return false;
+        }
+        if (requiresPathing && groundUnits.Length > 0 && topology is null)
+        {
+            reason = "Ground route validation requires connected-region topology, which is unavailable.";
             return false;
         }
 
@@ -156,26 +164,34 @@ public sealed class Sc2MilitaryOperationActionTranslator
             var points = route.Waypoints.Select(point => new MapPoint(point.X, point.Y)).ToArray();
             for (var index = 0; index < points.Length; index++)
             {
-                if (!terrain.TryIsPathable(points[index], out var pathable) || !pathable ||
-                    !topology.TryGetRegionId(points[index], out _))
+                if (!terrain.Pathing.TryGetCellIndex(points[index], out _))
                 {
-                    reason = $"Route waypoint '{route.Waypoints[index].Id}' is not confirmed pathable.";
+                    reason = $"Route waypoint '{route.Waypoints[index].Id}' is outside the cached map bounds.";
                     return false;
                 }
 
-                if (index > 0 && !IsPathableSegment(points[index - 1], points[index], terrain, topology))
+                if (groundUnits.Length > 0 &&
+                    (!terrain.TryIsPathable(points[index], out var pathable) || !pathable ||
+                     !topology.TryGetRegionId(points[index], out _)))
                 {
-                    reason = $"Route segment '{route.Waypoints[index - 1].Id}' to '{route.Waypoints[index].Id}' is not continuously pathable.";
+                    reason = $"Route waypoint '{route.Waypoints[index].Id}' is not confirmed pathable for ground units.";
+                    return false;
+                }
+
+                if (groundUnits.Length > 0 && index > 0 &&
+                    !IsPathableSegment(points[index - 1], points[index], terrain, topology))
+                {
+                    reason = $"Ground route segment '{route.Waypoints[index - 1].Id}' to '{route.Waypoints[index].Id}' is not continuously pathable.";
                     return false;
                 }
             }
 
-            foreach (var unit in assigned)
+            foreach (var unit in groundUnits)
             {
                 var start = new MapPoint(unit.PositionX, unit.PositionY);
                 if (!IsPathableSegment(start, points[0], terrain, topology))
                 {
-                    reason = $"Assigned unit {unit.Tag} cannot reach the route's first waypoint through confirmed pathable cells.";
+                    reason = $"Ground unit {unit.Tag} cannot reach the route's first waypoint through confirmed pathable cells.";
                     return false;
                 }
             }

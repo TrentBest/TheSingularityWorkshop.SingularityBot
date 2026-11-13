@@ -19,7 +19,8 @@ public sealed class Sc2WeaponCooldownNormalizationTests
             DisplayType = DisplayType.Visible,
             Health = 45,
             HealthMax = 45,
-            WeaponCooldown = 2.75f
+            WeaponCooldown = 2.75f,
+            Radius = 0.375f
         });
         var response = new ResponseObservation
         {
@@ -35,6 +36,8 @@ public sealed class Sc2WeaponCooldownNormalizationTests
             new Dictionary<uint, string> { [48] = "Marine" },
             new Dictionary<uint, string>());
 
-        Assert.Equal(2.75f, Assert.Single(normalized.Units).WeaponCooldownRemaining);
+        var unit = Assert.Single(normalized.Units);
+        Assert.Equal(2.75f, unit.WeaponCooldownRemaining);
+        Assert.Equal(0.375f, unit.CollisionRadius);
     }
 }

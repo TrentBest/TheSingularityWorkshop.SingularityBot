@@ -28,19 +28,19 @@ public sealed class BotCommandVocabularyTests
         Assert.Collection(production.Parameters,
             target =>
             {
-                Assert.Equal(BotCommandVocabulary.Parameters.Target, target.Id);
+                Assert.Equal(BotCommandVocabulary.Parameters.ProductionTarget, target.Id);
                 Assert.Equal(BotCommandVocabulary.ValueKind.Identifier, target.Kind);
                 Assert.True(target.Required);
             },
             count =>
             {
-                Assert.Equal(BotCommandVocabulary.Parameters.DesiredCount, count.Id);
+                Assert.Equal(BotCommandVocabulary.Parameters.ProductionDesiredCount, count.Id);
                 Assert.Equal(BotCommandVocabulary.ValueKind.LiteralText, count.Kind);
                 Assert.True(count.Required);
             },
             priority =>
             {
-                Assert.Equal(BotCommandVocabulary.Parameters.Priority, priority.Id);
+                Assert.Equal(BotCommandVocabulary.Parameters.ProductionPriority, priority.Id);
                 Assert.Equal(BotCommandVocabulary.ValueKind.LiteralText, priority.Kind);
                 Assert.False(priority.Required);
             });

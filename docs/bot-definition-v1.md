@@ -6,6 +6,8 @@
 
 The first implementation deliberately targets the current Terran runtime. The schema is versioned so additional races, team formats, and capability families can be introduced without pretending they are implemented today.
 
+**Refactor status:** the current `BotDefinitionCatalog` constructs a typed C# data aggregate compiled into the bot DLL. It is not a user-replaceable strategy class or executable personality. Shared controllers and planners still implement the live behavior. The target architecture is one shared bot engine with a statically compiled, replaceable user-specific strategy implementation in each bot DLL. Runtime JSON loading, external strategy files, reflection-based discovery and dynamic assembly loading are not part of that target.
+
 ## Bot, match, and ladder are separate scopes
 
 Do not turn one BotDefinition into a tournament configuration file. Keep three versioned artifacts:
@@ -21,7 +23,7 @@ That separation lets the same bot compete in 1v1, 2v2, 3v3, FFA, and multi-team 
 | Section | Responsibility | Existing owner |
 |---|---|---|
 | Identity | Stable bot ID, display name, race, strategy profile | SingularityBot |
-| Runtime | Enabled compiled advisors and their settings | `BotManifest` |
+| Runtime | Enabled advisor declarations and their settings (data, not executable strategy code) | `BotManifest` |
 | Opening | Deterministic production sequence | `ProductionPlanDefinition` / `ProductionPlanRuntime` / FSM_API |
 | Default goals | Default unit/army posture | `GoalActionPlanDefinition` |
 | Strategy transitions | Evidence, hard guards, advantage threshold, evaluation horizon, cooldown | `StrategyTransitionEvaluator` |
@@ -124,35 +126,53 @@ Renderer and Visualize remain MicroBundle presentation surfaces. They are not re
 
 ## Compiling and running a BotDefinition
 
-The live runner selects the typed definition returned by `BotDefinitionCatalog.CreateDefault()`. The definition, advisor manifest, opening, goals, transitions, and AI consultation policy are constructed by static C# catalog code and compiled into the bot assembly.
+The live runner currently selects the typed data aggregate returned by `BotDefinitionCatalog.CreateDefault()`. The definition, advisor manifest, opening, goals, transitions, and AI consultation policy are constructed by static C# catalog code and compiled into the bot assembly. This is a compiled data catalog, not yet the replaceable compiled strategy implementation described by the target architecture.
 
 The match runtime does not read a JSON strategy file, load a strategy assembly, or evaluate executable configuration. This keeps the ladder runtime deterministic and independent of filesystem access. The JSON schema and example remain useful as portable editor/import/export representations; they are not loaded by the live runner.
 
-The intended authoring pipeline is:
+The current implementation path is:
+
+```text
+Static C# BotDefinitionCatalog
+          |
+          v
+BotDefinition data aggregate
+          |
+          v
+FSM_COS startup composition
+(BotDefinition + CommandAi vocabulary)
+          |
+          v
+Shared SingularityBot controllers and planners
+          |
+          v
+Validated intent/action pipeline -> SC2 Runner
+```
+
+The target personality path is a separate, incomplete refactor:
 
 ```text
 Forge / GUI / text authoring
           |
           v
-Versioned BotDefinition data
+Versioned authoring data
           |
           v
-Validation + capability resolution
+Validation + code generation / authored strategy implementation
           |
           v
-Generated typed C# catalog
+Statically compiled user-specific strategy in SingularityBot.dll
           |
           v
-Compiled bot assembly (.dll)
-          |
-          v
-FSM_COS composition -> host runtime -> FSM_API execution
+Shared bot engine invokes the strategy through a typed contract
 ```
+
+The SC2 Runner remains the host and frame driver. FSM_COS may resolve startup capabilities, but it is not the match execution engine; FSM_API supplies reusable context and behavior mechanics.
 
 A definition is not executable merely because it is structurally valid. Every referenced capability must resolve against the compiled bot's capability catalog, and the existing observation/action pipeline remains the only route to SC2 commands.
 
 ## Current implementation boundary
 
-The v1 aggregate C# contract, semantic validator, JSON schema, example definition, and bounded HeadlessAi consultation coordinator are implemented and regression-tested. The coordinator is not yet invoked by the live bot's `OnStart` or `OnFrame`; no network request is made from the frame heartbeat. A host must explicitly construct it with a configured HeadlessAi agent, create a visibility-safe snapshot and allowlist, and schedule consultations outside the synchronous frame path.
+The v1 aggregate C# data contract, semantic validator, JSON schema, example definition, and bounded HeadlessAi consultation coordinator are implemented and regression-tested. The replaceable compiled strategy contract and its integration into the live decision path are not yet implemented. The coordinator is not yet invoked by the live bot's `OnStart` or `OnFrame`; no network request is made from the frame heartbeat. A host must explicitly construct it with a configured HeadlessAi agent, create a visibility-safe snapshot and allowlist, and schedule consultations outside the synchronous frame path.
 
 GrammarAi knowledge-graph construction, ProtocolAi stable symbol catalogs, and CommandAi proposal dispatch remain the next integration seams. They should be adopted only with bot-owned schemas and stable identifiers, not as generic dependencies added for decoration. No live ladder performance is claimed.

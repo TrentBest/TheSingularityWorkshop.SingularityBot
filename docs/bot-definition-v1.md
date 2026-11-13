@@ -91,7 +91,9 @@ CommandAi is appropriate when recommendations need a generic, immutable, typed p
 
 ### HeadlessAi — asynchronous provider exchange
 
-HeadlessAi is the natural place for provider transport, model selection, timeouts, and exchange execution once its current APIs are inspected and adopted. Keep API keys in the host's credential boundary. Do not make the bot's core package depend on a specific model provider.
+The first provider seam is now implemented through `TheSingularityWorkshop.HeadlessAi`. `BotAiConsultationCoordinator` accepts an injected `HeadlessAiAgent`, constructs a bounded strategic prompt, applies the BotDefinition call budget and timeout, and parses a strict recommendation contract. A host configures the endpoint-specific adapter and supplies credentials through HeadlessAi's request-time header provider. The core does not store API keys or depend on a specific model provider.
+
+The coordinator serializes consultations, enforces one startup call and at most three in-match calls, checks allowlisted triggers and minimum game-loop spacing, and consumes budget even when a provider request fails. Tests use a fixture HTTP handler; they do not make billable live-provider calls.
 
 ### CiAi — engineering evidence
 
@@ -110,4 +112,6 @@ Renderer and Visualize remain MicroBundle presentation surfaces. They are not re
 
 ## Current implementation boundary
 
-This commit introduces the v1 aggregate C# contract, semantic validator, JSON schema, and an example definition. It does not yet wire provider calls, GrammarAi graph construction, ProtocolAi IDs, or CommandAi proposal dispatch into the live match. Those are separate adapters that must be built and tested against their owning package APIs. No live ladder performance is claimed.
+The v1 aggregate C# contract, semantic validator, JSON schema, example definition, and bounded HeadlessAi consultation coordinator are implemented and regression-tested. The coordinator is not yet invoked by the live bot's `OnStart` or `OnFrame`; no network request is made from the frame heartbeat. A host must explicitly construct it with a configured HeadlessAi agent, create a visibility-safe snapshot and allowlist, and schedule consultations outside the synchronous frame path.
+
+GrammarAi knowledge-graph construction, ProtocolAi stable symbol catalogs, and CommandAi proposal dispatch remain the next integration seams. They should be adopted only with bot-owned schemas and stable identifiers, not as generic dependencies added for decoration. No live ladder performance is claimed.

@@ -8,6 +8,7 @@
     <ProjectReference Include="../SC2API.CSharp/SC2API.CSharp.csproj" />
     <PackageReference Include="TheSingularityWorkshop.FSM_API" Version="1.0.13" />
     <PackageReference Include="TheSingularityWorkshop.HeadlessAi" Version="0.1.0-alpha.1" />
+    <ProjectReference Include="../../dependencies/CommandAi/TheSingularityWorkshop.CommandAi.csproj" />
     <ProjectReference Include="../../dependencies/FSM_Serialization/TheSingularityWorkshop.FSM_Serialization.csproj" Condition="Exists('../../dependencies/FSM_Serialization/TheSingularityWorkshop.FSM_Serialization.csproj')" />
     <PackageReference Include="TheSingularityWorkshop.FSM_Serialization" Version="1.0.0" Condition="!Exists('../../dependencies/FSM_Serialization/TheSingularityWorkshop.FSM_Serialization.csproj')" />
     <EmbeddedResource Include="../../config/singularitybot.manifest.json" LogicalName="SingularityBot.Manifest.default.json" />

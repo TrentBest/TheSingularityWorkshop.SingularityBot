@@ -27,9 +27,10 @@ public sealed class BuildingBehaviorRuntimeTests
         Assert.Equal("Operational", runtime.Buildings.Single(item => item.UnitTag == 1002).LifecycleState);
 
         var events = runtime.DrainEvents();
-        var completed = Assert.Single(events);
-        Assert.Equal(BuildingEventKind.Operational, completed.Kind);
+        var completed = Assert.Single(events.Where(item => item.Kind == BuildingEventKind.Operational));
         Assert.Equal(1002UL, completed.BuildingTag);
+        Assert.Contains(events, item =>
+            item.Kind == BuildingEventKind.LowerSupplyDepot && item.BuildingTag == 1002);
 
         runtime.Clear();
     }
@@ -57,9 +58,11 @@ public sealed class BuildingBehaviorRuntimeTests
         runtime.UpdateLifecycle();
         runtime.UpdateLifecycle();
 
-        var completed = Assert.Single(runtime.DrainEvents());
-        Assert.Equal(BuildingEventKind.Operational, completed.Kind);
+        var events = runtime.DrainEvents();
+        var completed = Assert.Single(events.Where(item => item.Kind == BuildingEventKind.Operational));
         Assert.Equal(77UL, completed.BuilderWorkerTag);
+        Assert.Contains(events, item =>
+            item.Kind == BuildingEventKind.LowerSupplyDepot && item.BuildingTag == 2001);
         Assert.Equal("Operational", Assert.Single(runtime.Buildings).LifecycleState);
 
         runtime.Clear();

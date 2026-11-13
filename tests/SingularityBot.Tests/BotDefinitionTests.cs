@@ -76,6 +76,27 @@ public sealed class BotDefinitionTests
         string definitionJson() => CreateValidDefinition().Serialize();
     }
 
+    [Fact]
+    public void SingularityBot_UsesSelectedDefinitionAndItsGoalPlan()
+    {
+        var definition = CreateValidDefinition();
+        var bot = new global::SingularityBot.SingularityBot(botDefinition: definition);
+
+        Assert.Same(definition, bot.Definition);
+        Assert.Same(definition.Runtime, bot.Manifest);
+        Assert.Same(definition.Opening, bot.OpeningPlan);
+        Assert.Same(definition.DefaultGoals, bot.GoalActionPlan);
+    }
+
+    [Fact]
+    public void SingularityBot_RejectsInvalidDefinitionBeforeMatchStartup()
+    {
+        var invalid = new BotDefinition { Id = "invalid" };
+
+        Assert.Throws<ArgumentException>(() =>
+            new global::SingularityBot.SingularityBot(botDefinition: invalid));
+    }
+
     private static BotDefinition Copy(BotDefinition source, BotAiPolicy ai) => new()
     {
         SchemaVersion = source.SchemaVersion,

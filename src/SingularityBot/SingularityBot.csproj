@@ -9,5 +9,7 @@
     <PackageReference Include="TheSingularityWorkshop.FSM_API" Version="1.0.13" />
     <ProjectReference Include="../../dependencies/FSM_Serialization/TheSingularityWorkshop.FSM_Serialization.csproj" Condition="Exists('../../dependencies/FSM_Serialization/TheSingularityWorkshop.FSM_Serialization.csproj')" />
     <PackageReference Include="TheSingularityWorkshop.FSM_Serialization" Version="1.0.0" Condition="!Exists('../../dependencies/FSM_Serialization/TheSingularityWorkshop.FSM_Serialization.csproj')" />
+    <EmbeddedResource Include="../../config/singularitybot.manifest.json" LogicalName="SingularityBot.Manifest.default.json" />
+    <EmbeddedResource Include="../../schemas/singularitybot-manifest-v1.schema.json" LogicalName="SingularityBot.Manifest.schema.v1.json" />
   </ItemGroup>
 </Project>

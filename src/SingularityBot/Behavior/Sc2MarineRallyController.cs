@@ -103,7 +103,8 @@ public sealed class Sc2MarineRallyController
         bool fourthMarineInProduction = false,
         SpatialTerrain terrain = null,
         SpatialTopology topology = null,
-        SpatialGridSnapshot visibility = null)
+        SpatialGridSnapshot visibility = null,
+        bool advanceToEnemyStart = false)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -228,7 +229,7 @@ public sealed class Sc2MarineRallyController
         // stages at a connected low-ground foot of the enemy ramp; without them
         // it uses only the conservative friendly observation post. The remaining
         // four Marines assemble before taking up the distributed patrol screen.
-        if (patrolPoints.Count == 0)
+        if (patrolPoints.Count == 0 && !advanceToEnemyStart)
             return scoutActions;
 
         var squadTags = liveMarineTags
@@ -277,6 +278,14 @@ public sealed class Sc2MarineRallyController
         {
             foreach (var slot in rendezvousTargets)
                 targetsByTag[slot.Tag] = (slot.X, slot.Y);
+        }
+        else if (advanceToEnemyStart)
+        {
+            // An authored Engage posture turns the assembled squad into an
+            // offensive force. SC2 pathfinding owns the route; the combat
+            // planner still validates every attack against live observations.
+            for (var index = 0; index < squadTags.Length; index++)
+                targetsByTag[squadTags[index]] = (map.Side.EnemyStart.X, map.Side.EnemyStart.Y);
         }
         else
         {

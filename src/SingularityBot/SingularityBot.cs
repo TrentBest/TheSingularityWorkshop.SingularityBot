@@ -510,11 +510,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // or Marine controller receives its mineral budget.
             // The Orbital is the first post-Barracks mineral commitment. Do not let
             // optional Marine or follow-on infrastructure reservations starve it.
-            // Keep normal SCV production running until the first Marine's
-            // training order is observed. Only then reserve the starting Town Hall
-            // and its incremental Orbital cost; an existing SCV order may drain
-            // before the morph can be submitted.
-            var orbitalReservedCommandCenter = _openingMarine.MarineTrainingOrderObserved
+            // The Town Hall FSM is authoritative: reserve for Orbital only
+            // after its exact-one-Barracks/no-SCV-production gate is satisfied.
+            var townHallUpgradeReady = startingTownHall is not null &&
+                _buildings.Buildings.Any(building =>
+                    building.UnitTag == startingTownHall.Tag &&
+                    building.TownHallUpgradeState == "UpgradeReady");
+            var orbitalReservedCommandCenter = townHallUpgradeReady
                 ? _orbitalSupport.GetCommandCenterReservedForUpgrade(normalized, _gameData)
                 : null;
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
@@ -523,8 +525,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            orbitalMineralReservation = _economyAdvisor.ShouldEnableOrbitalMorph(_openingMarine.MarineTrainingOrderObserved) &&
-                orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
+            orbitalMineralReservation = _economyAdvisor.ShouldEnableOrbitalMorph() &&
+                townHallUpgradeReady && orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
             var orbitalReservationReason = orbitalReservedCommandCenter is null ? "orbital-tech-or-starting-command-center-not-ready" :

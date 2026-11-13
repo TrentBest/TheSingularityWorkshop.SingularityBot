@@ -787,10 +787,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase),
                 permittedCommandCenterTag: startingTownHall?.Tag,
                 reservedOrbitalTags: _buildings.ScanReservedOrbitalTags,
-                reservedEnergyForScan: _economyAdvisor.Settings.MuleCallDownPolicy.Equals(
-                    "PreserveScan", StringComparison.OrdinalIgnoreCase)
-                    ? _intelligenceAdvisor.GetMuleScanEnergyReserve()
-                    : 0,
+                reservedEnergyForScan: _intelligenceAdvisor.GetMuleScanEnergyReserve(
+                    economyAlsoRequestsPreservation: _economyAdvisor.Settings.MuleCallDownPolicy.Equals(
+                        "PreserveScan", StringComparison.OrdinalIgnoreCase)),
                 allowMules: _economyAdvisor.Settings.EnableMules);
             _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
             if (orbitalSupportAction is not null)

@@ -52,7 +52,7 @@ The fluent authoring surface is available through `ProductionPlanBuilder`:
 var plan = new ProductionPlanBuilder("terran-opening", "Terran Opening")
     .Buildings.Add("FirstSupplyDepot", "SupplyDepot", "SCV")
     .Buildings.Add("FirstBarracks", "Barracks", "SCV")
-    .WhenComplete(
+    .Buildings.WhenComplete(
         "OrbitalCommand",
         "FirstBarracks",
         new ProductionStepDefinition(

@@ -524,8 +524,8 @@ public sealed class BuildingBehaviorRuntime
         kind is "CommandCenter" or "Barracks" or "Factory" or "Starport";
 
     private static bool CanResearch(string kind) =>
-        kind is "Barracks" or "Factory" or "Starport" or "EngineeringBay" or
-            "Armory" or "GhostAcademy" or "FusionCore" or "TechLab";
+        kind is "EngineeringBay" or "Armory" or "GhostAcademy" or "FusionCore" ||
+        kind.Contains("TechLab", StringComparison.OrdinalIgnoreCase);
 
     private static void Attach(BuildingBehaviorContext context, string fsmName, string group) =>
         context.Attach(fsmName, FSM_API.Create.CreateInstance(fsmName, context, group));

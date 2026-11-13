@@ -20,6 +20,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly BuildingBehaviorRuntime _buildings = new();
     private GoalActionPlanDefinition _goalActionPlan = new();
     private readonly EconomyAdvisor _economyAdvisor = new();
+    private readonly IntelligenceAdvisor _intelligenceAdvisor = new();
     private readonly AdvisorJobBoard _advisorJobBoard = new();
     private readonly StrategicPlanner _strategicPlanner = new();
     private CompositionGoalDefinition? _compositionGoal;
@@ -146,6 +147,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     /// <summary>Current economy policy exposed to the development GUI.</summary>
     public EconomyAdvisorSettings EconomySettings => _economyAdvisor.Settings;
+
+    /// <summary>Sets user-authored intelligence policy before or during a match.</summary>
+    public IReadOnlyList<string> ConfigureIntelligenceAdvisorJson(string json) =>
+        _intelligenceAdvisor.ConfigureJson(json);
+
+    /// <summary>Current intelligence policy exposed to the development GUI.</summary>
+    public IntelligenceAdvisorSettings IntelligenceSettings => _intelligenceAdvisor.Settings;
 
     /// <summary>Publish or replace an advisor-owned job posting.</summary>
     public StrategicJobPosting PublishAdvisorJob(
@@ -513,8 +521,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            orbitalMineralReservation = orbitalReservedCommandCenter is not null &&
-                orbitalAbility is > 0 && orbitalUpgradeCost > 0
+            orbitalMineralReservation = _economyAdvisor.Settings.EnableMules && _openingMarine.MarineObserved &&
+                orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
             var orbitalReservationReason = orbitalReservedCommandCenter is null ? "orbital-tech-or-starting-command-center-not-ready" :
@@ -770,9 +778,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // verifies the observed Depot/Barracks prerequisites and SCV queue.
             orbitalSupportAction = _orbitalSupport.TryCreateAction(
                 normalized, _gameData,
-                allowOrbitalUpgrade: startingTownHall is not null && startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase),
+                allowOrbitalUpgrade: _economyAdvisor.Settings.EnableMules &&
+                    _openingMarine.MarineObserved && startingTownHall is not null &&
+                    startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase),
                 permittedCommandCenterTag: startingTownHall?.Tag,
-                reservedOrbitalTags: _buildings.ScanReservedOrbitalTags);
+                reservedOrbitalTags: _buildings.ScanReservedOrbitalTags,
+                reservedEnergyForScan: _economyAdvisor.Settings.MuleCallDownPolicy.Equals(
+                    "PreserveScan", StringComparison.OrdinalIgnoreCase)
+                    ? _intelligenceAdvisor.GetMuleScanEnergyReserve()
+                    : 0,
+                allowMules: _economyAdvisor.Settings.EnableMules);
             _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
             if (orbitalSupportAction is not null)
             {

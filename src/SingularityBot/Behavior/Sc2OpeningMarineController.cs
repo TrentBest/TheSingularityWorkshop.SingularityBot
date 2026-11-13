@@ -84,7 +84,7 @@ public sealed class Sc2OpeningMarineController
             if (inProgress)
                 return null;
 
-            if (_builderTag is ulong existing &&
+            // Do not reserve, stage, or move a Barracks SCV until the Supply Depot\n            // is observed complete. This preserves the opening worker economy.\n            if (!allowConstruction)\n                return null;\n\n            if (_builderTag is ulong existing &&
                 (observation.DeadUnitTags.Contains(existing) ||
                  !observation.Units.Any(unit => unit.Tag == existing && IsLiveScv(unit))))
             {

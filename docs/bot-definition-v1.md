@@ -6,7 +6,7 @@
 
 The first implementation deliberately targets the current Terran runtime. The schema is versioned so additional races, team formats, and capability families can be introduced without pretending they are implemented today.
 
-**Refactor status:** the current `BotDefinitionCatalog` constructs a typed C# data aggregate compiled into the bot DLL. It is not a user-replaceable strategy class or executable personality. Shared controllers and planners still implement the live behavior. The target architecture is one shared bot engine with a statically compiled, replaceable user-specific strategy implementation in each bot DLL. Runtime JSON loading, external strategy files, reflection-based discovery and dynamic assembly loading are not part of that target.
+**Refactor status:** `ICompiledBotStrategy` is now the compile-time personality contract. The Runner selects the statically linked `AdaptiveMarineStrategy`; the shared engine consumes its validated `BotDefinition` and executable initial-goal composition. `BotDefinitionCatalog` remains typed data, not the strategy implementation. Regression tests prove that two compiled strategies can select different goal policies through the same engine and CommandAi action vocabulary. Most macro/tactical behavior remains in shared controllers, and objective/transition composition is the next contract expansion. JSON remains an authoring/build interchange format only; runtime JSON loading, external strategy files, reflection-based discovery and dynamic assembly loading are excluded.
 
 ## Bot, match, and ladder are separate scopes
 

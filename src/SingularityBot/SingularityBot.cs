@@ -21,6 +21,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly BotRuntimeComposition _runtimeComposition;
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly BuildingBehaviorRuntime _buildings = new();
+    private readonly ICompiledBotStrategy _compiledStrategy;
     private GoalActionPlanDefinition _goalActionPlan;
     private readonly EconomyAdvisor _economyAdvisor = new();
     private readonly IntelligenceAdvisor _intelligenceAdvisor = new();
@@ -49,6 +50,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             botDefinition ?? new AdaptiveMarineStrategy().Definition);
         var selectedDefinition = selectedStrategy.Definition
             ?? throw new ArgumentException("The compiled strategy must supply a definition.", nameof(compiledStrategy));
+        _compiledStrategy = selectedStrategy;
         _runtimeComposition = BotRuntimeComposer.Compose(selectedDefinition);
         _definition = _runtimeComposition.Definition;
         _manifest = _definition.Runtime;
@@ -476,7 +478,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _gameState.Apply(normalized);
         UpdateSpatialIntelligence(observation);
         if (SpatialMap is not null)
-            GoalActionPlanner.Apply(_goalActionPlan, _unitBehaviors, SpatialMap);
+            _compiledStrategy.ApplyGoalPolicy(_goalActionPlan, _unitBehaviors, SpatialMap);
 
         if (_writeDiagnostics)
             _baselineRecorder.Record(normalized);
@@ -1163,7 +1165,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var marineRallyActions = _marineRally.TryCreateActions(
                 normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
                 SpatialTerrain, PathingTopology, visibilityGrid,
-                advanceToEnemyStart: _goalActionPlan.DefaultRole == GoalActionRole.Engage);
+                advanceToEnemyStart: _compiledStrategy.ShouldAdvanceToEnemyStart(_goalActionPlan));
             actions.AddRange(marineRallyActions);
             if (_writeDiagnostics &&
                 _marineRally.TryTakeScoutStatusChange(out var scoutStatus, out var scoutDetails))

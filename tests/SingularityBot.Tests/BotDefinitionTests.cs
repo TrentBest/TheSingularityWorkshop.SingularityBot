@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SingularityBot.Behavior;
+using SingularityBot.Spatial;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -147,6 +148,8 @@ public sealed class BotDefinitionTests
 
         Assert.Equal(GoalActionRole.Contain, containBot.GoalActionPlan.DefaultRole);
         Assert.Equal(GoalActionRole.Engage, engageBot.GoalActionPlan.DefaultRole);
+        Assert.False(contain.ShouldAdvanceToEnemyStart(containBot.GoalActionPlan));
+        Assert.True(engage.ShouldAdvanceToEnemyStart(engageBot.GoalActionPlan));
         Assert.Equal(containBot.AvailableActions.Select(action => action.Id),
             engageBot.AvailableActions.Select(action => action.Id));
         Assert.Equal(2, containBot.ComposedRuntime.Bundles.Count);
@@ -174,6 +177,13 @@ public sealed class BotDefinitionTests
         public BotDefinition Definition { get; } = definition;
 
         public GoalActionPlanDefinition CreateInitialGoalPlan() => initialGoalPlan;
+
+        public IReadOnlyList<string> ApplyGoalPolicy(
+            GoalActionPlanDefinition activePlan, UnitBehaviorRuntime runtime, SpatialMap map) =>
+            GoalActionPlanner.Apply(activePlan, runtime, map);
+
+        public bool ShouldAdvanceToEnemyStart(GoalActionPlanDefinition activePlan) =>
+            activePlan.DefaultRole == GoalActionRole.Engage;
     }
 
     private static BotDefinition Copy(BotDefinition source, BotAiPolicy ai) => new()

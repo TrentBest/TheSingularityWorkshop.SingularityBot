@@ -45,6 +45,7 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 
 ## Documentation
 
+- [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](docs/bot-definition-v1.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)
 - [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)

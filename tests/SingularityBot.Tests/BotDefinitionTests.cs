@@ -22,6 +22,25 @@ public sealed class BotDefinitionTests
     }
 
     [Fact]
+    public void CompiledDefaultDefinition_IsValidAndSelectedWithoutExternalInput()
+    {
+        var definition = BotDefinitionCatalog.CreateDefault();
+
+        Assert.Empty(definition.Validate());
+        Assert.Equal(BotDefinitionCatalog.DefaultDefinitionId, definition.Id);
+        Assert.Equal(60, definition.Opening.Steps
+            .Where(step => step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))
+            .Max(step => step.DesiredCount));
+        Assert.Equal(GoalActionRole.Contain, definition.DefaultGoals.DefaultRole);
+        Assert.Equal(4, definition.DefaultGoals.ScoutCount);
+
+        var bot = new global::SingularityBot.SingularityBot();
+        Assert.Equal(definition.Id, bot.Definition.Id);
+        Assert.NotNull(bot.Manifest);
+        Assert.NotNull(bot.OpeningPlan);
+    }
+
+    [Fact]
     public void AiPolicy_RejectsMoreThanOneStartupOrThreeMatchCalls()
     {
         var definition = CreateValidDefinition();

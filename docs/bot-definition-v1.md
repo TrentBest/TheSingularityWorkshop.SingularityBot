@@ -122,21 +122,34 @@ CiAi can build and test BotDefinition compatibility, schema conformance, determi
 
 Renderer and Visualize remain MicroBundle presentation surfaces. They are not required dependencies of the bot runtime.
 
-## Running an authored BotDefinition
+## Compiling and running a BotDefinition
 
-The runner accepts a validated v1 JSON definition through `--bot-definition`. For a local match:
+The live runner selects the typed definition returned by `BotDefinitionCatalog.CreateDefault()`. The definition, advisor manifest, opening, goals, transitions, and AI consultation policy are constructed by static C# catalog code and compiled into the bot assembly.
 
-```powershell
-dotnet run --project src/SingularityBot.Runner -- --bot-definition=examples/bot-definitions/terran-adaptive-marine.v1.json
+The match runtime does not read a JSON strategy file, load a strategy assembly, or evaluate executable configuration. This keeps the ladder runtime deterministic and independent of filesystem access. The JSON schema and example remain useful as portable editor/import/export representations; they are not loaded by the live runner.
+
+The intended authoring pipeline is:
+
+```text
+Forge / GUI / text authoring
+          |
+          v
+Versioned BotDefinition data
+          |
+          v
+Validation + capability resolution
+          |
+          v
+Generated typed C# catalog
+          |
+          v
+Compiled bot assembly (.dll)
+          |
+          v
+FSM_COS composition -> host runtime -> FSM_API execution
 ```
 
-For ladder mode, pass the same option alongside the SC2 ladder connection arguments:
-
-```powershell
-SingularityBot.Runner.exe --bot-definition=C:\\Bots\\terran-adaptive-marine.v1.json --GamePort 5000 --StartPort 5001 --OpponentId opponent
-```
-
-The runner parses and validates the file before connecting. The selected definition's `DefaultGoals` are now the live policy consumed by the existing `GoalActionPlanner`; `Runtime` is exposed as the bot's selected manifest, and `Opening` is exposed for the production adapter. The opening plan's Marine target is now enforced by both the first-Barracks and secondary-Barracks production paths; the example target of eight replaces the former hard-coded 60-Marine ceiling. Supply Depot and Barracks construction still use the existing fixed opening controllers, and arbitrary plan steps are not yet translated into live actions. The opening plan is therefore **not yet a general-purpose SC2 production scheduler**: its observation adapter still needs game-data recipe wiring and integration with the existing action-arbitration pipeline. This distinction is deliberate; a loaded plan must not be mistaken for executed build orders.
+A definition is not executable merely because it is structurally valid. Every referenced capability must resolve against the compiled bot's capability catalog, and the existing observation/action pipeline remains the only route to SC2 commands.
 
 ## Current implementation boundary
 

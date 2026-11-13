@@ -40,24 +40,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         bool writeDiagnostics = false,
         BotDefinition botDefinition = null)
     {
-        if (botDefinition is not null)
-        {
-            var errors = botDefinition.Validate();
-            if (errors.Count != 0)
-                throw new ArgumentException(
-                    "Bot definition is invalid: " + string.Join(" ", errors),
-                    nameof(botDefinition));
-        }
+        _definition = botDefinition ?? BotDefinitionCatalog.CreateDefault();
+        var errors = _definition.Validate();
+        if (errors.Count != 0)
+            throw new ArgumentException(
+                "Bot definition is invalid: " + string.Join(" ", errors),
+                nameof(botDefinition));
 
-        _definition = botDefinition;
-        _manifest = botDefinition?.Runtime ?? BotManifest.LoadEmbeddedDefault();
-        _goalActionPlan = botDefinition?.DefaultGoals ?? new GoalActionPlanDefinition();
-        _desiredMarineCount = botDefinition?.Opening?.Steps
-            ?.Where(step => step is not null &&
+        _manifest = _definition.Runtime;
+        _goalActionPlan = _definition.DefaultGoals;
+        _desiredMarineCount = _definition.Opening.Steps
+            .Where(step => step is not null &&
                 step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))
             .Select(step => step.DesiredCount)
             .DefaultIfEmpty(60)
-            .Max() ?? 60;
+            .Max();
         _passiveBaseline = passiveBaseline;
         _writeDiagnostics = writeDiagnostics;
     }

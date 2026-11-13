@@ -18,20 +18,9 @@ public static class Program
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
         var designatedAreaArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--cc-area=", StringComparison.Ordinal));
-        var botDefinitionArgument = args.FirstOrDefault(argument =>
-            argument.StartsWith("--bot-definition=", StringComparison.Ordinal));
-        BotDefinition botDefinition = null;
-        if (botDefinitionArgument is not null)
-        {
-            var definitionPath = botDefinitionArgument["--bot-definition=".Length..].Trim('"');
-            if (string.IsNullOrWhiteSpace(definitionPath))
-                throw new ArgumentException("--bot-definition requires a JSON file path.");
-            botDefinition = BotDefinition.Parse(File.ReadAllText(definitionPath));
-            Console.WriteLine($"[BotDefinition] Loaded '{botDefinition.Id}' ({botDefinition.Name}), strategy={botDefinition.StrategyProfile}.");
-        }
+
         var connectionArgs = args.Where((argument, index) =>
             !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
-            !argument.StartsWith("--bot-definition=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
             !string.Equals(argument, "--Map", StringComparison.Ordinal) &&
             !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal) &&
@@ -44,10 +33,13 @@ public static class Program
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
             throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.");
 
+        var definition = BotDefinitionCatalog.CreateDefault();
+        Console.WriteLine($"[BotDefinition] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
         var bot = new SingularityBot(
             passiveBaseline: passiveBaseline,
             writeDiagnostics: localRun && diagnostics,
-            botDefinition: botDefinition);
+            botDefinition: definition);
+
         if (designatedAreaArgument is not null)
         {
             var coordinates = designatedAreaArgument["--cc-area=".Length..]

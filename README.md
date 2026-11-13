@@ -46,6 +46,8 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 ## Documentation
 
 - [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](docs/bot-definition-v1.md)
+
+The live runner uses a typed `BotDefinitionCatalog` compiled into the bot assembly. JSON remains an editor/import/export format; the match runtime does not load strategy files or executable assemblies.
 - [CommandAi integration v1: bot-owned command vocabulary and validation boundary](docs/commandai-integration-v1.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)

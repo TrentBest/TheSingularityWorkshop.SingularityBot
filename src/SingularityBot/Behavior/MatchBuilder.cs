@@ -124,7 +124,8 @@ public sealed record StrategyEvidenceRequirement(
     string EvidenceId,
     string Subject,
     float MinimumConfidence,
-    uint MaximumAgeGameLoops)
+    uint MaximumAgeGameLoops,
+    bool RequiresObservedFact = false)
 {
     internal IReadOnlyList<string> Validate(string transitionId)
     {
@@ -209,6 +210,11 @@ public static class StrategyTransitionEvaluator
             if (age > required.MaximumAgeGameLoops)
             {
                 reasons.Add($"Evidence '{required.EvidenceId}' is stale ({age} game loops old).");
+                continue;
+            }
+            if (required.RequiresObservedFact && !evidence.IsObservedFact)
+            {
+                reasons.Add($"Evidence '{required.EvidenceId}' must be directly observed.");
                 continue;
             }
             if (!float.IsFinite(evidence.Confidence) ||

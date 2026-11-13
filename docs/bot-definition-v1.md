@@ -110,6 +110,22 @@ CiAi can build and test BotDefinition compatibility, schema conformance, determi
 
 Renderer and Visualize remain MicroBundle presentation surfaces. They are not required dependencies of the bot runtime.
 
+## Running an authored BotDefinition
+
+The runner accepts a validated v1 JSON definition through `--bot-definition`. For a local match:
+
+```powershell
+dotnet run --project src/SingularityBot.Runner -- --bot-definition=examples/bot-definitions/terran-adaptive-marine.v1.json
+```
+
+For ladder mode, pass the same option alongside the SC2 ladder connection arguments:
+
+```powershell
+SingularityBot.Runner.exe --bot-definition=C:\\Bots\\terran-adaptive-marine.v1.json --GamePort 5000 --StartPort 5001 --OpponentId opponent
+```
+
+The runner parses and validates the file before connecting. The selected definition's `DefaultGoals` are now the live policy consumed by the existing `GoalActionPlanner`; `Runtime` is exposed as the bot's selected manifest, and `Opening` is exposed for the production adapter. The opening plan is **not yet the active SC2 production scheduler**: its observation adapter still needs game-data recipe wiring and integration with the existing action-arbitration pipeline. This distinction is deliberate; a loaded plan must not be mistaken for executed build orders.
+
 ## Current implementation boundary
 
 The v1 aggregate C# contract, semantic validator, JSON schema, example definition, and bounded HeadlessAi consultation coordinator are implemented and regression-tested. The coordinator is not yet invoked by the live bot's `OnStart` or `OnFrame`; no network request is made from the frame heartbeat. A host must explicitly construct it with a configured HeadlessAi agent, create a visibility-safe snapshot and allowlist, and schedule consultations outside the synchronous frame path.

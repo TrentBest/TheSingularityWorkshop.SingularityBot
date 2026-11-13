@@ -1491,17 +1491,25 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 if (_gameData.TryGetAbility(abilityId, out var ability) && ability.RemapsToAbilityId > 0)
                     executionAbilityIds.Add(ability.RemapsToAbilityId);
             }
-            var hasObservedOrder = executionAbilityIds.Count > 0 && assigned.Any(unit =>
-                unit.Orders.Any(order =>
-                    executionAbilityIds.Contains(order.AbilityId) &&
-                    (definition.RequiredAbility is not null
-                        ? order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
-                          DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
-                              targetX, targetY) <= 2.25f
-                        : route is not null && route.Waypoints.Any(point =>
-                            order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
-                            DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
-                                point.X, point.Y) <= 2.25f))));
+            var routeMoveAbilityIds = new HashSet<uint>();
+            if (definition.RequiredAbility is not null && _gameData.MoveAbilityId is uint moveAbilityId)
+            {
+                routeMoveAbilityIds.Add(moveAbilityId);
+                if (_gameData.TryGetAbility(moveAbilityId, out var moveAbility) && moveAbility.RemapsToAbilityId > 0)
+                    routeMoveAbilityIds.Add(moveAbility.RemapsToAbilityId);
+            }
+            var hasObservedOrder = assigned.Any(unit => unit.Orders.Any(order =>
+                order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
+                ((definition.RequiredAbility is not null &&
+                  executionAbilityIds.Contains(order.AbilityId) &&
+                  DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
+                      targetX, targetY) <= 2.25f) ||
+                 route is not null && (definition.RequiredAbility is null
+                      ? executionAbilityIds.Contains(order.AbilityId)
+                      : routeMoveAbilityIds.Contains(order.AbilityId)) &&
+                  route.Waypoints.Any(point =>
+                      DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
+                          point.X, point.Y) <= 2.25f))));
             if (hasObservedOrder)
                 _militaryPlanRuntime.ObserveStarted(definition.Id, observation.GameLoop);
 

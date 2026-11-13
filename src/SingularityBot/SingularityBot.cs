@@ -16,10 +16,11 @@ namespace SingularityBot;
 /// </summary>
 public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
 {
-    private readonly BotManifest _manifest = BotManifest.LoadEmbeddedDefault();
+    private readonly BotManifest _manifest;
+    private readonly BotDefinition _definition;
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly BuildingBehaviorRuntime _buildings = new();
-    private GoalActionPlanDefinition _goalActionPlan = new();
+    private GoalActionPlanDefinition _goalActionPlan;
     private readonly EconomyAdvisor _economyAdvisor = new();
     private readonly IntelligenceAdvisor _intelligenceAdvisor = new();
     private readonly AdvisorJobBoard _advisorJobBoard = new();
@@ -34,8 +35,23 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private uint _lastGameLoop;
     private uint _lastUnitSnapshotGameLoop;
 
-    public SingularityBot(bool passiveBaseline = false, bool writeDiagnostics = false)
+    public SingularityBot(
+        bool passiveBaseline = false,
+        bool writeDiagnostics = false,
+        BotDefinition botDefinition = null)
     {
+        if (botDefinition is not null)
+        {
+            var errors = botDefinition.Validate();
+            if (errors.Count != 0)
+                throw new ArgumentException(
+                    "Bot definition is invalid: " + string.Join(" ", errors),
+                    nameof(botDefinition));
+        }
+
+        _definition = botDefinition;
+        _manifest = botDefinition?.Runtime ?? BotManifest.LoadEmbeddedDefault();
+        _goalActionPlan = botDefinition?.DefaultGoals ?? new GoalActionPlanDefinition();
         _passiveBaseline = passiveBaseline;
         _writeDiagnostics = writeDiagnostics;
     }
@@ -94,6 +110,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public BotManifest Manifest => _manifest;
+    /// <summary>The validated authoring artifact selected for this match, when supplied by the host.</summary>
+    public BotDefinition Definition => _definition;
+    /// <summary>The opening plan carried by the selected definition. Its live production adapter is host-owned.</summary>
+    public ProductionPlanDefinition OpeningPlan => _definition?.Opening;
+    /// <summary>The active user-authored goal policy consumed by GoalActionPlanner.</summary>
+    public GoalActionPlanDefinition GoalActionPlan => _goalActionPlan;
     public SpatialMap SpatialMap { get; private set; }
     public SpatialIntelligence SpatialIntelligence { get; private set; }
     /// <summary>Immutable pathing, placement and elevation layers cached from SC2 OnStart data.</summary>

@@ -41,6 +41,12 @@ public sealed class Sc2MilitaryOperationActionTranslator
             return Blocked("Military plan failed validation: " + string.Join(" ", errors));
         if (operation is null || route is null || location is null)
             return Blocked("Operation, route or objective location is missing from the supplied plan.");
+        if (!string.Equals(operation.RouteId, intent.RouteId, StringComparison.Ordinal) ||
+            !string.Equals(operation.ObjectiveLocationId, intent.ObjectiveLocationId, StringComparison.Ordinal) ||
+            !string.Equals(operation.RequiredAbility, intent.RequiredAbility, StringComparison.Ordinal) ||
+            operation.RequiredUnitCount != intent.RequiredUnitCount ||
+            operation.Role != intent.Role)
+            return Blocked("The operation intent does not match the validated plan definition.");
 
         var unitsByTag = observation.Units
             .Where(unit => unit.IsLiveVisible && unit.HasPosition &&

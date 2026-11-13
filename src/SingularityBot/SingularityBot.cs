@@ -521,7 +521,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            orbitalMineralReservation = _economyAdvisor.ShouldEnableOrbitalMorph(_openingMarine.MarineObserved) &&
+            orbitalMineralReservation = _economyAdvisor.ShouldEnableOrbitalMorph(_openingMarine.MarineTrainingOrderObserved) &&
                 orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
@@ -530,7 +530,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
                 "orbital-priority-reserved";
-            var firstRefineryPending = orbitalMineralReservation > 0 &&
+            var firstRefineryPending = orbitalMorphingObserved &&
                 _gameData.RefineryMineralCost > 0 &&
                 !normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                     unit.IsLiveVisible && unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
@@ -769,8 +769,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             }
 
             // The Orbital upgrade is the first post-prerequisite mineral commitment.
-            // Hold the first Marine and secondary Barracks until SC2 observes the
-            // morph order, so neither can consume the exact 150 minerals first.
+            // The first Marine's observed training order opens this morph; Marine
+            // completion is deliberately not a prerequisite. Hold secondary
+            // production until SC2 observes the Orbital morph order.
             var orbitalCoordinatorBlockers = string.Join(",",
                 new[] {
                     builderAction is not null ? "builder" : null
@@ -798,10 +799,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Console.WriteLine($"[Orbital] SUBMIT: unit={string.Join(",", command.UnitTags)}, ability={command.AbilityId}, minerals={normalized.Minerals}, reserved={reservedInfrastructureMinerals}, loop={normalized.GameLoop}.");
             }
 
-            // Gas infrastructure starts once the first Barracks is complete; an
-            // unavailable Orbital must not hold the gas economy hostage.
-            // Each geyser owns an independent FSM; construction targets the geyser
-            // unit tag and completed Refineries receive up to three SCVs.
+            // Gas infrastructure starts only after the starting Orbital morph
+            // order is observed. Each geyser owns an independent FSM; construction
+            // targets the geyser unit tag and completed Refineries receive up to three SCVs.
             var friendlyTownHallCount = normalized.Units.Count(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 !normalized.DeadUnitTags.Contains(unit.Tag) &&
@@ -817,9 +817,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
                 unit.BuildProgress < 1f && !normalized.DeadUnitTags.Contains(unit.Tag));
-            // The first Refinery may begin during the Orbital morph. The
-            // third Supply Depot must be completed before we take the second geyser;
-            // this keeps the supply investment ahead of the second gas commitment.
+            // Refineries are unlocked only after SC2 exposes the starting
+            // Command Center's Orbital morph order. The third Supply Depot must
+            // be complete before the second geyser is taken.
             var refineryConstructionAllowed = Sc2RefineryProgressionPolicy.ShouldConstruct(
                 orbitalBarracksReady,
                 orbitalMorphingObserved,

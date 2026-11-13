@@ -53,6 +53,7 @@ public static class Sc2ObservationNormalizer
                     observation.GameLoop)
                 {
                     WeaponCooldownRemaining = unit.WeaponCooldown,
+                    CollisionRadius = unit.Radius,
                     Energy = unit.Energy,
                     VespeneContents = checked((uint)Math.Max(0, unit.VespeneContents)),
                     Orders = unit.Orders.Select(order => new UnitOrderObservationFacts(

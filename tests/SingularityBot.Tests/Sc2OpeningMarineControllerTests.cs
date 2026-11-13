@@ -159,6 +159,44 @@ public sealed class Sc2OpeningMarineControllerTests
         jobs.Clear();
     }
 
+    [Fact]
+    public void DoesNotPullBarracksBuilderUntilFullCostIsAvailableAfterReservations()
+    {
+        var controller = new Sc2OpeningMarineController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var jobs = new BuildJobRuntime();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var gameData = GameData();
+        var units = new[]
+        {
+            Fact(10, "SCV", 10, 10),
+            Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(300, "SupplyDepot", 20, 20)
+        };
+
+        // A completed Depot is not sufficient: keep both workers mining until
+        // the Barracks cost is available without consuming the strategic reserve.
+        Assert.Null(controller.TryCreateAction(Snapshot(174, 12, 15, units),
+            map, gameData, assignments, jobs, reservedMinerals: 25,
+            excludedBuilderTag: null, allowConstruction: true));
+        Assert.Null(controller.BuilderTag);
+        Assert.False(assignments.IsReserved(10));
+        Assert.False(assignments.IsReserved(11));
+        Assert.Null(controller.TakePlacementQuery(gameData));
+
+        // Exactly 175 is enough to fund 150 while preserving the 25-mineral reserve.
+        Assert.Null(controller.TryCreateAction(Snapshot(175, 12, 15, units),
+            map, gameData, assignments, jobs, reservedMinerals: 25,
+            allowConstruction: true));
+        Assert.NotNull(controller.BuilderTag);
+        Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        jobs.Update();
+        jobs.Clear();
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

@@ -510,11 +510,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // or Marine controller receives its mineral budget.
             // The Orbital is the first post-Barracks mineral commitment. Do not let
             // optional Marine or follow-on infrastructure reservations starve it.
-            // Reserve the starting Command Center as soon as the observed
-            // Depot + completed-Barracks prerequisites are met. Do not depend
-            // on a separate town-hall FSM readiness label to protect the morph
-            // minerals or the SCV queue.
-            var orbitalReservedCommandCenter = _orbitalSupport.GetCommandCenterReservedForUpgrade(normalized, _gameData);
+            // Keep normal SCV production running until the first Marine's
+            // training order is observed. Only then reserve the starting Town Hall
+            // and its incremental Orbital cost; an existing SCV order may drain
+            // before the morph can be submitted.
+            var orbitalReservedCommandCenter = _openingMarine.MarineTrainingOrderObserved
+                ? _orbitalSupport.GetCommandCenterReservedForUpgrade(normalized, _gameData)
+                : null;
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible &&
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||

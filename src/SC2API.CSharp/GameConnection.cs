@@ -135,7 +135,7 @@ namespace SC2API_CSharp
 
             PlayerSetup player2 = new PlayerSetup();
             player2.Type = PlayerType.Participant;
-            player2.Race = Race.Random;
+            player2.Race = Race.Terran;
             createGame.PlayerSetup.Add(player2);
 
             Request request = new Request();

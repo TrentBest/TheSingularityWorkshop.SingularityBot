@@ -45,6 +45,9 @@ public sealed record UnitObservationFacts(
     /// <summary>Remaining weapon cooldown in game-loop units, as reported by SC2.</summary>
     public float WeaponCooldownRemaining { get; init; }
 
+    /// <summary>Observed SC2 unit collision radius in world units.</summary>
+    public float CollisionRadius { get; init; }
+
     /// <summary>Current unit energy as reported by the SC2 observation.</summary>
     public float Energy { get; init; }
 

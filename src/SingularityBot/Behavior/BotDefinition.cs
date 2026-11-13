@@ -65,8 +65,8 @@ public sealed class BotAiPolicy
     public bool Enabled { get; init; }
     public string Provider { get; init; } = string.Empty;
     public string Model { get; init; } = string.Empty;
-    public int MaxOnStartCalls { get; init; } = 0;
-    public int MaxInMatchCalls { get; init; } = 0;
+    public int MaxOnStartCalls { get; init; }
+    public int MaxInMatchCalls { get; init; }
     public int TimeoutMilliseconds { get; init; } = 15000;
     public int MinimumGameLoopSpacing { get; init; } = 448;
     public IReadOnlyList<string> AllowedTriggers { get; init; } = Array.Empty<string>();
@@ -95,7 +95,8 @@ public static class BotDefinitionValidator
             errors.Add("$.runtime: the compiled advisor manifest is required.");
         else
         {
-            errors.AddRange(definition.Runtime.Validate().Select(error => "$.runtime" + error.TrimStart('$')));
+            errors.AddRange(definition.Runtime.Validate().Select(error =>
+                "$.runtime" + error.TrimStart('$')));
             if (definition.Runtime.Bot is not null)
             {
                 if (!string.Equals(definition.Runtime.Bot.Race, definition.Race, StringComparison.Ordinal))
@@ -109,14 +110,17 @@ public static class BotDefinitionValidator
             errors.Add("$.opening: an opening production plan is required.");
         else
         {
-            errors.AddRange(ProductionPlanValidator.Validate(definition.Opening)
-                .Select(error => "$.opening" + error.TrimStart('
+            errors.AddRange(ProductionPlanValidator.Validate(definition.Opening).Select(error =>
+                "$.opening" + error.TrimStart('$')));
+            if (!string.Equals(definition.Opening.Race, definition.Race, StringComparison.Ordinal))
+                errors.Add("$.opening.race: must match $.race.");
+        }
 
         if (definition.DefaultGoals is null)
             errors.Add("$.defaultGoals: a default goal/action plan is required.");
         else
-            errors.AddRange(definition.DefaultGoals.Validate()
-                .Select(error => "$.defaultGoals" + error.TrimStart('$')));
+            errors.AddRange(definition.DefaultGoals.Validate().Select(error =>
+                "$.defaultGoals" + error.TrimStart('$')));
 
         var transitions = definition.StrategyTransitions ?? Array.Empty<StrategyTransitionDefinition>();
         if (transitions.Count > 64)
@@ -132,8 +136,8 @@ public static class BotDefinitionValidator
             }
             if (!string.IsNullOrWhiteSpace(transition.Id) && !transitionIds.Add(transition.Id))
                 errors.Add($"$.strategyTransitions[{index}].id: duplicate transition id '{transition.Id}'.");
-            errors.AddRange(transition.Validate()
-                .Select(error => $"$.strategyTransitions[{index}]: {error}"));
+            errors.AddRange(transition.Validate().Select(error =>
+                $"$.strategyTransitions[{index}]: {error}"));
         }
 
         ValidateAiPolicy(definition.Ai, errors);
@@ -170,69 +174,6 @@ public static class BotDefinitionValidator
             errors.Add("$.ai.allowedTriggers: at most 8 trigger ids are allowed.");
         if (policy.Enabled && policy.MaxInMatchCalls > 0 && triggers.Count == 0)
             errors.Add("$.ai.allowedTriggers: at least one explicit trigger is required when in-match consultations are enabled.");
-        if (!policy.Enabled && (policy.MaxOnStartCalls != 0 || policy.MaxInMatchCalls != 0))
-            errors.Add("$.ai: disabled policy must set both call budgets to zero.");
-    }
-}
-)));
-            if (!string.Equals(definition.Opening.Race, definition.Race, StringComparison.Ordinal))
-                errors.Add("$.opening.race: must match $.race.");
-        }
-
-        if (definition.DefaultGoals is null)
-            errors.Add("$.defaultGoals: a default goal/action plan is required.");
-        else
-            errors.AddRange(definition.DefaultGoals.Validate()
-                .Select(error => "$.defaultGoals" + error.TrimStart('$')));
-
-        var transitions = definition.StrategyTransitions ?? Array.Empty<StrategyTransitionDefinition>();
-        var transitionIds = new HashSet<string>(StringComparer.Ordinal);
-        for (var index = 0; index < transitions.Count; index++)
-        {
-            var transition = transitions[index];
-            if (transition is null)
-            {
-                errors.Add($"$.strategyTransitions[{index}]: cannot be null.");
-                continue;
-            }
-            if (!string.IsNullOrWhiteSpace(transition.Id) && !transitionIds.Add(transition.Id))
-                errors.Add($"$.strategyTransitions[{index}].id: duplicate transition id '{transition.Id}'.");
-            errors.AddRange(transition.Validate()
-                .Select(error => $"$.strategyTransitions[{index}]: {error}"));
-        }
-
-        ValidateAiPolicy(definition.Ai, errors);
-        return errors.AsReadOnly();
-    }
-
-    private static void ValidateAiPolicy(BotAiPolicy policy, List<string> errors)
-    {
-        if (policy is null)
-        {
-            errors.Add("$.ai: policy is required.");
-            return;
-        }
-
-        if (policy.MaxOnStartCalls is < 0 or > 1)
-            errors.Add("$.ai.maxOnStartCalls: must be between 0 and 1.");
-        if (policy.MaxInMatchCalls is < 0 or > 3)
-            errors.Add("$.ai.maxInMatchCalls: must be between 0 and 3.");
-        if (policy.TimeoutMilliseconds is < 1000 or > 120000)
-            errors.Add("$.ai.timeoutMilliseconds: must be between 1000 and 120000.");
-        if (policy.MinimumGameLoopSpacing < 0)
-            errors.Add("$.ai.minimumGameLoopSpacing: cannot be negative.");
-
-        if (policy.Enabled && (string.IsNullOrWhiteSpace(policy.Provider) ||
-                               string.IsNullOrWhiteSpace(policy.Model)))
-            errors.Add("$.ai: enabled consultations require a provider and model identifier.");
-
-        var triggers = policy.AllowedTriggers ?? Array.Empty<string>();
-        if (triggers.Any(string.IsNullOrWhiteSpace))
-            errors.Add("$.ai.allowedTriggers: trigger ids cannot be empty.");
-        if (triggers.Distinct(StringComparer.Ordinal).Count() != triggers.Count)
-            errors.Add("$.ai.allowedTriggers: trigger ids must be unique.");
-        if (triggers.Count > 8)
-            errors.Add("$.ai.allowedTriggers: at most 8 trigger ids are allowed.");
         if (!policy.Enabled && (policy.MaxOnStartCalls != 0 || policy.MaxInMatchCalls != 0))
             errors.Add("$.ai: disabled policy must set both call budgets to zero.");
     }

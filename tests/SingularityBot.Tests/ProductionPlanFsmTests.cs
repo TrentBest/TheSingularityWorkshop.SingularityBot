@@ -183,6 +183,27 @@ public sealed class ProductionPlanFsmTests
         Assert.Equal(ProductionLane.Units, plan.Steps[1].Lane);
     }
 
+
+    [Fact]
+    public void ProductionPlanValidator_RejectsNullStepCollectionsAndEntries()
+    {
+        var nullCollection = new ProductionPlanDefinition
+        {
+            Id = "null-steps",
+            Name = "Null steps",
+            Steps = null
+        };
+        Assert.NotEmpty(ProductionPlanValidator.Validate(nullCollection));
+
+        var nullEntry = new ProductionPlanDefinition
+        {
+            Id = "null-entry",
+            Name = "Null entry",
+            Steps = [null]
+        };
+        Assert.NotEmpty(ProductionPlanValidator.Validate(nullEntry));
+    }
+
     [Fact]
     public void ProductionPlanValidator_RejectsDependencyCycles()
     {

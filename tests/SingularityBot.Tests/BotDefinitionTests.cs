@@ -123,6 +123,59 @@ public sealed class BotDefinitionTests
             new global::SingularityBot.SingularityBot(botDefinition: invalid));
     }
 
+    [Fact]
+    public void TwoCompiledStrategies_SelectDifferentPoliciesThroughTheSameEngine()
+    {
+        var definition = BotDefinitionCatalog.CreateDefault();
+        var contain = new TestCompiledStrategy(definition, new GoalActionPlanDefinition
+        {
+            Id = "test.contain",
+            Name = "Contain",
+            DefaultRole = GoalActionRole.Contain,
+            ScoutCount = 0
+        });
+        var engage = new TestCompiledStrategy(definition, new GoalActionPlanDefinition
+        {
+            Id = "test.engage",
+            Name = "Engage",
+            DefaultRole = GoalActionRole.Engage,
+            ScoutCount = 0
+        });
+
+        var containBot = new global::SingularityBot.SingularityBot(compiledStrategy: contain);
+        var engageBot = new global::SingularityBot.SingularityBot(compiledStrategy: engage);
+
+        Assert.Equal(GoalActionRole.Contain, containBot.GoalActionPlan.DefaultRole);
+        Assert.Equal(GoalActionRole.Engage, engageBot.GoalActionPlan.DefaultRole);
+        Assert.Equal(containBot.AvailableActions.Select(action => action.Id),
+            engageBot.AvailableActions.Select(action => action.Id));
+        Assert.Equal(2, containBot.ComposedRuntime.Bundles.Count);
+        Assert.Equal(2, engageBot.ComposedRuntime.Bundles.Count);
+        Assert.IsType<global::SingularityBot.SingularityBot>(containBot);
+        Assert.IsType<global::SingularityBot.SingularityBot>(engageBot);
+    }
+
+    [Fact]
+    public void SingularityBot_RejectsAmbiguousDefinitionAndStrategyInputs()
+    {
+        var definition = BotDefinitionCatalog.CreateDefault();
+        var strategy = new TestCompiledStrategy(definition, definition.DefaultGoals);
+
+        Assert.Throws<ArgumentException>(() =>
+            new global::SingularityBot.SingularityBot(
+                botDefinition: definition,
+                compiledStrategy: strategy));
+    }
+
+    private sealed class TestCompiledStrategy(
+        BotDefinition definition,
+        GoalActionPlanDefinition initialGoalPlan) : ICompiledBotStrategy
+    {
+        public BotDefinition Definition { get; } = definition;
+
+        public GoalActionPlanDefinition CreateInitialGoalPlan() => initialGoalPlan;
+    }
+
     private static BotDefinition Copy(BotDefinition source, BotAiPolicy ai) => new()
     {
         SchemaVersion = source.SchemaVersion,

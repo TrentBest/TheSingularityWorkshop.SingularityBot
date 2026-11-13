@@ -121,6 +121,14 @@ public sealed class UnitBehaviorContext : IStateContext
         return true;
     }
 
+    internal bool TryGetHandle(string fsmName, out FSMHandle handle)
+    {
+        if (_ownedHandles.TryGetValue(fsmName, out handle))
+            return true;
+        handle = default;
+        return false;
+    }
+
     internal void DestroyOwnedHandles()
     {
         foreach (var handle in _ownedHandles.Values)

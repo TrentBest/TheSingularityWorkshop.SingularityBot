@@ -9,6 +9,7 @@ namespace SingularityBot.Behavior;
 public sealed class Sc2GameDataCatalog
 {
     private Sc2GameDataCatalog(
+        IReadOnlyDictionary<uint, Sc2UnitFacts> unitsById,
         IReadOnlyDictionary<uint, string> unitNames,
         IReadOnlyDictionary<uint, string> buffNames,
         IReadOnlyDictionary<uint, Sc2AbilityFacts> abilitiesById,
@@ -37,6 +38,7 @@ public sealed class Sc2GameDataCatalog
         uint? refineryBuildAbilityId,
         uint refineryMineralCost)
     {
+        UnitsById = unitsById;
         UnitNames = unitNames;
         BuffNames = buffNames;
         AbilitiesById = abilitiesById;
@@ -66,7 +68,28 @@ public sealed class Sc2GameDataCatalog
         RefineryMineralCost = refineryMineralCost;
     }
 
+    /// <summary>All unit-type facts supplied by the match's authoritative ResponseData.</summary>
+    public IReadOnlyDictionary<uint, Sc2UnitFacts> UnitsById { get; }
     public IReadOnlyDictionary<uint, string> UnitNames { get; }
+
+    public IReadOnlyList<Sc2UnitFacts> FindUnits(string name) =>
+        UnitsById.Values
+            .Where(unit => string.Equals(unit.Name, name, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(unit => unit.UnitId)
+            .ToArray();
+
+    public bool TryGetUniqueUnit(string name, out Sc2UnitFacts unit)
+    {
+        var matches = FindUnits(name);
+        if (matches.Count == 1)
+        {
+            unit = matches[0];
+            return true;
+        }
+
+        unit = null;
+        return false;
+    }
     public IReadOnlyDictionary<uint, string> BuffNames { get; }
     /// <summary>All non-zero abilities supplied by the match's authoritative ResponseData.</summary>
     public IReadOnlyDictionary<uint, Sc2AbilityFacts> AbilitiesById { get; }
@@ -126,10 +149,11 @@ public sealed class Sc2GameDataCatalog
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        var unitNames = data.Units
+        var unitsById = data.Units
             .Where(unit => unit.UnitId != 0 && !string.IsNullOrWhiteSpace(unit.Name))
             .GroupBy(unit => unit.UnitId)
-            .ToDictionary(group => group.Key, group => group.First().Name);
+            .ToDictionary(group => group.Key, group => Sc2UnitFacts.From(group.First()));
+        var unitNames = unitsById.ToDictionary(pair => pair.Key, pair => pair.Value.Name);
 
         var weaponsByUnitType = data.Units
             .Where(unit => unit.UnitId != 0 && unit.Weapons.Count > 0)
@@ -182,6 +206,7 @@ public sealed class Sc2GameDataCatalog
                 : 0;
 
         return new Sc2GameDataCatalog(
+            unitsById,
             unitNames,
             buffNames,
             abilitiesById,
@@ -369,4 +394,21 @@ public sealed record Sc2WeaponFacts(
     float AttackPeriodSeconds)
 {
     public float DamagePerSecond => Damage * Attacks / AttackPeriodSeconds;
+}
+
+
+/// <summary>Immutable unit type facts copied from the match's authoritative ResponseData.</summary>
+public sealed record Sc2UnitFacts(
+    uint UnitId,
+    string Name,
+    uint AbilityId,
+    uint MineralCost,
+    float FoodRequired)
+{
+    internal static Sc2UnitFacts From(UnitTypeData unit) => new(
+        unit.UnitId,
+        unit.Name ?? string.Empty,
+        unit.AbilityId,
+        unit.MineralCost,
+        unit.FoodRequired);
 }

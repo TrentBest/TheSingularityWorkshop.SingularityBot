@@ -27,7 +27,7 @@
     "steps": [
       { "id": "supply-depot-1", "target": "SupplyDepot", "producer": "SCV", "desiredCount": 1, "earliestGameLoop": 0, "priority": 100, "lane": "buildings" },
       { "id": "barracks-1", "target": "Barracks", "producer": "SCV", "desiredCount": 1, "earliestGameLoop": 0, "priority": 90, "dependsOn": ["supply-depot-1"], "lane": "buildings" },
-      { "id": "marine-core", "target": "Marine", "producer": "Barracks", "desiredCount": 8, "earliestGameLoop": 0, "priority": 80, "dependsOn": ["barracks-1"], "lane": "units" }
+      { "id": "marine-core", "target": "Marine", "producer": "Barracks", "desiredCount": 60, "earliestGameLoop": 0, "priority": 80, "dependsOn": ["barracks-1"], "lane": "units" }
     ]
   },
   "defaultGoals": {

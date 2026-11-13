@@ -48,6 +48,7 @@ public static class ProductionPlanValidator
     {
         ArgumentNullException.ThrowIfNull(plan);
         var errors = new List<string>();
+        var steps = plan.Steps ?? Array.Empty<ProductionStepDefinition>();
 
         if (plan.SchemaVersion != "0.1")
             errors.Add("$.schemaVersion: only version '0.1' is supported.");
@@ -55,13 +56,13 @@ public static class ProductionPlanValidator
             errors.Add("$.id: a stable plan id is required.");
         if (string.IsNullOrWhiteSpace(plan.Name))
             errors.Add("$.name: a display name is required.");
-        if (plan.Steps.Count == 0)
+        if (steps.Count == 0)
             errors.Add("$.steps: at least one production step is required.");
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
-        for (var index = 0; index < plan.Steps.Count; index++)
+        for (var index = 0; index < steps.Count; index++)
         {
-            var step = plan.Steps[index];
+            var step = steps[index];
             var path = $"$.steps[{index}]";
             if (string.IsNullOrWhiteSpace(step.Id))
                 errors.Add($"{path}.id: a stable step id is required.");
@@ -81,8 +82,8 @@ public static class ProductionPlanValidator
                 errors.Add($"{path}.lane: unsupported production lane.");
         }
 
-        var knownIds = plan.Steps.Select(step => step.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (var step in plan.Steps)
+        var knownIds = steps.Select(step => step.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var step in steps)
         {
             foreach (var dependency in step.DependsOn ?? Array.Empty<string>())
             {
@@ -93,7 +94,7 @@ public static class ProductionPlanValidator
             }
         }
 
-        if (ids.Count == plan.Steps.Count && HasDependencyCycle(plan.Steps))
+        if (ids.Count == steps.Count && HasDependencyCycle(steps))
             errors.Add("$.steps: dependency graph contains a cycle.");
 
         return errors;

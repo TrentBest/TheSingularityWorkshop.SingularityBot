@@ -193,6 +193,21 @@ public static class MilitaryPlanValidator
             }
         }
 
+        foreach (var operation in operations.Where(item => item is not null))
+        {
+            var route = routes.FirstOrDefault(item => item is not null && item.Id == operation.RouteId);
+            var objective = locations.FirstOrDefault(item => item is not null && item.Id == operation.ObjectiveLocationId);
+            var finalWaypoint = route?.Waypoints?.LastOrDefault();
+            if (objective is null || finalWaypoint is null)
+                continue;
+
+            var dx = finalWaypoint.X - objective.X;
+            var dy = finalWaypoint.Y - objective.Y;
+            var arrivalRadius = objective.Radius > 0 ? objective.Radius : 1.5f;
+            if (dx * dx + dy * dy > arrivalRadius * arrivalRadius)
+                errors.Add($"$.operations[{operation.Id}].routeId: route '{route.Id}' does not terminate inside objective '{objective.Id}'.");
+        }
+
         if (operationIds.Count == operations.Count && HasDependencyCycle(operations))
             errors.Add("$.operations: dependency graph contains a cycle.");
         return errors;

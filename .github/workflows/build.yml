@@ -24,6 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check out CommandAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.CommandAi
+          ref: development
+          path: dependencies/CommandAi
       - name: Check out FSM_Serialization development source
         uses: actions/checkout@v4
         with:

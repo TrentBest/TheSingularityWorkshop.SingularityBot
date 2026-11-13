@@ -155,6 +155,13 @@ public sealed class UnitBehaviorRuntime
         return _contexts.TryGetValue(unitTag, out var context) && context.TryGetFirstHandle(out handle);
     }
 
+    public bool TryGetHandle(ulong unitTag, string fsmName, out FSMHandle handle)
+    {
+        handle = default;
+        return _contexts.TryGetValue(unitTag, out var context) &&
+               context.TryGetHandle(fsmName, out handle);
+    }
+
     public IReadOnlyCollection<string> GetCapabilities(ulong unitTag) =>
         _contexts.TryGetValue(unitTag, out var context)
             ? context.Capabilities

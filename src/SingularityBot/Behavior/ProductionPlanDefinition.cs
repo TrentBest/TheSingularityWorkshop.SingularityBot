@@ -28,7 +28,15 @@ public sealed record ProductionStepDefinition(
     int DesiredCount,
     int EarliestGameLoop,
     int Priority,
-    IReadOnlyList<string> DependsOn = null);
+    IReadOnlyList<string> DependsOn = null,
+    ProductionLane Lane = ProductionLane.Units);
+
+/// <summary>Separates structure and unit assembly intent without creating separate schedulers.</summary>
+public enum ProductionLane
+{
+    Buildings,
+    Units
+}
 
 public static class ProductionPlanValidator
 {
@@ -65,6 +73,8 @@ public static class ProductionPlanValidator
                 errors.Add($"{path}.earliestGameLoop: cannot be negative.");
             if (step.Priority is < 0 or > 100)
                 errors.Add($"{path}.priority: must be between 0 and 100.");
+            if (!Enum.IsDefined(step.Lane))
+                errors.Add($"{path}.lane: unsupported production lane.");
         }
 
         var knownIds = plan.Steps.Select(step => step.Id).ToHashSet(StringComparer.Ordinal);

@@ -33,9 +33,9 @@
   "defaultGoals": {
     "version": 1,
     "id": "marine-contain-and-scout",
-    "name": "Contain, scout, and preserve Marines",
-    "defaultRole": "contain",
-    "scoutCount": 3,
+    "name": "Assemble and assault with Marines",
+    "defaultRole": "engage",
+    "scoutCount": 0,
     "scoutSectors": [],
     "excludeEnemyStartSector": true,
     "stutterStepEnabled": true,

@@ -52,6 +52,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _definition = botDefinition;
         _manifest = botDefinition?.Runtime ?? BotManifest.LoadEmbeddedDefault();
         _goalActionPlan = botDefinition?.DefaultGoals ?? new GoalActionPlanDefinition();
+        _desiredMarineCount = botDefinition?.Opening?.Steps
+            ?.Where(step => step is not null &&
+                step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))
+            .Select(step => step.DesiredCount)
+            .DefaultIfEmpty(60)
+            .Max() ?? 60;
         _passiveBaseline = passiveBaseline;
         _writeDiagnostics = writeDiagnostics;
     }
@@ -86,6 +92,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private int _thirdSupplyDepotPlacementCount;
     private readonly BuildJobRuntime _buildJobs = new();
     private readonly Sc2BarracksProductionController _barracksProduction = new();
+    private readonly int _desiredMarineCount;
     private bool _barracksProductionActionSubmitted;
     private int _openingBuilderPlacementCount;
     private int _openingMarinePlacementCount;
@@ -759,14 +766,20 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     firstMarineReady: _openingMarine.BarracksComplete && !_openingMarine.MarineTrainingStarted,
                     firstMarineObserved: _openingMarine.MarineObserved,
                     marineMineralCost: _gameData.MarineMineralCost);
-                marineAction = _openingMarine.TryCreateAction(
-                    normalized, SpatialMap, _gameData, _workerAssignments,
-                    preferredBuilderTag: null,
-                    buildJobs: _buildJobs,
-                    reservedMinerals: marineReservedMinerals,
-                    excludedBuilderTag: _openingBuilder.BuilderTag,
-                    allowConstruction: _openingBuilder.IsCompleted,
-                    allowMarineTraining: true);
+                var observedMarineCount = normalized.Units.Count(unit =>
+                    unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                    unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+                    !normalized.DeadUnitTags.Contains(unit.Tag));
+                marineAction = observedMarineCount < _desiredMarineCount
+                    ? _openingMarine.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments,
+                        preferredBuilderTag: null,
+                        buildJobs: _buildJobs,
+                        reservedMinerals: marineReservedMinerals,
+                        excludedBuilderTag: _openingBuilder.BuilderTag,
+                        allowConstruction: _openingBuilder.IsCompleted,
+                        allowMarineTraining: true)
+                    : null;
                 _openingMarineActionSubmitted = marineAction is not null;
             }
             else
@@ -946,7 +959,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 marineAction is null && sprayAction is null)
             {
                 barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(
-                    normalized, _gameData, _buildJobs, reservedInfrastructureMinerals);
+                    normalized, _gameData, _buildJobs, reservedInfrastructureMinerals,
+                    desiredMarineCount: _desiredMarineCount);
                 _barracksProductionActionSubmitted = barracksProductionAction is not null;
             }
             else

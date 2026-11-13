@@ -58,7 +58,7 @@ public sealed class Sc2MilitaryOperationActionTranslator
             return Blocked($"Only {assigned.Length} of {intent.RequiredUnitCount} required assigned units are currently visible.");
 
         if (!string.IsNullOrWhiteSpace(intent.RequiredAbility))
-            return TranslatePointAbility(intent, location, assigned, gameData, terrain);
+            return TranslatePointAbility(intent, route, location, assigned, observation, gameData, terrain, topology);
 
         if (gameData.MoveAbilityId is not > 0)
             return Blocked("The authoritative generic Move ability is unavailable.");
@@ -100,10 +100,13 @@ public sealed class Sc2MilitaryOperationActionTranslator
 
     private static MilitaryOperationTranslation TranslatePointAbility(
         MilitaryOperationIntent intent,
+        MilitaryRouteDefinition route,
         MilitaryLocationDefinition location,
         IReadOnlyList<UnitObservationFacts> assigned,
+        NormalizedObservation observation,
         Sc2GameDataCatalog gameData,
-        SpatialTerrain terrain)
+        SpatialTerrain terrain,
+        SpatialTopology topology)
     {
         var matches = gameData.FindAbilities(intent.RequiredAbility);
         if (matches.Count != 1)
@@ -119,6 +122,23 @@ public sealed class Sc2MilitaryOperationActionTranslator
             (!terrain.TryIsPathable(objectivePoint, out var pathable) || !pathable))
             return Blocked("The ground-unit ability objective is not confirmed pathable by the cached terrain snapshot.");
 
+        var stagingUnits = ability.CastRange > 0
+            ? assigned.Where(unit =>
+                DistanceSquared(unit.PositionX, unit.PositionY, location.X, location.Y) >
+                ability.CastRange * ability.CastRange).ToArray()
+            : Array.Empty<UnitObservationFacts>();
+        if (stagingUnits.Length > 0)
+        {
+            if (gameData.MoveAbilityId is not > 0)
+                return Blocked($"Ability '{intent.RequiredAbility}' requires staging, but generic Move is unavailable.");
+            var staging = route.Waypoints[0];
+            if (DistanceSquared(staging.X, staging.Y, location.X, location.Y) >
+                ability.CastRange * ability.CastRange)
+                return Blocked($"Route's first waypoint '{staging.Id}' is outside the authoritative cast range for '{intent.RequiredAbility}'.");
+            if (!ValidateRoute(route, stagingUnits, observation, gameData, terrain, topology, out var routeReason))
+                return Blocked("Ability staging route is blocked: " + routeReason);
+        }
+
         var actions = new List<SC2APIProtocol.Action>();
         foreach (var unit in assigned)
         {
@@ -126,8 +146,17 @@ public sealed class Sc2MilitaryOperationActionTranslator
             var arrivalRadius = location.Radius > 0 ? location.Radius : 1.5f;
             if (distanceSquared <= arrivalRadius * arrivalRadius)
                 continue;
+
             if (ability.CastRange > 0 && distanceSquared > ability.CastRange * ability.CastRange)
-                return Blocked($"Assigned unit {unit.Tag} is outside the authoritative cast range for '{intent.RequiredAbility}'.");
+            {
+                var staging = route.Waypoints[0];
+                if (DistanceSquared(unit.PositionX, unit.PositionY, staging.X, staging.Y) <= ArrivalRadiusSquared)
+                    return Blocked($"Unit {unit.Tag} reached the authored staging waypoint but remains outside the cast range for '{intent.RequiredAbility}'.");
+                if (!HasPositionOrderNear(unit, gameData.MoveAbilityId!.Value, gameData, staging.X, staging.Y))
+                    actions.Add(PositionCommand(unit.Tag, checked((int)gameData.MoveAbilityId.Value), staging.X, staging.Y));
+                continue;
+            }
+
             if (HasPositionOrderNear(unit, ability.AbilityId, gameData, location.X, location.Y))
                 continue;
             actions.Add(PositionCommand(unit.Tag, checked((int)ability.AbilityId), location.X, location.Y));

@@ -86,6 +86,19 @@ public sealed class EconomyAdvisorTests
     }
 
     [Fact]
+    public void FirstMarineCanSpendItsOwnFiftyMineralReservation()
+    {
+        var advisor = new EconomyAdvisor();
+
+        Assert.Equal(0u, advisor.GetMarineActionReservedMinerals(
+            50, firstMarineReady: true, firstMarineObserved: false, marineMineralCost: 50));
+        Assert.Equal(150u, advisor.GetMarineActionReservedMinerals(
+            150, firstMarineReady: true, firstMarineObserved: false, marineMineralCost: 50));
+        Assert.Equal(50u, advisor.GetMarineActionReservedMinerals(
+            50, firstMarineReady: true, firstMarineObserved: true, marineMineralCost: 50));
+    }
+
+    [Fact]
     public void RejectsUnknownMuleCallDownPolicyWithoutChangingCurrentSettings()
     {
         var advisor = new EconomyAdvisor();

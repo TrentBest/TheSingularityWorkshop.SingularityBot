@@ -144,7 +144,7 @@ public sealed class BuildJobContextTests
     public void GenericUnitProductionReconcilesObservedResultForNonMarineUnit()
     {
         var runtime = new BuildJobRuntime();
-        var job = runtime.CreateUnitProduction("Marauder", 200, 700);
+        var job = runtime.CreateUnitProduction("Marauder", 200, 700, Array.Empty<ulong>());
         var producer = Unit(700, "Barracks", 10, 10) with
         {
             Orders = new[] { new UnitOrderObservationFacts(123, null, null, null) }

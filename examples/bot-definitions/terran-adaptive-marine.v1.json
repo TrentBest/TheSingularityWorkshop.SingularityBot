@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "singularitybot.terran.adaptive-marine",
+  "name": "SingularityBot — Adaptive Marine Economy",
+  "race": "Terran",
+  "strategyProfile": "terran.marine-economy.v1",
+  "runtime": {
+    "schemaVersion": 1,
+    "bot": {
+      "race": "Terran",
+      "strategyProfile": "terran.marine-economy.v1",
+      "deterministicScheduling": true
+    },
+    "advisors": [
+      { "id": "military", "definition": "advisor.military.v1", "enabled": true, "processGroup": "SingularityBot.Advisor.Military", "priority": 500, "settings": {} },
+      { "id": "economy", "definition": "advisor.economy.v1", "enabled": true, "processGroup": "SingularityBot.Advisor.Economy", "priority": 700, "settings": { "mineralWorkersPerNode": 2, "gasWorkersPerRefinery": 3, "enableMules": true, "muleEnergyReserve": 50 } },
+      { "id": "research", "definition": "advisor.research.v1", "enabled": true, "processGroup": "SingularityBot.Advisor.Research", "priority": 400, "settings": {} },
+      { "id": "base-layout", "definition": "advisor.base-layout.v1", "enabled": true, "processGroup": "SingularityBot.Advisor.BaseLayout", "priority": 600, "settings": {} },
+      { "id": "intelligence", "definition": "advisor.intelligence.v1", "enabled": true, "processGroup": "SingularityBot.Advisor.Intelligence", "priority": 450, "settings": { "preserveOrbitalScanBeforeMules": true, "orbitalScanEnergyReserve": 50 } }
+    ]
+  },
+  "opening": {
+    "schemaVersion": "0.1",
+    "id": "terran.safe-marine-opening",
+    "name": "Safe Marine Economy Opening",
+    "race": "Terran",
+    "steps": [
+      { "id": "supply-depot-1", "target": "SupplyDepot", "producer": "SCV", "desiredCount": 1, "earliestGameLoop": 0, "priority": 100, "lane": "buildings" },
+      { "id": "barracks-1", "target": "Barracks", "producer": "SCV", "desiredCount": 1, "earliestGameLoop": 0, "priority": 90, "dependsOn": ["supply-depot-1"], "lane": "buildings" },
+      { "id": "marine-core", "target": "Marine", "producer": "Barracks", "desiredCount": 8, "earliestGameLoop": 0, "priority": 80, "dependsOn": ["barracks-1"], "lane": "units" }
+    ]
+  },
+  "defaultGoals": {
+    "version": 1,
+    "id": "marine-contain-and-scout",
+    "name": "Contain, scout, and preserve Marines",
+    "defaultRole": "contain",
+    "scoutCount": 3,
+    "scoutSectors": [],
+    "excludeEnemyStartSector": true,
+    "stutterStepEnabled": true,
+    "fallbackHealthFraction": 0.35,
+    "engageVisibleThreats": true
+  },
+  "strategyTransitions": [
+    {
+      "id": "prepare-for-roach-tech",
+      "targetStrategy": "terran.defend-ground-tech.v1",
+      "evidence": [
+        { "evidenceId": "enemy.structure.roach-warren", "subject": "enemy", "minimumConfidence": 0.85, "maximumAgeGameLoops": 448, "requiresObservedFact": true }
+      ],
+      "requiredGuards": ["own.production.pipeline-healthy", "own.defense.coverage-available", "resources.transition-affordable"],
+      "minimumAdvantage": 0.1,
+      "evaluationHorizonGameLoops": 448,
+      "cooldownGameLoops": 896
+    }
+  ],
+  "ai": {
+    "enabled": true,
+    "provider": "configured-by-host",
+    "model": "configured-by-host",
+    "maxOnStartCalls": 1,
+    "maxInMatchCalls": 3,
+    "timeoutMilliseconds": 15000,
+    "minimumGameLoopSpacing": 448,
+    "allowedTriggers": ["opening.review", "enemy.tech.unanswered", "strategic.stalemate", "post-scouting.reassessment"]
+  }
+}

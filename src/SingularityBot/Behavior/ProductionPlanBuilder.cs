@@ -106,7 +106,7 @@ public sealed class ProductionLineBuilder
         string stepId,
         string prerequisiteStepId,
         ProductionStepDefinition step) =>
-        _owner.WhenComplete(stepId, prerequisiteStepId, step);
+        _owner.WhenComplete(stepId, prerequisiteStepId, step with { Lane = _lane });
 
     /// <summary>Adds a target-count objective; issuance stops when completed plus in-progress reaches the count.</summary>
     public ProductionLineBuilder AddUntil(

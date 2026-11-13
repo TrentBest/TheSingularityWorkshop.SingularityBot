@@ -16,6 +16,10 @@ public sealed class EconomyAdvisorSettings
     public bool AllowLongDistanceMining { get; init; }
     /// <summary>Mineral bank at which a Supply Depot builder is reserved and dispatched; build legality still uses live game data.</summary>
     public uint SupplyDepotWorkerPullMinerals { get; init; } = 80;
+    /// <summary>Enables the opening Orbital morph and subsequent MULE call-down policy.</summary>
+    public bool EnableMules { get; init; } = true;
+    /// <summary>Immediate spends at 50 energy; PreserveScan defers MULEs while the Intelligence reserve is unmet.</summary>
+    public string MuleCallDownPolicy { get; init; } = "PreserveScan";
 
     public IReadOnlyList<string> Validate()
     {
@@ -25,6 +29,9 @@ public sealed class EconomyAdvisorSettings
             errors.Add("$.mineralSaturation: must be between 1 and 4 workers per mineral node.");
         if (SupplyDepotWorkerPullMinerals > 1000)
             errors.Add("$.supplyDepotWorkerPullMinerals: must be between 0 and 1000.");
+        if (!MuleCallDownPolicy.Equals("Immediate", StringComparison.OrdinalIgnoreCase) &&
+            !MuleCallDownPolicy.Equals("PreserveScan", StringComparison.OrdinalIgnoreCase))
+            errors.Add("$.muleCallDownPolicy: must be 'Immediate' or 'PreserveScan'.");
         return errors;
     }
 }

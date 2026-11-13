@@ -20,9 +20,9 @@ public sealed class MilitaryPlanRuntime
     {
         ArgumentNullException.ThrowIfNull(plan);
         var errors = MilitaryPlanValidator.Validate(plan).ToList();
-        if (plan.Operations.Any(operation => _operations.ContainsKey(operation.Id)))
-            errors.Add("$.operations: one or more operation ids are already registered in this runtime.");
         if (errors.Count != 0) return errors;
+        if (plan.Operations.Any(operation => _operations.ContainsKey(operation.Id)))
+            return new[] { "$.operations: one or more operation ids are already registered in this runtime." };
 
         foreach (var definition in plan.Operations)
         {

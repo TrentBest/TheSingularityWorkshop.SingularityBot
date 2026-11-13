@@ -1484,9 +1484,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             }
 
             var route = _militaryPlan.Routes.FirstOrDefault(item => item.Id == definition.RouteId);
-            var hasObservedOrder = executionAbility is uint abilityId && assigned.Any(unit =>
+            var executionAbilityIds = new HashSet<uint>();
+            if (executionAbility is uint abilityId)
+            {
+                executionAbilityIds.Add(abilityId);
+                if (_gameData.TryGetAbility(abilityId, out var ability) && ability.RemapsToAbilityId > 0)
+                    executionAbilityIds.Add(ability.RemapsToAbilityId);
+            }
+            var hasObservedOrder = executionAbilityIds.Count > 0 && assigned.Any(unit =>
                 unit.Orders.Any(order =>
-                    order.AbilityId == abilityId &&
+                    executionAbilityIds.Contains(order.AbilityId) &&
                     (definition.RequiredAbility is not null
                         ? order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
                           DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,

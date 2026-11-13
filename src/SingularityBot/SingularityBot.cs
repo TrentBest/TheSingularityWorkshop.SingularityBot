@@ -313,6 +313,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _militaryPlanRuntime = militaryRuntime;
             else
                 Console.WriteLine("[Military] Configured plan could not be restored: " + string.Join(" ", militaryErrors));
+            foreach (var operation in _militaryPlan.Operations)
+                _militaryTranslator.Reset(operation.Id);
+            _militaryOperationDiagnostics.Clear();
             _militaryActionResultMappings.Clear();
         }
         _combatWeapons = CombatWeaponProfile.FromCatalog(_gameData);
@@ -1636,6 +1639,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _workerAssignments.Clear();
         _loggedWorkerAssignments.Clear();
         _marineRally.Reset();
+        _militaryAssignments.Clear();
+        _militaryOperationDiagnostics.Clear();
+        _militaryActionResultMappings.Clear();
+        if (_militaryPlan is not null)
+            foreach (var operation in _militaryPlan.Operations)
+                _militaryTranslator.Reset(operation.Id);
         PathingTopology = null;
         _openingTrace.Dispose();
         _binaryTrace.Dispose();

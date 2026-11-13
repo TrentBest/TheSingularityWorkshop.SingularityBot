@@ -37,6 +37,41 @@ public sealed class Sc2MilitaryOperationActionTranslatorTests
         Assert.Equal(8, secondAction.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
     }
 
+
+    [Fact]
+    public void Translate_UsesGroundPathingForGroundForcesButNotAirRoutes()
+    {
+        var cells = Enumerable.Repeat((byte)1, 100).ToArray();
+        cells[5 * 10 + 5] = 0;
+        var grid = new SpatialGridSnapshot(10, 10, 10, 10, cells);
+        var terrain = new SpatialTerrain(grid, null, null);
+        var topology = SpatialTopology.Build(terrain);
+        var route = new MilitaryRouteDefinition(
+            "air-route", "Air route",
+            [new("start", 1, 1), new("finish", 9, 9)],
+            MilitaryRouteConstraints.PreferPathableTerrain);
+        var plan = Plan(route);
+        var translator = new Sc2MilitaryOperationActionTranslator();
+
+        var ground = translator.Translate(
+            Intent("operation", "air-route", "objective-location"),
+            plan, new ulong[] { 10 },
+            Observation(Unit(10, 1, 1, isFlying: false)),
+            MoveCatalog(), terrain, topology);
+
+        Assert.True(ground.IsBlocked);
+        Assert.Empty(ground.Actions);
+
+        var air = translator.Translate(
+            Intent("operation", "air-route", "objective-location"),
+            plan, new ulong[] { 10 },
+            Observation(Unit(10, 1, 1, isFlying: true)),
+            MoveCatalog(), terrain, topology);
+
+        Assert.False(air.IsBlocked);
+        Assert.Single(air.Actions);
+    }
+
     [Fact]
     public void Translate_RejectsAvoidContactRouteWhenVisibleEnemyIsTooClose()
     {
@@ -144,8 +179,9 @@ public sealed class Sc2MilitaryOperationActionTranslatorTests
         float x,
         float y,
         UnitAlliance alliance = UnitAlliance.Self,
-        string unitKind = "Battlecruiser") =>
+        string unitKind = "Battlecruiser",
+        bool isFlying = true) =>
         new(tag, alliance == UnitAlliance.Self ? 1u : 2u, unitKind, 1, alliance,
             UnitVisibility.Visible, 550, 550, 0, 0, 1, x, y, true, false, false,
-            true, false, false, 100);
+            isFlying, false, false, 100);
 }

@@ -8,6 +8,7 @@ on:
       - "tests/**"
       - "schemas/**"
       - "strategies/**"
+      - "military-plans/**"
       - "docs/**"
       - "README.md"
       - ".github/workflows/build.yml"
@@ -32,7 +33,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Validate strategy and production-plan documents
+      - name: Validate strategy, production and military plan documents
         run: |
           python -m pip install --disable-pip-version-check jsonschema
           python - <<'PY'
@@ -44,6 +45,7 @@ jobs:
               "strategy": json.loads(Path("schemas/strategy.schema.json").read_text(encoding="utf-8")),
               "production": json.loads(Path("schemas/production-plan.schema.json").read_text(encoding="utf-8")),
               "goal": json.loads(Path("schemas/goal-action-plan.schema.json").read_text(encoding="utf-8")),
+              "military": json.loads(Path("schemas/military-plan.schema.json").read_text(encoding="utf-8")),
           }
           validators = {name: Draft202012Validator(schema) for name, schema in schemas.items()}
           files = sorted(Path("strategies").glob("*.json"))
@@ -62,6 +64,22 @@ jobs:
                       print(f"{path}:{location}: {error.message}")
                   raise SystemExit(f"{schema_name.title()} validation failed: {path}")
               print(f"Validated {path} against {schema_name} schema")
+
+          military_files = sorted(Path("military-plans").glob("*.json"))
+          if not military_files:
+              raise SystemExit("No military plan JSON files found.")
+          for path in military_files:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              errors = sorted(
+                  validators["military"].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
+              if errors:
+                  for error in errors:
+                      location = "/".join(map(str, error.absolute_path)) or "$"
+                      print(f"{path}:{location}: {error.message}")
+                  raise SystemExit(f"Military plan validation failed: {path}")
+              print(f"Validated {path} against military schema")
           PY
       - name: Restore
         run: dotnet restore src/SingularityBot.Runner/SingularityBot.Runner.csproj

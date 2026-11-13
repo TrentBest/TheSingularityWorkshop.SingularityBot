@@ -43,10 +43,10 @@ public sealed class ProductionPlanRuntime : IDisposable
     {
         ArgumentNullException.ThrowIfNull(plan);
         var errors = ProductionPlanValidator.Validate(plan).ToList();
-        if (plan.Steps.Any(step => _steps.ContainsKey(step.Id)))
-            errors.Add("$.steps: one or more step ids are already registered in this runtime.");
         if (errors.Count != 0)
             return errors;
+        if (plan.Steps.Any(step => _steps.ContainsKey(step.Id)))
+            return new[] { "$.steps: one or more step ids are already registered in this runtime." };
 
         // Register every node before the next FSM update. Dependency resolvers
         // deliberately resolve by stable id at evaluation time, so declaration

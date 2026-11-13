@@ -6,6 +6,7 @@ on:
     paths:
       - "docs/**"
       - "strategies/**"
+      - "military-plans/**"
       - "schemas/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -32,9 +33,11 @@ jobs:
           cp -R docs/. _site/
           mkdir -p _site/strategies
           cp strategies/*.json _site/strategies/
+          mkdir -p _site/military-plans
+          cp military-plans/*.json _site/military-plans/
           touch _site/.nojekyll
 
-      - name: Include strategy schema
+      - name: Include strategy and military schemas
         run: |
           mkdir -p _site/schemas
           cp schemas/*.json _site/schemas/

@@ -127,7 +127,7 @@ public sealed class BotAiConsultationCoordinator
     {
         if (string.IsNullOrWhiteSpace(contextJson))
             throw new ArgumentException("A JSON match-context snapshot is required.", nameof(contextJson));
-        if (contextJson.Length > HeadlessAiInput.MaxContentCharacters / 2)
+        if (contextJson.Length > 524_288)
             throw new ArgumentException("The match-context snapshot exceeds the strategic consultation limit.", nameof(contextJson));
         using var document = JsonDocument.Parse(contextJson);
         if (document.RootElement.ValueKind != JsonValueKind.Object)

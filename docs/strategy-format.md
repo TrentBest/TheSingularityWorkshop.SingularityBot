@@ -40,7 +40,7 @@ Do not encode assumed optimal timings as facts. The scheduler must respond to cu
 The production runtime supports a first executable slice of named, dependency-aware steps. A plan still compiles to one production runtime and one shared action pipeline; the authoring lanes do not create competing schedulers.
 
 - Every step has a stable textual ID, target, producer, desired completed count, timing floor, priority and optional dependency IDs.
-- `Buildings` and `Units` are distinct authoring lanes. They compile into the same plan so the existing observation, resource, supply and action arbitration remain authoritative.
+- `Buildings` and `Units` are distinct authoring lanes. They compile into the same plan so the existing observation, resource, supply and action arbitration remain authoritative. The same lane is represented by the optional JSON `lane` field (`buildings` or `units`); omitted lanes default to `units`.
 - A dependency is a hard completion barrier. A downstream step remains ineligible until the prerequisite's observed completed count reaches its configured desired count.
 - A submitted command, producer order or in-progress construction/training does not satisfy a completion dependency.
 - `AddUntil` expresses a target count. The step stops requesting additional work when observed completed plus in-progress count reaches that target; dependent steps still wait for the completed count.

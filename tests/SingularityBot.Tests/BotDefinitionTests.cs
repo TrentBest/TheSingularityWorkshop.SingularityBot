@@ -86,6 +86,7 @@ public sealed class BotDefinitionTests
         Assert.Same(definition.Runtime, bot.Manifest);
         Assert.Same(definition.Opening, bot.OpeningPlan);
         Assert.Same(definition.DefaultGoals, bot.GoalActionPlan);
+        Assert.Equal(60, bot.DesiredMarineCount);
     }
 
     [Fact]

@@ -1510,7 +1510,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                   route.Waypoints.Any(point =>
                       DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
                           point.X, point.Y) <= 2.25f))));
-            if (hasObservedOrder)
+            if (operation.RequestPending && hasObservedOrder)
                 _militaryPlanRuntime.ObserveStarted(definition.Id, observation.GameLoop);
 
             var allAtObjective = assigned.Length >= definition.RequiredUnitCount &&

@@ -307,6 +307,16 @@ public sealed class BuildJobRuntime
                      job.BuildableKind.Equals(unitKind, StringComparison.OrdinalIgnoreCase) &&
                      !job.IsCompleted && !job.IsFailed && job.ProducerTag.HasValue).ToArray())
         {
+            if (job.ResultUnitTag is ulong resultTag)
+            {
+                var existing = producedUnits.FirstOrDefault(unit => unit.Tag == resultTag);
+                if (existing is not null)
+                    job.ObserveResult(existing.Tag, 1f, observation.GameLoop);
+                else if (observation.DeadUnitTags.Contains(resultTag))
+                    job.Fail($"{unitKind} was destroyed after production.", observation.GameLoop);
+                continue;
+            }
+
             var producer = observation.Units.FirstOrDefault(unit =>
                 unit.Tag == job.ProducerTag &&
                 unit.Alliance == global::SingularityBot.Observation.UnitAlliance.Self &&

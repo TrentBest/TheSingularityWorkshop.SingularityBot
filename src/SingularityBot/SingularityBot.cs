@@ -755,9 +755,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _economyAdvisor.Settings.AllowLongDistanceMining);
             if (_openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted)
             {
-                // Stage a DIFFERENT SCV at the Barracks site while the Depot is
-                // building. The Barracks Build command remains gated on the Depot
-                // being observed complete, removing the old Orbital/Barracks cycle.
+                // The first Barracks controller remains closed until the Depot
+                // is observed complete and the full 150-mineral cost is available
+                // after reservations. It then pulls the closest eligible SCV so
+                // worker travel overlaps the final resource accumulation.
                 // The first Marine is not allowed to consume minerals already committed to
                 // the starting Command Center's Orbital morph (or higher-priority
                 // infrastructure). Releasing this reserve here can spend the exact

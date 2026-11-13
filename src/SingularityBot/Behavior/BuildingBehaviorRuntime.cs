@@ -219,7 +219,7 @@ public sealed class BuildingBehaviorContext : IStateContext
 
     public bool CanUpgradeToOrbital =>
         UnitKind == "CommandCenter" && IsLanded && !IsOrbitalCommand && !IsPlanetaryFortress &&
-        CompletedBarracksCount == 1 && HasCompletedSupplyDepot &&
+        CompletedBarracksCount >= 1 && HasCompletedSupplyDepot &&
         !IsInDesignatedCommandCenterConstructionArea && !HasScvTrainingOrder;
 
     public bool IsOrbitalUpgradeOrderObserved =>

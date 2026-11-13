@@ -105,6 +105,24 @@ public sealed class Sc2BarracksProductionControllerTests
         jobs.Clear();
     }
 
+    [Fact]
+    public void RespectsUserAuthoredMarineTargetInsteadOfHardCodedSwarmSize()
+    {
+        var controller = new Sc2BarracksProductionController();
+        var jobs = new BuildJobRuntime();
+        var marines = Enumerable.Range(1, 8).Select(index =>
+            Fact((ulong)(300 + index), "Marine")).ToArray();
+
+        var action = controller.TryCreateMarineTrainingAction(
+            Snapshot(500, 10, 30, marines.Concat(new[] {
+                Fact(100, "Barracks"), Fact(200, "Barracks")
+            }).ToArray()), GameData(), jobs, desiredMarineCount: 8);
+
+        Assert.Null(action);
+        Assert.Empty(jobs.Jobs);
+        jobs.Clear();
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

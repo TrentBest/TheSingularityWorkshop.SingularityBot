@@ -39,7 +39,7 @@ public sealed class SingularityBotMilitaryPlanIntegrationTests
         """);
 
         Assert.NotEmpty(errors);
-        Assert.Equal("active-plan", Assert.Single(bot.MilitaryOperations).Definition.Id);
+        Assert.Equal("first-bc", Assert.Single(bot.MilitaryOperations).Definition.Id);
     }
 
     private static string ValidPlan(string id) => $$"""

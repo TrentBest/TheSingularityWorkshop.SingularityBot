@@ -119,6 +119,31 @@ public sealed class MilitaryPlanDefinitionTests
         Assert.Equal("natural", secondIntent.ObjectiveLocationId);
     }
 
+
+    [Fact]
+    public void MilitaryPlanValidator_RejectsNullCollectionsAndNullNodes()
+    {
+        var nullCollections = new MilitaryPlanDefinition
+        {
+            Id = "null-collections",
+            Name = "Null collections",
+            Locations = null,
+            Routes = null,
+            Operations = null
+        };
+        Assert.NotEmpty(MilitaryPlanValidator.Validate(nullCollections));
+
+        var nullNodes = new MilitaryPlanDefinition
+        {
+            Id = "null-nodes",
+            Name = "Null nodes",
+            Locations = [null],
+            Routes = [null],
+            Operations = [null]
+        };
+        Assert.NotEmpty(MilitaryPlanValidator.Validate(nullNodes));
+    }
+
     [Fact]
     public void MilitaryPlanParser_ReadsNamedRoutesAndStringEnums()
     {

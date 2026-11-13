@@ -785,7 +785,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // verifies the observed Depot/Barracks prerequisites and SCV queue.
             orbitalSupportAction = _orbitalSupport.TryCreateAction(
                 normalized, _gameData,
-                allowOrbitalUpgrade: _economyAdvisor.ShouldEnableOrbitalMorph(_openingMarine.MarineObserved) &&
+                allowOrbitalUpgrade: _economyAdvisor.ShouldEnableOrbitalMorph(_openingMarine.MarineTrainingOrderObserved) &&
                     startingTownHall is not null &&
                     startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase),
                 permittedCommandCenterTag: startingTownHall?.Tag,

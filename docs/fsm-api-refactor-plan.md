@@ -158,3 +158,53 @@ Work on `development` only. Implement in small, buildable increments. Keep this 
 - SpatialMap.MapPoint already exposes DistanceSquaredTo; however, SpatialIntelligence.RebuildIndexes currently recalculates sector, quadrant, and side classification for every known contact on each update. This is the behavior to replace, not a completed optimization.
 - UnitDefinitions and UnitExpertiseProfiles currently expose only a small initial mixed-race sample (SCV, Probe, Drone, Zealot, Marine, Marauder, Zergling). They are not an exhaustive Terran inventory. Do not claim Terran coverage until the catalogue-driven gate passes.
 - BuildingBehaviorContext currently receives nearest visible ground-enemy distance-squared from its runtime, so building threat already avoids square roots. It does not yet own cached sector/quadrant/half-map distances.
+
+## Spatial calculation service and mineral-line movement extension (2026-11-13)
+
+### Shared spatial calculation service
+
+Spatial math is scheduled centrally and materialized into frame facts before advisors run. Advisors query prepared facts and spatial indexes; they do not rediscover distances by iterating all entities.
+
+- Calculations declare their input dependencies, owner/entity scope, update policy, and output facts.
+- Supported update policies include map-invariant (once per map/session), on-input-change (dirty/versioned), on-observation (when a new authoritative position arrives), fixed cadence (every N game loops), and threshold-crossing (evaluate only when source facts change, emit when a configured band changes).
+- A calculation may request a maximum refresh frequency, including once per frame, but the default is not once per frame. The service should choose the cheapest policy consistent with correctness and decision latency.
+- Map center, half-map centers, quadrant centers, sector centers, side-divider transforms, and other map-invariant values are built once. Reuse cached transforms and squared center distances where possible.
+- Entity position classification (sector, quadrant, side) is recomputed only when position changes or an entity's spatial frame changes. Static structures therefore retain their cached classification; flying structures refresh on each new position observation while airborne and become static again after landing.
+- Dynamic distance facts are computed in batches over compact arrays of positions/IDs. Keep the authoritative entity context as the owner of the result, but use contiguous working buffers and avoid repeated dictionary lookups in inner loops. Advisors receive read-only views/indexes over the completed batch.
+- Use squared distances for comparisons and threshold bands. Avoid square roots unless an output genuinely requires linear distance (for example, a user-facing route estimate or a movement vector requiring normalization). Precompute invariant coefficients; do not replace clear arithmetic with opaque micro-optimizations without benchmarks.
+- Every prepared batch carries the observation GameLoop/version. The frame barrier rejects or withholds advisor execution if required facts are stale or mixed across versions.
+
+### Generic distance-band events
+
+Distance bands are reusable spatial behavior, not hard-coded per advisor. A definition supplies a target relation, distance metric, and ordered thresholds; the runtime caches the current band and emits a transition only when the band changes. Support standard bands such as <=10, <=5, <=1 and user-defined ranges, with explicit hysteresis where oscillation at a boundary would be harmful. Threshold semantics are inclusive and tested at exact boundaries. A consumer binds the event to a compiled response/FSM transition; the generic spatial layer never issues SC2 commands itself.
+
+### Spatial filtering and advisor query model
+
+- Maintain indexes by sector, quadrant, side, alliance, unit type, and relevant capability/category. Update only entities whose membership changed.
+- Military queries can first narrow to enemy Banshees in relevant sectors or sides, then evaluate distance to friendly town halls/command centers. Economic queries can retrieve each mineral's cached distance to its assigned town hall and each worker's cached distance to its assigned mineral.
+- Threat-to-worker calculations are staged: only when an enemy enters the relevant command-center/mineral-line threat envelope do we narrow to workers assigned to that town hall and compute enemy-to-worker distances. Avoid the all-enemies × all-workers product during ordinary frames.
+- The index is an accelerator, not a source of truth. Fog-of-war remembered contacts remain distinct from visible contacts; missing observations never imply destruction or safe distance.
+- All entity spatial facts and index membership updates complete before the advisor phase. Advisor priority changes decision ordering only, never spatial update completeness.
+
+### Mineral-line opening and worker routing
+
+- The initial opening allocation should assign the first eight SCVs to their closest mineral patches using the existing global matching/pathing-query result, with one worker per patch where the map provides eight patches. This must be validated against actual patch count and pathing; do not hard-code eight as a universal mineral count.
+- For each mineral target, compute an approach waypoint on the worker-clearance tangent to the mineral's inscribed tile circle. The geometric inputs include mineral footprint/circle radius, worker collision radius, and approach direction. The waypoint is a movement target only; the final harvest command must target the mineral unit tag.
+- Once the worker reaches the valid interaction envelope, issue Harvest/Gather against the mineral. Validate the waypoint with SC2 pathing/placement semantics and observed collision/weapon range data where available. A mathematically tangent point is not sufficient if pathing or command acceptance disagrees.
+- Do not assume the worker's visual center or the mineral's center is the correct command target. Keep the mineral tag as the authoritative harvest target and track approach point separately.
+- Surplus opening workers are not left idle. A staggered-arrival planner computes a route whose travel time is synchronized with the predicted earliest frame a mineral slot becomes available. The route may intentionally be longer than the direct route, but must remain pathable and should minimize excess travel subject to the arrival window.
+- Model slot availability as an interval/prediction with confidence, not an exact promise: mining cycle, cargo return, pathing, acceleration, command processing, and observation cadence can shift the actual release frame. Replan only when a meaningful input changes; never continuously oscillate route targets.
+- The displayed route and the executed route derive from the same plan so the opening visibly demonstrates the scheduling logic rather than drawing a decorative path unrelated to behavior.
+- Record baseline and optimized outcomes over repeatable openings: first-mineral acquisition frame, first-return frame, mineral income over a fixed horizon, worker idle frames, path length, command count, and assignment stability. Keep the optimization behind a configurable policy until it demonstrates a measurable benefit without reducing income or reliability.
+
+### Implementation sequence and acceptance tests
+
+1. Introduce the calculation policy/registration contract and map-invariant cache; test one-time initialization and dirty invalidation.
+2. Add entity-owned spatial facts and incremental sector/quadrant/side membership; test static, moving, flying, landed, remembered, and destroyed entities.
+3. Add generic squared-distance bands with exact-boundary and hysteresis tests.
+4. Build compact batch calculations and the frame-version barrier; prove all advisors read one completed snapshot.
+5. Add worker-owned assigned-mineral distance refresh and the generic approach-waypoint calculation with geometric/pathing tests.
+6. Add the surplus-worker arrival planner as an optional strategy, first in shadow/visualization mode, then compare repeatable-game metrics before enabling commands.
+7. Add staged threat filtering and advisor query APIs; prove candidate filtering returns the same relevant results as brute force while evaluating fewer pairs.
+
+No play-test request until a coherent mining slice builds and passes CI. No publish, merge, release, deployment, or branch deletion without explicit authorization.

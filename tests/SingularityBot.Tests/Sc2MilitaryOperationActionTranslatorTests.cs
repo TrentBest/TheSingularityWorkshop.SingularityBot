@@ -95,6 +95,61 @@ public sealed class Sc2MilitaryOperationActionTranslatorTests
         Assert.Contains("visible enemy contact", result.Reason);
     }
 
+
+    [Fact]
+    public void Translate_StagesAtAuthoredJumpOriginBeforeUsingAbilityCastRange()
+    {
+        var route = new MilitaryRouteDefinition(
+            "jump", "Jump route",
+            [new("jump-origin", 6, 6), new("landing", 8, 8)]);
+        var plan = Plan(route, requiredAbility: "TacticalJump");
+        var data = new ResponseData();
+        data.Abilities.Add(new AbilityData
+        {
+            AbilityId = 16,
+            LinkName = "move",
+            LinkIndex = 0,
+            ButtonName = "Move",
+            Available = true,
+            Target = AbilityData.Types.Target.Point
+        });
+        data.Abilities.Add(new AbilityData
+        {
+            AbilityId = 999,
+            LinkName = "TacticalJump",
+            ButtonName = "TacticalJump",
+            Available = true,
+            Target = AbilityData.Types.Target.Point,
+            CastRange = 5
+        });
+        var gameData = Sc2GameDataCatalog.Create(data);
+        var translator = new Sc2MilitaryOperationActionTranslator();
+        var terrain = OpenTerrain();
+        var topology = SpatialTopology.Build(terrain);
+
+        var staging = translator.Translate(
+            Intent("operation", "jump", "objective-location", "TacticalJump"),
+            plan, new ulong[] { 10 }, Observation(Unit(10, 1, 1)),
+            gameData, terrain, topology);
+
+        var move = Assert.Single(staging.Actions);
+        Assert.False(staging.IsBlocked);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(6, move.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
+        Assert.Equal(6, move.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
+
+        var jump = translator.Translate(
+            Intent("operation", "jump", "objective-location", "TacticalJump"),
+            plan, new ulong[] { 10 }, Observation(Unit(10, 6, 6)),
+            gameData, terrain, topology);
+
+        var ability = Assert.Single(jump.Actions);
+        Assert.False(jump.IsBlocked);
+        Assert.Equal(999, ability.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(8, ability.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
+        Assert.Equal(8, ability.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
+    }
+
     [Fact]
     public void Translate_ResolvesRequiredPointAbilityFromGameDataWithoutGuessingItsId()
     {

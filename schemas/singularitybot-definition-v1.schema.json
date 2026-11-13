@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thesingularityworkshop.dev/schemas/singularitybot-definition-v1.schema.json",
+  "title": "SingularityBot Definition",
+  "description": "Portable authoring contract for one bot. Data only; all executable behavior remains in trusted, compiled SingularityBot capabilities.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "name", "race", "strategyProfile", "runtime", "opening", "defaultGoals", "strategyTransitions", "ai"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "race": { "const": "Terran" },
+    "strategyProfile": { "type": "string", "minLength": 1 },
+    "runtime": { "$ref": "singularitybot-manifest-v1.schema.json" },
+    "opening": { "$ref": "#/$defs/productionPlan" },
+    "defaultGoals": { "$ref": "#/$defs/defaultGoals" },
+    "strategyTransitions": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/strategyTransition" }
+    },
+    "ai": { "$ref": "#/$defs/aiPolicy" }
+  },
+  "$defs": {
+    "productionPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "id", "name", "race", "steps"],
+      "properties": {
+        "schemaVersion": { "const": "0.1" },
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "race": { "type": "string", "minLength": 1 },
+        "steps": {
+          "type": "array", "minItems": 1, "maxItems": 256,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "target", "producer", "desiredCount", "earliestGameLoop", "priority"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "target": { "type": "string", "minLength": 1 },
+              "producer": { "type": "string", "minLength": 1 },
+              "desiredCount": { "type": "integer", "minimum": 1 },
+              "earliestGameLoop": { "type": "integer", "minimum": 0 },
+              "priority": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "dependsOn": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+              "lane": { "enum": ["buildings", "units"] }
+            }
+          }
+        }
+      }
+    },
+    "defaultGoals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "id", "name", "defaultRole", "scoutCount", "scoutSectors", "excludeEnemyStartSector", "stutterStepEnabled", "fallbackHealthFraction", "engageVisibleThreats"],
+      "properties": {
+        "version": { "const": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "defaultRole": { "enum": ["none", "rally", "scout", "contain", "engage", "fallback"] },
+        "scoutCount": { "type": "integer", "minimum": 0 },
+        "scoutSectors": { "type": "array", "items": { "type": "object" }, "uniqueItems": true },
+        "excludeEnemyStartSector": { "type": "boolean" },
+        "stutterStepEnabled": { "type": "boolean" },
+        "fallbackHealthFraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "engageVisibleThreats": { "type": "boolean" }
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidenceId", "subject", "minimumConfidence", "maximumAgeGameLoops"],
+      "properties": {
+        "evidenceId": { "type": "string", "minLength": 1 },
+        "subject": { "type": "string", "minLength": 1 },
+        "minimumConfidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximumAgeGameLoops": { "type": "integer", "minimum": 1 },
+        "requiresObservedFact": { "type": "boolean" }
+      }
+    },
+    "strategyTransition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "targetStrategy", "evidence", "requiredGuards", "minimumAdvantage", "evaluationHorizonGameLoops", "cooldownGameLoops"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "targetStrategy": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+        "requiredGuards": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "minimumAdvantage": { "type": "number", "minimum": 0 },
+        "evaluationHorizonGameLoops": { "type": "integer", "minimum": 1 },
+        "cooldownGameLoops": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "aiPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "maxOnStartCalls", "maxInMatchCalls", "timeoutMilliseconds", "minimumGameLoopSpacing", "allowedTriggers"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "maxOnStartCalls": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "maxInMatchCalls": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "timeoutMilliseconds": { "type": "integer", "minimum": 1000, "maximum": 120000 },
+        "minimumGameLoopSpacing": { "type": "integer", "minimum": 0 },
+        "allowedTriggers": { "type": "array", "maxItems": 8, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "enabled": { "const": true } } },
+          "then": { "required": ["provider", "model"], "properties": { "provider": { "minLength": 1 }, "model": { "minLength": 1 } } },
+          "else": { "properties": { "maxOnStartCalls": { "const": 0 }, "maxInMatchCalls": { "const": 0 } } }
+        }
+      ]
+    }
+  }
+}

@@ -72,6 +72,20 @@ public sealed class EconomyAdvisorTests
     }
 
     [Fact]
+    public void OrbitalMorphWaitsForTheFirstObservedMarineAndEnableMulesSetting()
+    {
+        var advisor = new EconomyAdvisor();
+
+        Assert.False(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: false));
+        Assert.True(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: true));
+
+        var errors = advisor.ConfigureJson(
+            "{\\"version\\":1,\\"enableMules\\":false}");
+        Assert.Empty(errors);
+        Assert.False(advisor.ShouldEnableOrbitalMorph(firstMarineObserved: true));
+    }
+
+    [Fact]
     public void RejectsUnknownMuleCallDownPolicyWithoutChangingCurrentSettings()
     {
         var advisor = new EconomyAdvisor();

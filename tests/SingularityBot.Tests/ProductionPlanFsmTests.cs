@@ -71,7 +71,7 @@ public sealed class ProductionPlanFsmTests
         Assert.True(runtime.TryGetStep("first-barracks", out var barracks));
         Assert.True(runtime.TryGetStep("orbital-command", out var orbital));
 
-        barracks.ApplyObservation(100, 0, 1, true, true, true);
+        barracks.ApplyObservation(100, 0, 0, true, true, true);
         orbital.ApplyObservation(100, 0, 0, true, true, true);
         runtime.Update();
         runtime.Update();
@@ -127,13 +127,13 @@ public sealed class ProductionPlanFsmTests
         runtime.TryGetStep("depot", out var depot);
         runtime.TryGetStep("barracks", out var barracks);
 
-        depot.ApplyObservation(10, 0, 1, true, true, true);
-        depot.MarkSubmitted();
+        depot.ApplyObservation(10, 0, 0, true, true, true);
         barracks.ApplyObservation(10, 0, 0, true, true, true);
         runtime.Update();
         runtime.Update();
 
         Assert.Single(emitted);
+        depot.ApplyObservation(11, 0, 1, true, true, true);
         Assert.False(barracks.DependenciesSatisfied);
     }
 

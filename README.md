@@ -69,6 +69,19 @@ The runtime is authoritative. GUI is an authoring and inspection client; it does
 - [Lineage and licensing](docs/lineage.md)
 - [Source migration audit](docs/migration-audit.md)
 
+## Source dependencies
+
+The bot builds against active ecosystem source branches. CI checks out CommandAi and FSM_Serialization from their `development` branches; no NuGet publication wait is required. For a local checkout, initialize the source dependencies before building:
+
+```bash
+mkdir -p dependencies
+git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git dependencies/CommandAi
+git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_Serialization.git dependencies/FSM_Serialization
+dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj
+```
+
+Keep dependency integration source-based during active development. When an integration exposes a missing capability, identify and contribute the requirement to the owning repository instead of copying its implementation into SingularityBot.
+
 ## Development rules
 
 - Exactly two long-lived branches: `master` and `development`.

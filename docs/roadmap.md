@@ -15,15 +15,15 @@ Evidence levels must remain distinct:
 5. **Release-authorized** — the owner explicitly authorizes promotion/publication/deployment for the exact candidate. CI or model output never supplies this authorization.
 ## 0. Establish the compiled personality boundary
 
-The current `BotDefinitionCatalog` is compiled typed data; it does not yet provide a replaceable executable strategy personality. The shared SingularityBot controllers and planners still contain the live strategy behavior. The target is one shared bot engine with different user-specific strategy implementations statically compiled into each user's bot DLL. SC2 Runner remains the host/frame driver; FSM_COS is startup composition only; FSM_API supplies persistent contexts and hierarchical behavior mechanics. No runtime strategy file or dynamic assembly loading is planned.
+The first compile-time strategy seam is now implemented: `ICompiledBotStrategy` supplies validated `BotDefinition` data and executable initial-goal composition; `AdaptiveMarineStrategy` is statically linked and selected by the Runner. `SingularityBot` consumes the strategy through the same shared engine and action pipeline. The shared macro/tactical controllers still contain most policy behavior, so this is the first refactor slice—not completion of the replaceable personality boundary. Different compiled strategy implementations can already select different goal policies without duplicating the engine. SC2 Runner remains the host/frame driver; FSM_COS is startup composition only; FSM_API supplies persistent contexts and hierarchical behavior mechanics. No runtime strategy file or dynamic assembly loading is planned.
 
 - [x] Remove the obsolete runner help claim for loading `--bot-definition=<path>`; the live runner selects its compiled default.
 - [x] Correct the architecture index and BotDefinition documentation so current implementation is not described as the completed personality boundary.
-- [ ] Define a typed compiled strategy contract that the shared bot engine consumes.
-- [ ] Move user-specific goal/objective/transition composition behind the compiled strategy contract without duplicating the frame loop or action pipeline.
-- [ ] Keep authoring JSON as a build/editor interchange format; validate and generate/compile the selected personality before runtime.
-- [ ] Add tests proving two compiled strategy implementations can select different behavior through the same engine and action-validation boundary.
-- [ ] Update docs in the same commits as each implementation step; do not mark the personality refactor complete until the live bot uses the compiled strategy contract.
+- [x] Define `ICompiledBotStrategy` and make the shared bot engine consume it.
+- [ ] Expand the contract so user-specific objective and transition composition—not only initial goal policy—are owned by compiled strategy implementations, without duplicating the frame loop or action pipeline.
+- [ ] Connect authoring JSON to a deterministic build/editor generation path that validates and compiles a selected personality before runtime; keep JSON out of the live runtime.
+- [x] Add regression coverage proving two compiled strategy implementations select different goal policies through the same engine and retain the same CommandAi action vocabulary.
+- [x] Align architecture, index, README and BotDefinition docs with the first implemented contract slice. Keep the refactor open until objectives/transitions and remaining user-specific policy are moved behind the contract.
 
 ## 1. Observation-to-action foundation
 

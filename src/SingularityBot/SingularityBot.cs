@@ -22,6 +22,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly BuildingBehaviorRuntime _buildings = new();
     private readonly ICompiledBotStrategy _compiledStrategy;
+    private readonly StrategyEvidenceCollector _strategyEvidenceCollector = new();
+    private IReadOnlyList<StrategyEvidence> _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
     private GoalActionPlanDefinition _goalActionPlan;
     private readonly EconomyAdvisor _economyAdvisor = new();
     private readonly IntelligenceAdvisor _intelligenceAdvisor = new();
@@ -140,6 +142,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public SpatialTopology PathingTopology { get; private set; }
     public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
     public GamePhase CurrentGamePhase => _gameState.Phase;
+    /// <summary>Retained direct-observation evidence available to transition policy evaluation.</summary>
+    public IReadOnlyList<StrategyEvidence> CurrentStrategyEvidence => _currentStrategyEvidence;
     public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
     public IReadOnlyList<StrategicJobPosting> CurrentStrategicPlan => _strategicPlanner.GetPlan(_advisorJobBoard, _lastGameLoop);
 
@@ -473,6 +477,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _gameData.UnitNames,
             _gameData.BuffNames);
         _lastGameLoop = normalized.GameLoop;
+        _currentStrategyEvidence = _strategyEvidenceCollector.Apply(normalized);
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
         _gameState.Apply(normalized);
@@ -1678,6 +1683,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Sc2Diagnostics.OutputDirectory,
                 _passiveBaseline ? "passive-baseline" : "active-run");
         _unitBehaviors.RemoveAll();
+        _strategyEvidenceCollector.Reset();
+        _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
         _buildings.Clear();
         _openingProduction.Dispose();
         _openingBuilder.Dispose();

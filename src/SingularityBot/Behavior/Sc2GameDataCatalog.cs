@@ -403,12 +403,16 @@ public sealed record Sc2UnitFacts(
     string Name,
     uint AbilityId,
     uint MineralCost,
-    float FoodRequired)
+    uint VespeneCost,
+    float FoodRequired,
+    float FoodProvided)
 {
     internal static Sc2UnitFacts From(UnitTypeData unit) => new(
         unit.UnitId,
         unit.Name ?? string.Empty,
         unit.AbilityId,
         unit.MineralCost,
-        unit.FoodRequired);
+        unit.VespeneCost,
+        unit.FoodRequired,
+        unit.FoodProvided);
 }

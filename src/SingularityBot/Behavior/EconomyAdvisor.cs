@@ -95,6 +95,15 @@ public sealed class EconomyAdvisor : IStrategicAdvisor
     public bool ShouldEnableOrbitalMorph(bool firstMarineObserved) =>
         Settings.EnableMules && firstMarineObserved;
 
+    public uint GetMarineActionReservedMinerals(
+        uint reservedMinerals,
+        bool firstMarineReady,
+        bool firstMarineObserved,
+        uint marineMineralCost) =>
+        firstMarineReady && !firstMarineObserved && reservedMinerals == marineMineralCost
+            ? 0u
+            : reservedMinerals;
+
     public uint GetReservedMinerals(EconomyAdvisorFrame frame, EconomyAdvisorCosts costs)
     {
         if (Settings.HoldWorkerProductionForFirstDepot && frame.HoldForFirstDepot)

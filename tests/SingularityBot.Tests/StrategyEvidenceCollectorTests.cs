@@ -47,6 +47,20 @@ public sealed class StrategyEvidenceCollectorTests
     }
 
     [Fact]
+    public void UsesFreshestObservationAcrossMultipleMatchingStructures()
+    {
+        var collector = new StrategyEvidenceCollector();
+        var first = Unit(1, "RoachWarren", UnitAlliance.Enemy, UnitVisibility.Visible);
+        var second = Unit(2, "RoachWarren", UnitAlliance.Enemy, UnitVisibility.Visible);
+
+        collector.Apply(Observation(100, first));
+        var evidence = Assert.Single(collector.Apply(Observation(120, second)));
+
+        Assert.Equal(120u, evidence.ObservedAtGameLoop);
+        Assert.IsNotType<StrategyEvidence[]>(collector.Apply(Observation(120)));
+    }
+
+    [Fact]
     public void ResetClearsRetainedEvidence()
     {
         var collector = new StrategyEvidenceCollector();

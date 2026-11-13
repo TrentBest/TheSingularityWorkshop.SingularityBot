@@ -36,11 +36,16 @@ public sealed class StrategyEvidenceCollector
                 IsObservedFact: true);
         }
 
-        return _observedStructures.Values
+        var latestByEvidence = _observedStructures.Values
+            .GroupBy(evidence => (evidence.EvidenceId, evidence.Subject))
+            .Select(group => group
+                .OrderByDescending(evidence => evidence.ObservedAtGameLoop)
+                .First())
             .OrderBy(evidence => evidence.EvidenceId, StringComparer.Ordinal)
             .ThenBy(evidence => evidence.Subject, StringComparer.Ordinal)
-            .ThenBy(evidence => evidence.ObservedAtGameLoop)
             .ToArray();
+
+        return Array.AsReadOnly(latestByEvidence);
     }
 
     public void Reset() => _observedStructures.Clear();

@@ -78,7 +78,7 @@ Similarly, Science may recommend an upgrade, Base Engineering may request a defe
 ## Direct strategy evidence collection
 
 The live frame path now retains one narrowly defined, directly observed opponent-tech fact:
-`enemy.structure.roach-warren` for subject `enemy`. It is created only from a currently visible enemy `RoachWarren`, keeps its original game-loop timestamp while the structure is fogged, and is removed when SC2 reports the unit tag dead. The bot exposes this evidence snapshot for host inspection and transition-policy evaluation.
+`enemy.structure.roach-warren` for subject `enemy`. It is created only from a currently visible enemy `RoachWarren`, keeps its original game-loop timestamp while the structure is fogged, and is removed when SC2 reports the unit tag dead. When multiple matching structures are retained, the published evidence snapshot uses the freshest observation while preserving per-unit tracking for later death reports. The bot exposes this evidence snapshot for host inspection and transition-policy evaluation.
 
 This is intentionally not a complete transition pipeline. It does not infer unseen structures, estimate strategic advantage, establish production/defense/resource hard guards, or adopt a strategy. Those guard producers and the shared FSM adoption handoff remain separate required work. A stale retained fact must fail the transition evaluator's age requirement; it must never be refreshed merely because the structure remains remembered.
 

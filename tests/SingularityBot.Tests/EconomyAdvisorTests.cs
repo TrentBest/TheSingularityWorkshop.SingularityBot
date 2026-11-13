@@ -57,6 +57,33 @@ public sealed class EconomyAdvisorTests
     }
 
     [Fact]
+    public void MulesAreEnabledByDefaultButCanBeDisabledAndConfiguredForImmediateSpending()
+    {
+        var advisor = new EconomyAdvisor();
+        Assert.True(advisor.Settings.EnableMules);
+        Assert.Equal("PreserveScan", advisor.Settings.MuleCallDownPolicy);
+
+        var valid = advisor.ConfigureJson(
+            "{\\"version\\":1,\\"enableMules\\":false,\\"muleCallDownPolicy\\":\\"Immediate\\"}");
+
+        Assert.Empty(valid);
+        Assert.False(advisor.Settings.EnableMules);
+        Assert.Equal("Immediate", advisor.Settings.MuleCallDownPolicy);
+    }
+
+    [Fact]
+    public void RejectsUnknownMuleCallDownPolicyWithoutChangingCurrentSettings()
+    {
+        var advisor = new EconomyAdvisor();
+
+        var errors = advisor.ConfigureJson(
+            "{\\"version\\":1,\\"muleCallDownPolicy\\":\\"SpendEverything\\"}");
+
+        Assert.NotEmpty(errors);
+        Assert.Equal("PreserveScan", advisor.Settings.MuleCallDownPolicy);
+    }
+
+    [Fact]
     public void ConfigurationIsValidatedAndAppliedAtomically()
     {
         var advisor = new EconomyAdvisor();

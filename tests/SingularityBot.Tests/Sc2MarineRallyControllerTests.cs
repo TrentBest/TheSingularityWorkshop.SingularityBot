@@ -378,6 +378,49 @@ public sealed class Sc2MarineRallyControllerTests
         Assert.Equal("Retreating", controller.ScoutStatus);
     }
 
+    [Fact]
+    public void AuthoredAssaultPostureAdvancesAssembledSquadTowardEnemyStart()
+    {
+        var controller = new Sc2MarineRallyController();
+        var map = new SpatialMap(new MapBounds(0, 0, 100, 100),
+            new MapPoint(10, 10), new MapPoint(90, 90));
+        var offsets = MarineFormationPlanner.GetOffsets(MarineFormation.Box, 4, 80, 80);
+        var marines = new List<UnitObservationFacts>
+        {
+            Fact(1, "Marine", 10, 10)
+        };
+        marines.AddRange(offsets.Select((offset, index) =>
+            Fact((ulong)(index + 2), "Marine", 10 + offset.X, 10 + offset.Y)));
+        var decisions = Enumerable.Range(1, 5).Select(tag =>
+            new MarineTacticalDecision((ulong)tag, null, MarineTacticalAction.Hold, 0, 0,
+                "No visible attackable target")).ToArray();
+
+        var actions = controller.TryCreateActions(
+            Snapshot(marines.ToArray()), map, decisions, GameData(),
+            advanceToEnemyStart: true);
+
+        Assert.Equal(5, actions.Count);
+        var scoutMove = Assert.Single(actions,
+            action => action.ActionRaw.UnitCommand.UnitTags.Single() == 1UL);
+        Assert.NotEqual(MapSide.Enemy, map.Side.Assess(new MapPoint(
+            scoutMove.ActionRaw.UnitCommand.TargetWorldSpacePos.X,
+            scoutMove.ActionRaw.UnitCommand.TargetWorldSpacePos.Y)));
+
+        var squadMoves = actions.Where(action =>
+            action.ActionRaw.UnitCommand.UnitTags.Single() != 1UL).ToArray();
+        Assert.Equal(4, squadMoves.Length);
+        Assert.All(squadMoves, action =>
+        {
+            var tag = action.ActionRaw.UnitCommand.UnitTags.Single();
+            var marine = marines.Single(unit => unit.Tag == tag);
+            var target = action.ActionRaw.UnitCommand.TargetWorldSpacePos;
+            var waypoint = new MapPoint(target.X, target.Y);
+            Assert.True(waypoint.DistanceTo(new MapPoint(marine.PositionX, marine.PositionY)) <= 4.01f);
+            Assert.True(waypoint.DistanceSquaredTo(map.Side.EnemyStart) <
+                new MapPoint(marine.PositionX, marine.PositionY).DistanceSquaredTo(map.Side.EnemyStart));
+        });
+    }
+
     private static SpatialTerrain CreateRampTerrain()
     {
         const int size = 100;

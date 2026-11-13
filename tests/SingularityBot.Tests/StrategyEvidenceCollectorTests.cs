@@ -43,7 +43,7 @@ public sealed class StrategyEvidenceCollectorTests
         collector.Apply(Observation(100,
             Unit(1, "RoachWarren", UnitAlliance.Enemy, UnitVisibility.Visible)));
 
-        Assert.Empty(collector.Apply(Observation(120, deadTags: new HashSet<ulong> { 1 })));
+        Assert.Empty(collector.Apply(Observation(120, Array.Empty<UnitObservationFacts>(), new HashSet<ulong> { 1 })));
     }
 
     [Fact]

@@ -214,6 +214,38 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ExposesGenericGasCostAndSupplyProviderFacts()
+    {
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData
+        {
+            UnitId = 19,
+            Name = "SupplyDepot",
+            AbilityId = 319,
+            MineralCost = 100,
+            VespeneCost = 0,
+            FoodProvided = 8
+        });
+        data.Units.Add(new UnitTypeData
+        {
+            UnitId = 51,
+            Name = "Marauder",
+            AbilityId = 563,
+            MineralCost = 100,
+            VespeneCost = 25,
+            FoodRequired = 2
+        });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.True(catalog.TryGetUniqueUnit("SupplyDepot", out var depot));
+        Assert.Equal(8f, depot.FoodProvided);
+        Assert.True(catalog.TryGetUniqueUnit("Marauder", out var marauder));
+        Assert.Equal((uint)25, marauder.VespeneCost);
+        Assert.Equal(2f, marauder.FoodRequired);
+    }
+
+    [Fact]
     public void FindUnits_RejectsAmbiguousNamesInsteadOfChoosingAnArbitraryUnitType()
     {
         var data = new ResponseData();

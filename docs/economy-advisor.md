@@ -34,7 +34,7 @@ Configuration is versioned and applied atomically: invalid JSON or invalid value
 - `supplyDepotWorkerPullMinerals`: reserve and dispatch a Depot builder when the mineral bank reaches this threshold (default 80; valid range 0–1000). This does not authorize construction early: the actual Depot command still waits for its authoritative game-data cost and an accepted SC2 placement.
 - `allowLongDistanceMining`: defaults to `false`; when disabled, mineral fields more than 14 map units from every completed Command Center, Orbital Command, or Planetary Fortress are excluded from worker assignments. This keeps workers on established base mineral lines instead of sending them to unoccupied expansions.
 - `enableMules`: defaults to `true`. When disabled, the opening does not morph the starting Command Center to an Orbital and no MULE call-down is issued. When enabled, the opening sequence is completed Barracks → observed first Marine → Orbital Command.
-- `muleCallDownPolicy`: `PreserveScan` (default) keeps the Intelligence Advisor energy reserve before spending 50 energy on a MULE; `Immediate` allows a MULE as soon as 50 energy is available.
+- `muleCallDownPolicy`: `PreserveScan` (default) asks for the Intelligence Advisor reserve even if its own preservation toggle is off. `Immediate` removes only the Economy Advisor's request; it cannot override an enabled Intelligence Advisor scan-preservation setting.
 
 Opening production is sequenced as first Barracks, first observed Marine, then the starting Orbital morph (when `enableMules` is true). The first Marine receives its 50-mineral commitment before the 150-mineral Orbital reserve becomes active. Other infrastructure reservations remain subject to observed prerequisites and the production command gate.
 
@@ -49,3 +49,16 @@ The planner remains responsible for stable reservations and saturation. Worker F
 ## Current implementation boundary
 
 The first version exposes policy configuration and resource-context binding. It does not yet provide a full GUI screen, gas/refinery scheduling, income forecasting, multi-base saturation policy, or a generalized Task Master. Those remain follow-on work and must be driven by observed economy facts and measured match results.
+
+
+The Intelligence Advisor is configured independently through `ConfigureIntelligenceAdvisorJson(string)`. Its default policy is:
+
+```json
+{
+  "version": 1,
+  "preserveOrbitalScanBeforeMules": true,
+  "orbitalScanEnergyReserve": 50
+}
+```
+
+The effective MULE gate is the stricter of the two advisors: either Economy's `PreserveScan` mode or Intelligence's `preserveOrbitalScanBeforeMules` setting can require the reserve. To spend immediately at 50 energy, Economy must be `Immediate` and Intelligence must explicitly disable scan preservation. This prevents an Economy setting from silently defeating Intelligence's scan requirement.

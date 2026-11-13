@@ -84,6 +84,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private string _lastStartingTownHallKind;
     private uint? _firstBarracksObservedGameLoop;
     private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
+    private MilitaryPlanDefinition _militaryPlan;
+    private MilitaryPlanRuntime _militaryPlanRuntime = new();
+    private readonly Sc2MilitaryOperationActionTranslator _militaryTranslator = new();
+    private readonly Dictionary<string, ulong[]> _militaryAssignments = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _militaryOperationDiagnostics = new(StringComparer.Ordinal);
+    private readonly List<(string OperationId, int ActionIndex)> _militaryActionResultMappings = new();
+
 
     /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
     public BotManifest Manifest => _manifest;
@@ -142,6 +149,63 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (errors.Count == 0) _goalActionPlan = plan;
         return errors;
     }
+
+    /// <summary>Current named military operations and their observed lifecycle evidence.</summary>
+    public IReadOnlyCollection<MilitaryOperationContext> MilitaryOperations => _militaryPlanRuntime.Operations;
+
+    /// <summary>Loads a validated named-location, route and operation plan.</summary>
+    public IReadOnlyList<string> ConfigureMilitaryPlanJson(string json)
+    {
+        MilitaryPlanDefinition plan;
+        try
+        {
+            plan = MilitaryPlanDefinition.Parse(json);
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException)
+        {
+            return new[] { "$: invalid military plan: " + exception.Message };
+        }
+
+        var runtime = new MilitaryPlanRuntime();
+        var errors = runtime.AddPlan(plan);
+        if (errors.Count != 0)
+            return errors;
+
+        foreach (var operation in _militaryPlanRuntime.Operations)
+            _militaryTranslator.Reset(operation.Definition.Id);
+        _militaryPlan = plan;
+        _militaryPlanRuntime = runtime;
+        _militaryAssignments.Clear();
+        _militaryOperationDiagnostics.Clear();
+        _militaryActionResultMappings.Clear();
+        return Array.Empty<string>();
+    }
+
+    /// <summary>Assigns visible friendly unit tags to a named military operation.</summary>
+    public IReadOnlyList<string> AssignMilitaryOperationUnits(
+        string operationId,
+        IReadOnlyCollection<ulong> unitTags)
+    {
+        if (!_militaryPlanRuntime.TryGetOperation(operationId, out _))
+            return new[] { "$.operationId: unknown military operation." };
+        if (unitTags is null)
+            return new[] { "$.unitTags: an assignment collection is required." };
+        if (unitTags.Any(tag => tag == 0))
+            return new[] { "$.unitTags: unit tags must be non-zero." };
+        if (unitTags.Distinct().Count() != unitTags.Count)
+            return new[] { "$.unitTags: duplicate unit tags are not allowed." };
+
+        _militaryAssignments[operationId] = unitTags.OrderBy(tag => tag).ToArray();
+        _militaryTranslator.Reset(operationId);
+        return Array.Empty<string>();
+    }
+
+    /// <summary>
+    /// Supplies host-observed completion evidence for conditions such as target
+    /// neutralization that cannot be inferred from arrival at a map location.
+    /// </summary>
+    public bool ObserveMilitaryOperationCompletion(string operationId, bool conditionObserved) =>
+        _militaryPlanRuntime.ObserveCompletion(operationId, conditionObserved, _lastGameLoop);
 
     /// <summary>Sets user-authored economy policy before or during a match.</summary>
     public IReadOnlyList<string> ConfigureEconomyAdvisorJson(string json) =>
@@ -241,6 +305,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
+        if (_militaryPlan is not null)
+        {
+            var militaryRuntime = new MilitaryPlanRuntime();
+            var militaryErrors = militaryRuntime.AddPlan(_militaryPlan);
+            if (militaryErrors.Count == 0)
+                _militaryPlanRuntime = militaryRuntime;
+            else
+                Console.WriteLine("[Military] Configured plan could not be restored: " + string.Join(" ", militaryErrors));
+            _militaryActionResultMappings.Clear();
+        }
         _combatWeapons = CombatWeaponProfile.FromCatalog(_gameData);
 
         if (Sc2SpatialTerrainFactory.TryCreate(gameInfo, out var spatialTerrain))
@@ -1082,6 +1156,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // Append building access actions after the existing controller action
         // sequence so per-action result correlation for opening controllers stays stable.
         actions.AddRange(buildingAccessActions);
+        AdvanceMilitaryOperations(normalized, actions);
 
         if (_writeDiagnostics)
         {
@@ -1141,6 +1216,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _expansionCommandCenterActionSubmitted = false;
             _barracksProductionActionSubmitted = false;
             _orbitalSupportActionSubmitted = false;
+            foreach (var operationId in _militaryActionResultMappings.Select(item => item.OperationId).Distinct())
+                _militaryPlanRuntime.ResolveSubmission(operationId);
+            _militaryActionResultMappings.Clear();
             return;
         }
 
@@ -1154,6 +1232,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _openingTrace.RecordEvent("ActionResult", _lastGameLoop, $"index={index};ability={command?.AbilityId};units={unitTags};result={result}");
                 _binaryTrace.RecordActionResult(_lastGameLoop, index, unchecked((uint)(command?.AbilityId ?? 0)), result.ToString());
         }
+        foreach (var operationGroup in _militaryActionResultMappings.GroupBy(item => item.OperationId))
+        {
+            var anyAccepted = operationGroup.Any(item =>
+                item.ActionIndex < response.Result.Count &&
+                string.Equals(response.Result[item.ActionIndex].ToString(), "Success", StringComparison.OrdinalIgnoreCase));
+            if (!anyAccepted)
+                _militaryPlanRuntime.ResolveSubmission(operationGroup.Key);
+        }
+        _militaryActionResultMappings.Clear();
+
         var resultIndex = 0;
         if (_openingRallyActionSubmitted)
         {
@@ -1348,6 +1436,114 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         };
         command.UnitTags.Add(buildingEvent.BuildingTag);
         return new SC2APIProtocol.Action { ActionRaw = new ActionRaw { UnitCommand = command } };
+    }
+
+    private void AdvanceMilitaryOperations(
+        NormalizedObservation observation,
+        List<SC2APIProtocol.Action> actions)
+    {
+        if (_militaryPlan is null || _gameData is null)
+            return;
+
+        var visibleSelf = observation.Units.Where(unit =>
+            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
+            !observation.DeadUnitTags.Contains(unit.Tag)).ToDictionary(unit => unit.Tag);
+
+        foreach (var operation in _militaryPlanRuntime.Operations)
+        {
+            var definition = operation.Definition;
+            if (!_militaryAssignments.TryGetValue(definition.Id, out var assignedTags))
+                continue;
+
+            if (operation.RequestPending &&
+                operation.SubmittedAtGameLoop is uint submittedAt &&
+                observation.GameLoop > submittedAt + 44)
+                _militaryPlanRuntime.ResolveSubmission(definition.Id);
+
+            var assigned = assignedTags.Where(visibleSelf.ContainsKey)
+                .Select(tag => visibleSelf[tag]).ToArray();
+            if (assigned.Length < definition.RequiredUnitCount)
+                continue;
+
+            uint? executionAbility = _gameData.MoveAbilityId;
+            float targetX = 0;
+            float targetY = 0;
+            var targetRadius = 1.5f;
+            if (_militaryPlan.Locations.FirstOrDefault(item =>
+                    item.Id == definition.ObjectiveLocationId) is { } objective)
+            {
+                targetX = objective.X;
+                targetY = objective.Y;
+                if (objective.Radius > 0) targetRadius = objective.Radius;
+            }
+
+            if (!string.IsNullOrWhiteSpace(definition.RequiredAbility))
+            {
+                var abilityMatches = _gameData.FindAbilities(definition.RequiredAbility);
+                executionAbility = abilityMatches.Count == 1 ? abilityMatches[0].AbilityId : null;
+            }
+
+            var route = _militaryPlan.Routes.FirstOrDefault(item => item.Id == definition.RouteId);
+            var hasObservedOrder = executionAbility is uint abilityId && assigned.Any(unit =>
+                unit.Orders.Any(order =>
+                    order.AbilityId == abilityId &&
+                    (definition.RequiredAbility is not null
+                        ? order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
+                          DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
+                              targetX, targetY) <= 2.25f
+                        : route is not null && route.Waypoints.Any(point =>
+                            order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
+                            DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
+                                point.X, point.Y) <= 2.25f))));
+            if (hasObservedOrder)
+                _militaryPlanRuntime.ObserveStarted(definition.Id, observation.GameLoop);
+
+            var allAtObjective = assigned.Length >= definition.RequiredUnitCount &&
+                assigned.All(unit => DistanceSquared(
+                    unit.PositionX, unit.PositionY, targetX, targetY) <= targetRadius * targetRadius);
+            if (allAtObjective && operation.IsStarted &&
+                definition.Completion is MilitaryCompletionCondition.AtObjective or
+                    MilitaryCompletionCondition.AllAssignedUnitsArrived)
+                _militaryPlanRuntime.ObserveCompletion(definition.Id, true, observation.GameLoop);
+        }
+
+        foreach (var operation in _militaryPlanRuntime.ReadyOperations)
+        {
+            var definition = operation.Definition;
+            if (!_militaryAssignments.TryGetValue(definition.Id, out var assignedTags) ||
+                !_militaryPlanRuntime.TryGetIntent(definition.Id, out var intent))
+                continue;
+
+            var translation = _militaryTranslator.Translate(
+                intent, _militaryPlan, assignedTags, observation, _gameData, SpatialTerrain, PathingTopology);
+            if (translation.IsBlocked)
+            {
+                if (!_militaryOperationDiagnostics.TryGetValue(definition.Id, out var prior) ||
+                    !string.Equals(prior, translation.Reason, StringComparison.Ordinal))
+                {
+                    Console.WriteLine($"[Military] {definition.Id} blocked: {translation.Reason}");
+                    _militaryOperationDiagnostics[definition.Id] = translation.Reason;
+                }
+                continue;
+            }
+
+            _militaryOperationDiagnostics.Remove(definition.Id);
+            if (translation.Actions.Count == 0 ||
+                !_militaryPlanRuntime.MarkSubmitted(definition.Id, observation.GameLoop))
+                continue;
+
+            var firstActionIndex = actions.Count;
+            actions.AddRange(translation.Actions);
+            for (var index = 0; index < translation.Actions.Count; index++)
+                _militaryActionResultMappings.Add((definition.Id, firstActionIndex + index));
+        }
+    }
+
+    private static float DistanceSquared(float x1, float y1, float x2, float y2)
+    {
+        var dx = x1 - x2;
+        var dy = y1 - y2;
+        return dx * dx + dy * dy;
     }
 
     private void UpdateSpatialIntelligence(ResponseObservation response)

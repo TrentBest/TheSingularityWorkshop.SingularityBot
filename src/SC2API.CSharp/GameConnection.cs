@@ -114,6 +114,37 @@ namespace SC2API_CSharp
                 throw new Exception("Unable to find ExecuteInfo.txt at " + executeInfo);
         }
 
+        /// <summary>Creates the multiplayer game on the designated host SC2 instance.</summary>
+        public async Task CreateLadderGame(string mapPath)
+        {
+            if (String.IsNullOrWhiteSpace(mapPath))
+                throw new ArgumentException("A trusted multiplayer map path is required.", nameof(mapPath));
+            if (!File.Exists(mapPath))
+                throw new FileNotFoundException("The configured multiplayer map was not found.", mapPath);
+
+            RequestCreateGame createGame = new RequestCreateGame();
+            createGame.LocalMap = new LocalMap();
+            createGame.LocalMap.MapPath = Path.GetFullPath(mapPath);
+
+            // The host must advertise two human-controlled participants. Each bot runner
+            // joins from its own SC2 process after this request succeeds.
+            PlayerSetup player1 = new PlayerSetup();
+            player1.Type = PlayerType.Participant;
+            player1.Race = Race.Terran;
+            createGame.PlayerSetup.Add(player1);
+
+            PlayerSetup player2 = new PlayerSetup();
+            player2.Type = PlayerType.Participant;
+            player2.Race = Race.Random;
+            createGame.PlayerSetup.Add(player2);
+
+            Request request = new Request();
+            request.CreateGame = createGame;
+            Response response = await proxy.SendRequest(request);
+            if (response == null || response.CreateGame == null)
+                throw new InvalidOperationException("The SC2 host did not acknowledge multiplayer game creation.");
+        }
+
         public async Task<uint> JoinGame(Race race)
         {
             RequestJoinGame joinGame = new RequestJoinGame();
@@ -284,6 +315,15 @@ namespace SC2API_CSharp
         public async Task RunLadder(Bot bot, Race myRace, string[] args)
         {
             CLArgs clargs = new CLArgs(args);
+            if (clargs.CreateGame)
+            {
+                await Connect(clargs.GamePort);
+                await CreateLadderGame(clargs.MapPath);
+                uint hostPlayerId = await JoinGameLadder(myRace, clargs.StartPort);
+                await Run(bot, hostPlayerId, clargs.OpponentID);
+                return;
+            }
+
             await RunLadder(bot, myRace, clargs.GamePort, clargs.StartPort, clargs.OpponentID);
         }
     }

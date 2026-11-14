@@ -93,6 +93,28 @@ public sealed class BotDefinitionTests
     }
 
     [Fact]
+    public void Definition_RejectsModeFromAnotherRace()
+    {
+        var source = CreateValidDefinition();
+        var mismatched = new BotDefinition
+        {
+            SchemaVersion = source.SchemaVersion,
+            Id = source.Id,
+            Name = source.Name,
+            Race = source.Race,
+            ModeId = "zerg.zergling.v1",
+            StrategyProfile = source.StrategyProfile,
+            Runtime = source.Runtime,
+            Opening = source.Opening,
+            DefaultGoals = source.DefaultGoals,
+            StrategyTransitions = source.StrategyTransitions,
+            Ai = source.Ai
+        };
+
+        Assert.Contains(mismatched.Validate(), error => error.Contains("$.modeId"));
+    }
+
+    [Fact]
     public void Parse_RejectsUnknownProperties()
     {
         var json = definitionJson();

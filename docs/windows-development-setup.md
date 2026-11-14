@@ -54,44 +54,57 @@ git pull
 
 The repository's intended branch set is exactly `master` and `development`. Do not create a feature branch for this work unless we explicitly decide to change that policy.
 
-## 4. Initialize the Workshop source dependencies
+## 4. Initialize Workshop development-source dependencies
 
-SingularityBot intentionally references active Workshop source projects for CommandAi and FSM_COS during development. These repositories are **not Git submodules**, so cloning SingularityBot alone does not populate the `dependencies` directory. The build errors mentioning missing `dependencies\\CommandAi` or `dependencies\\FSM_COS` mean this step has not been completed (or the folders are not at the expected paths).
+SingularityBot development builds use the active `development` branch of each Workshop dependency as a local project reference. **Do not use published Workshop NuGet packages for this development build.** The repository-level `Directory.Build.props` enables `WorkshopUseRepositorySources=true`, including for FSM_COS and its own dependencies.
 
-Run these commands from the SingularityBot repository root in PowerShell:
+From the SingularityBot repository root, initialize the required source checkouts:
 
 ```powershell
 New-Item -ItemType Directory -Force .\\dependencies | Out-Null
 
-if (-not (Test-Path .\\dependencies\\CommandAi\\TheSingularityWorkshop.CommandAi.csproj)) {
-    git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git .\\dependencies\\CommandAi
-}
+$repositories = @(
+    @{ Name = "CommandAi"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git"; Project = ".\\dependencies\\CommandAi\\TheSingularityWorkshop.CommandAi.csproj" },
+    @{ Name = "FSM_API"; Url = "https://github.com/TrentBest/FSM_API.git"; Project = ".\\dependencies\\FSM_API\\FSM_API\\FSM_API.csproj" },
+    @{ Name = "FSM_COS"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.FSM_COS.git"; Project = ".\\dependencies\\FSM_COS\\src\\FSM_COS\\FSM_COS.csproj" },
+    @{ Name = "FSM_UserIO"; Url = "https://github.com/TrentBest/FSM_UserIO.git"; Project = ".\\dependencies\\FSM_UserIO\\TheSingularityWorkshop.FSM_UserIO.csproj" },
+    @{ Name = "FSM_Serialization"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.FSM_Serialization.git"; Project = ".\\dependencies\\FSM_Serialization\\TheSingularityWorkshop.FSM_Serialization.csproj" },
+    @{ Name = "HeadlessAi"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.HeadlessAi.git"; Project = ".\\dependencies\\HeadlessAi\\src\\TheSingularityWorkshop.HeadlessAi\\TheSingularityWorkshop.HeadlessAi.csproj" },
+    @{ Name = "TheSingularityWorkshop.MicroBundleDomain"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.MicroBundleDomain.git"; Project = ".\\dependencies\\TheSingularityWorkshop.MicroBundleDomain\\TheSingularityWorkshop.MicroBundleDomain.csproj" }
+)
 
-if (-not (Test-Path .\\dependencies\\FSM_COS\\src\\FSM_COS\\FSM_COS.csproj)) {
-    git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_COS.git .\\dependencies\\FSM_COS
-}
-
-if (-not (Test-Path .\\dependencies\\FSM_Serialization\\TheSingularityWorkshop.FSM_Serialization.csproj)) {
-    git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_Serialization.git .\\dependencies\\FSM_Serialization
+foreach ($repository in $repositories) {
+    $directory = ".\\dependencies\\$($repository.Name)"
+    if (-not (Test-Path $repository.Project)) {
+        if (Test-Path $directory) {
+            throw "Dependency folder exists but its expected project is missing: $directory. Inspect its contents and git status before changing it."
+        }
+        git clone --branch development $repository.Url $directory
+        if ($LASTEXITCODE -ne 0) { throw "Clone failed: $($repository.Name)" }
+    }
+    git -C $directory switch development
+    if ($LASTEXITCODE -ne 0) { throw "Could not select development branch: $($repository.Name)" }
+    git -C $directory pull --ff-only origin development
+    if ($LASTEXITCODE -ne 0) { throw "Could not fast-forward development: $($repository.Name)" }
 }
 ```
 
-Verify that all three referenced source projects now exist:
+This checks out the following repositories from `development`: CommandAi, FSM_API, FSM_COS, FSM_UserIO, FSM_Serialization, HeadlessAi, and TheSingularityWorkshop.MicroBundleDomain. Existing checkouts are switched to `development` and fast-forwarded; inspect local changes first if Git refuses.
+
+Verify all project files:
 
 ```powershell
-Test-Path .\\dependencies\\CommandAi\\TheSingularityWorkshop.CommandAi.csproj
-Test-Path .\\dependencies\\FSM_COS\\src\\FSM_COS\\FSM_COS.csproj
-Test-Path .\\dependencies\\FSM_Serialization\\TheSingularityWorkshop.FSM_Serialization.csproj
+$repositories | ForEach-Object { "{0}: {1}" -f $_.Name, (Test-Path $_.Project) }
 ```
 
-Each command should print `True`. Then restore and build:
+Every entry should report `True`. Then restore and build from source:
 
 ```powershell
 dotnet restore .\\src\\SingularityBot.Runner\\SingularityBot.Runner.csproj
 dotnet build .\\src\\SingularityBot.Runner\\SingularityBot.Runner.csproj --configuration Release --no-restore
 ```
 
-If a dependency directory already exists but is incomplete, inspect it before deleting or recloning it; preserve any local work. To update an existing dependency checkout safely, run `git -C <path> status` first, then switch/pull its `development` branch only when the working tree is clean.
+If any project is still missing, stop and report the exact path rather than substituting a NuGet package. CI performs the same development-branch checkouts.
 
 ## 5. Open the solution in Visual Studio Community
 

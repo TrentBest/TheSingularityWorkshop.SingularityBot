@@ -255,7 +255,7 @@ public sealed class ZerglingOpeningRuntime
                 _builderTag = 0;
                 _selectedPlacement = null;
                 _state = OpeningState.NeedPlacement;
-                Console.WriteLine($"[ZergOpening] Spawning Pool action rejected/unknown ({result?.ToString() ?? "no result"}); placement will be reconsidered.");
+                Console.WriteLine($"[ZergOpening] Spawning Pool action rejected/unknown ({result.ToString()}); placement will be reconsidered.");
             }
             return;
         }

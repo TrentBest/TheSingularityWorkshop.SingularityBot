@@ -13,17 +13,19 @@ public sealed class Sc2MarineRallyControllerTests
     {
         var controller = new Sc2MarineRallyController();
         var observation = Snapshot(
-            Fact(1, "Marine", 10, 10),
+            new UnitObservationFacts(1, 1, "Marine", 999, UnitAlliance.Self, UnitVisibility.Visible,
+                45, 45, 0, 0, 1, 10, 10, true, false, false,
+                false, false, false, 100),
             new UnitObservationFacts(2, 2, "Marine", 48, UnitAlliance.Self, UnitVisibility.Visible,
                 45, 45, 0, 0, 1, 12, 10, true, false, false,
                 false, false, false, 100));
         var weapons = new Dictionary<uint, CombatWeaponProfile>
         {
-            [2] = new CombatWeaponProfile(5, 6)
+            [48] = new CombatWeaponProfile(5, 6)
         };
 
         Assert.Equal(1UL, controller.GetScoutTag(observation));
-        Assert.Equal(1UL, controller.GetScoutTag(observation, weapons));
+        Assert.Equal(2UL, controller.GetScoutTag(observation, weapons));
     }
 
     [Fact]

@@ -98,7 +98,7 @@ public sealed class SingularityBotMilitaryPlanIntegrationTests
     }
     """;
 
-    private static string ValidPlan(string id) => $"""
+    private static string ValidPlan(string id) => $$"""
     {
       "version": 1,
       "id": "{{id}}",

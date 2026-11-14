@@ -118,7 +118,7 @@ public sealed class StrategicJobPlanningTests
         var map = new SpatialMap(
             new MapBounds(0, 0, 90, 90),
             new MapPoint(10, 10),
-            new SingularityBot.Spatial.MapPoint(80, 80));
+            new MapPoint(80, 80));
         var board = new AdvisorJobBoard();
         board.Upsert(AdvisorDomain.Intelligence, "scout:first",
             StrategicJobKind.Scout, "20,20", 1, 80, 100,
@@ -141,9 +141,9 @@ public sealed class StrategicJobPlanningTests
                     UnitVisibility.Visible,
                     45, 45, 0, 0, 1, 15, 15, true, false, false,
                     false, false, false, 100),
-                new SingularityBot.Observation.UnitObservationFacts(
-                    8, 1, "Marine", 1, SingularityBot.Observation.UnitAlliance.Self,
-                    SingularityBot.Observation.UnitVisibility.Visible,
+                new UnitObservationFacts(
+                    8, 1, "Marine", 1, UnitAlliance.Self,
+                    UnitVisibility.Visible,
                     45, 45, 0, 0, 1, 16, 16, true, false, false,
                     false, false, false, 100)
             },
@@ -165,16 +165,16 @@ public sealed class StrategicJobPlanningTests
     [Fact]
     public void PlannerRejectsScoutJobsForMissingOrDeadUnits()
     {
-        var map = new SingularityBot.Spatial.SpatialMap(
-            new SingularityBot.Spatial.MapBounds(0, 0, 90, 90),
-            new SingularityBot.Spatial.MapPoint(10, 10),
-            new SingularityBot.Spatial.MapPoint(80, 80));
+        var map = new SpatialMap(
+            new MapBounds(0, 0, 90, 90),
+            new MapPoint(10, 10),
+            new MapPoint(80, 80));
         var board = new AdvisorJobBoard();
         board.Upsert(AdvisorDomain.Intelligence, "scout:missing",
             StrategicJobKind.Scout, "20,20", 1, 80, 100,
             constraints: new Dictionary<string, string> { ["unitTag"] = "99" });
-        var observation = new SingularityBot.Observation.NormalizedObservation(
-            100, 1, Array.Empty<SingularityBot.Observation.UnitObservationFacts>(),
+        var observation = new NormalizedObservation(
+            100, 1, Array.Empty<UnitObservationFacts>(),
             new HashSet<ulong> { 99 });
 
         var decision = Assert.Single(new StrategicPlanner().Evaluate(board, 100, observation, map));

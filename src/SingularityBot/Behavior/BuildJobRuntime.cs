@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Diagnostics.CodeAnalysis;
+using FSM_API;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -115,10 +116,10 @@ public sealed class BuildJobRuntime
 
     public static void RegisterDefinition()
     {
-        if (FSM_API.Interaction.Exists(FsmName, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (FsmApi.Interact.Exists(FsmName, UnitBehaviorCatalog.ProductionProcessingGroup))
             return;
 
-        FSM_API.Create.CreateFiniteStateMachine(
+        FsmApi.Create.CreateFiniteStateMachine(
                 FsmName,
                 processRate: -1,
                 processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
@@ -158,7 +159,7 @@ public sealed class BuildJobRuntime
         RegisterDefinition();
         var job = new BuildJobContext(++_nextId, buildableKind, workerTag, producerTag, gameLoop);
         _jobs.Add(job.Id, job);
-        var handle = FSM_API.Create.CreateInstance(FsmName, job, UnitBehaviorCatalog.ProductionProcessingGroup);
+        var handle = FsmApi.Create.CreateInstance(FsmName, job, UnitBehaviorCatalog.ProductionProcessingGroup);
         job.AttachHandle(handle);
         _handles.Add(job.Id, handle);
         return job;
@@ -371,7 +372,7 @@ public sealed class BuildJobRuntime
 
     /// <summary>Advances all build-job lifecycle FSMs in the production processing group.</summary>
     public void Update() =>
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interact.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
     public bool Retire(long id)
     {
@@ -379,7 +380,7 @@ public sealed class BuildJobRuntime
         job.IsValid = false;
         _excludedResultTags.Remove(id);
         _excludedUnitTags.Remove(id);
-        if (_handles.Remove(id, out var handle)) FSM_API.Interaction.DestroyInstance(handle);
+        if (_handles.Remove(id, out var handle)) FsmApi.Interact.DestroyInstance(handle);
         return true;
     }
 

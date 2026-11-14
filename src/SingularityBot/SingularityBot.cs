@@ -451,9 +451,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _gameData.TryGetAbility(spawningPool.AbilityId, out var poolBuildAbility) &&
             poolBuildAbility.IsBuilding)
         {
+            var gatherAbilityIds = _gameData.AbilitiesById.Values
+                .Where(ability => ability.LinkName.Contains("Harvest", StringComparison.OrdinalIgnoreCase) ||
+                    ability.LinkName.Contains("Gather", StringComparison.OrdinalIgnoreCase))
+                .Select(ability => ability.AbilityId)
+                .Where(id => id > 0)
+                .ToHashSet();
             _zerglingOpeningRuntime = new ZerglingOpeningRuntime(
                 zergDrone, spawningPool, poolBuildAbility,
-                _activeProductionProfile, zergling, larva);
+                _activeProductionProfile, zergling, larva, gatherAbilityIds);
+            Console.WriteLine($"[ZergOpening] Resolved interruptible worker-gather abilities: {gatherAbilityIds.Count}.");
             Console.WriteLine("[ZergOpening] Runtime initialized: Drone -> queried Spawning Pool -> Larva -> Zergling pair.");
         }
         else if (_actualRace == Race.Zerg && _activeMode?.Id == "zerg.zergling.v1")

@@ -11,6 +11,7 @@ on:
       - "military-plans/**"
       - "docs/**"
       - "README.md"
+      - "Directory.Build.props"
       - ".github/workflows/build.yml"
   pull_request:
     branches: [master, development]

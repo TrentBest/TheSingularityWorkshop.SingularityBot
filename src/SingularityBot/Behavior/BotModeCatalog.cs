@@ -13,6 +13,7 @@ public sealed record BotModeDescriptor(
     Race Race,
     string PrimaryUnit,
     string StrategyProfile,
+    bool CanIssueGameplayActions,
     string Status);
 
 /// <summary>Portable map selection. The host supplies this with the selected map.</summary>
@@ -80,16 +81,16 @@ public sealed class BotModeCatalog
     public static BotModeCatalog CreateDefault() => new(new[]
     {
         new BotModeDescriptor("terran.marine.v1", "Marine Mode", Race.Terran,
-            "Marine", "terran.marine-economy.v1", "Existing implemented Terran strategy."),
+            "Marine", "terran.marine-economy.v1", true, "Existing implemented Terran strategy."),
         new BotModeDescriptor("terran.marauder.v1", "Marauder Mode", Race.Terran,
-            "Marauder", "terran.marauder-pressure.v1", "Mode selection registered; dedicated production and tactics are pending."),
+            "Marauder", "terran.marauder-pressure.v1", false, "Mode selection registered; dedicated production and tactics are pending."),
         new BotModeDescriptor("protoss.zealot.v1", "Zealot Mode", Race.Protoss,
-            "Zealot", "protoss.zealot-pressure.v1", "Mode selection registered; production and tactics are pending."),
+            "Zealot", "protoss.zealot-pressure.v1", false, "Mode selection registered; production and tactics are pending."),
         new BotModeDescriptor("protoss.stalker.v1", "Stalker Mode", Race.Protoss,
-            "Stalker", "protoss.stalker-control.v1", "Mode selection registered; production and tactics are pending."),
+            "Stalker", "protoss.stalker-control.v1", false, "Mode selection registered; production and tactics are pending."),
         new BotModeDescriptor("zerg.zergling.v1", "Zergling Mode", Race.Zerg,
-            "Zergling", "zerg.zergling-pressure.v1", "Mode selection registered; production and tactics are pending."),
+            "Zergling", "zerg.zergling-pressure.v1", false, "Mode selection registered; production and tactics are pending."),
         new BotModeDescriptor("zerg.queen.v1", "Queen Mode", Race.Zerg,
-            "Queen", "zerg.queen-control.v1", "Mode selection registered; production and tactics are pending.")
+            "Queen", "zerg.queen-control.v1", false, "Mode selection registered; production and tactics are pending.")
     });
 }

@@ -121,6 +121,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private MilitaryPlanRuntime _militaryPlanRuntime = new();
     private readonly Sc2MilitaryOperationActionTranslator _militaryTranslator = new();
     private readonly Dictionary<string, ulong[]> _militaryAssignments = new(StringComparer.Ordinal);
+    // The reverse index is the single authoritative owner for military unit assignment.
+    private readonly Dictionary<ulong, string> _militaryUnitOwners = new();
     private readonly Dictionary<string, string> _militaryOperationDiagnostics = new(StringComparer.Ordinal);
     private readonly List<(string OperationId, int ActionIndex)> _militaryActionResultMappings = new();
 
@@ -223,6 +225,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _militaryPlan = plan;
         _militaryPlanRuntime = runtime;
         _militaryAssignments.Clear();
+        _militaryUnitOwners.Clear();
         _militaryOperationDiagnostics.Clear();
         _militaryActionResultMappings.Clear();
         return Array.Empty<string>();
@@ -242,10 +245,45 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (unitTags.Distinct().Count() != unitTags.Count)
             return new[] { "$.unitTags: duplicate unit tags are not allowed." };
 
-        _militaryAssignments[operationId] = unitTags.OrderBy(tag => tag).ToArray();
+        // Validate the complete replacement before mutating either index.
+        foreach (var tag in unitTags)
+            if (_militaryUnitOwners.TryGetValue(tag, out var owner) &&
+                !string.Equals(owner, operationId, StringComparison.Ordinal))
+                return new[] { $"$.unitTags: unit {tag} is already assigned to military operation '{owner}'." };
+
+        if (_militaryAssignments.TryGetValue(operationId, out var previous))
+            foreach (var tag in previous)
+                if (_militaryUnitOwners.TryGetValue(tag, out var owner) &&
+                    string.Equals(owner, operationId, StringComparison.Ordinal))
+                    _militaryUnitOwners.Remove(tag);
+
+        var ordered = unitTags.OrderBy(tag => tag).ToArray();
+        _militaryAssignments[operationId] = ordered;
+        foreach (var tag in ordered)
+            _militaryUnitOwners[tag] = operationId;
+
         _militaryTranslator.Reset(operationId);
         return Array.Empty<string>();
     }
+
+    /// <summary>Releases all unit reservations held by one military operation.</summary>
+    public bool ReleaseMilitaryOperationUnits(string operationId)
+    {
+        if (!_militaryAssignments.Remove(operationId, out var assignedTags))
+            return false;
+
+        foreach (var tag in assignedTags)
+            if (_militaryUnitOwners.TryGetValue(tag, out var owner) &&
+                string.Equals(owner, operationId, StringComparison.Ordinal))
+                _militaryUnitOwners.Remove(tag);
+
+        _militaryTranslator.Reset(operationId);
+        return true;
+    }
+
+    /// <summary>Returns the authoritative military operation owner for a unit, if assigned.</summary>
+    public bool TryGetMilitaryUnitAssignment(ulong unitTag, out string operationId) =>
+        _militaryUnitOwners.TryGetValue(unitTag, out operationId);
 
     /// <summary>
     /// Supplies host-observed completion evidence for conditions such as target
@@ -1781,6 +1819,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _currentWorkerAssignmentGenerations.Clear();
         _marineRally.Reset();
         _militaryAssignments.Clear();
+        _militaryUnitOwners.Clear();
         _militaryOperationDiagnostics.Clear();
         _militaryActionResultMappings.Clear();
         if (_militaryPlan is not null)

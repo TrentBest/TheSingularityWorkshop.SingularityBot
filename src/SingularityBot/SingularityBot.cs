@@ -483,6 +483,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.Reconcile(normalized, intents.Add);
         _gameState.Apply(normalized);
         UpdateSpatialIntelligence(observation);
+        Sc2SpatialTerrainFactory.TryCreateVisibilityGrid(
+            observation, SpatialTerrain, out var visibilityGrid);
+        _constructionSiteSafety.Update(normalized, visibilityGrid, SpatialIntelligence);
         if (SpatialMap is not null)
             _compiledStrategy.ApplyGoalPolicy(_goalActionPlan, _unitBehaviors, SpatialMap);
 
@@ -1685,6 +1688,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _passiveBaseline ? "passive-baseline" : "active-run");
         _unitBehaviors.RemoveAll();
         _strategyEvidenceCollector.Reset();
+        _constructionSiteSafety.Reset();
         _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
         _buildings.Clear();
         _openingProduction.Dispose();

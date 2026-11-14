@@ -18,6 +18,17 @@ public sealed class ScoutingAdvisor
 
     public IReadOnlyDictionary<ulong, MapPoint> Assignments => _assignments;
 
+    /// <summary>Clears match-local scouting state and withdraws this advisor's jobs.</summary>
+    public void Reset(AdvisorJobBoard board)
+    {
+        ArgumentNullException.ThrowIfNull(board);
+        foreach (var postingId in _publishedPostingIds)
+            board.Withdraw(AdvisorDomain.Intelligence, postingId);
+        _publishedPostingIds.Clear();
+        _assignments.Clear();
+        _visitedObjectives.Clear();
+    }
+
     public IReadOnlyDictionary<ulong, MapPoint> Plan(
         NormalizedObservation observation,
         SpatialMap map,

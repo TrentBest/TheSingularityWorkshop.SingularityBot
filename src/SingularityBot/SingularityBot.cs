@@ -30,6 +30,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly IntelligenceAdvisor _intelligenceAdvisor = new();
     private readonly AdvisorJobBoard _advisorJobBoard = new();
     private readonly StrategicPlanner _strategicPlanner = new();
+    private readonly ScoutingAdvisor _scoutingAdvisor = new();
     private CompositionGoalDefinition? _compositionGoal;
     private readonly GameStateContext _gameState = new();
     private readonly bool _passiveBaseline;
@@ -348,6 +349,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
         }
         _constructionSiteSafety.Reset();
+        _scoutingAdvisor.Reset(_advisorJobBoard);
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
         if (_militaryPlan is not null)
@@ -484,6 +486,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.Reconcile(normalized, intents.Add);
         _gameState.Apply(normalized);
         UpdateSpatialIntelligence(observation);
+        if (SpatialMap is not null)
+            _scoutingAdvisor.PublishJobs(normalized, SpatialMap, _combatWeapons, _advisorJobBoard);
         Sc2SpatialTerrainFactory.TryCreateVisibilityGrid(
             observation, SpatialTerrain, out var constructionVisibilityGrid);
         _constructionSiteSafety.Update(normalized, constructionVisibilityGrid, SpatialIntelligence);
@@ -1690,6 +1694,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.RemoveAll();
         _strategyEvidenceCollector.Reset();
         _constructionSiteSafety.Reset();
+        _scoutingAdvisor.Reset(_advisorJobBoard);
         _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
         _buildings.Clear();
         _openingProduction.Dispose();

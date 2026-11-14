@@ -131,7 +131,8 @@ public sealed class ZerglingOpeningRuntimeTests
             Ability(1344),
             profile,
             new Sc2UnitFacts(105, "Zergling", 1343, 25, 0, 0.5f, 0),
-            new Sc2UnitFacts(151, "Larva", 0, 0, 0, 0, 0));
+            new Sc2UnitFacts(151, "Larva", 0, 0, 0, 0, 0),
+            new HashSet<uint>());
     }
 
     private static Sc2AbilityFacts Ability(uint id) =>

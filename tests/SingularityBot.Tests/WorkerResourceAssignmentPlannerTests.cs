@@ -536,6 +536,24 @@ public sealed class WorkerResourceAssignmentPlannerTests
                 .Select(item => item.MineralTag).OrderBy(tag => tag).ToArray());
     }
 
+
+    [Theory]
+    [InlineData("SCV", "CommandCenter")]
+    [InlineData("Probe", "Nexus")]
+    [InlineData("Drone", "Hatchery")]
+    public void SharedResourcePlannerAcceptsEachRaceWorkerAndTownHall(string workerKind, string townHallKind)
+    {
+        var planner = new WorkerResourceAssignmentPlanner();
+        var assignments = planner.Reconcile(Snapshot(
+            Fact(1, townHallKind, UnitAlliance.Self, 0, 0),
+            Fact(10, workerKind, UnitAlliance.Self, 1, 0),
+            Fact(20, "MineralField750", UnitAlliance.Neutral, 5, 0)));
+
+        Assert.Single(assignments);
+        Assert.Equal(20UL, assignments[10].MineralTag);
+        Assert.Equal(1UL, assignments[10].TownHallTag);
+    }
+
     private static NormalizedObservation Snapshot(params UnitObservationFacts[] units) =>
         new(units.Length == 0 ? 0u : units.Max(unit => unit.GameLoop), 1, units, new HashSet<ulong>());
 

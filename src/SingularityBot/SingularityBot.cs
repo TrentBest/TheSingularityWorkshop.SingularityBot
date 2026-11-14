@@ -481,11 +481,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _gameData.UnitNames,
             _gameData.BuffNames);
         _lastGameLoop = normalized.GameLoop;
+        var executive = new ExecutiveController(normalized.GameLoop);
         _currentStrategyEvidence = _strategyEvidenceCollector.Apply(normalized);
         var intents = new BehaviorIntentBuffer();
         _unitBehaviors.Reconcile(normalized, intents.Add);
+        executive.Advance(ExecutiveStage.ExecutiveReaction);
         _gameState.Apply(normalized);
         UpdateSpatialIntelligence(observation);
+        executive.Advance(ExecutiveStage.SubControllers);
         if (SpatialMap is not null)
             _scoutingAdvisor.PublishJobs(normalized, SpatialMap, _combatWeapons, _advisorJobBoard);
         Sc2SpatialTerrainFactory.TryCreateVisibilityGrid(
@@ -532,6 +535,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         IReadOnlyList<StrategicJobDecision> scoutDecisions = Array.Empty<StrategicJobDecision>();
         ulong? plannerReservedScoutTag = null;
         var usePlannerScoutReservation = SpatialMap is not null;
+        executive.Advance(ExecutiveStage.ExecutiveReview);
         if (SpatialMap is not null)
         {
             scoutDecisions = _strategicPlanner.Evaluate(
@@ -1118,6 +1122,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // when an opening gate suppresses outgoing actions for this frame.
         try
         {
+            executive.Advance(ExecutiveStage.UnitAi);
             foreach (var pg in ProcessGroupsThisFrame)
             {
                 FSM_API.Interaction.Update(pg);
@@ -1162,6 +1167,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             _unitBehaviors.EndFrame();
         }
+        executive.Complete();
 
         if (sprayAction is not null)
             actions.Add(sprayAction);

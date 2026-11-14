@@ -107,7 +107,6 @@ public sealed class ZerglingOpeningRuntimeTests
         var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
             .Single(item => item.ModeId == "zerg.zergling.v1");
         return new ZerglingOpeningRuntime(
-            new Sc2GameDataCatalogTestFactory().Create(),
             new Sc2UnitFacts(104, "Drone", 0, 50, 0, 1, 0),
             new Sc2UnitFacts(200, "SpawningPool", 1344, 200, 0, 0, 0),
             Ability(1344),

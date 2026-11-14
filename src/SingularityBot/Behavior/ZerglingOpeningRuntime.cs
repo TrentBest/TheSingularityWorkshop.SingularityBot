@@ -74,6 +74,7 @@ public sealed class ZerglingOpeningRuntime
         if (poolObserved && _state is not OpeningState.Producing and not OpeningState.Complete)
         {
             _state = OpeningState.Producing;
+            _buildResultPending = false; // completed structure observation supersedes a missing callback
             _builderTag = 0;
             _reservedWorkers.Clear();
             Console.WriteLine("[ZergOpening] Completed Spawning Pool observed; enabling Larva production.");

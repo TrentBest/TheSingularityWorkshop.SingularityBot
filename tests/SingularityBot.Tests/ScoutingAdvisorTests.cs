@@ -28,7 +28,8 @@ public sealed class ScoutingAdvisorTests
         var assignment = Assert.Single(assignments);
         Assert.Equal(2UL, assignment.Key);
         Assert.DoesNotContain(1UL, assignments.Keys);
-        Assert.Contains(3UL, new[] { 3UL, 4UL });
+        Assert.DoesNotContain(3UL, assignments.Keys);
+        Assert.DoesNotContain(4UL, assignments.Keys);
     }
 
     [Fact]

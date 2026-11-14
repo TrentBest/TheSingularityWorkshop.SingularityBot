@@ -7,7 +7,7 @@ namespace SingularityBot;
 
 public static class Program
 {
-    private static readonly Race BotRace = Race.Terran;
+    // Let SC2 assign our race. Race-specific strategy dispatch is being introduced separately.\n    private static readonly Race BotRace = Race.Random;
     private static readonly string MapName = "AcolyteLE.SC2Map";
     private static readonly Race OpponentRace = Race.Random;
     private static readonly Difficulty OpponentDifficulty = Difficulty.VeryEasy;

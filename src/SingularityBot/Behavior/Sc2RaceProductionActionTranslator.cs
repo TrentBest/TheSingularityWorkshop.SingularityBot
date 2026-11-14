@@ -57,8 +57,10 @@ public static class Sc2RaceProductionActionTranslator
             (int)Math.Min(int.MaxValue, (ulong)observation.Vespene / vespeneCostPerOrder);
         var maxByFood = foodPerOrder <= 0 ? int.MaxValue :
             (int)Math.Min(int.MaxValue, (ulong)Math.Floor(availableFood / foodPerOrder + 0.0001f));
+        var desiredOrders = desiredRemainingUnits / profile.UnitsPerOrder +
+            (desiredRemainingUnits % profile.UnitsPerOrder == 0 ? 0 : 1);
         var maxOrders = Math.Min(
-            (desiredRemainingUnits + profile.UnitsPerOrder - 1) / profile.UnitsPerOrder,
+            desiredOrders,
             Math.Min(maxByMinerals, Math.Min(maxByVespene, maxByFood)));
 
         if (maxOrders <= 0)

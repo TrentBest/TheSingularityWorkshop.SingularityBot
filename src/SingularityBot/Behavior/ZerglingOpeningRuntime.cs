@@ -95,7 +95,7 @@ public sealed class ZerglingOpeningRuntime
                     unit.Tag == _builderTag && unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                     !observation.DeadUnitTags.Contains(unit.Tag) &&
                     unit.UnitKind.Equals(_drone.Name, StringComparison.OrdinalIgnoreCase) &&
-                    !unit.HasOrders && !unit.HasCargo && !_reservedWorkers.Contains(unit.Tag));
+                    !unit.HasCargo && HasOnlyInterruptibleGatherOrders(unit) && !_reservedWorkers.Contains(unit.Tag));
                 if (worker is null)
                     return Array.Empty<SC2APIProtocol.Action>();
                 var translated = Sc2RaceBuildingActionTranslator.Translate(

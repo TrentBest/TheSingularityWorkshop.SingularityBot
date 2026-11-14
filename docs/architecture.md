@@ -4,6 +4,35 @@
 
 SingularityBot is a StarCraft II player. Its primary product is a reliable decision-and-action runtime that can complete a real opening. Authoring, visualization, replay analysis and learning support that runtime; they are not alternate execution paths.
 
+## Civilization command model
+
+Civilization identity is a strategic/domain layer, not a translation table for game mechanics. The shared strategic vocabulary describes responsibilities such as Economy, Military, Intelligence, Technology, Expansion, Defense and Logistics. Each civilization organizes those responsibilities through its own campaign-inspired authority model:
+
+| Civilization | Supreme authority | Subordinate authority |
+|---|---|---|
+| Terran | Admiral | Commanders |
+| Zerg | Overmind | Cerebrates |
+| Protoss | Conclave | Judicators |
+
+These names are represented by `CivilizationLeadershipCatalog` and `CivilizationLeadership`. They carry identity and organizational vocabulary only. They do not contain unit names, abilities, costs, prerequisites, production rules or action code.
+
+The intended composition is:
+
+```text
+Shared strategic intent and domains
+    |
+Civilization leadership model
+    +-- Terran: Admiral -> Commanders
+    +-- Zerg: Overmind -> Cerebrates
+    +-- Protoss: Conclave -> Judicators
+    |
+Race-specific Commander/advisor implementations
+    |
+Existing shared runtime, intent arbitration and validated action pipeline
+```
+
+The local and ladder runner now requests `Race.Random` from SC2. This is a race-selection setting, not evidence that all three execution adapters are complete. The currently compiled strategy and macro/action implementation remain Terran-specific. Until race detection, dispatch and non-Terran adapters are implemented and tested, a Random-selected Zerg or Protoss match is not considered supported or match-verified. Do not infer race from the configured selection; use authoritative match/player information and observed facts before dispatching. Unsupported race execution must fail closed rather than issuing Terran actions.
+
 ## Composition and execution boundary
 
 The bot is a self-contained compiled DLL. The Runner selects the statically linked `AdaptiveMarineStrategy`, which implements `ICompiledBotStrategy`. The contract supplies a validated `BotDefinition`, executable initial-goal composition, goal-assignment policy and the Marine advance-to-enemy-start decision; `SingularityBot` consumes those decisions while retaining one shared runtime and action pipeline. `GoalActionPlanner` remains a shared engine service invoked through the strategy contract. `BotDefinitionCatalog` remains compiled typed data, not the strategy class itself. The personality boundary is partially implemented: objective/transition composition and most macro/tactical policy still reside in shared controllers and planners. Runtime JSON files, reflection-based discovery and dynamic assembly loading are not used.

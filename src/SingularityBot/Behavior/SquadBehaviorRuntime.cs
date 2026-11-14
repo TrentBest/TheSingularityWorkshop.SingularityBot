@@ -182,8 +182,20 @@ public sealed class SquadContext : IStateContext
 public static class SquadBehaviorCatalog
 {
     public const string LifecycleFsm = "SingularityBot.SquadLifecycle";
+    private static readonly object RegistrationLock = new();
+    private static bool _registered;
 
     public static void Register()
+    {
+        lock (RegistrationLock)
+        {
+            if (_registered) return;
+            RegisterDefinition();
+            _registered = true;
+        }
+    }
+
+    private static void RegisterDefinition()
     {
         FSM_API.Create.CreateFiniteStateMachine(
                 LifecycleFsm, processRate: -1, processingGroup: UnitBehaviorCatalog.StrategyProcessingGroup)

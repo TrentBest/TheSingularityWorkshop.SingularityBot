@@ -23,6 +23,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly BuildingBehaviorRuntime _buildings = new();
     private readonly ICompiledBotStrategy _compiledStrategy;
     private readonly StrategyEvidenceCollector _strategyEvidenceCollector = new();
+    private readonly ConstructionSiteSafety _constructionSiteSafety = new();
     private IReadOnlyList<StrategyEvidence> _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
     private GoalActionPlanDefinition _goalActionPlan;
     private readonly EconomyAdvisor _economyAdvisor = new();

@@ -112,6 +112,57 @@ public sealed class Sc2RaceProductionActionTranslatorTests
         Assert.Empty(result.ProducerTags);
     }
 
+
+    [Fact]
+    public void ZealotTranslation_OnlyUsesGatewaysWithPositivePowerEvidence()
+    {
+        var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "protoss.zealot.v1");
+        var observation = Observation(
+            200, 0, 10, 20,
+            Unit(10, "Gateway"),
+            Unit(11, "Gateway"),
+            Unit(12, "Pylon", buildProgress: 1f));
+
+        var result = Sc2RaceProductionActionTranslator.Translate(
+            profile,
+            new Sc2UnitFacts(73, "Zealot", 916, 100, 0, 2, 0),
+            new Sc2UnitFacts(62, "Gateway", 0, 0, 0, 0, 0),
+            observation,
+            2,
+            new HashSet<ulong>(),
+            gateway => gateway.Tag == 11);
+
+        Assert.False(result.IsBlocked);
+        Assert.Single(result.Actions);
+        Assert.Equal(new ulong[] { 11 }, result.ProducerTags);
+        Assert.Equal(916, result.Actions[0].ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(100u, result.ReservedMinerals);
+    }
+
+    [Fact]
+    public void ZerglingTranslation_DoesNotOverspendWhenResourcesCannotCoverOnePair()
+    {
+        var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "zerg.zergling.v1");
+        var observation = Observation(
+            49, 0, 10, 20,
+            Unit(1, "Larva"),
+            Unit(2, "SpawningPool", buildProgress: 1f));
+
+        var result = Sc2RaceProductionActionTranslator.Translate(
+            profile,
+            new Sc2UnitFacts(105, "Zergling", 1343, 25, 0, 0.5f, 0),
+            new Sc2UnitFacts(151, "Larva", 0, 0, 0, 0, 0),
+            observation,
+            2,
+            new HashSet<ulong>());
+
+        Assert.True(result.IsBlocked);
+        Assert.Contains("resources or supply", result.BlockReason);
+        Assert.Empty(result.ProducerTags);
+    }
+
     private static NormalizedObservation Observation(
         uint minerals,
         uint vespene,

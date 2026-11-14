@@ -15,9 +15,13 @@ public static class Program
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
         var designatedAreaArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--cc-area=", StringComparison.Ordinal));
+        var modeArgument = args.FirstOrDefault(argument =>
+            argument.StartsWith("--mode=", StringComparison.Ordinal));
+        var selectedModeId = modeArgument?["--mode=".Length..];
 
         var connectionArgs = args.Where((argument, index) =>
             !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
+            !argument.StartsWith("--mode=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
             !string.Equals(argument, "--Map", StringComparison.Ordinal) &&
             !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal) &&
@@ -30,14 +34,33 @@ public static class Program
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
             throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.");
 
-        var strategy = new AdaptiveMarineStrategy();
-        var definition = strategy.Definition;
-        Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
-        Console.WriteLine($"[MatchConfiguration] Requested race={MatchConfiguration.RequestedRace}.");
-        var bot = new SingularityBot(
-            passiveBaseline: passiveBaseline,
-            writeDiagnostics: localRun && diagnostics,
-            compiledStrategy: strategy);
+        SingularityBot bot;
+        var requestedRace = MatchConfiguration.RequestedRace;
+        if (string.IsNullOrWhiteSpace(selectedModeId))
+        {
+            var strategy = new AdaptiveMarineStrategy();
+            var definition = strategy.Definition;
+            Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
+            bot = new SingularityBot(
+                passiveBaseline: passiveBaseline,
+                writeDiagnostics: localRun && diagnostics,
+                compiledStrategy: strategy);
+        }
+        else if (string.Equals(selectedModeId, "zerg.zergling.v1", StringComparison.Ordinal))
+        {
+            var definition = BotDefinitionCatalog.CreateZerglingOpening();
+            requestedRace = Race.Zerg;
+            Console.WriteLine($"[BotStrategy] Using experimental '{definition.Id}' ({definition.Name}), mode={definition.ModeId}.");
+            bot = new SingularityBot(
+                passiveBaseline: passiveBaseline,
+                writeDiagnostics: localRun && diagnostics,
+                botDefinition: definition);
+        }
+        else
+        {
+            throw new ArgumentException($"Unsupported runner mode '{selectedModeId}'. Currently selectable: zerg.zergling.v1.");
+        }
+        Console.WriteLine($"[MatchConfiguration] Requested race={requestedRace}.");
 
         if (designatedAreaArgument is not null)
         {
@@ -56,9 +79,9 @@ public static class Program
 
         var connection = new GameConnection();
         if (localRun)
-            connection.RunSinglePlayer(bot, MatchConfiguration.MapName, MatchConfiguration.RequestedRace,
+            connection.RunSinglePlayer(bot, MatchConfiguration.MapName, requestedRace,
                 MatchConfiguration.OpponentRace, MatchConfiguration.OpponentDifficulty).GetAwaiter().GetResult();
         else
-            connection.RunLadder(bot, MatchConfiguration.RequestedRace, connectionArgs).GetAwaiter().GetResult();
+            connection.RunLadder(bot, requestedRace, connectionArgs).GetAwaiter().GetResult();
     }
 }

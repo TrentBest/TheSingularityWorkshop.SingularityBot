@@ -92,6 +92,9 @@ public sealed class Sc2OpeningMarineController
             }
 
             _knownBarracksTag = null;
+            if (_builderTag is ulong abandonedBuilderTag)
+                assignments.Unreserve(abandonedBuilderTag);
+            _builderTag = null;
             _placement = null;
             _candidatePoints.Clear();
             _placementQueryCandidates.Clear();

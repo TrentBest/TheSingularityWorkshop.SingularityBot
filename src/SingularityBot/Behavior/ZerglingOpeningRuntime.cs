@@ -12,7 +12,6 @@ namespace SingularityBot.Behavior;
 public sealed class ZerglingOpeningRuntime
 {
     private enum OpeningState { NeedPlacement, PlacementReady, BuildSubmitted, AwaitingPool, Producing, Complete }
-    private readonly Sc2GameDataCatalog _gameData;
     private readonly Sc2UnitFacts _drone;
     private readonly Sc2UnitFacts _pool;
     private readonly Sc2AbilityFacts _poolBuildAbility;
@@ -35,7 +34,6 @@ public sealed class ZerglingOpeningRuntime
     private bool _failureLogged;
 
     public ZerglingOpeningRuntime(
-        Sc2GameDataCatalog gameData,
         Sc2UnitFacts drone,
         Sc2UnitFacts spawningPool,
         Sc2AbilityFacts poolBuildAbility,
@@ -44,7 +42,6 @@ public sealed class ZerglingOpeningRuntime
         Sc2UnitFacts larva,
         int desiredZerglings = 2)
     {
-        _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
         _drone = drone ?? throw new ArgumentNullException(nameof(drone));
         _pool = spawningPool ?? throw new ArgumentNullException(nameof(spawningPool));
         _poolBuildAbility = poolBuildAbility ?? throw new ArgumentNullException(nameof(poolBuildAbility));

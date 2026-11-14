@@ -129,12 +129,14 @@ public sealed class SquadContext : IStateContext
     internal SquadContext(string squadId, string role, string objectiveId)
     {
         SquadId = squadId;
+        Name = squadId;
         Role = role;
         ObjectiveId = objectiveId;
         IsValid = true;
     }
 
     public string SquadId { get; }
+    public string Name { get; set; }
     public string Role { get; }
     public string ObjectiveId { get; private set; }
     public IReadOnlyCollection<ulong> UnitTags => _unitTags.OrderBy(tag => tag).ToArray();

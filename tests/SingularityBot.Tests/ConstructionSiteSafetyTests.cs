@@ -134,6 +134,74 @@ public sealed class ConstructionSiteSafetyTests
             Math.Abs(placement.TargetPos.Y - 13.18198f) < 0.05f);
     }
 
+    [Fact]
+    public void ConfirmedBarracksDeathInvalidatesCachedPlacementAndFiltersContestedFootprint()
+    {
+        var controller = new Sc2OpeningMarineController();
+        var safety = new ConstructionSiteSafety();
+        var intelligence = Intelligence();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var jobs = new BuildJobRuntime();
+        var map = new SpatialMap(new MapBounds(0, 0, 64, 64),
+            new MapPoint(10, 10), new MapPoint(54, 54));
+        var gameData = GameData();
+
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            Fact(10, "SCV", 10, 10), Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, jobs,
+            allowMarineTraining: false));
+        var initialQuery = controller.TakePlacementQuery(gameData);
+        Assert.NotNull(initialQuery);
+        var accepted = new ResponseQuery();
+        accepted.Placements.Add(new SC2APIProtocol.ResponseQueryBuildingPlacement
+        {
+            Result = SC2APIProtocol.ActionResult.Success
+        });
+        controller.OnPlacementQueryResult(accepted);
+        var oldSite = new MapPoint(
+            initialQuery.Placements[0].TargetPos.X,
+            initialQuery.Placements[0].TargetPos.Y);
+
+        // Observe the structure at the cached placement; the controller releases
+        // its worker but intentionally retains that old coordinate until death.
+        Assert.Null(controller.TryCreateAction(Snapshot(150,
+            Fact(10, "SCV", oldSite.X, oldSite.Y),
+            Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(200, "Barracks", oldSite.X, oldSite.Y)), map, gameData, assignments, jobs,
+            allowMarineTraining: false));
+
+        safety.Update(Snapshot(100, Fact(200, "Barracks", oldSite.X, oldSite.Y)),
+            VisibleGrid(), intelligence);
+        var enemy = new SpatialContact(900, 2,
+            new MapPoint(oldSite.X + 4, oldSite.Y), SpatialAlliance.Enemy,
+            ContactVisibility.Visible, 101);
+        intelligence.Update(101, new[] { enemy });
+        safety.Update(Snapshot(101, Fact(200, "Barracks", oldSite.X, oldSite.Y)),
+            VisibleGrid(), intelligence);
+
+        var destroyed = Snapshot(102, new[]
+        {
+            Fact(10, "SCV", 10, 10),
+            Fact(11, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10)
+        }, 200);
+        intelligence.Update(102, Array.Empty<SpatialContact>(), new[] { 200UL });
+        safety.Update(destroyed, VisibleGrid(), intelligence);
+        Assert.Equal(ConstructionSiteStatus.Contested, Assert.Single(safety.Sites).Status);
+
+        Assert.Null(controller.TryCreateAction(destroyed, map, gameData,
+            assignments, jobs, allowMarineTraining: false, siteSafety: safety));
+        var alternativeQuery = controller.TakePlacementQuery(gameData, safety, 102);
+        Assert.NotNull(alternativeQuery);
+        Assert.DoesNotContain(alternativeQuery.Placements, placement =>
+            Math.Pow(placement.TargetPos.X - oldSite.X, 2) +
+            Math.Pow(placement.TargetPos.Y - oldSite.Y, 2) <=
+            ConstructionSiteSafety.BarracksFootprintExclusionRadius *
+            ConstructionSiteSafety.BarracksFootprintExclusionRadius);
+        Assert.False(assignments.IsReserved(10) && controller.BuilderTag is null);
+    }
+
     private static (ConstructionSiteSafety Safety, SpatialIntelligence Intelligence) CreateDestroyedSite()
     {
         var safety = new ConstructionSiteSafety();

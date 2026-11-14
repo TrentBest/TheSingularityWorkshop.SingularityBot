@@ -39,6 +39,7 @@ public sealed record CommandLayerSelection
 /// </summary>
 public sealed class CommandLayerComposition
 {
+    public const int MaximumEnabledLayers = 5;
     public int Version { get; init; } = 1;
     public IReadOnlyList<CommandLayerSelection> Layers { get; init; } =
         Array.Empty<CommandLayerSelection>();
@@ -55,6 +56,8 @@ public sealed class CommandLayerComposition
         }
         if (Layers.Count > 32)
             errors.Add("$.layers: at most 32 command-layer selections are allowed.");
+        if (Layers.Count(layer => layer is not null && layer.Enabled) > MaximumEnabledLayers)
+            errors.Add($"$.layers: at most {MaximumEnabledLayers} enabled command layers are allowed.");
 
         var slots = new HashSet<string>(StringComparer.Ordinal);
         for (var index = 0; index < Layers.Count; index++)

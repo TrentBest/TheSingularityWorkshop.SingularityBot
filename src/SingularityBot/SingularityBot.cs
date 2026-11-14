@@ -75,6 +75,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private Sc2GameDataCatalog _gameData;
     private IReadOnlyDictionary<uint, CombatWeaponProfile> _combatWeapons = new Dictionary<uint, CombatWeaponProfile>();
     private uint _playerId;
+    private Race _actualRace = Race.Random;
+    private bool _unsupportedRaceLogged;
     private bool _behaviorCatalogRegistered;
     private bool _spatialDiagnosticsReported;
     private readonly Sc2OpeningProductionController _openingProduction = new();
@@ -142,6 +144,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public SpatialTopology PathingTopology { get; private set; }
     public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
     public GamePhase CurrentGamePhase => _gameState.Phase;
+    /// <summary>The authoritative in-game race resolved from this player's SC2 game-info entry.</summary>
+    public Race ActualRace => _actualRace;
     /// <summary>Retained direct-observation evidence available to transition policy evaluation.</summary>
     public IReadOnlyList<StrategyEvidence> CurrentStrategyEvidence => _currentStrategyEvidence;
     public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
@@ -349,6 +353,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _constructionSiteSafety.Reset();
         _terranCommander.Scouting.Reset(_advisorJobBoard);
         _playerId = playerId;
+        var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
+        _actualRace = playerInfo?.RaceActual ?? Race.Random;
+        Console.WriteLine($"[RaceComposition] Player {playerId}: requested={playerInfo?.RaceRequested.ToString() ?? "unknown"}, actual={_actualRace}.");
         _gameData = Sc2GameDataCatalog.Create(data);
         if (_militaryPlan is not null)
         {
@@ -468,6 +475,18 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _gameData.UnitNames,
                 _gameData.BuffNames);
             _baselineRecorder.Record(baselineObservation);
+            return Array.Empty<SC2APIProtocol.Action>();
+        }
+
+        // The current live strategy and command controllers are Terran-specific.
+        // Random match selection must never route a Protoss/Zerg game through them.
+        if (_actualRace != Race.Terran)
+        {
+            if (!_unsupportedRaceLogged)
+            {
+                Console.WriteLine($"[RaceComposition] FAIL-CLOSED: {_actualRace} has no validated race-specific composition yet; no gameplay actions will be issued.");
+                _unsupportedRaceLogged = true;
+            }
             return Array.Empty<SC2APIProtocol.Action>();
         }
 

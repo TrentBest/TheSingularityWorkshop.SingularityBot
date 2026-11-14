@@ -258,10 +258,17 @@ public static class CompositionGoalCompiler
     }
 }
 
+/// <summary>Typed resources claimed by one accepted strategic job.</summary>
+public sealed record StrategicJobReservation(
+    ulong? UnitTag = null,
+    MapPoint? TargetPoint = null,
+    string? TargetKey = null);
+
 public sealed record StrategicJobDecision(
     StrategicJobPosting Posting,
     bool IsAccepted,
-    string Reason);
+    string Reason,
+    StrategicJobReservation? Reservation = null);
 
 /// <summary>
 /// Produces a deterministic, explainable arbitration result from current postings.
@@ -342,7 +349,8 @@ public sealed class StrategicPlanner
             }
 
             decisions.Add(new StrategicJobDecision(posting, true,
-                $"Unit {unitTag} is live, visible, uniquely reserved, and the target is in bounds."));
+                $"Unit {unitTag} is live, visible, uniquely reserved, and the target is in bounds.",
+                new StrategicJobReservation(UnitTag: unitTag, TargetPoint: target)));
         }
 
         return decisions.AsReadOnly();

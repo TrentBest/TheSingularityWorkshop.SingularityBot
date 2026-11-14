@@ -538,11 +538,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _advisorJobBoard, normalized.GameLoop, normalized, SpatialMap);
             var acceptedScout = scoutDecisions.FirstOrDefault(decision =>
                 decision.IsAccepted && decision.Posting.Kind == StrategicJobKind.Scout);
-            if (acceptedScout?.Posting.Constraints is not null &&
-                acceptedScout.Posting.Constraints.TryGetValue("unitTag", out var reservedTagText) &&
-                ulong.TryParse(reservedTagText, System.Globalization.NumberStyles.None,
-                    System.Globalization.CultureInfo.InvariantCulture, out var reservedTag))
-                plannerReservedScoutTag = reservedTag;
+            plannerReservedScoutTag = acceptedScout?.Reservation?.UnitTag;
 
             var scoutExecution = StrategicScoutActionExecutor.Execute(
                 scoutDecisions, normalized, SpatialMap, _gameData, SpatialTerrain, PathingTopology);

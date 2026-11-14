@@ -1,4 +1,3 @@
-using System.Globalization;
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
 
@@ -27,11 +26,9 @@ public static class StrategicScoutActionExecutor
             if (!decision.IsAccepted || decision.Posting.Kind != StrategicJobKind.Scout)
             { results.Add(decision); continue; }
             var posting = decision.Posting;
-            if (posting.Constraints is null || !posting.Constraints.TryGetValue("unitTag", out var tagText) ||
-                !ulong.TryParse(tagText, NumberStyles.None, CultureInfo.InvariantCulture, out var tag))
-            { results.Add(Reject(decision, "Accepted Scout posting lost its valid unitTag constraint.")); continue; }
-            if (!TryParseTarget(posting.Target, out var target))
-            { results.Add(Reject(decision, "Scout target is not a finite invariant-culture coordinate pair.")); continue; }
+            if (decision.Reservation?.UnitTag is not ulong tag ||
+                decision.Reservation.TargetPoint is not MapPoint target)
+            { results.Add(Reject(decision, "Accepted Scout decision is missing its typed unit and target reservation.")); continue; }
             if (issuedUnits.Contains(tag))
             { results.Add(Reject(decision, $"Scout unit {tag} already has an action in this frame.")); continue; }
             var translation = translator.TranslateScoutMove(tag, target, observation, map, gameData, terrain, topology);
@@ -50,17 +47,6 @@ public static class StrategicScoutActionExecutor
                 ? "Scout intent validated; no new command was necessary." : translation.Reason));
         }
         return new StrategicScoutExecutionResult(actions.AsReadOnly(), results.AsReadOnly());
-    }
-    private static bool TryParseTarget(string value, out MapPoint target)
-    {
-        target = default;
-        var parts = value?.Split(',');
-        if (parts is not { Length: 2 } ||
-            !float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ||
-            !float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) ||
-            !float.IsFinite(x) || !float.IsFinite(y)) return false;
-        target = new MapPoint(x, y);
-        return true;
     }
     private static StrategicJobDecision Reject(StrategicJobDecision decision, string reason) =>
         new(decision.Posting, false, reason);

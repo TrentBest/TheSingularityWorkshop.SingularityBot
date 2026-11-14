@@ -154,6 +154,9 @@ public sealed class StrategicJobPlanningTests
         Assert.Equal(4, decisions.Count);
         Assert.True(decisions[0].IsAccepted);
         Assert.Contains("uniquely reserved", decisions[0].Reason);
+        Assert.Equal(7UL, decisions[0].Reservation?.UnitTag);
+        Assert.Equal(new MapPoint(20, 20), decisions[0].Reservation?.TargetPoint);
+        Assert.Null(decisions[1].Reservation);
         Assert.False(decisions[1].IsAccepted);
         Assert.Contains("already reserved", decisions[1].Reason);
         Assert.False(decisions[2].IsAccepted);

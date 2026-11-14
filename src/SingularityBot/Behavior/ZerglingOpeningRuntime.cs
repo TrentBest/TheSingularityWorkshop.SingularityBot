@@ -97,7 +97,15 @@ public sealed class ZerglingOpeningRuntime
                     unit.UnitKind.Equals(_drone.Name, StringComparison.OrdinalIgnoreCase) &&
                     !unit.HasCargo && HasOnlyInterruptibleGatherOrders(unit) && !_reservedWorkers.Contains(unit.Tag));
                 if (worker is null)
+                {
+                    // The Drone may have picked up resources while placement was being
+                    // queried. Never dispatch it with cargo; discard the stale site/worker
+                    // pairing and choose a fresh eligible Drone on the next observation.
+                    _builderTag = 0;
+                    _selectedPlacement = null;
+                    _state = OpeningState.NeedPlacement;
                     return Array.Empty<SC2APIProtocol.Action>();
+                }
                 var translated = Sc2RaceBuildingActionTranslator.Translate(
                     _pool, _drone, _poolBuildAbility, observation, worker.Tag,
                     _selectedPlacement.X, _selectedPlacement.Y, _reservedWorkers, _interruptibleGatherAbilityIds);
@@ -160,17 +168,29 @@ public sealed class ZerglingOpeningRuntime
     {
         if (_queryPending || _placementQueryInFlight || _selectedPlacement is not null || _placementAttempts >= 3)
             return;
-        var hatchery = observation.Units.FirstOrDefault(unit =>
+        var townHalls = observation.Units.Where(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&
-            (unit.UnitKind is "Hatchery" or "Lair" or "Hive") && unit.HasPosition);
-        var drone = observation.Units.FirstOrDefault(unit =>
+            (unit.UnitKind is "Hatchery" or "Lair" or "Hive") && unit.HasPosition).ToArray();
+        var eligibleDrones = observation.Units.Where(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&
             unit.UnitKind.Equals(_drone.Name, StringComparison.OrdinalIgnoreCase) &&
-            !unit.HasCargo && HasOnlyInterruptibleGatherOrders(unit));
-        if (hatchery is null || drone is null)
+            unit.HasPosition && !unit.HasCargo &&
+            HasOnlyInterruptibleGatherOrders(unit) && !_reservedWorkers.Contains(unit.Tag)).ToArray();
+        if (townHalls.Length == 0 || eligibleDrones.Length == 0)
             return;
+
+        // Select the globally closest eligible Drone-to-town-hall pair. This is
+        // independent of observation ordering and includes Hatchery, Lair, and Hive.
+        var nearestPair = (from drone in eligibleDrones
+                           from townHall in townHalls
+                           let dx = drone.PositionX - townHall.PositionX
+                           let dy = drone.PositionY - townHall.PositionY
+                           orderby (dx * dx) + (dy * dy), drone.Tag, townHall.Tag
+                           select (Drone: drone, TownHall: townHall)).First();
+        var drone = nearestPair.Drone;
+        var hatchery = nearestPair.TownHall;
         _builderTag = drone.Tag;
         _candidatePoints.Clear();
         // Candidate generation is intentionally broad; SC2 placement queries,

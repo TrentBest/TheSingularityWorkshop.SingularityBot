@@ -10,6 +10,7 @@ namespace SingularityBot.Behavior;
 public static class BotDefinitionCatalog
 {
     public const string DefaultDefinitionId = "singularitybot.terran.adaptive-marine";
+    public const string DefaultModeId = "terran.marine.v1";
 
     public static BotDefinition CreateDefault()
     {
@@ -20,6 +21,7 @@ public static class BotDefinitionCatalog
             Id = DefaultDefinitionId,
             Name = "SingularityBot — Adaptive Marine Economy",
             Race = "Terran",
+            ModeId = DefaultModeId,
             StrategyProfile = strategyProfile,
             Runtime = new BotManifest
             {

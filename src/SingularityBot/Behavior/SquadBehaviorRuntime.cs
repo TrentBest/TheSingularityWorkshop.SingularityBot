@@ -167,6 +167,8 @@ public sealed class SquadContext : IStateContext
         IsDisbanding = true;
         IsExecuting = false;
         ShouldRegroup = false;
+        if (_ownsHandle)
+            _handle.TransitionTo("Disbanding");
         IsValid = false;
     }
 

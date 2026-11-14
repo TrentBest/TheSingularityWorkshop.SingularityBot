@@ -13,6 +13,18 @@ Evidence levels must remain distinct:
 3. **CI-verified** — the exact candidate SHA has complete, successful required workflow evidence, observable through [CiAi](ciai-evidence.md).
 4. **Match-verified** — a local SC2 match/replay demonstrates observed state transitions, action results, movement and arrival, and the intended outcome.
 5. **Release-authorized** — the owner explicitly authorizes promotion/publication/deployment for the exact candidate. CI or model output never supplies this authorization.
+## 0A. Civilization identity and race dispatch
+
+- [x] Add a race-independent strategic-domain vocabulary and campaign-inspired leadership identities: Terran Admiral/Commanders, Zerg Overmind/Cerebrates, Protoss Conclave/Judicators.
+- [x] Configure the runner to request Random race selection from SC2.
+- [ ] Read the authoritative selected race from match/player information and bind it to a civilization profile before the first strategic decision.
+- [ ] Dispatch to a compiled civilization strategy through the existing `ICompiledBotStrategy` seam; keep the shared runtime and action pipeline singular.
+- [ ] Move race-specific policy into Commander/Cerebrate/Judicator implementations while shared domains remain race-neutral.
+- [ ] Add tests proving each civilization resolves to its own authority model and unsupported race paths fail closed without issuing actions.
+- [ ] Implement and match-verify Zerg and Protoss adapters before treating Random as a supported competitive configuration.
+
+**Current limitation:** Random is now the runner's requested race, but the executable strategy remains Terran-specific. The Random setting must not be mistaken for multi-race support. Non-Terran execution remains a known blocker until authoritative race dispatch and race-specific adapters exist.
+
 ## 0. Establish the compiled personality boundary
 
 The compile-time strategy seam now supplies validated `BotDefinition` data, executable initial-goal composition, goal-assignment policy and the Marine advance-to-enemy-start rally decision. `AdaptiveMarineStrategy` is statically linked and selected by the Runner. `SingularityBot` invokes goal assignment and rally decisions through the contract while retaining the shared `GoalActionPlanner`, engine, runtime and action pipeline. Regression tests prove different compiled strategies can select different goal and rally policies without duplicating the engine. Objective/transition composition and most macro/tactical policy remain future work; this is a partial boundary, not completion. SC2 Runner remains the host/frame driver; FSM_COS is startup composition only; FSM_API supplies persistent contexts and hierarchical behavior mechanics. No runtime strategy file or dynamic assembly loading is planned.

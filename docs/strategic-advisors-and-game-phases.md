@@ -144,3 +144,15 @@ Next vertical slices should be:
 7. Add bounded compute-cost telemetry and GUI authoring/inspection once the contracts stabilize.
 
 The phase weights are defaults, not hard-coded strategic truths. They must become user-configurable policy only after diagnostics show their actual cost and effect. Keep every advisor deterministic and evidence-backed; uncertain opponent inferences carry confidence and expiry rather than being promoted to observed facts.
+
+
+## Strategic job arbitration status
+
+The planner now emits deterministic accepted/rejected decisions for current postings.
+The first validated kind is `Scout`: the assigned `unitTag` must resolve to a
+live, visible friendly unit, the target must parse as finite invariant-culture
+world coordinates inside known map bounds, and a unit can be reserved by only
+the highest-ranked accepted scout job in a frame. Rejections carry explicit
+reasons. Other job kinds remain visible in the ranked posting view but are
+rejected by arbitration until a kind-specific validator and executor exist.
+This is deliberately fail-closed; arbitration does not yet issue SC2 commands.

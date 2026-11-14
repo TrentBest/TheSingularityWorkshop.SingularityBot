@@ -1,3 +1,7 @@
+using System.Globalization;
+using SingularityBot.Observation;
+using SingularityBot.Spatial;
+
 namespace SingularityBot.Behavior;
 
 public enum StrategicJobKind
@@ -254,9 +258,15 @@ public static class CompositionGoalCompiler
     }
 }
 
+public sealed record StrategicJobDecision(
+    StrategicJobPosting Posting,
+    bool IsAccepted,
+    string Reason);
+
 /// <summary>
-/// Minimal planner view: merges all publishers' current postings and ranks them.
-/// Dependency/resource/unit arbitration is a subsequent planner stage.
+/// Produces a deterministic, explainable arbitration result from current postings.
+/// Only Scout jobs are currently executable by this stage; all other job kinds
+/// remain visible but are explicitly rejected until their validators/executors exist.
 /// </summary>
 public sealed class StrategicPlanner
 {
@@ -264,5 +274,94 @@ public sealed class StrategicPlanner
     {
         ArgumentNullException.ThrowIfNull(board);
         return board.GetActive(gameLoop);
+    }
+
+    public IReadOnlyList<StrategicJobDecision> Evaluate(
+        AdvisorJobBoard board,
+        uint gameLoop,
+        NormalizedObservation observation,
+        SpatialMap map)
+    {
+        ArgumentNullException.ThrowIfNull(board);
+        ArgumentNullException.ThrowIfNull(observation);
+        ArgumentNullException.ThrowIfNull(map);
+
+        var visibleSelf = observation.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self &&
+                           unit.IsLiveVisible && unit.HasPosition &&
+                           !observation.DeadUnitTags.Contains(unit.Tag))
+            .Select(unit => unit.Tag)
+            .ToHashSet();
+        var reservedUnits = new HashSet<ulong>();
+        var decisions = new List<StrategicJobDecision>();
+
+        foreach (var posting in board.GetActive(gameLoop))
+        {
+            if (posting.Kind != StrategicJobKind.Scout)
+            {
+                decisions.Add(new StrategicJobDecision(posting, false,
+                    $"No validated executor is registered for {posting.Kind}."));
+                continue;
+            }
+
+            if (posting.Quantity != 1)
+            {
+                decisions.Add(new StrategicJobDecision(posting, false,
+                    "Scout jobs must request exactly one unit."));
+                continue;
+            }
+
+            if (posting.Constraints is null ||
+                !posting.Constraints.TryGetValue("unitTag", out var tagText) ||
+                !ulong.TryParse(tagText, NumberStyles.None, CultureInfo.InvariantCulture, out var unitTag))
+            {
+                decisions.Add(new StrategicJobDecision(posting, false,
+                    "Scout job is missing a valid unitTag constraint."));
+                continue;
+            }
+
+            if (!visibleSelf.Contains(unitTag))
+            {
+                decisions.Add(new StrategicJobDecision(posting, false,
+                    $"Assigned unit {unitTag} is not a live, visible friendly unit."));
+                continue;
+            }
+
+            if (!TryParseTarget(posting.Target, out var target) || !map.Bounds.Contains(target))
+            {
+                decisions.Add(new StrategicJobDecision(posting, false,
+                    "Scout target is not a finite world-space point inside the known map bounds."));
+                continue;
+            }
+
+            if (!reservedUnits.Add(unitTag))
+            {
+                decisions.Add(new StrategicJobDecision(posting, false,
+                    $"Unit {unitTag} is already reserved by a higher-ranked job."));
+                continue;
+            }
+
+            decisions.Add(new StrategicJobDecision(posting, true,
+                $"Unit {unitTag} is live, visible, uniquely reserved, and the target is in bounds."));
+        }
+
+        return decisions.AsReadOnly();
+    }
+
+    private static bool TryParseTarget(string value, out MapPoint point)
+    {
+        point = default;
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        var parts = value.Split(',');
+        if (parts.Length != 2 ||
+            !float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ||
+            !float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) ||
+            !float.IsFinite(x) || !float.IsFinite(y))
+            return false;
+
+        point = new MapPoint(x, y);
+        return true;
     }
 }

@@ -109,4 +109,74 @@ public sealed class StrategicJobPlanningTests
         Assert.Single(board.GetActive(1));
         Assert.Equal("goal-b", Assert.Single(board.GetActive(1)).Owner);
     }
+
+    [Fact]
+    public void PlannerAcceptsOnlyValidScoutJobsAndReservesUnitsByPriority()
+    {
+        var map = new SingularityBot.Spatial.SpatialMap(
+            new SingularityBot.Spatial.MapBounds(0, 0, 90, 90),
+            new SingularityBot.Spatial.MapPoint(10, 10),
+            new SingularityBot.Spatial.MapPoint(80, 80));
+        var board = new AdvisorJobBoard();
+        board.Upsert(AdvisorDomain.Intelligence, "scout:first",
+            StrategicJobKind.Scout, "20,20", 1, 80, 100,
+            constraints: new Dictionary<string, string> { ["unitTag"] = "7" });
+        board.Upsert(AdvisorDomain.Military, "scout:duplicate",
+            StrategicJobKind.Scout, "30,30", 1, 70, 100,
+            constraints: new Dictionary<string, string> { ["unitTag"] = "7" });
+        board.Upsert(AdvisorDomain.Intelligence, "scout:bad-target",
+            StrategicJobKind.Scout, "NaN,30", 1, 60, 100,
+            constraints: new Dictionary<string, string> { ["unitTag"] = "8" });
+        board.UpsertComposition("goal", "goal:marine",
+            StrategicJobKind.ProduceUnit, "Marine", 10, 50, 100);
+
+        var observation = new SingularityBot.Observation.NormalizedObservation(
+            100, 1,
+            new[]
+            {
+                new SingularityBot.Observation.UnitObservationFacts(
+                    7, 1, "Marine", 1, SingularityBot.Observation.UnitAlliance.Self,
+                    SingularityBot.Observation.UnitVisibility.Visible,
+                    45, 45, 0, 0, 1, 15, 15, true, false, false,
+                    false, false, false, 100),
+                new SingularityBot.Observation.UnitObservationFacts(
+                    8, 1, "Marine", 1, SingularityBot.Observation.UnitAlliance.Self,
+                    SingularityBot.Observation.UnitVisibility.Visible,
+                    45, 45, 0, 0, 1, 16, 16, true, false, false,
+                    false, false, false, 100)
+            },
+            new HashSet<ulong>());
+
+        var decisions = new StrategicPlanner().Evaluate(board, 100, observation, map);
+
+        Assert.Equal(4, decisions.Count);
+        Assert.True(decisions[0].IsAccepted);
+        Assert.Contains("uniquely reserved", decisions[0].Reason);
+        Assert.False(decisions[1].IsAccepted);
+        Assert.Contains("already reserved", decisions[1].Reason);
+        Assert.False(decisions[2].IsAccepted);
+        Assert.Contains("finite world-space point", decisions[2].Reason);
+        Assert.False(decisions[3].IsAccepted);
+        Assert.Contains("No validated executor", decisions[3].Reason);
+    }
+
+    [Fact]
+    public void PlannerRejectsScoutJobsForMissingOrDeadUnits()
+    {
+        var map = new SingularityBot.Spatial.SpatialMap(
+            new SingularityBot.Spatial.MapBounds(0, 0, 90, 90),
+            new SingularityBot.Spatial.MapPoint(10, 10),
+            new SingularityBot.Spatial.MapPoint(80, 80));
+        var board = new AdvisorJobBoard();
+        board.Upsert(AdvisorDomain.Intelligence, "scout:missing",
+            StrategicJobKind.Scout, "20,20", 1, 80, 100,
+            constraints: new Dictionary<string, string> { ["unitTag"] = "99" });
+        var observation = new SingularityBot.Observation.NormalizedObservation(
+            100, 1, Array.Empty<SingularityBot.Observation.UnitObservationFacts>(),
+            new HashSet<ulong> { 99 });
+
+        var decision = Assert.Single(new StrategicPlanner().Evaluate(board, 100, observation, map));
+        Assert.False(decision.IsAccepted);
+        Assert.Contains("not a live, visible friendly unit", decision.Reason);
+    }
 }

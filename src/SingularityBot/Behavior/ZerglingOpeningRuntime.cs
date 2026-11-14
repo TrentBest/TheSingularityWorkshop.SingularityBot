@@ -118,9 +118,18 @@ public sealed class ZerglingOpeningRuntime
         {
             var progress = Sc2RaceProductionProgressReconciler.Reconcile(_profile, _zergling, observation);
             if (_pendingLarvaTags.Count > 0 && progress.InProgressOrders > _pendingEggBaseline)
+            {
                 _pendingLarvaTags.Clear();
+                _productionResultPending = false;
+            }
             foreach (var deadTag in observation.DeadUnitTags)
                 _pendingLarvaTags.Remove(deadTag);
+            if (_pendingLarvaTags.Count == 0 && observation.DeadUnitTags.Count > 0)
+                _productionResultPending = false;
+            // Do not issue another Larva order until the prior order is resolved
+            // by its action result and/or observed Egg/death evidence.
+            if (_pendingLarvaTags.Count > 0 || _productionResultPending)
+                return Array.Empty<SC2APIProtocol.Action>();
             var remaining = _desiredZerglings - progress.AccountedUnits;
             if (remaining <= 0)
             {
@@ -223,8 +232,10 @@ public sealed class ZerglingOpeningRuntime
     {
         if (_buildResultPending)
         {
+            if (response is null || response.Result.Count == 0)
+                return; // retain the latch; an absent result is not a rejection
             _buildResultPending = false;
-            var result = response?.Result.FirstOrDefault();
+            var result = response.Result[0];
             if (result == ActionResult.Success)
             {
                 _state = OpeningState.AwaitingPool;
@@ -242,9 +253,11 @@ public sealed class ZerglingOpeningRuntime
         }
         if (_productionResultPending)
         {
+            if (response is null || response.Result.Count == 0)
+                return; // keep the producer reservation and stop issuing further orders
             _productionResultPending = false;
-            var result = response?.Result.FirstOrDefault();
-            if (result is not null && result != ActionResult.Success)
+            var result = response.Result[0];
+            if (result != ActionResult.Success)
             {
                 _pendingLarvaTags.Clear();
                 Console.WriteLine($"[ZergOpening] Larva production action rejected: {result}; will retry only after a fresh observation.");

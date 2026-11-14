@@ -25,7 +25,7 @@ public sealed class ZerglingOpeningRuntimeTests
         Assert.All(query.Placements, placement =>
         {
             Assert.Equal(1344, placement.AbilityId);
-            Assert.Equal(1ul, placement.PlacingUnitTag);
+            Assert.Equal(2ul, placement.PlacingUnitTag);
         });
 
         var queryResult = new ResponseQuery();

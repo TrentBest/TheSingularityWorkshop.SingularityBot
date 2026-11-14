@@ -28,7 +28,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private GoalActionPlanDefinition _goalActionPlan;
     private readonly TerranCommander _terranCommander = new();
     private readonly RaceModuleCatalog _raceModules = RaceModuleCatalog.CreateDefault();
+    private readonly BotModeCatalog _botModes = BotModeCatalog.CreateDefault();
     private RaceModuleDescriptor _activeRaceModule;
+    private BotModeDescriptor _activeMode;
     private readonly AdvisorJobBoard _advisorJobBoard = new();
     private readonly StrategicPlanner _strategicPlanner = new();
     private CompositionGoalDefinition? _compositionGoal;
@@ -150,6 +152,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public GamePhase CurrentGamePhase => _gameState.Phase;
     /// <summary>The authoritative in-game race resolved from this player's SC2 game-info entry.</summary>
     public Race ActualRace => _actualRace;
+    /// <summary>The map-selected mode after validation against authoritative RaceActual.</summary>
+    public BotModeDescriptor ActiveMode => _activeMode;
     /// <summary>Retained direct-observation evidence available to transition policy evaluation.</summary>
     public IReadOnlyList<StrategyEvidence> CurrentStrategyEvidence => _currentStrategyEvidence;
     public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
@@ -398,11 +402,19 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _activeRaceModule = _raceModules.TryResolve(_actualRace, out var selectedRaceModule)
             ? selectedRaceModule
             : null;
+        _activeMode = _botModes.TryResolveForMatch(
+            new BotModeSelection(_definition.ModeId), _actualRace, out var selectedMode, out var modeError)
+            ? selectedMode
+            : null;
         Console.WriteLine($"[RaceComposition] Player {playerId}: requested={playerInfo?.RaceRequested.ToString() ?? "unknown"}, actual={_actualRace}.");
         if (_activeRaceModule is null)
             Console.WriteLine($"[RaceComposition] FAIL-CLOSED: no registered module for actual race {_actualRace}.");
         else
             Console.WriteLine($"[RaceComposition] Selected {_activeRaceModule.Id}; mode={_activeRaceModule.ExecutionMode}; capabilities={string.Join(",", _activeRaceModule.Capabilities)}. {_activeRaceModule.Status}");
+        if (_activeMode is null)
+            Console.WriteLine($"[BotMode] FAIL-CLOSED: configured mode '{_definition.ModeId}' is invalid for actual race {_actualRace}: {modeError}");
+        else
+            Console.WriteLine($"[BotMode] Selected {_activeMode.Name} ({_activeMode.Id}); primary={_activeMode.PrimaryUnit}; executable={_activeMode.CanIssueGameplayActions}. {_activeMode.Status}");
         if (_actualRace == Race.Terran)
         {
             _terranCommander.Scouting.Reset(_advisorJobBoard);
@@ -530,12 +542,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         // Only the connected Terran adapter currently issues gameplay actions.
         // Protoss and Zerg are registered, visible scaffolds—not fake Terran fallbacks.
-        if (_activeRaceModule is null || !_activeRaceModule.CanIssueGameplayActions)
+        if (_activeRaceModule is null || !_activeRaceModule.CanIssueGameplayActions ||
+            _activeMode is null || !_activeMode.CanIssueGameplayActions)
         {
             if (!_unsupportedRaceLogged)
             {
                 var moduleId = _activeRaceModule?.Id ?? "unregistered";
-                Console.WriteLine($"[RaceComposition] FAIL-CLOSED: race={_actualRace}, module={moduleId}, mode={_activeRaceModule?.ExecutionMode.ToString() ?? "unavailable"}; no gameplay actions will be issued.");
+                Console.WriteLine($"[RaceComposition] FAIL-CLOSED: race={_actualRace}, module={moduleId}, botMode={_activeMode?.Id ?? _definition.ModeId}, modeExecutable={_activeMode?.CanIssueGameplayActions.ToString() ?? "false"}; no gameplay actions will be issued.");
                 _unsupportedRaceLogged = true;
             }
             return Array.Empty<SC2APIProtocol.Action>();

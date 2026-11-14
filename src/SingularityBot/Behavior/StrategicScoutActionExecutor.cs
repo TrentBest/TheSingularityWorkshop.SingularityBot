@@ -60,12 +60,6 @@ public static class StrategicScoutActionExecutor
                 continue;
             }
 
-            if (!issuedUnits.Add(tag))
-            {
-                results.Add(Reject(decision, $"Scout unit {tag} already has an action in this frame."));
-                continue;
-            }
-
             if (gameData.MoveAbilityId is not > 0 ||
                 !gameData.TryGetAbility(gameData.MoveAbilityId.Value, out var moveAbility) ||
                 !moveAbility.Available ||
@@ -91,6 +85,12 @@ public static class StrategicScoutActionExecutor
             if (HasMoveOrderNear(unit, gameData, gameData.MoveAbilityId.Value, target))
             {
                 results.Add(new StrategicJobDecision(posting, true, "Unit already has the matching Move order."));
+                continue;
+            }
+
+            if (!issuedUnits.Add(tag))
+            {
+                results.Add(Reject(decision, $"Scout unit {tag} already has an action in this frame."));
                 continue;
             }
 

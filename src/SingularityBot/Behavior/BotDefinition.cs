@@ -15,6 +15,8 @@ public sealed class BotDefinition
     public string Id { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string Race { get; init; } = "Terran";
+    /// <summary>Map-selected strategy mode; validated against Race and authoritative RaceActual.</summary>
+    public string ModeId { get; init; } = "terran.marine.v1";
     public string StrategyProfile { get; init; } = string.Empty;
     public BotManifest Runtime { get; init; } = new();
     public ProductionPlanDefinition Opening { get; init; } = new();
@@ -86,8 +88,12 @@ public static class BotDefinitionValidator
             errors.Add("$.id: a stable bot id of 1 to 128 characters is required.");
         if (string.IsNullOrWhiteSpace(definition.Name) || definition.Name.Length > 160)
             errors.Add("$.name: a display name of 1 to 160 characters is required.");
-        if (!string.Equals(definition.Race, "Terran", StringComparison.Ordinal))
-            errors.Add("$.race: only Terran is currently supported by this runtime.");
+        if (!Enum.TryParse<SC2APIProtocol.Race>(definition.Race, ignoreCase: false, out var configuredRace) ||
+            configuredRace is not (SC2APIProtocol.Race.Terran or SC2APIProtocol.Race.Protoss or SC2APIProtocol.Race.Zerg))
+            errors.Add("$.race: must be one of the supported playable races (Terran, Protoss, Zerg).");
+        else if (!BotModeCatalog.CreateDefault().TryResolveForMatch(
+            new BotModeSelection(definition.ModeId), configuredRace, out _, out var modeError))
+            errors.Add("$.modeId: " + modeError);
         if (string.IsNullOrWhiteSpace(definition.StrategyProfile))
             errors.Add("$.strategyProfile: a strategy profile is required.");
 

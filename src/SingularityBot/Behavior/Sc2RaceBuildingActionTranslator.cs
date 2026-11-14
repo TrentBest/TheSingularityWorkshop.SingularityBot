@@ -18,7 +18,8 @@ public static class Sc2RaceBuildingActionTranslator
         ulong workerTag,
         float placementX,
         float placementY,
-        IReadOnlySet<ulong> unavailableWorkerTags)
+        IReadOnlySet<ulong> unavailableWorkerTags,
+        IReadOnlySet<uint>? interruptibleOrderAbilityIds = null)
     {
         ArgumentNullException.ThrowIfNull(structure);
         ArgumentNullException.ThrowIfNull(workerType);
@@ -46,8 +47,11 @@ public static class Sc2RaceBuildingActionTranslator
             !worker.UnitKind.Equals(workerType.Name, StringComparison.OrdinalIgnoreCase))
             return Block("The selected worker is not a live, visible self unit of the resolved worker type.");
 
-        if (worker.HasOrders || worker.HasCargo || unavailableWorkerTags.Contains(workerTag))
-            return Block("The selected worker is busy, carrying resources, or already reserved.");
+        var hasNonInterruptibleOrder = worker.HasOrders &&
+            (interruptibleOrderAbilityIds is null || worker.Orders.Count == 0 ||
+             worker.Orders.Any(order => !interruptibleOrderAbilityIds.Contains(order.AbilityId)));
+        if (hasNonInterruptibleOrder || worker.HasCargo || unavailableWorkerTags.Contains(workerTag))
+            return Block("The selected worker has a non-interruptible order, is carrying resources, or is already reserved.");
 
         if (observation.Minerals < structure.MineralCost ||
             observation.Vespene < structure.VespeneCost)

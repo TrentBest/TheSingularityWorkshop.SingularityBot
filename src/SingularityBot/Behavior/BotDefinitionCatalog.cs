@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace SingularityBot.Behavior;
 
@@ -143,6 +144,39 @@ public static class BotDefinitionCatalog
                 }
             }
         };
+    }
+
+    /// <summary>Creates a portable definition for the experimental Zergling opening.</summary>
+    public static BotDefinition CreateZerglingOpening()
+    {
+        var root = JsonNode.Parse(CreateDefault().Serialize())!.AsObject();
+        const string strategyProfile = "zerg.zergling-pressure.v1";
+        root["id"] = "singularitybot.zerg.zergling-opening";
+        root["name"] = "SingularityBot — Zergling Opening";
+        root["race"] = "Zerg";
+        root["modeId"] = "zerg.zergling.v1";
+        root["strategyProfile"] = strategyProfile;
+
+        var runtimeBot = root["runtime"]!["bot"]!.AsObject();
+        runtimeBot["race"] = "Zerg";
+        runtimeBot["strategyProfile"] = strategyProfile;
+
+        var opening = root["opening"]!.AsObject();
+        opening["id"] = "zerg.first-zergling";
+        opening["name"] = "First Zergling pair";
+        opening["race"] = "Zerg";
+        opening["steps"] = new JsonArray(
+            JsonSerializer.SerializeToNode(new ProductionStepDefinition(
+                "zergling-pair", "Zergling", "Larva", 2, 0, 100,
+                Lane: ProductionLane.Units)));
+
+        var ai = root["ai"]!.AsObject();
+        ai["enabled"] = false;
+        ai["maxOnStartCalls"] = 0;
+        ai["maxInMatchCalls"] = 0;
+        ai["allowedTriggers"] = new JsonArray();
+
+        return BotDefinition.Parse(root.ToJsonString());
     }
 
     private static System.Text.Json.JsonElement Settings<T>(T value) =>

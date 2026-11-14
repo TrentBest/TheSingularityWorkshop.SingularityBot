@@ -42,3 +42,13 @@ Local runs capture diagnostics by default. Pass `--no-diagnostics` to opt out fo
 
 
 The opening trace now includes independent state for the first Supply Depot, first Barracks, second Barracks, follow-up Supply Depot, and expansion Command Center controllers. It records the assigned/recycled SCV tags, placement coordinates, construction gates, and completion flags so worker reuse and overlapping construction can be measured directly.
+
+## Worker and opening experiment measurements
+
+The active-run worker CSV records one row per visible SCV per observation frame: game loop, worker tag and position, resource-cargo state, first observed order ability, target unit tag and position, distance to that target, and the observed town-hall position. The active-run economy CSV and opening trace preserve the mineral bank, supply, SCV/Marine/structure counts and construction milestones over time. The binary economy timeline records resource/supply snapshots each frame; binary unit snapshots are sampled every 8 game loops and include unit type, position, orders, cargo, energy and build progress. This supports sub-second structure, Orbital and MULE appearance timing, worker-cycle reconstruction, and resource-bank comparisons.
+
+The opening CSV also writes structured comment events for worker assignment lifecycle:
+- `WorkerAssignment`: worker tag, mineral tag, town-hall tag, assignment generation and supplemental-worker status.
+- `WorkerAssignmentReleased`: worker tag, prior generation and whether release was caused by reservation, death or another assignment removal/replacement.
+
+Use assignment generations to count reassignment churn rather than guessing from movement alone. Worker phase durations (idle, travel to mineral, gathering, return with cargo, construction/reservation) are reconstructed from successive worker rows, observed order targets, cargo and assignment events. Treat those as derived measurements with an explicit classifier/version. The mineral bank is authoritative for the player's available resources, but it is not by itself exact worker-delivered income: spending, MULE income and other sources must be accounted for separately. Do not report inferred per-worker mineral delivery as exact telemetry.

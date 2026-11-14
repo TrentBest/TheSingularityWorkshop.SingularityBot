@@ -529,6 +529,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var assignments = _workerAssignments.Reconcile(
             normalized, _economyAdvisor.Settings.MineralSaturation);
         var actions = new List<SC2APIProtocol.Action>();
+        if (SpatialMap is not null)
+        {
+            var scoutDecisions = _strategicPlanner.Evaluate(
+                _advisorJobBoard, normalized.GameLoop, normalized, SpatialMap);
+            var scoutExecution = StrategicScoutActionExecutor.Execute(
+                scoutDecisions, normalized, SpatialMap, _gameData, SpatialTerrain, PathingTopology);
+            actions.AddRange(scoutExecution.Actions);
+            foreach (var rejected in scoutExecution.Decisions.Where(decision => !decision.IsAccepted))
+                Console.WriteLine($"[StrategicJob] {rejected.Posting.Id}: rejected: {rejected.Reason}");
+        }
         var buildingAccessActions = new List<SC2APIProtocol.Action>();
         SC2APIProtocol.Action sprayAction = null;
         SC2APIProtocol.Action builderAction = null;
@@ -1179,7 +1189,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var marineRallyActions = _marineRally.TryCreateActions(
                 normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
                 SpatialTerrain, PathingTopology, visibilityGrid,
-                advanceToEnemyStart: _compiledStrategy.ShouldAdvanceToEnemyStart(_goalActionPlan));
+                advanceToEnemyStart: _compiledStrategy.ShouldAdvanceToEnemyStart(_goalActionPlan),
+                executeDedicatedScout: false);
             actions.AddRange(marineRallyActions);
             if (_writeDiagnostics &&
                 _marineRally.TryTakeScoutStatusChange(out var scoutStatus, out var scoutDetails))

@@ -104,7 +104,8 @@ public sealed class Sc2MarineRallyController
         SpatialTerrain terrain = null,
         SpatialTopology topology = null,
         SpatialGridSnapshot visibility = null,
-        bool advanceToEnemyStart = false)
+        bool advanceToEnemyStart = false,
+        bool executeDedicatedScout = true)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -137,7 +138,7 @@ public sealed class Sc2MarineRallyController
         var patrolPoints = GetFriendlyPatrolWaypoints(map, terrain, topology, patrolOrigin);
 
         var scoutActions = new List<SC2APIProtocol.Action>();
-        if (scoutTag is ulong tag && scout is not null)
+        if (executeDedicatedScout && scoutTag is ulong tag && scout is not null)
         {
             EnsureScoutPlan(map, terrain, topology, scout);
             var hasScoutDecision = decisions.Any(item => item.MarineTag == tag);

@@ -25,6 +25,21 @@ Evidence levels must remain distinct:
 
 **Current limitation:** Random is now the runner's requested race, but the executable strategy remains Terran-specific. The Random setting must not be mistaken for multi-race support. Non-Terran execution remains a known blocker until authoritative race dispatch and race-specific adapters exist.
 
+## 0B. Chief, Commanders and Unit AI
+
+- [x] Capture the current Terran implementation as the behavior baseline; preserve the existing shared action pipeline.
+- [x] Introduce and enforce the four live-frame stages: Executive Reaction, Subcontrollers, Executive Review, Unit AI.
+- [x] Name the top-level authority the Chief/Executive Controller; retain race-specific vocabulary for subordinate policy owners.
+- [ ] Extract the Chief's match assessment and configurable response policy from the current shared runtime.
+- [ ] Extract Terran domain policies into Commander-owned configurable subcontrollers without changing baseline decisions.
+- [ ] Define the corresponding Overmind/Cerebrate and Conclave/Judicator compositions over the same race-independent strategic contracts.
+- [ ] Separate per-unit decision policy as Unit AI, with explicit ownership of local stats, state, and action choices.
+- [ ] Add regression comparisons proving the refactored Terran Commander path preserves the captured baseline.
+- [ ] Add opt-in decision-rehearsal fixtures from normalized observations and screen-annotated scenarios; expose reusable settings at the policy layer that consumes them.
+- [ ] For each rehearsal, compare accepted/rejected choices and downstream effects using recorded metrics; preserve fixture provenance and uncertainty.
+
+The first implementation enforces the four-stage order in the live frame path. The extraction of current Terran policy from `SingularityBot` remains in progress; do not describe the bot as fully layered until the Commander and Unit AI ownership boundaries are real and covered by baseline regression tests.
+
 ## 0. Establish the compiled personality boundary
 
 The compile-time strategy seam now supplies validated `BotDefinition` data, executable initial-goal composition, goal-assignment policy and the Marine advance-to-enemy-start rally decision. `AdaptiveMarineStrategy` is statically linked and selected by the Runner. `SingularityBot` invokes goal assignment and rally decisions through the contract while retaining the shared `GoalActionPlanner`, engine, runtime and action pipeline. Regression tests prove different compiled strategies can select different goal and rally policies without duplicating the engine. Objective/transition composition and most macro/tactical policy remain future work; this is a partial boundary, not completion. SC2 Runner remains the host/frame driver; FSM_COS is startup composition only; FSM_API supplies persistent contexts and hierarchical behavior mechanics. No runtime strategy file or dynamic assembly loading is planned.

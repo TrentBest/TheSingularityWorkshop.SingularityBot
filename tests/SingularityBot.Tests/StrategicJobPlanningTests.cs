@@ -1,4 +1,6 @@
 using SingularityBot.Behavior;
+using SingularityBot.Observation;
+using SingularityBot.Spatial;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -113,9 +115,9 @@ public sealed class StrategicJobPlanningTests
     [Fact]
     public void PlannerAcceptsOnlyValidScoutJobsAndReservesUnitsByPriority()
     {
-        var map = new SingularityBot.Spatial.SpatialMap(
-            new SingularityBot.Spatial.MapBounds(0, 0, 90, 90),
-            new SingularityBot.Spatial.MapPoint(10, 10),
+        var map = new SpatialMap(
+            new MapBounds(0, 0, 90, 90),
+            new MapPoint(10, 10),
             new SingularityBot.Spatial.MapPoint(80, 80));
         var board = new AdvisorJobBoard();
         board.Upsert(AdvisorDomain.Intelligence, "scout:first",
@@ -130,13 +132,13 @@ public sealed class StrategicJobPlanningTests
         board.UpsertComposition("goal", "goal:marine",
             StrategicJobKind.ProduceUnit, "Marine", 10, 50, 100);
 
-        var observation = new SingularityBot.Observation.NormalizedObservation(
+        var observation = new NormalizedObservation(
             100, 1,
             new[]
             {
-                new SingularityBot.Observation.UnitObservationFacts(
-                    7, 1, "Marine", 1, SingularityBot.Observation.UnitAlliance.Self,
-                    SingularityBot.Observation.UnitVisibility.Visible,
+                new UnitObservationFacts(
+                    7, 1, "Marine", 1, UnitAlliance.Self,
+                    UnitVisibility.Visible,
                     45, 45, 0, 0, 1, 15, 15, true, false, false,
                     false, false, false, 100),
                 new SingularityBot.Observation.UnitObservationFacts(

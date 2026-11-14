@@ -95,7 +95,21 @@ The intended policy is:
 - Prefer a different SC2-validated placement candidate while the old footprint is contested. SC2 placement success remains necessary, but it is not a tactical-safety verdict.
 - Re-evaluate the site before dispatching the worker and again before issuing the build command, because threat can change while the worker travels.
 
-This is a design requirement, not an implemented capability. The current opening controllers generate first-build candidate sets and use SC2 placement queries; they do not yet maintain destroyed-structure site history or a reusable tactical placement-safety gate. A future implementation should be shared by structure construction rather than adding one-off enemy-distance checks to each controller. Tests must cover a nearby enemy, a threat moving away, vision loss, stale last-seen evidence, a second enemy contact, and safe re-eligibility after the clear interval.
+The first vertical slice is implemented for the opening Barracks controller through the shared `ConstructionSiteSafety` service. It is deliberately Barracks-specific at this stage; other structure classes and controller families must adopt the shared service in later slices.
+
+The service retains confirmed destroyed Barracks footprints using the last observed position and destruction evidence. It combines the normalized spatial-intelligence contact history with SC2's raw `MapState.Visibility` image. The raw image is interpreted as an 8-bit grid with protocol values `0 = Hidden`, `1 = Fogged`, `2 = Visible`, and `3 = FullHidden`. The grid is mapped against full-map pathing dimensions, not playable-area bounds; if a valid visibility grid cannot be produced, the safety decision fails closed.
+
+The current site states are explicit:
+
+- **Contested** — a sufficiently recent enemy contact is within the configured threat radius. Remembered contact continues to count while the site is fogged.
+- **Clear** — the site cell is currently visible and has remained threat-free for the configured clear interval.
+- **Unknown** — there is not enough current visibility/evidence to establish safety. Expiration of enemy-contact freshness does not turn a site into Clear.
+
+The initial Barracks policy values are a 12-world-unit threat radius, 224 game loops of enemy-contact freshness, 112 continuously visible and threat-free game loops before Clear, and a 3-world-unit footprint exclusion radius. These are explicit starting values, not empirically tuned balance values or universal radii for every structure.
+
+When a known Barracks is confirmed dead, the opening controller invalidates its cached placement, releases its still-reserved builder, and regenerates candidate search. Candidate points are filtered against the safety service when requesting SC2 placement validation, without permanently deleting blocked candidates. A cached placement is checked again before worker dispatch and before the build command. SC2 placement success is still required, but it is not treated as proof of tactical safety.
+
+Regression tests cover destroyed-site retention, recent and remembered enemy contacts, contact freshness expiry, visibility loss, the continuous clear interval, renewed threats, reset behavior, alternative placement filtering, and cached-placement invalidation. This is a first tested vertical slice, not yet a complete structure-agnostic construction planner.
 
 ## Implementation status and next slices
 
@@ -106,6 +120,7 @@ Implemented in this pass:
 - A match-level Game State FSM with Early/Mid/Late states.
 - Observation-derived phase evidence and deterministic phase-aware weighted scheduling.
 - Economy Advisor integration with the shared contract and current phase.
+- Barracks-only contested construction-site safety with explicit Unknown/Contested/Clear states, raw visibility-grid evidence, candidate filtering and cached-placement rechecks.
 - Tests for phase evidence, advisor schedule membership and phase-dependent weights.
 
 Not yet implemented:
@@ -115,6 +130,8 @@ Not yet implemented:
 - Full Strategic Planner integration for dependency solving, resource/unit reservations and assignment execution.
 - Typed recommendation/event queues and per-advisor diagnostics.
 - Measured wall-clock compute budgeting, incremental work quotas and starvation protection.
+- Structure-agnostic construction-site history and safety policies for structure types beyond the opening Barracks controller.
+- Shared construction-job planning/dispatch that applies the same safety gate across all build controllers.
 - GUI controls for advisor policy, priorities and compute budgets.
 
 Next vertical slices should be:

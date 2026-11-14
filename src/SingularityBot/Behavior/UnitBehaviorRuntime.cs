@@ -1,6 +1,7 @@
 #nullable enable annotations
 
 using SingularityBot.Observation;
+using FSM_API;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -65,7 +66,7 @@ public sealed class UnitBehaviorRuntime
     private static void AttachHandle(UnitBehaviorContext context, string fsmName, string processingGroup)
     {
         if (context.HasCapability(fsmName)) return;
-        var handle = FSM_API.Create.CreateInstance(fsmName, context, processingGroup);
+        var handle = FsmApi.Create.CreateInstance(fsmName, context, processingGroup);
         context.OwnHandle(fsmName, handle);
     }
 
@@ -205,7 +206,7 @@ public sealed class UnitBehaviorRuntime
     {
         if (string.IsNullOrWhiteSpace(processingGroup))
             throw new ArgumentException("A processing group is required.", nameof(processingGroup));
-        FSM_API.Interaction.Update(processingGroup);
+        FsmApi.Interact.Update(processingGroup);
     }
 
     public void EndFrame() => _activeEmit = null;

@@ -27,6 +27,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private IReadOnlyList<StrategyEvidence> _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
     private GoalActionPlanDefinition _goalActionPlan;
     private readonly TerranCommander _terranCommander = new();
+    private readonly RaceModuleCatalog _raceModules = RaceModuleCatalog.CreateDefault();
+    private RaceModuleDescriptor _activeRaceModule;
     private readonly AdvisorJobBoard _advisorJobBoard = new();
     private readonly StrategicPlanner _strategicPlanner = new();
     private CompositionGoalDefinition? _compositionGoal;
@@ -389,11 +391,23 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
         }
         _constructionSiteSafety.Reset();
-        _terranCommander.Scouting.Reset(_advisorJobBoard);
         _playerId = playerId;
         var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
         _actualRace = playerInfo?.RaceActual ?? Race.Random;
+        _unsupportedRaceLogged = false;
+        _activeRaceModule = _raceModules.TryResolve(_actualRace, out var selectedRaceModule)
+            ? selectedRaceModule
+            : null;
         Console.WriteLine($"[RaceComposition] Player {playerId}: requested={playerInfo?.RaceRequested.ToString() ?? "unknown"}, actual={_actualRace}.");
+        if (_activeRaceModule is null)
+            Console.WriteLine($"[RaceComposition] FAIL-CLOSED: no registered module for actual race {_actualRace}.");
+        else
+            Console.WriteLine($"[RaceComposition] Selected {_activeRaceModule.Id}; mode={_activeRaceModule.ExecutionMode}; capabilities={string.Join(",", _activeRaceModule.Capabilities)}. {_activeRaceModule.Status}");
+        if (_actualRace == Race.Terran)
+        {
+            _terranCommander.Scouting.Reset(_advisorJobBoard);
+            _marineRally.Reset();
+        }
         _gameData = Sc2GameDataCatalog.Create(data);
         if (_militaryPlan is not null)
         {
@@ -426,8 +440,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             : null;
         if (PathingTopology is not null)
             Console.WriteLine($"[Spatial] Pathing topology: {PathingTopology.Regions.Count} connected walkable regions.");
-
-        _marineRally.Reset();
 
         if (SpatialMapFactory.TryCreate(gameInfo, observation, out var spatialMap))
         {
@@ -516,13 +528,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             return Array.Empty<SC2APIProtocol.Action>();
         }
 
-        // The current live strategy and command controllers are Terran-specific.
-        // Random match selection must never route a Protoss/Zerg game through them.
-        if (_actualRace != Race.Terran)
+        // Only the connected Terran adapter currently issues gameplay actions.
+        // Protoss and Zerg are registered, visible scaffolds—not fake Terran fallbacks.
+        if (_activeRaceModule is null || !_activeRaceModule.CanIssueGameplayActions)
         {
             if (!_unsupportedRaceLogged)
             {
-                Console.WriteLine($"[RaceComposition] FAIL-CLOSED: {_actualRace} has no validated race-specific composition yet; no gameplay actions will be issued.");
+                var moduleId = _activeRaceModule?.Id ?? "unregistered";
+                Console.WriteLine($"[RaceComposition] FAIL-CLOSED: race={_actualRace}, module={moduleId}, mode={_activeRaceModule?.ExecutionMode.ToString() ?? "unavailable"}; no gameplay actions will be issued.");
                 _unsupportedRaceLogged = true;
             }
             return Array.Empty<SC2APIProtocol.Action>();

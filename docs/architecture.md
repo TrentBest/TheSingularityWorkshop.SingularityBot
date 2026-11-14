@@ -58,7 +58,7 @@ Existing intent validation and SC2 action pipeline
 
 The first refactor deliberately captures current Terran behavior rather than redesigning its tactics. The existing advisors and controllers are the behavioral baseline. The next extraction moves their policy behind Commander-owned contracts while preserving their observed decisions and action pipeline. The Chief owns situation assessment, desired direction, and review; Commanders own the configurable methods for achieving assigned goals; Unit AI owns local execution choices. None of these layers submits protocol actions directly.
 
-The current integration enforces stage ordering in the live `OnFrame` path. It does not yet complete the full policy extraction: several Terran macro controllers and advisor policies are still fields on `SingularityBot`. That is explicitly unfinished work, not a claim that the mono-controller refactor is complete.
+The current integration enforces stage ordering in the live `OnFrame` path. The first Commander extraction is now real: `TerranCommander` owns the existing Economy, Intelligence and Scouting policy specialists, including their configurable settings. The existing strategic planner remains Chief-side review, while opening/build/production controllers and the compiled strategy still need to be moved behind Commander-owned contracts. This is an incremental extraction, not a claim that the mono-controller refactor is complete.
 
 ## Captured scenarios and decision rehearsal
 

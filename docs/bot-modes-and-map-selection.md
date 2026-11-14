@@ -51,3 +51,13 @@ Sc2RaceProductionProgressReconciler
 The `zerg.zergling.v1` mode now has a narrowly scoped runtime connected to the SC2 frame, action-result, and placement-query callbacks. It resolves Drone, SpawningPool, Zergling, Larva, and the Spawning Pool build ability from match `ResponseData`. It generates candidate sites around the observed Hatchery, asks SC2 to validate them with `RequestQueryBuildingPlacement`, and only emits a build command at an approved site using the same queried Drone. It then waits for a visibly completed self Spawning Pool before issuing a Larva production order. Zergling production is serialized to one Larva command at a time; the pending producer is held until matching Egg evidence is observed or an explicit rejection/death resolves it. The progress reconciler counts one matching Egg order as two Zerglings.
 
 This is the first live-connected Zerg opening path, but it is not yet verified in an actual StarCraft II match. It does not yet provide a complete economy/worker-management strategy, scouting, defense, supply management, or combat control. Match launch and gameplay evidence remain required before calling the mode playable or handing it over as a proven build.
+
+#### Launching the experimental Zergling mode
+
+The local runner now accepts an explicit mode selector:
+
+```bash
+dotnet run --project src/SingularityBot.Runner -- --mode=zerg.zergling.v1
+```
+
+This selects a compiled Zerg bot definition, requests Zerg for local single-player launch, and composes the definition through FSM_COS. The default runner invocation remains the existing Terran Marine strategy. The Zerg selector is experimental: it exercises the first Spawning Pool and Zergling-pair opening only, not a complete autonomous match strategy.

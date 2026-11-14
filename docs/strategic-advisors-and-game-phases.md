@@ -148,6 +148,8 @@ The phase weights are defaults, not hard-coded strategic truths. They must becom
 
 ## Strategic job arbitration status
 
+The live Scout executor delegates SC2 command validation and construction to the shared Sc2MilitaryOperationActionTranslator. The Scout executor retains only posting-coordinate parsing and per-frame duplicate-unit arbitration. The shared translator revalidates current friendly-unit liveness and visibility, map bounds, authoritative generic Move ability, pathing, continuous route connectivity, and duplicate existing Move orders before emitting a raw SC2 action. Missing or invalid prerequisites block the command.
+
 The planner now emits deterministic accepted/rejected decisions for current postings.
 The first validated kind is `Scout`: the assigned `unitTag` must resolve to a
 live, visible friendly unit, the target must parse as finite invariant-culture

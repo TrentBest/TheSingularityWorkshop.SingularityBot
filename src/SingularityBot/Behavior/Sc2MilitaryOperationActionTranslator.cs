@@ -91,6 +91,38 @@ public sealed class Sc2MilitaryOperationActionTranslator
         return new MilitaryOperationTranslation(actions, false, string.Empty);
     }
 
+    /// <summary>
+    /// Validates and translates strategic Scout movement through the shared SC2 command boundary.
+    /// </summary>
+    public MilitaryOperationTranslation TranslateScoutMove(
+        ulong unitTag, MapPoint target, NormalizedObservation observation, SpatialMap map,
+        Sc2GameDataCatalog gameData, SpatialTerrain terrain, SpatialTopology topology)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(gameData);
+        if (!map.Bounds.Contains(target)) return Blocked("Scout target is outside known map bounds.");
+        var unit = observation.Units.FirstOrDefault(candidate => candidate.Tag == unitTag &&
+            candidate.Alliance == UnitAlliance.Self && candidate.IsLiveVisible && candidate.HasPosition &&
+            !observation.DeadUnitTags.Contains(candidate.Tag));
+        if (unit is null) return Blocked($"Scout unit {unitTag} is no longer live and visible.");
+        if (gameData.MoveAbilityId is not > 0 ||
+            !gameData.TryGetAbility(gameData.MoveAbilityId.Value, out var moveAbility) ||
+            !moveAbility.Available || moveAbility.Target != AbilityData.Types.Target.Point)
+            return Blocked("Authoritative generic Move ability is unavailable or not point-targeted.");
+        if (terrain?.Pathing is null || topology is null)
+            return Blocked("Scout movement requires authoritative pathing and connected-region data.");
+        var start = new MapPoint(unit.PositionX, unit.PositionY);
+        if (!terrain.TryIsPathable(target, out var pathable) || !pathable ||
+            !IsPathableSegment(start, target, terrain, topology))
+            return Blocked("Scout target is not confirmed pathable and continuously connected to the unit.");
+        if (HasPositionOrderNear(unit, gameData.MoveAbilityId.Value, gameData, target.X, target.Y))
+            return new MilitaryOperationTranslation(Array.Empty<SC2APIProtocol.Action>(), false,
+                "Unit already has the matching Move order.");
+        return new MilitaryOperationTranslation(
+            new[] { PositionCommand(unit.Tag, checked((int)gameData.MoveAbilityId.Value), target.X, target.Y) },
+            false, string.Empty);
+    }
     public void Reset(string operationId)
     {
         foreach (var key in _waypointIndices.Keys.Where(key =>

@@ -31,6 +31,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly BotModeCatalog _botModes = BotModeCatalog.CreateDefault();
     private readonly Sc2RaceProductionProfileCatalog _raceProductionProfiles = Sc2RaceProductionProfileCatalog.CreateDefault();
     private Sc2RaceProductionProfile _activeProductionProfile;
+    private ZerglingOpeningRuntime _zerglingOpeningRuntime;
     private RaceModuleDescriptor _activeRaceModule;
     private BotModeDescriptor _activeMode;
     private readonly AdvisorJobBoard _advisorJobBoard = new();
@@ -426,6 +427,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
         _gameData = Sc2GameDataCatalog.Create(data);
         _activeProductionProfile = null;
+        _zerglingOpeningRuntime = null;
         if (_activeMode is not null && _raceProductionProfiles.TryResolveGameData(
             _activeMode.Id, _actualRace, _gameData,
             out var productionProfile, out var targetFacts, out var producerFacts, out var productionError))
@@ -439,6 +441,24 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _activeMode.Id, _actualRace, _gameData,
                 out _, out _, out _, out var profileError);
             Console.WriteLine($"[RaceProduction] FAIL-CLOSED: mode={_activeMode.Id}; {profileError}");
+        }
+        if (_actualRace == Race.Zerg && _activeMode?.Id == "zerg.zergling.v1" &&
+            _activeProductionProfile is not null &&
+            _gameData.TryGetUniqueUnit("Drone", out var zergDrone) &&
+            _gameData.TryGetUniqueUnit("SpawningPool", out var spawningPool) &&
+            _gameData.TryGetUniqueUnit("Zergling", out var zergling) &&
+            _gameData.TryGetUniqueUnit("Larva", out var larva) &&
+            _gameData.TryGetAbility(spawningPool.AbilityId, out var poolBuildAbility) &&
+            poolBuildAbility.IsBuilding)
+        {
+            _zerglingOpeningRuntime = new ZerglingOpeningRuntime(
+                _gameData, zergDrone, spawningPool, poolBuildAbility,
+                _activeProductionProfile, zergling, larva);
+            Console.WriteLine("[ZergOpening] Runtime initialized: Drone -> queried Spawning Pool -> Larva -> Zergling pair.");
+        }
+        else if (_actualRace == Race.Zerg && _activeMode?.Id == "zerg.zergling.v1")
+        {
+            Console.WriteLine("[ZergOpening] FAIL-CLOSED: required Drone/SpawningPool/Zergling/Larva game data or building ability is unavailable.");
         }
         if (_militaryPlan is not null)
         {
@@ -559,10 +579,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             return Array.Empty<SC2APIProtocol.Action>();
         }
 
-        // Only the connected Terran adapter currently issues gameplay actions.
-        // Protoss and Zerg are registered, visible scaffolds—not fake Terran fallbacks.
-        if (_activeRaceModule is null || !_activeRaceModule.CanIssueGameplayActions ||
-            _activeMode is null || !_activeMode.CanIssueGameplayActions)
+        // The Zergling opening is a narrowly scoped executable adapter; other
+        // non-Terran modes remain fail-closed until their complete paths exist.
+        var zerglingOpeningEnabled = _actualRace == Race.Zerg &&
+            _activeMode?.Id == "zerg.zergling.v1" && _zerglingOpeningRuntime is not null;
+        if (!zerglingOpeningEnabled &&
+            (_activeRaceModule is null || !_activeRaceModule.CanIssueGameplayActions ||
+             _activeMode is null || !_activeMode.CanIssueGameplayActions))
         {
             if (!_unsupportedRaceLogged)
             {
@@ -581,6 +604,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _gameData.UnitNames,
             _gameData.BuffNames);
         _lastGameLoop = normalized.GameLoop;
+        if (zerglingOpeningEnabled)
+            return _zerglingOpeningRuntime.OnFrame(normalized);
         var executive = new ExecutiveController(normalized.GameLoop);
         _currentStrategyEvidence = _strategyEvidenceCollector.Apply(normalized);
         var intents = new BehaviorIntentBuffer();
@@ -1403,6 +1428,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnActionResult(IReadOnlyList<SC2APIProtocol.Action> submittedActions, ResponseAction response)
     {
+        if (_zerglingOpeningRuntime is not null && _actualRace == Race.Zerg &&
+            _activeMode?.Id == "zerg.zergling.v1")
+        {
+            _zerglingOpeningRuntime.OnActionResult(response);
+            return;
+        }
         if (response is null || response.Result.Count == 0)
         {
             Console.WriteLine("[SC2 API] Action request returned no per-action result.");
@@ -1536,6 +1567,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public RequestQuery TakeQueryRequest()
     {
+        if (_zerglingOpeningRuntime is not null && _actualRace == Race.Zerg &&
+            _activeMode?.Id == "zerg.zergling.v1")
+            return _zerglingOpeningRuntime.TakeQueryRequest();
         var query = _pendingQuery;
         _pendingQuery = null;
         return query;
@@ -1543,6 +1577,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnQueryResult(ResponseQuery response)
     {
+        if (_zerglingOpeningRuntime is not null && _actualRace == Race.Zerg &&
+            _activeMode?.Id == "zerg.zergling.v1")
+        {
+            _zerglingOpeningRuntime.OnQueryResult(response);
+            return;
+        }
         var validPathingDistances = response?.Pathing
             .Select(item => item.Distance)
             .Where(distance => float.IsFinite(distance) && distance > 0)

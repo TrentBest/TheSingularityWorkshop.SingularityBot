@@ -34,3 +34,10 @@ At `OnStart`, each selected profile resolves its target unit, producer, costs, f
 The first action-translation slice now exists as `Sc2RaceProductionActionTranslator`. It builds raw unit commands from the target ability resolved in match game data, requires visibly completed prerequisites, filters out busy/dead/reserved producers, and computes mineral, gas, and food reservations before emitting orders. Zergling profiles declare two output units per Larva order, so cost/supply reservation and expected output account for the pair. Protoss translation requires a caller-supplied positive per-Gateway power-evidence function; without it, no command is emitted.
 
 The translator is intentionally stateless and is not yet connected to the live race module. Submission latches, action-result reconciliation, and observed Egg/in-progress pair reconciliation remain caller/runtime responsibilities. Therefore Zergling and Zealot modules remain fail-closed; passing unit tests for command translation is not integrated match validation or verified gameplay.
+
+
+### In-progress production reconciliation
+
+```
+Sc2RaceProductionProgressReconciler
+``` now reconciles visible completed target units, target units that are visibly under construction, and visible Zerg Eggs whose current order ability matches the selected target's authoritative training ability. A matching Zergling Egg counts as two in-progress Zerglings, not one Egg. Enemy, hidden, dead, and unrelated Egg observations are excluded. This is an observation-side accounting primitive only: it does not submit orders, own producer latches, or prove that an action was accepted. The race modules remain fail-closed until those responsibilities are integrated and exercised in an actual match.

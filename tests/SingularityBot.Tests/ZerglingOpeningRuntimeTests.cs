@@ -57,9 +57,7 @@ public sealed class ZerglingOpeningRuntimeTests
         Assert.Equal(6ul, Assert.Single(production[0].ActionRaw.UnitCommand.UnitTags));
         Assert.Equal("Producing", runtime.State);
 
-        var acceptedLarvaOrder = new ResponseAction();
-        acceptedLarvaOrder.Result.Add(ActionResult.Success);
-        runtime.OnActionResult(acceptedLarvaOrder);
+        runtime.OnActionResult(null);
         // The other Larva must not be used while the first order is accepted
         // but not yet represented by authoritative Egg evidence.
         Assert.Empty(runtime.OnFrame(poolReady));
@@ -95,6 +93,28 @@ public sealed class ZerglingOpeningRuntimeTests
         Assert.Empty(runtime.OnFrame(opening));
         Assert.Equal("NeedPlacement", runtime.State);
         Assert.NotNull(runtime.TakeQueryRequest());
+    }
+
+    [Fact]
+    public void Runtime_KeepsBuildSubmissionLatchedWhenActionResultIsMissing()
+    {
+        var runtime = CreateRuntime();
+        var opening = Observation(300, 0, 12, 14,
+            Unit(1, "Hatchery"), Unit(2, "Drone"));
+        Assert.Empty(runtime.OnFrame(opening));
+        var query = runtime.TakeQueryRequest();
+        var approved = new ResponseQuery();
+        approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        for (var i = 1; i < query.Placements.Count; i++)
+            approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.CantBuildLocationInvalid });
+        runtime.OnQueryResult(approved);
+        Assert.Single(runtime.OnFrame(opening));
+
+        runtime.OnActionResult(null);
+
+        Assert.Empty(runtime.OnFrame(opening));
+        Assert.Equal("BuildSubmitted", runtime.State);
+        Assert.Null(runtime.TakeQueryRequest());
     }
 
     [Fact]

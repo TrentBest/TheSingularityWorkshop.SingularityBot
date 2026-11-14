@@ -485,8 +485,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _gameState.Apply(normalized);
         UpdateSpatialIntelligence(observation);
         Sc2SpatialTerrainFactory.TryCreateVisibilityGrid(
-            observation, SpatialTerrain, out var visibilityGrid);
-        _constructionSiteSafety.Update(normalized, visibilityGrid, SpatialIntelligence);
+            observation, SpatialTerrain, out var constructionVisibilityGrid);
+        _constructionSiteSafety.Update(normalized, constructionVisibilityGrid, SpatialIntelligence);
         if (SpatialMap is not null)
             _compiledStrategy.ApplyGoalPolicy(_goalActionPlan, _unitBehaviors, SpatialMap);
 

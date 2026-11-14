@@ -134,3 +134,12 @@ Implement in small, testable vertical slices:
 8. **Operational validation:** test reservations, unit loss, phase transitions during active operations, stale information, emergency defense, and all three race modules.
 
 Every stage must preserve fail-closed command validation and the current Terran gameplay baseline. Do not claim a strategic phase or operation is complete merely because it was selected or assigned; require observed execution evidence.
+
+## Squad lifecycle vertical slice
+
+The first tactical command context is implemented as an FSM_API-backed `SquadContext` with a stable squad ID, role, objective ID, explicit member roster, and lifecycle states: Forming, Ready, Executing, Regrouping, and Disbanding. `SquadBehaviorRuntime` owns the contexts and their FSM handles, enforces one squad membership per unit tag within the runtime, and removes membership only on explicit dead-unit evidence or an explicit reassignment/removal.
+
+This is deliberately a tactical roster, not a second SC2 action authority. Recording a unit in a squad does not reserve it for an order and does not authorize an action. The existing action pipeline and authoritative reservation/legality checks remain the gate before issuing commands. The current bot still has a separate military-operation assignment map; connecting squad rosters to that path is the next integration step, and must replace—not duplicate—its ownership semantics.
+
+The runtime preserves entity lifecycle semantics: temporary fog-of-war absence is not death, and squad FSM handles are destroyed when the squad is explicitly disbanded or the runtime is cleared. The FSM definition is registered idempotently and uses the existing strategy processing group.
+

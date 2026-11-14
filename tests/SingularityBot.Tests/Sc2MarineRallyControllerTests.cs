@@ -41,7 +41,7 @@ public sealed class Sc2MarineRallyControllerTests
                 false, false, false, 100));
         var weapons = new Dictionary<uint, CombatWeaponProfile>
         {
-            [48] = new CombatWeaponProfile(5, 6)
+            [1] = new CombatWeaponProfile(5, 6)
         };
 
         Assert.Equal(2UL, controller.GetScoutTag(observation, weapons,

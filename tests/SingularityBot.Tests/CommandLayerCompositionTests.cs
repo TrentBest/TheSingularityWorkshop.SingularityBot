@@ -118,4 +118,21 @@ public sealed class CommandLayerCompositionTests
 
         Assert.Empty(composition.Validate());
     }
+    [Fact]
+    public void Composition_RejectsMoreThanFiveEnabledCommandLayers()
+    {
+        var layers = Enumerable.Range(0, 6).Select(index => new CommandLayerSelection
+        {
+            SlotId = $"layer.{index}",
+            Kind = (CommandLayerKind)index,
+            ImplementationId = $"implementation.{index}",
+            PresentationProfileId = "classic",
+            Enabled = true
+        }).ToArray();
+
+        var composition = new CommandLayerComposition { Layers = layers };
+
+        Assert.Contains(composition.Validate(), error => error.Contains("at most 5 enabled command layers"));
+    }
+
 }

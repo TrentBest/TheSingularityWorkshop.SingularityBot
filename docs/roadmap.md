@@ -31,7 +31,8 @@ Evidence levels must remain distinct:
 - [x] Introduce and enforce the four live-frame stages: Executive Reaction, Subcontrollers, Executive Review, Unit AI.
 - [x] Name the top-level authority the Chief/Executive Controller; retain race-specific vocabulary for subordinate policy owners.
 - [ ] Extract the Chief's match assessment and configurable response policy from the current shared runtime.
-- [ ] Extract Terran domain policies into Commander-owned configurable subcontrollers without changing baseline decisions.
+- [x] Group the existing configurable Economy, Intelligence and Scouting specialists under `TerranCommander` without changing their policy implementations.
+- [ ] Move opening/build/production controllers and compiled strategic policy behind Commander-owned contracts without changing baseline decisions.
 - [ ] Define the corresponding Overmind/Cerebrate and Conclave/Judicator compositions over the same race-independent strategic contracts.
 - [ ] Separate per-unit decision policy as Unit AI, with explicit ownership of local stats, state, and action choices.
 - [ ] Add regression comparisons proving the refactored Terran Commander path preserves the captured baseline.

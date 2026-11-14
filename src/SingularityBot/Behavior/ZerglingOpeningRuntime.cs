@@ -18,6 +18,7 @@ public sealed class ZerglingOpeningRuntime
     private readonly Sc2RaceProductionProfile _profile;
     private readonly Sc2UnitFacts _zergling;
     private readonly Sc2UnitFacts _larva;
+    private readonly IReadOnlySet<uint> _interruptibleGatherAbilityIds;
     private readonly int _desiredZerglings;
     private readonly HashSet<ulong> _reservedWorkers = new();
     private readonly HashSet<ulong> _pendingLarvaTags = new();
@@ -40,6 +41,7 @@ public sealed class ZerglingOpeningRuntime
         Sc2RaceProductionProfile profile,
         Sc2UnitFacts zergling,
         Sc2UnitFacts larva,
+        IReadOnlySet<uint> interruptibleGatherAbilityIds,
         int desiredZerglings = 2)
     {
         _drone = drone ?? throw new ArgumentNullException(nameof(drone));
@@ -48,6 +50,7 @@ public sealed class ZerglingOpeningRuntime
         _profile = profile ?? throw new ArgumentNullException(nameof(profile));
         _zergling = zergling ?? throw new ArgumentNullException(nameof(zergling));
         _larva = larva ?? throw new ArgumentNullException(nameof(larva));
+        _interruptibleGatherAbilityIds = interruptibleGatherAbilityIds ?? throw new ArgumentNullException(nameof(interruptibleGatherAbilityIds));
         if (desiredZerglings < 2 || desiredZerglings % 2 != 0)
             throw new ArgumentOutOfRangeException(nameof(desiredZerglings), "Zergling targets must be positive pairs.");
         _desiredZerglings = desiredZerglings;
@@ -97,7 +100,7 @@ public sealed class ZerglingOpeningRuntime
                     return Array.Empty<SC2APIProtocol.Action>();
                 var translated = Sc2RaceBuildingActionTranslator.Translate(
                     _pool, _drone, _poolBuildAbility, observation, worker.Tag,
-                    _selectedPlacement.X, _selectedPlacement.Y, _reservedWorkers);
+                    _selectedPlacement.X, _selectedPlacement.Y, _reservedWorkers, _interruptibleGatherAbilityIds);
                 if (translated.IsBlocked)
                 {
                     LogOnce("Spawning Pool build blocked: " + translated.BlockReason);
@@ -187,6 +190,10 @@ public sealed class ZerglingOpeningRuntime
         }
         _queryPending = true;
     }
+
+    private bool HasOnlyInterruptibleGatherOrders(UnitObservationFacts unit) =>
+        !unit.HasOrders || (unit.Orders.Count > 0 && unit.Orders.All(order =>
+            _interruptibleGatherAbilityIds.Contains(order.AbilityId)));
 
     public RequestQuery TakeQueryRequest()
     {

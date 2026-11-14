@@ -437,8 +437,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             _raceProductionProfiles.TryResolveGameData(
                 _activeMode.Id, _actualRace, _gameData,
-                out _, out _, out _, out var productionError);
-            Console.WriteLine($"[RaceProduction] FAIL-CLOSED: mode={_activeMode.Id}; {productionError}");
+                out _, out _, out _, out var profileError);
+            Console.WriteLine($"[RaceProduction] FAIL-CLOSED: mode={_activeMode.Id}; {profileError}");
         }
         if (_militaryPlan is not null)
         {

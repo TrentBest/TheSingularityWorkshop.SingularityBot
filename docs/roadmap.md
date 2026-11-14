@@ -27,7 +27,7 @@ Evidence levels must remain distinct:
 
 ## 0B. Chief, Commanders and Unit AI
 
-- [x] Capture the current Terran implementation as the behavior baseline; preserve the existing shared action pipeline.
+- [x] Preserve the existing Terran implementation and shared action pipeline in-place as the baseline for incremental extraction; no strategic policy was intentionally changed in this slice.
 - [x] Introduce and enforce the four live-frame stages: Executive Reaction, Subcontrollers, Executive Review, Unit AI.
 - [x] Name the top-level authority the Chief/Executive Controller; retain race-specific vocabulary for subordinate policy owners.
 - [ ] Extract the Chief's match assessment and configurable response policy from the current shared runtime.

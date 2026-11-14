@@ -29,6 +29,30 @@ public sealed class Sc2MarineRallyControllerTests
     }
 
     [Fact]
+    public void PlannerReservationIsAuthoritativeAndDoesNotFallBackToAnotherMarine()
+    {
+        var controller = new Sc2MarineRallyController();
+        var observation = Snapshot(
+            new UnitObservationFacts(1, 1, "Marine", 48, UnitAlliance.Self, UnitVisibility.Visible,
+                45, 45, 0, 0, 1, 10, 10, true, false, false,
+                false, false, false, 100),
+            new UnitObservationFacts(2, 1, "Marine", 48, UnitAlliance.Self, UnitVisibility.Visible,
+                45, 45, 0, 0, 1, 12, 10, true, false, false,
+                false, false, false, 100));
+        var weapons = new Dictionary<uint, CombatWeaponProfile>
+        {
+            [48] = new CombatWeaponProfile(5, 6)
+        };
+
+        Assert.Equal(2UL, controller.GetScoutTag(observation, weapons,
+            plannerReservedScoutTag: 2, usePlannerReservation: true));
+        Assert.Null(controller.GetScoutTag(observation, weapons,
+            plannerReservedScoutTag: null, usePlannerReservation: true));
+        Assert.Null(controller.GetScoutTag(observation, weapons,
+            plannerReservedScoutTag: 99, usePlannerReservation: true));
+    }
+
+    [Fact]
     public void FirstMarineScoutsTheFarthestSafeAdjacentSectorWhileFourOthersDeploy()
     {
         var controller = new Sc2MarineRallyController();

@@ -73,6 +73,7 @@ public sealed class SquadBehaviorRuntimeTests
 
         Assert.False(squad.IsValid);
         Assert.True(squad.IsDisbanding);
+        Assert.Equal("Disbanding", squad.LifecycleState);
         Assert.False(runtime.TryGetMembership(88, out _));
         Assert.False(runtime.TryGetSquad("squad.one", out _));
         runtime.Clear();

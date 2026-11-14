@@ -116,7 +116,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private bool _orbitalSupportActionSubmitted;
     private string _lastOrbitalDiagnostic;
     private string _lastStartingTownHallKind;
-    private readonly HashSet<(ulong WorkerTag, uint Generation)> _loggedWorkerAssignments = new();
+    private readonly Dictionary<ulong, uint> _currentWorkerAssignmentGenerations = new();
     private MilitaryPlanDefinition _militaryPlan;
     private MilitaryPlanRuntime _militaryPlanRuntime = new();
     private readonly Sc2MilitaryOperationActionTranslator _militaryTranslator = new();
@@ -1074,11 +1074,39 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _pendingQuery.Pathing.Add(initialWorkerPathingQuery.Pathing);
         }
 
+        var currentWorkerAssignments = assignments.Values
+            .OrderBy(item => item.WorkerTag)
+            .ToDictionary(item => item.WorkerTag, item => item.Generation);
+
+        foreach (var previous in _currentWorkerAssignmentGenerations.OrderBy(item => item.Key))
+        {
+            if (currentWorkerAssignments.TryGetValue(previous.Key, out var currentGeneration) &&
+                currentGeneration == previous.Value)
+                continue;
+
+            var releaseReason = _workerAssignments.IsReserved(previous.Key)
+                ? "reserved"
+                : normalized.DeadUnitTags.Contains(previous.Key)
+                    ? "dead"
+                    : "assignment-removed-or-replaced";
+            _openingTrace.RecordEvent("WorkerAssignmentReleased", normalized.GameLoop,
+                $"worker={previous.Key};generation={previous.Value};reason={releaseReason}");
+        }
+
         foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
         {
-            if (_loggedWorkerAssignments.Add((assignment.WorkerTag, assignment.Generation)))
-                Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
+            if (_currentWorkerAssignmentGenerations.TryGetValue(assignment.WorkerTag, out var previousGeneration) &&
+                previousGeneration == assignment.Generation)
+                continue;
+
+            Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
+            _openingTrace.RecordEvent("WorkerAssignment", normalized.GameLoop,
+                $"worker={assignment.WorkerTag};mineral={assignment.MineralTag};townHall={assignment.TownHallTag};generation={assignment.Generation};supplemental={assignment.IsSupplementalWorker}");
         }
+
+        _currentWorkerAssignmentGenerations.Clear();
+        foreach (var assignment in currentWorkerAssignments)
+            _currentWorkerAssignmentGenerations.Add(assignment.Key, assignment.Value);
 
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
         // Associate observed structures with their construction jobs after all
@@ -1727,7 +1755,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _thirdSupplyDepot.Dispose();
         _buildJobs.Clear();
         _workerAssignments.Clear();
-        _loggedWorkerAssignments.Clear();
+        _currentWorkerAssignmentGenerations.Clear();
         _marineRally.Reset();
         _militaryAssignments.Clear();
         _militaryOperationDiagnostics.Clear();

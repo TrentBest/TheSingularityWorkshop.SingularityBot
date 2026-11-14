@@ -17,6 +17,7 @@ public sealed class BotDefinitionTests
         var parsed = BotDefinition.Parse(definition.Serialize());
 
         Assert.Equal(definition.Id, parsed.Id);
+        Assert.Equal(definition.ModeId, parsed.ModeId);
         Assert.Equal(definition.Opening.Id, parsed.Opening.Id);
         Assert.Equal(1, parsed.Ai.MaxOnStartCalls);
         Assert.Equal(3, parsed.Ai.MaxInMatchCalls);
@@ -29,6 +30,7 @@ public sealed class BotDefinitionTests
 
         Assert.Empty(definition.Validate());
         Assert.Equal(BotDefinitionCatalog.DefaultDefinitionId, definition.Id);
+        Assert.Equal("terran.marine.v1", definition.ModeId);
         Assert.Equal(60, definition.Opening.Steps
             .Where(step => step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))
             .Max(step => step.DesiredCount));
@@ -78,6 +80,7 @@ public sealed class BotDefinitionTests
             Id = definition.Id,
             Name = definition.Name,
             Race = definition.Race,
+            ModeId = definition.ModeId,
             StrategyProfile = "different.profile",
             Runtime = definition.Runtime,
             Opening = definition.Opening,
@@ -192,6 +195,7 @@ public sealed class BotDefinitionTests
         Id = source.Id,
         Name = source.Name,
         Race = source.Race,
+        ModeId = source.ModeId,
         StrategyProfile = source.StrategyProfile,
         Runtime = source.Runtime,
         Opening = source.Opening,

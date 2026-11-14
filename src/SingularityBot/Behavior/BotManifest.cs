@@ -65,8 +65,8 @@ public sealed class BotManifest
             errors.Add("$.bot: is required.");
         else
         {
-            if (!string.Equals(Bot.Race, "Terran", StringComparison.Ordinal))
-                errors.Add("$.bot.race: only Terran is currently supported.");
+            if (Bot.Race is not ("Terran" or "Protoss" or "Zerg"))
+                errors.Add("$.bot.race: must be one of the supported playable races (Terran, Protoss, Zerg).");
             if (string.IsNullOrWhiteSpace(Bot.StrategyProfile))
                 errors.Add("$.bot.strategyProfile: is required.");
             if (!Bot.DeterministicScheduling)

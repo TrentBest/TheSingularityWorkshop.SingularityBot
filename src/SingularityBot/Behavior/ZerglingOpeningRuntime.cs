@@ -133,10 +133,11 @@ public sealed class ZerglingOpeningRuntime
             if (translated.IsBlocked)
                 return Array.Empty<SC2APIProtocol.Action>();
             _productionResultPending = true;
-            foreach (var tag in translated.ProducerTags) _pendingLarvaTags.Add(tag);
+            var producerTag = translated.ProducerTags[0];
+            _pendingLarvaTags.Add(producerTag);
             _pendingEggBaseline = progress.InProgressOrders;
-            Console.WriteLine($"[ZergOpening] Submitting {translated.Actions.Count} Larva order(s); expected output={translated.ExpectedOutputUnits}.");
-            return translated.Actions;
+            Console.WriteLine($"[ZergOpening] Submitting one Larva order from producer {producerTag}; expected output={_profile.UnitsPerOrder}.");
+            return new[] { translated.Actions[0] };
         }
 
         return Array.Empty<SC2APIProtocol.Action>();
@@ -149,7 +150,7 @@ public sealed class ZerglingOpeningRuntime
         var hatchery = observation.Units.FirstOrDefault(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&
-            unit.UnitKind is "Hatchery" or "Lair" or "Hive" && unit.HasPosition);
+            (unit.UnitKind is "Hatchery" or "Lair" or "Hive") && unit.HasPosition);
         var drone = observation.Units.FirstOrDefault(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&

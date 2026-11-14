@@ -24,11 +24,45 @@ public sealed class Sc2RaceBuildingActionTranslatorTests
         Assert.Single(result.Actions);
         Assert.Equal(7ul, result.WorkerTag);
         Assert.Equal(200u, result.ReservedMinerals);
+        Assert.Equal(WorkerConstructionDisposition.Consumed, result.WorkerDisposition);
         Assert.Equal(1344, result.Actions[0].ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(7ul, Assert.Single(result.Actions[0].ActionRaw.UnitCommand.UnitTags));
         Assert.Equal(22.5f, result.Actions[0].ActionRaw.UnitCommand.TargetWorldSpacePos.X);
         Assert.Equal(31.5f, result.Actions[0].ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
         Assert.False(result.Actions[0].ActionRaw.UnitCommand.QueueCommand);
+    }
+
+    [Fact]
+    public void Translation_AppliesRaceSpecificCargoRulesAndReturnsWorkerLifecycle()
+    {
+        var structure = new Sc2UnitFacts(200, "SpawningPool", 1344, 200, 0, 0, 0);
+        var ability = Ability(1344, isBuilding: true);
+
+        var probe = Sc2RaceBuildingActionTranslator.Translate(
+            structure,
+            new Sc2UnitFacts(84, "Probe", 0, 50, 0, 1, 0),
+            ability,
+            Observation(500, 0, Unit(9, "Probe") with { HasCargo = true }),
+            9, 22, 31, new HashSet<ulong>());
+
+        var drone = Sc2RaceBuildingActionTranslator.Translate(
+            structure,
+            new Sc2UnitFacts(104, "Drone", 0, 50, 0, 1, 0),
+            ability,
+            Observation(500, 0, Unit(10, "Drone") with { HasCargo = true }),
+            10, 22, 31, new HashSet<ulong>());
+
+        var scv = Sc2RaceBuildingActionTranslator.Translate(
+            structure,
+            new Sc2UnitFacts(45, "SCV", 0, 50, 0, 1, 0),
+            ability,
+            Observation(500, 0, Unit(11, "SCV") with { HasCargo = true }),
+            11, 22, 31, new HashSet<ulong>());
+
+        Assert.False(probe.IsBlocked);
+        Assert.Equal(WorkerConstructionDisposition.ResumesImmediately, probe.WorkerDisposition);
+        Assert.True(drone.IsBlocked);
+        Assert.True(scv.IsBlocked);
     }
 
     [Fact]

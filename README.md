@@ -81,6 +81,7 @@ The bot builds against active ecosystem source branches. CI checks out CommandAi
 mkdir -p dependencies
 git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git dependencies/CommandAi
 git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_Serialization.git dependencies/FSM_Serialization
+git clone --branch development https://github.com/TrentBest/FSM_API.git dependencies/FSM_API
 git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_COS.git dependencies/FSM_COS
 dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj
 ```

@@ -82,6 +82,21 @@ The live frame path now retains one narrowly defined, directly observed opponent
 
 This is intentionally not a complete transition pipeline. It does not infer unseen structures, estimate strategic advantage, establish production/defense/resource hard guards, or adopt a strategy. Those guard producers and the shared FSM adoption handoff remain separate required work. A stale retained fact must fail the transition evaluator's age requirement; it must never be refreshed merely because the structure remains remembered.
 
+## Contested construction sites
+
+A structure being destroyed is also spatial intelligence. Its last observed footprint should remain associated with the loss event so the construction planner does not treat that location as an ordinary legal build candidate. If enemy units are still operating nearby, the site is contested: do not rebuild the same structure at the same footprint simply because SC2 reports that placement as legal.
+
+The intended policy is:
+
+- Retain the destroyed friendly structure's last known position, kind, and destruction game loop.
+- Track enemy presence around that footprint from directly observed positions. Remember the last-seen game loop; do not interpret fog of war or loss of vision as proof that the area is clear.
+- Mark a site contested while a sufficiently recent enemy contact remains inside a structure-aware threat radius. The radius and freshness window must be explicit policy, not hidden constants inferred from one unit type.
+- Require a clear interval after the last credible nearby enemy observation before the site becomes eligible again. Expired or uncertain evidence should resolve to an explicit unknown/needs-recon state, not silently to safe.
+- Prefer a different SC2-validated placement candidate while the old footprint is contested. SC2 placement success remains necessary, but it is not a tactical-safety verdict.
+- Re-evaluate the site before dispatching the worker and again before issuing the build command, because threat can change while the worker travels.
+
+This is a design requirement, not an implemented capability. The current opening controllers generate first-build candidate sets and use SC2 placement queries; they do not yet maintain destroyed-structure site history or a reusable tactical placement-safety gate. A future implementation should be shared by structure construction rather than adding one-off enemy-distance checks to each controller. Tests must cover a nearby enemy, a threat moving away, vision loss, stale last-seen evidence, a second enemy contact, and safe re-eligibility after the clear interval.
+
 ## Implementation status and next slices
 
 Implemented in this pass:

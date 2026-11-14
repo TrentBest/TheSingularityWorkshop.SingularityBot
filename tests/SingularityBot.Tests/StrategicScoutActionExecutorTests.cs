@@ -18,7 +18,7 @@ public sealed class StrategicScoutActionExecutorTests
         var posting = ScoutPosting("scout:unit:10", 10, "8,8");
 
         var result = StrategicScoutActionExecutor.Execute(
-            [new StrategicJobDecision(posting, true, "accepted")],
+            [new StrategicJobDecision(posting, true, "accepted", new StrategicJobReservation(UnitTag: 10, TargetPoint: new MapPoint(8, 8)))],
             Snapshot(Unit(10, 1, 1)),
             map, gameData, terrain, topology);
 
@@ -38,7 +38,7 @@ public sealed class StrategicScoutActionExecutorTests
         for (var y = 0; y < 10; y++) cells[y * 10 + 5] = 0;
         var terrain = new SpatialTerrain(new SpatialGridSnapshot(10, 10, 10, 10, cells), null, null);
         var result = StrategicScoutActionExecutor.Execute(
-            [new StrategicJobDecision(ScoutPosting("scout:unit:10", 10, "8,8"), true, "accepted")],
+            [new StrategicJobDecision(ScoutPosting("scout:unit:10", 10, "8,8"), true, "accepted", new StrategicJobReservation(UnitTag: 10, TargetPoint: new MapPoint(8, 8)))],
             Snapshot(Unit(10, 1, 1)), map, MoveCatalog(), terrain, SpatialTopology.Build(terrain));
 
         Assert.Empty(result.Actions);
@@ -58,7 +58,7 @@ public sealed class StrategicScoutActionExecutorTests
         var result = StrategicScoutActionExecutor.Execute(
             [
                 new StrategicJobDecision(posting, true, "accepted"),
-                new StrategicJobDecision(duplicate, true, "accepted")
+                new StrategicJobDecision(duplicate, true, "accepted", new StrategicJobReservation(UnitTag: 10, TargetPoint: new MapPoint(7, 7)))
             ],
             Snapshot(Unit(10, 1, 1)), map, MoveCatalog(), terrain, SpatialTopology.Build(terrain));
 

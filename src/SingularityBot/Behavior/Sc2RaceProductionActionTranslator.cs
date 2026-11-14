@@ -23,7 +23,7 @@ public static class Sc2RaceProductionActionTranslator
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(producer);
         ArgumentNullException.ThrowIfNull(observation);
-        ArgumentNullException.ThrowIfNull(unavailableProducerTags);
+        unavailableProducerTags ??= new HashSet<ulong>();
 
         if (desiredRemainingUnits <= 0 || profile.UnitsPerOrder <= 0 ||
             target.AbilityId == 0 || target.AbilityId > int.MaxValue ||

@@ -452,7 +452,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             poolBuildAbility.IsBuilding)
         {
             _zerglingOpeningRuntime = new ZerglingOpeningRuntime(
-                _gameData, zergDrone, spawningPool, poolBuildAbility,
+                zergDrone, spawningPool, poolBuildAbility,
                 _activeProductionProfile, zergling, larva);
             Console.WriteLine("[ZergOpening] Runtime initialized: Drone -> queried Spawning Pool -> Larva -> Zergling pair.");
         }

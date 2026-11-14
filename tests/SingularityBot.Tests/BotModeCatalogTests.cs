@@ -21,6 +21,7 @@ public sealed class BotModeCatalogTests
         Assert.True(_catalog.TryResolve(id, out var mode));
         Assert.Equal(race, mode.Race);
         Assert.Equal(primaryUnit, mode.PrimaryUnit);
+        Assert.Equal(id == "terran.marine.v1", mode.CanIssueGameplayActions);
     }
 
     [Theory]
@@ -41,7 +42,7 @@ public sealed class BotModeCatalogTests
         var singleMode = new BotModeCatalog(new[]
         {
             new BotModeDescriptor("zerg.zergling.v1", "Zergling Mode", Race.Zerg,
-                "Zergling", "zerg.zergling.v1", "test")
+                "Zergling", "zerg.zergling.v1", false, "test")
         });
 
         Assert.False(singleMode.TryResolveForMatch(null, Race.Zerg, out _, out var missing));

@@ -19,6 +19,7 @@ SC2 Runner is the live host: it owns the connection, callbacks, frame lifecycle 
 - [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](bot-definition-v1.md)
 - [Scriptable bot research: AI package evaluation, architecture paths, and graphical authoring](research/README.md)
 - [Architecture](architecture.md)
+- [Composable command layers and visual bot authoring](composable-command-layers-and-visual-authoring.md)
 - [Military organization and extensible game phases](military-organization-and-game-phases.md)
 - [Behavior and FSM model](behavior-model.md)
 - [Terran FSM catalog and processing pipeline](terran-fsm-catalog.md)

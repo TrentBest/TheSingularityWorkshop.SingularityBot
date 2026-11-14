@@ -8,7 +8,7 @@ namespace SingularityBot.Tests;
 public sealed class ScoutingAdvisorTests
 {
     [Fact]
-    public void AssignsDistinctObjectivesToCombatUnitsButNeverScvs()
+    public void AssignsOneDedicatedMarineScoutAndNeverScvsOrAdditionalCombatUnits()
     {
         var map = new SpatialMap(new MapBounds(0, 0, 90, 90),
             new MapPoint(10, 10), new MapPoint(80, 80));
@@ -25,9 +25,10 @@ public sealed class ScoutingAdvisorTests
                 [1] = new CombatWeaponProfile(5, 6)
             });
 
-        Assert.Equal(3, assignments.Count);
+        var assignment = Assert.Single(assignments);
+        Assert.Equal(2UL, assignment.Key);
         Assert.DoesNotContain(1UL, assignments.Keys);
-        Assert.Equal(3, assignments.Values.Distinct().Count());
+        Assert.Contains(3UL, new[] { 3UL, 4UL });
     }
 
     [Fact]

@@ -38,14 +38,18 @@ public sealed class ScoutingAdvisor
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(weaponsByUnitType);
 
+        // The initial live vertical slice has one dedicated Marine scout.
+        // Multi-unit scouting stays disabled until the planner has explicit squad
+        // allocation and the combat controller consumes those same reservations.
         var combatUnits = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible && unit.HasPosition &&
                 !observation.DeadUnitTags.Contains(unit.Tag) &&
-                !unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) &&
+                unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
                 weaponsByUnitType.TryGetValue(unit.UnitTypeId, out var weapon) &&
                 weapon.IsUsable)
             .OrderBy(unit => unit.Tag)
+            .Take(1)
             .ToArray();
 
         var liveTags = combatUnits.Select(unit => unit.Tag).ToHashSet();

@@ -126,7 +126,7 @@ Implemented in this pass:
 Not yet implemented:
 
 - Military, Science, Base Engineering and Intelligence policy engines.
-- Intelligence-owned base-site visit/revisit FSMs and scouting job generation.
+- Multi-scout squad allocation and shared planner/combat reservations; the current live slice deliberately publishes one dedicated Marine scout.
 - Full Strategic Planner integration for dependency solving, resource/unit reservations and assignment execution.
 - Typed recommendation/event queues and per-advisor diagnostics.
 - Measured wall-clock compute budgeting, incremental work quotas and starvation protection.

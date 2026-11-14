@@ -49,7 +49,7 @@ public sealed class Sc2MarineRallyController
     {
         ArgumentNullException.ThrowIfNull(observation);
         var liveMarineTags = observation.Units
-            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
                 unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
                 !observation.DeadUnitTags.Contains(unit.Tag))
             .Select(unit => unit.Tag)

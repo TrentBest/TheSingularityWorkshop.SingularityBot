@@ -143,3 +143,28 @@ The first contract implementation lives in `Behavior/CommandLayerComposition.cs`
 A developer can change an Army or Squad doctrine without rewriting Unit AI, the SC2 protocol, or the action validator. A presentation change does not change decisions. Incompatible compositions are rejected before match startup with actionable diagnostics. Runtime decisions can be traced through accepted intent, translation, reservation, execution, and observed outcome. The same shared shell supports Terran, Protoss, and Zerg, while each race module supplies its own concrete capabilities.
 
 The ambition is a bot workbench other developers can build on—not a hard-coded personality that happens to expose a GUI.
+## AnyApp initialization and local MicroBundle composition
+
+The SC2 Editor Experience is an AnyApp experience, not a separate web application. AnyApp should assemble the experience's MicroBundle locally during initialization from the selected experience manifest, trusted registered components, race module catalogue, command-layer descriptors, and presentation resources. The runtime must not depend on fetching a MicroBundle from a web repository. The bundle is a short-lived, locally composed runtime artifact whose inputs and selected versions are explicit and diagnosable.
+
+Initialization has two distinct stages:
+
+1. **Experience composition:** resolve the local experience definition and its trusted component registrations, validate dependencies and capabilities, then construct the MicroBundle in memory. Missing or incompatible components fail initialization with a useful diagnostic; no remote fallback silently changes the experience.
+2. **Match composition:** the race-neutral bot shell is created first. At match start, the authoritative race selects the matching race module, which contributes race-specific capabilities and implementations to the already established runtime boundary. The editor's selected doctrine and presentation profile determine the authored composition and visible controls; the presentation profile never changes behavior.
+
+This keeps the AnyApp experience portable while ensuring the runtime bundle is assembled from the components actually available to that installation. A saved bot definition remains declarative data; it is not itself executable code and does not become a remote dependency manifest.
+
+## FSM_API as the shared lifecycle and interoperability substrate
+
+FSM_API is already a direct dependency and is actively used by `UnitBehaviorRuntime`: persistent entity contexts implement `IStateContext`, own their `FSMHandle` instances, attach capability FSMs, and are advanced through named processing groups. That is the right pattern to extend into the command hierarchy.
+
+Use FSM_API for durable domain contexts and lifecycle-driven behavior where explicit states and transitions add value:
+- Squad lifecycle and readiness (forming, assembling, assigned, executing, regrouping, completed/disbanding).
+- Command-layer lifecycle and coordination states.
+- Phase and operation state machines with evidence-backed transitions.
+- Unit and structure capability behavior, continuing the existing context-owned handle model.
+- Shared processing cohorts so update frequency and scheduling remain explicit.
+
+Keep observations, immutable definitions, geometry, schemas, and simple calculations as ordinary data/services. Do not turn every property or stateless transformation into an FSM. A context owns its handles and destroys them when its lifecycle ends; temporary fog-of-war or missing observation is not destruction. Command-layer FSMs may express lifecycle and coordination, but unit ownership remains with the single authoritative reservation planner. FSM transitions do not grant authority to issue SC2 actions: accepted intent still passes through reservation, current-observation, and action-legality checks.
+
+This gives the bot a common state/lifecycle vocabulary that can interoperate with the wider Workshop ecosystem without forcing race-specific behavior into the shared shell.

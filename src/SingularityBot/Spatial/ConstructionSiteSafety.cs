@@ -104,10 +104,7 @@ public sealed class ConstructionSiteSafety
         SpatialGridSnapshot visibility,
         SpatialIntelligence intelligence)
     {
-        if (visibility is null ||
-            !visibility.TryGetValue(site.Position, out var visibilityValue) ||
-            visibilityValue != VisibleCellValue ||
-            intelligence is null)
+        if (intelligence is null)
         {
             site.ClearSinceGameLoop = null;
             site.Status = ConstructionSiteStatus.Unknown;
@@ -125,6 +122,15 @@ public sealed class ConstructionSiteSafety
         {
             site.ClearSinceGameLoop = null;
             site.Status = ConstructionSiteStatus.Contested;
+            return;
+        }
+
+        if (visibility is null ||
+            !visibility.TryGetValue(site.Position, out var visibilityValue) ||
+            visibilityValue != VisibleCellValue)
+        {
+            site.ClearSinceGameLoop = null;
+            site.Status = ConstructionSiteStatus.Unknown;
             return;
         }
 

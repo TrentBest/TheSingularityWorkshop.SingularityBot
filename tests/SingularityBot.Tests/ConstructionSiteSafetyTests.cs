@@ -25,6 +25,22 @@ public sealed class ConstructionSiteSafetyTests
     }
 
     [Fact]
+    public void RecentEnemyContactRemainsContestedEvenWhenSiteVisibilityIsUnavailable()
+    {
+        var (safety, intelligence) = CreateDestroyedSite();
+        intelligence.Update(120, new[]
+        {
+            new SpatialContact(900, 2, new MapPoint(25, 20),
+                SpatialAlliance.Enemy, ContactVisibility.Visible, 120)
+        });
+
+        safety.Update(Snapshot(120), null, intelligence);
+
+        Assert.Equal(ConstructionSiteStatus.Contested, Assert.Single(safety.Sites).Status);
+        Assert.True(safety.IsBlocked(new MapPoint(20, 20), 120));
+    }
+
+    [Fact]
     public void RememberedEnemyContestsSiteAndStaleEvidenceRequiresVisibleClearInterval()
     {
         var (safety, intelligence) = CreateDestroyedSite();

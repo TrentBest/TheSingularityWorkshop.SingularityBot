@@ -57,7 +57,7 @@ public sealed class StrategicScoutActionExecutorTests
 
         var result = StrategicScoutActionExecutor.Execute(
             [
-                new StrategicJobDecision(posting, true, "accepted"),
+                new StrategicJobDecision(posting, true, "accepted", new StrategicJobReservation(UnitTag: 10, TargetPoint: new MapPoint(8, 8))),
                 new StrategicJobDecision(duplicate, true, "accepted", new StrategicJobReservation(UnitTag: 10, TargetPoint: new MapPoint(7, 7)))
             ],
             Snapshot(Unit(10, 1, 1)), map, MoveCatalog(), terrain, SpatialTopology.Build(terrain));

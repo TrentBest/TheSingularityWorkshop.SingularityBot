@@ -21,6 +21,8 @@ public sealed class ZerglingOpeningRuntime
     private readonly Sc2UnitFacts _larva;
     private readonly int _desiredZerglings;
     private readonly HashSet<ulong> _reservedWorkers = new();
+    private readonly HashSet<ulong> _pendingLarvaTags = new();
+    private int _pendingEggBaseline;
     private readonly List<Point2D> _candidatePoints = new();
     private OpeningState _state = OpeningState.NeedPlacement;
     private ulong _builderTag;
@@ -89,7 +91,7 @@ public sealed class ZerglingOpeningRuntime
                 if (observation.Minerals < _pool.MineralCost || observation.Vespene < _pool.VespeneCost)
                     return Array.Empty<SC2APIProtocol.Action>();
                 var worker = observation.Units.FirstOrDefault(unit =>
-                    unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                    unit.Tag == _builderTag && unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                     !observation.DeadUnitTags.Contains(unit.Tag) &&
                     unit.UnitKind.Equals(_drone.Name, StringComparison.OrdinalIgnoreCase) &&
                     !unit.HasOrders && !unit.HasCargo && !_reservedWorkers.Contains(unit.Tag));
@@ -118,6 +120,10 @@ public sealed class ZerglingOpeningRuntime
         if (_state == OpeningState.Producing)
         {
             var progress = Sc2RaceProductionProgressReconciler.Reconcile(_profile, _zergling, observation);
+            if (_pendingLarvaTags.Count > 0 && progress.InProgressOrders > _pendingEggBaseline)
+                _pendingLarvaTags.Clear();
+            foreach (var deadTag in observation.DeadUnitTags)
+                _pendingLarvaTags.Remove(deadTag);
             var remaining = _desiredZerglings - progress.AccountedUnits;
             if (remaining <= 0)
             {
@@ -126,10 +132,12 @@ public sealed class ZerglingOpeningRuntime
                 return Array.Empty<SC2APIProtocol.Action>();
             }
             var translated = Sc2RaceProductionActionTranslator.Translate(
-                _profile, _zergling, _larva, observation, remaining);
+                _profile, _zergling, _larva, observation, remaining, _pendingLarvaTags);
             if (translated.IsBlocked)
                 return Array.Empty<SC2APIProtocol.Action>();
             _productionResultPending = true;
+            foreach (var tag in translated.ProducerTags) _pendingLarvaTags.Add(tag);
+            _pendingEggBaseline = progress.InProgressOrders;
             Console.WriteLine($"[ZergOpening] Submitting {translated.Actions.Count} Larva order(s); expected output={translated.ExpectedOutputUnits}.");
             return translated.Actions;
         }
@@ -139,7 +147,7 @@ public sealed class ZerglingOpeningRuntime
 
     private void PreparePlacementCandidates(NormalizedObservation observation)
     {
-        if (_queryPending || _placementQueryInFlight || _selectedPlacement is not null)
+        if (_queryPending || _placementQueryInFlight || _selectedPlacement is not null || _placementAttempts >= 3)
             return;
         var hatchery = observation.Units.FirstOrDefault(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
@@ -239,7 +247,10 @@ public sealed class ZerglingOpeningRuntime
             _productionResultPending = false;
             var result = response?.Result.FirstOrDefault();
             if (result is not null && result != ActionResult.Success)
+            {
+                _pendingLarvaTags.Clear();
                 Console.WriteLine($"[ZergOpening] Larva production action rejected: {result}; will retry only after a fresh observation.");
+            }
         }
     }
 

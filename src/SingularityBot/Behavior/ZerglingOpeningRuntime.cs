@@ -168,7 +168,7 @@ public sealed class ZerglingOpeningRuntime
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&
             unit.UnitKind.Equals(_drone.Name, StringComparison.OrdinalIgnoreCase) &&
-            !unit.HasOrders && !unit.HasCargo);
+            !unit.HasCargo && HasOnlyInterruptibleGatherOrders(unit));
         if (hatchery is null || drone is null)
             return;
         _builderTag = drone.Tag;

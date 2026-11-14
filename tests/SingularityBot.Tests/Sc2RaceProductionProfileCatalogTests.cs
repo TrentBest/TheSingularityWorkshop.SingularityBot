@@ -10,7 +10,7 @@ public sealed class Sc2RaceProductionProfileCatalogTests
     public void ZerglingProfile_ResolvesTargetProducerAndPrerequisiteFromAuthoritativeData()
     {
         var data = new ResponseData();
-        data.Units.Add(new UnitTypeData { UnitId = 151, Name = "Zergling", AbilityId = TrainAbilityId(), MineralCost = 25, FoodRequired = 0.5f });
+        data.Units.Add(new UnitTypeData { UnitId = 105, Name = "Zergling", AbilityId = TrainAbilityId(), MineralCost = 25, FoodRequired = 0.5f });
         data.Units.Add(new UnitTypeData { UnitId = 151, Name = "Larva" });
         data.Units.Add(new UnitTypeData { UnitId = 89, Name = "SpawningPool", AbilityId = 1162, MineralCost = 200 });
         var catalog = Sc2GameDataCatalog.Create(data);

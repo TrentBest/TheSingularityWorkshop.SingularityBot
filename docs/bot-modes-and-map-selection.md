@@ -18,3 +18,17 @@ The first implementation milestone is deliberately narrow: Zergling Mode must es
 Only Marine Mode is currently connected to an executable gameplay path. Marauder, Zealot, Stalker, Zergling and Queen are registered selections but remain fail-closed until their production and tactics adapters are implemented and tested. Selecting one does not issue Terran actions. Mode catalogue registration is not gameplay support. Until a mode has a race-specific production adapter and tested action path, its descriptor is authoring/selection metadata only and the race module must remain fail-closed. Unit IDs, costs, producer requirements and ability IDs must be resolved from the match's authoritative SC2 game data; never guess IDs or silently substitute another mode.
 
 The runtime composition remains local: the selected experience's trusted definition is composed at initialization from registered components. A web repository is not a runtime MicroBundle source.
+
+
+## First-unit production profiles
+
+The runtime now has a separate race/mode production-profile catalogue. The first profiles are:
+
+- Zergling Mode: Zergling from Larva, gated by a completed Spawning Pool.
+- Zealot Mode: Zealot from Gateway, gated by a Pylon and explicit confirmation that the Gateway is powered.
+- Stalker Mode: Stalker from Gateway, gated by Pylon, Cybernetics Core, and powered Gateway.
+- Queen Mode: Queen from Hatchery-family production; adapter work remains pending.
+
+At `OnStart`, each selected profile resolves its target unit, producer, costs, food requirement, and required prerequisite unit types against the match's authoritative `ResponseData`. Missing or ambiguous data fails closed and is written to diagnostics. No numeric unit or ability IDs are embedded in these profiles.
+
+This is a data-resolution and prerequisite-contract slice, not yet an action-producing race adapter. In particular, Protoss production stays blocked until the runtime can positively verify Gateway power; merely seeing a Pylon somewhere on the map is not sufficient. Zergling production still needs the action translator, larva/egg in-progress reconciliation, and an integrated match validation before the Zerg module can be enabled.

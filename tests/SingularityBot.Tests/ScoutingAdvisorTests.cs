@@ -48,6 +48,33 @@ public sealed class ScoutingAdvisorTests
         Assert.NotEqual(first, next);
     }
 
+    [Fact]
+    public void PublishesAssignmentsAsOwnedScoutJobsAndWithdrawsStaleAssignments()
+    {
+        var map = new SpatialMap(new MapBounds(0, 0, 90, 90),
+            new MapPoint(10, 10), new MapPoint(80, 80));
+        var advisor = new ScoutingAdvisor();
+        var board = new AdvisorJobBoard();
+        var weapons = new Dictionary<uint, CombatWeaponProfile>
+        {
+            [1] = new CombatWeaponProfile(5, 6)
+        };
+
+        var published = advisor.PublishJobs(
+            Snapshot(Fact(2, "Marine", 12, 10, 1)), map, weapons, board);
+
+        var posting = Assert.Single(published);
+        Assert.Equal(StrategicJobKind.Scout, posting.Kind);
+        Assert.Equal(StrategicJobSource.Advisor, posting.Source);
+        Assert.Equal(nameof(AdvisorDomain.Intelligence), posting.Owner);
+        Assert.Equal("2", posting.Constraints!["unitTag"]);
+        Assert.Single(new StrategicPlanner().GetPlan(board, 100));
+
+        var withdrawn = advisor.PublishJobs(Snapshot(), map, weapons, board);
+        Assert.Empty(withdrawn);
+        Assert.Empty(new StrategicPlanner().GetPlan(board, 101));
+    }
+
     private static NormalizedObservation Snapshot(params UnitObservationFacts[] units) =>
         new(100, 1, units, new HashSet<ulong>());
 

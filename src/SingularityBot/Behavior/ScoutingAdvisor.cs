@@ -14,6 +14,7 @@ public sealed class ScoutingAdvisor
     private const float ArrivalRadius = 4f;
     private readonly Dictionary<ulong, MapPoint> _assignments = new();
     private readonly HashSet<string> _visitedObjectives = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _publishedPostingIds = new(StringComparer.Ordinal);
 
     public IReadOnlyDictionary<ulong, MapPoint> Assignments => _assignments;
 
@@ -79,6 +80,42 @@ public sealed class ScoutingAdvisor
         }
 
         return new Dictionary<ulong, MapPoint>(_assignments);
+    }
+
+    /// <summary>
+    /// Publishes current scout assignments as Intelligence-owned strategic jobs.
+    /// The board is the handoff to the planner; this method never issues SC2 actions.
+    /// </summary>
+    public IReadOnlyList<StrategicJobPosting> PublishJobs(
+        NormalizedObservation observation,
+        SpatialMap map,
+        IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType,
+        AdvisorJobBoard board,
+        int priority = 60)
+    {
+        ArgumentNullException.ThrowIfNull(board);
+        var assignments = Plan(observation, map, weaponsByUnitType);
+        var currentIds = new HashSet<string>(StringComparer.Ordinal);
+        var postings = new List<StrategicJobPosting>(assignments.Count);
+        foreach (var (unitTag, point) in assignments.OrderBy(item => item.Key))
+        {
+            var id = $"scout:unit:{unitTag}";
+            currentIds.Add(id);
+            postings.Add(board.Upsert(
+                AdvisorDomain.Intelligence, id, StrategicJobKind.Scout,
+                $"{point.X.ToString(System.Globalization.CultureInfo.InvariantCulture)},{point.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
+                1, priority, observation.GameLoop,
+                constraints: new Dictionary<string, string>
+                {
+                    ["unitTag"] = unitTag.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                }));
+        }
+
+        foreach (var staleId in _publishedPostingIds.Except(currentIds, StringComparer.Ordinal).ToArray())
+            board.Withdraw(AdvisorDomain.Intelligence, staleId);
+        _publishedPostingIds.Clear();
+        _publishedPostingIds.UnionWith(currentIds);
+        return postings;
     }
 
     private static IReadOnlyList<MapPoint> BuildObjectives(

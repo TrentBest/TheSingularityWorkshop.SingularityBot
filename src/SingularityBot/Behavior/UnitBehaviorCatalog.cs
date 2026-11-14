@@ -1,3 +1,4 @@
+using FSM_API;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -45,7 +46,7 @@ public static class UnitBehaviorCatalog
     public static void Register()
     {
         foreach (var group in ProcessGroupsThisFrame.Distinct())
-            FSM_API.Create.CreateProcessingGroup(group);
+            FsmApi.Create.CreateProcessingGroup(group);
 
         AdvisorWorkScheduler.RegisterProcessingGroups();
         RegisterGameState();
@@ -98,7 +99,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterGameState()
     {
-        FSM_API.Create.CreateFiniteStateMachine("SingularityBot.GameState", processRate: -1, processingGroup: StrategyProcessingGroup)
+        FsmApi.Create.CreateFiniteStateMachine("SingularityBot.GameState", processRate: -1, processingGroup: StrategyProcessingGroup)
             .State("EarlyGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Early), null, null)
             .State("MidGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Mid), null, null)
             .State("LateGame", ctx => (ctx as GameStateContext)?.SetPhase(GamePhase.Late), null, null)
@@ -110,7 +111,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterEntityExistence()
     {
-        FSM_API.Create.CreateFiniteStateMachine(EntityExistenceFsm, processRate: -1, processingGroup: DataSyncProcessingGroup)
+        FsmApi.Create.CreateFiniteStateMachine(EntityExistenceFsm, processRate: -1, processingGroup: DataSyncProcessingGroup)
             .State("FirstSeen", null, null, null)
             .State("AliveVisible", null, null, null)
             .State("AliveRemembered", null, null, null)
@@ -124,7 +125,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterWorker()
     {
-        FSM_API.Create.CreateFiniteStateMachine(WorkerFsm, processRate: -1, processingGroup: MiningProcessingGroup)
+        FsmApi.Create.CreateFiniteStateMachine(WorkerFsm, processRate: -1, processingGroup: MiningProcessingGroup)
             .State("Assess", null, null, null)
             .State("NotVisible", null, null, null)
             .State("Visible", null, null, null)
@@ -155,7 +156,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterConstruction()
     {
-        FSM_API.Create.CreateFiniteStateMachine(ConstructionFsm, processRate: -1, processingGroup: ConstructionProcessingGroup)
+        FsmApi.Create.CreateFiniteStateMachine(ConstructionFsm, processRate: -1, processingGroup: ConstructionProcessingGroup)
             .State("Waiting", null, null, null)
             .State("Executing", null, ctx => Emit(ctx, BehaviorCommand.BuildRequestedStructure), null)
             .Transition("Waiting", "Executing", HasVisibleBuildOrder)
@@ -243,7 +244,7 @@ public static class UnitBehaviorCatalog
         Func<UnitBehaviorContext, bool> requested,
         BehaviorCommand command)
     {
-        FSM_API.Create.CreateFiniteStateMachine(fsmName, processRate: -1, processingGroup: processingGroup)
+        FsmApi.Create.CreateFiniteStateMachine(fsmName, processRate: -1, processingGroup: processingGroup)
             .State("Dormant", null, null, null)
             .State("Executing", ctx =>
             {
@@ -261,7 +262,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterGoalActions()
     {
-        var graph = FSM_API.Create.CreateFiniteStateMachine(GoalActionFsm, processRate: -1, processingGroup: GoalActionProcessingGroup)
+        var graph = FsmApi.Create.CreateFiniteStateMachine(GoalActionFsm, processRate: -1, processingGroup: GoalActionProcessingGroup)
             .State("Unassigned", null, null, null)
             .State("Rallying", ctx => Emit(ctx, BehaviorCommand.HoldRallyPoint), null, null)
             .State("Scouting", null, null, null)
@@ -285,7 +286,7 @@ public static class UnitBehaviorCatalog
 
     private static void RegisterStutterStep()
     {
-        FSM_API.Create.CreateFiniteStateMachine(StutterStepFsm, processRate: -1, processingGroup: HighDpsProcessingGroup)
+        FsmApi.Create.CreateFiniteStateMachine(StutterStepFsm, processRate: -1, processingGroup: HighDpsProcessingGroup)
             .State("Disabled", null, null, null)
             .State("WeaponReady", ctx => Emit(ctx, BehaviorCommand.AttackTarget), null, null)
             .State("WeaponCooldown", ctx => Emit(ctx, BehaviorCommand.StutterStepMove), null, null)
@@ -330,7 +331,7 @@ public static class UnitBehaviorCatalog
     /// <summary>Tactical selection is represented by guarded FSM transitions, not an if/else chain.</summary>
     private static void RegisterCombatUnit()
     {
-        FSM_API.Create.CreateFiniteStateMachine(CombatFsm, processRate: -1, processingGroup: CombatProcessingGroup)
+        FsmApi.Create.CreateFiniteStateMachine(CombatFsm, processRate: -1, processingGroup: CombatProcessingGroup)
             .State("Assess", null, null, null)
             .State("Retreating", ctx => Emit(ctx, BehaviorCommand.RetreatToSafety), null, null)
             .State("Regrouping", ctx => Emit(ctx, BehaviorCommand.RegroupWithArmy), null, null)

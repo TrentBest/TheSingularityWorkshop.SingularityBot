@@ -19,6 +19,34 @@ public sealed class BotManifestTests
     }
 
     [Fact]
+    public void ManifestAcceptsZergRaceWithCompiledAdvisorComposition()
+    {
+        var manifest = new BotManifest
+        {
+            SchemaVersion = 1,
+            Bot = new BotManifestBotSettings
+            {
+                Race = "Zerg",
+                StrategyProfile = "zerg.zergling-pressure.v1",
+                DeterministicScheduling = true
+            },
+            Advisors =
+            [
+                new AdvisorManifestNode
+                {
+                    Id = "economy",
+                    Definition = "advisor.economy.v1",
+                    Enabled = true,
+                    ProcessGroup = "zerg.economy",
+                    Priority = 700
+                }
+            ]
+        };
+
+        Assert.Empty(manifest.Validate());
+    }
+
+    [Fact]
     public void ManifestRejectsDuplicateProcessGroupOwnership()
     {
         var manifest = new BotManifest

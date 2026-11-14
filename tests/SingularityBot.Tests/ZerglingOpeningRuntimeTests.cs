@@ -56,6 +56,25 @@ public sealed class ZerglingOpeningRuntimeTests
         Assert.Equal(1343, production[0].ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(6ul, Assert.Single(production[0].ActionRaw.UnitCommand.UnitTags));
         Assert.Equal("Producing", runtime.State);
+
+        var acceptedLarvaOrder = new ResponseAction();
+        acceptedLarvaOrder.Result.Add(ActionResult.Success);
+        runtime.OnActionResult(acceptedLarvaOrder);
+        // The other Larva must not be used while the first order is accepted
+        // but not yet represented by authoritative Egg evidence.
+        Assert.Empty(runtime.OnFrame(poolReady));
+
+        var eggObserved = Observation(
+            50, 0, 13, 14,
+            Unit(1, "Hatchery"),
+            Unit(5, "SpawningPool"),
+            Unit(8, "Egg") with
+            {
+                HasOrders = true,
+                Orders = new[] { new UnitOrderObservationFacts(1343, null, null, null) }
+            });
+        Assert.Empty(runtime.OnFrame(eggObserved));
+        Assert.Equal("Complete", runtime.State);
     }
 
     [Fact]

@@ -7,10 +7,7 @@ namespace SingularityBot;
 
 public static class Program
 {
-    // Let SC2 assign our race. Race-specific strategy dispatch is being introduced separately.\n    private static readonly Race BotRace = Race.Random;
-    private static readonly string MapName = "AcolyteLE.SC2Map";
-    private static readonly Race OpponentRace = Race.Random;
-    private static readonly Difficulty OpponentDifficulty = Difficulty.VeryEasy;
+    private static readonly BotMatchConfiguration MatchConfiguration = BotMatchConfiguration.Default;
 
     public static void Run(string[] args)
     {
@@ -36,6 +33,7 @@ public static class Program
         var strategy = new AdaptiveMarineStrategy();
         var definition = strategy.Definition;
         Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
+        Console.WriteLine($"[MatchConfiguration] Requested race={MatchConfiguration.RequestedRace}.");
         var bot = new SingularityBot(
             passiveBaseline: passiveBaseline,
             writeDiagnostics: localRun && diagnostics,
@@ -58,8 +56,9 @@ public static class Program
 
         var connection = new GameConnection();
         if (localRun)
-            connection.RunSinglePlayer(bot, MapName, BotRace, OpponentRace, OpponentDifficulty).GetAwaiter().GetResult();
+            connection.RunSinglePlayer(bot, MatchConfiguration.MapName, MatchConfiguration.RequestedRace,
+                MatchConfiguration.OpponentRace, MatchConfiguration.OpponentDifficulty).GetAwaiter().GetResult();
         else
-            connection.RunLadder(bot, BotRace, connectionArgs).GetAwaiter().GetResult();
+            connection.RunLadder(bot, MatchConfiguration.RequestedRace, connectionArgs).GetAwaiter().GetResult();
     }
 }

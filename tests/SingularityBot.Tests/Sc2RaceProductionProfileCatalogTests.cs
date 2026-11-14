@@ -55,6 +55,21 @@ public sealed class Sc2RaceProductionProfileCatalogTests
         Assert.Contains("SpawningPool", error);
     }
 
+
+    [Fact]
+    public void Catalog_RejectsNonPositiveUnitsPerOrder()
+    {
+        var invalid = new Sc2RaceProductionProfile(
+            "test.invalid.v1", Race.Zerg, "Zergling", "Larva",
+            Array.Empty<string>(), false, "Invalid test profile.")
+        {
+            UnitsPerOrder = 0
+        };
+
+        Assert.Throws<ArgumentException>(() =>
+            new Sc2RaceProductionProfileCatalog(new[] { invalid }));
+    }
+
     private static uint TrainAbilityId() => 1343;
     private static uint gatewayUnitId() => 62;
 }

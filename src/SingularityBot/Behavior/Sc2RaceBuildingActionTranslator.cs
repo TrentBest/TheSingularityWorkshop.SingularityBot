@@ -38,6 +38,16 @@ public static class Sc2RaceBuildingActionTranslator
         if (structure.MineralCost == 0)
             return Block("Authoritative structure mineral cost is unavailable.");
 
+        var constructionPolicy = workerType.Name.ToUpperInvariant() switch
+        {
+            "SCV" => WorkerConstructionPolicy.For(Race.Terran),
+            "PROBE" => WorkerConstructionPolicy.For(Race.Protoss),
+            "DRONE" => WorkerConstructionPolicy.For(Race.Zerg),
+            _ => null
+        };
+        if (constructionPolicy is null)
+            return Block("The selected worker type has no registered race construction policy.");
+
         var worker = observation.Units.SingleOrDefault(unit => unit.Tag == workerTag);
         if (worker is null ||
             worker.Alliance != UnitAlliance.Self ||
@@ -50,8 +60,10 @@ public static class Sc2RaceBuildingActionTranslator
         var hasNonInterruptibleOrder = worker.HasOrders &&
             (interruptibleOrderAbilityIds is null || worker.Orders.Count == 0 ||
              worker.Orders.Any(order => !interruptibleOrderAbilityIds.Contains(order.AbilityId)));
-        if (hasNonInterruptibleOrder || worker.HasCargo || unavailableWorkerTags.Contains(workerTag))
-            return Block("The selected worker has a non-interruptible order, is carrying resources, or is already reserved.");
+        if (hasNonInterruptibleOrder ||
+            !constructionPolicy.CanBeginConstruction(worker.HasCargo) ||
+            unavailableWorkerTags.Contains(workerTag))
+            return Block("The selected worker has a non-interruptible order, violates its race cargo policy, or is already reserved.");
 
         if (observation.Minerals < structure.MineralCost ||
             observation.Vespene < structure.VespeneCost)
@@ -73,7 +85,10 @@ public static class Sc2RaceBuildingActionTranslator
 
         return new Sc2RaceBuildingTranslationResult(
             new[] { command }, workerTag, structure.MineralCost,
-            structure.VespeneCost, string.Empty);
+            structure.VespeneCost, string.Empty)
+        {
+            WorkerDisposition = constructionPolicy.Disposition
+        };
     }
 
     private static Sc2RaceBuildingTranslationResult Block(string reason) =>
@@ -88,5 +103,9 @@ public sealed record Sc2RaceBuildingTranslationResult(
     uint ReservedVespene,
     string BlockReason)
 {
+    /// <summary>Race-specific lifecycle the host must apply after construction is accepted.</summary>
+    public WorkerConstructionDisposition WorkerDisposition { get; init; } =
+        WorkerConstructionDisposition.RemainsUntilComplete;
+
     public bool IsBlocked => Actions.Count == 0;
 }

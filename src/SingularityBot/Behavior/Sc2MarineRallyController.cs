@@ -45,13 +45,17 @@ public sealed class Sc2MarineRallyController
         _scoutStatusChanged = false;
     }
 
-    public ulong? GetScoutTag(NormalizedObservation observation)
+    public ulong? GetScoutTag(
+        NormalizedObservation observation,
+        IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         var liveMarineTags = observation.Units
             .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
                 unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
-                !observation.DeadUnitTags.Contains(unit.Tag))
+                !observation.DeadUnitTags.Contains(unit.Tag) &&
+                (weaponsByUnitType is null ||
+                 (weaponsByUnitType.TryGetValue(unit.UnitTypeId, out var weapon) && weapon.IsUsable)))
             .Select(unit => unit.Tag)
             .OrderBy(tag => tag)
             .ToArray();
@@ -105,7 +109,8 @@ public sealed class Sc2MarineRallyController
         SpatialTopology topology = null,
         SpatialGridSnapshot visibility = null,
         bool advanceToEnemyStart = false,
-        bool executeDedicatedScout = true)
+        bool executeDedicatedScout = true,
+        IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -127,7 +132,7 @@ public sealed class Sc2MarineRallyController
         foreach (var retired in _lastRallyTargets.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
             _lastRallyTargets.Remove(retired);
 
-        var scoutTag = GetScoutTag(observation);
+        var scoutTag = GetScoutTag(observation, weaponsByUnitType);
         var scout = scoutTag is ulong assignedScoutTag
             ? observation.Units.FirstOrDefault(unit =>
                 unit.Tag == assignedScoutTag && unit.IsLiveVisible && unit.HasPosition)

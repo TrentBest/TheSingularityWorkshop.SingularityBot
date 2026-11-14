@@ -1167,7 +1167,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // attack target; the remaining Marines share the combat focus and patrol.
         if (_openingMarine.MarineDeployed)
         {
-            var scoutTag = _marineRally.GetScoutTag(normalized);
+            var scoutTag = _marineRally.GetScoutTag(normalized, _combatWeapons);
             var excludedScoutTags = scoutTag is ulong dedicatedScoutTag
                 ? new HashSet<ulong> { dedicatedScoutTag }
                 : null;
@@ -1192,7 +1192,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
                 SpatialTerrain, PathingTopology, visibilityGrid,
                 advanceToEnemyStart: _compiledStrategy.ShouldAdvanceToEnemyStart(_goalActionPlan),
-                executeDedicatedScout: false);
+                executeDedicatedScout: false,
+                weaponsByUnitType: _combatWeapons);
             actions.AddRange(marineRallyActions);
             if (_writeDiagnostics &&
                 _marineRally.TryTakeScoutStatusChange(out var scoutStatus, out var scoutDetails))

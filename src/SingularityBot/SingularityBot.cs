@@ -346,6 +346,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
             _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
         }
+        _constructionSiteSafety.Reset();
         _playerId = playerId;
         _gameData = Sc2GameDataCatalog.Create(data);
         if (_militaryPlan is not null)
@@ -986,7 +987,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
             var marinePlacementQuery = _openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted
-                ? _openingMarine.TakePlacementQuery(_gameData)
+                ? _openingMarine.TakePlacementQuery(_gameData, _constructionSiteSafety, normalized.GameLoop)
                 : null;
             var secondBarracksPlacementQuery = _secondBarracks.TakePlacementQuery(_gameData);
             var supplyDepotExpansionPlacementQuery = _secondBarracks.RequiresSupplyDepot && !_supplyDepotExpansion.IsCompleted

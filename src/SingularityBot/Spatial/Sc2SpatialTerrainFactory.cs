@@ -27,6 +27,36 @@ public static class Sc2SpatialTerrainFactory
         return true;
     }
 
+    /// <summary>
+    /// Decodes the authoritative per-frame raw visibility layer into full-map
+    /// world coordinates. Unsupported or mismatched data remains unavailable.
+    /// </summary>
+    public static bool TryCreateVisibilityGrid(
+        ResponseObservation response,
+        SpatialTerrain terrain,
+        out SpatialGridSnapshot visibility)
+    {
+        visibility = null;
+        var image = response?.Observation?.RawData?.MapState?.Visibility;
+        var pathing = terrain?.Pathing;
+        if (image?.Size == null || image.BitsPerPixel != 8 ||
+            image.Size.X <= 0 || image.Size.Y <= 0 ||
+            pathing == null)
+            return false;
+
+        var cellCount = (long)image.Size.X * image.Size.Y;
+        if (cellCount > int.MaxValue || image.Data.Length != cellCount)
+            return false;
+
+        visibility = new SpatialGridSnapshot(
+            image.Size.X,
+            image.Size.Y,
+            pathing.WorldWidth,
+            pathing.WorldHeight,
+            image.Data.ToByteArray());
+        return true;
+    }
+
     // StartRaw pathing and placement images are protocol-defined as 1-bit bitmaps.
     // Accept 8-bit variants as well for compatibility with producers that expand the bits.
     private static SpatialGridSnapshot TryDecodeBooleanGrid(ImageData image, float worldWidth, float worldHeight)

@@ -93,6 +93,8 @@ public sealed class SpatialIntelligence
     }
 
     public int KnownContactCount => _known.Count;
+    public IReadOnlyList<SpatialContact> KnownContacts =>
+        _known.Values.OrderBy(contact => contact.UnitTag).ToArray();
     public int VisibleFriendlyCount => Count(SpatialAlliance.Friendly, ContactVisibility.Visible);
     public int RememberedFriendlyCount => Count(SpatialAlliance.Friendly, ContactVisibility.Remembered);
     public int VisibleEnemyCount => Count(SpatialAlliance.Enemy, ContactVisibility.Visible);

@@ -21,6 +21,8 @@ public sealed class Sc2OpeningMarineController
     private readonly List<MapPoint> _candidatePoints = new();
     private ulong? _builderTag;
     private MapPoint? _placement;
+    private ulong? _knownBarracksTag;
+    private readonly List<MapPoint> _placementQueryCandidates = new();
     private bool _placementQueryPending;
     private uint _builderMoveRequestGameLoop;
     private bool _builderMoveSubmitted;
@@ -52,7 +54,8 @@ public sealed class Sc2OpeningMarineController
         uint reservedMinerals = 0,
         ulong? excludedBuilderTag = null,
         bool allowConstruction = true,
-        bool allowMarineTraining = true)
+        bool allowMarineTraining = true,
+        ConstructionSiteSafety siteSafety = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -74,6 +77,29 @@ public sealed class Sc2OpeningMarineController
                 !observation.DeadUnitTags.Contains(unit.Tag))
             .OrderBy(unit => unit.Tag)
             .FirstOrDefault();
+
+        if (barracks is not null)
+        {
+            _knownBarracksTag = barracks.Tag;
+        }
+        else if (_knownBarracksTag is ulong previousBarracksTag)
+        {
+            if (!observation.DeadUnitTags.Contains(previousBarracksTag))
+            {
+                // Absence from raw observations is not proof of destruction.
+                // Keep the completed structure lifecycle closed until SC2 confirms death.
+                return null;
+            }
+
+            _knownBarracksTag = null;
+            _placement = null;
+            _candidatePoints.Clear();
+            _placementQueryCandidates.Clear();
+            _placementQueryPending = false;
+            _builderMoveSubmitted = false;
+            _barracksBuildJob = null;
+            _pendingAction = PendingAction.None;
+        }
 
         if (barracks is null)
         {
@@ -154,6 +180,15 @@ public sealed class Sc2OpeningMarineController
                 Console.WriteLine(preferredBuilderTag == builder.Tag
                     ? $"[Opening] Construction-crew SCV {_builderTag} continues from the Supply Depot to the Barracks."
                     : $"[Opening] SCV {_builderTag} reserved to construct the first Barracks.");
+            }
+
+            if (_placement is MapPoint selectedSite &&
+                siteSafety?.IsBlocked(selectedSite, observation.GameLoop) == true)
+            {
+                _placement = null;
+                _placementQueryPending = true;
+                _placementQueryCandidates.Clear();
+                _builderMoveSubmitted = false;
             }
 
             if (_placement is null || _builderTag is null)
@@ -262,15 +297,27 @@ public sealed class Sc2OpeningMarineController
         return UnitCommand(barracks.Tag, checked((int)gameData.MarineTrainAbilityId.Value));
     }
 
-    public RequestQuery TakePlacementQuery(Sc2GameDataCatalog gameData)
+    public RequestQuery TakePlacementQuery(
+        Sc2GameDataCatalog gameData,
+        ConstructionSiteSafety siteSafety = null,
+        uint gameLoop = 0)
     {
         if (!_placementQueryPending || _builderTag is null ||
             gameData.BarracksBuildAbilityId is not > 0)
             return null;
 
         _placementQueryPending = false;
+        _placementQueryCandidates.Clear();
+        _placementQueryCandidates.AddRange(_candidatePoints.Where(point =>
+            siteSafety?.IsBlocked(point, gameLoop) != true));
+        if (_placementQueryCandidates.Count == 0)
+        {
+            _placementQueryPending = true;
+            return null;
+        }
+
         var query = new RequestQuery { IgnoreResourceRequirements = true };
-        foreach (var point in _candidatePoints)
+        foreach (var point in _placementQueryCandidates)
         {
             query.Placements.Add(new RequestQueryBuildingPlacement
             {
@@ -279,21 +326,21 @@ public sealed class Sc2OpeningMarineController
                 PlacingUnitTag = _builderTag.Value
             });
         }
-        Console.WriteLine($"[Opening] Querying SC2 for a Barracks site ({_candidatePoints.Count} candidates).");
+        Console.WriteLine($"[Opening] Querying SC2 for a Barracks site ({_placementQueryCandidates.Count} safety-eligible candidates).");
         return query;
     }
 
     public void OnPlacementQueryResult(ResponseQuery response)
     {
-        if (_builderTag is null || _candidatePoints.Count == 0 || _placement is not null)
+        if (_builderTag is null || _placementQueryCandidates.Count == 0 || _placement is not null)
             return;
 
-        var count = Math.Min(response?.Placements.Count ?? 0, _candidatePoints.Count);
+        var count = Math.Min(response?.Placements.Count ?? 0, _placementQueryCandidates.Count);
         for (var index = 0; index < count; index++)
         {
             if (response.Placements[index].Result != ActionResult.Success)
                 continue;
-            _placement = _candidatePoints[index];
+            _placement = _placementQueryCandidates[index];
             Console.WriteLine($"[Opening] SC2 accepted Barracks site ({_placement.Value.X:F1},{_placement.Value.Y:F1}).");
             return;
         }

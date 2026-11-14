@@ -536,8 +536,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var scoutExecution = StrategicScoutActionExecutor.Execute(
                 scoutDecisions, normalized, SpatialMap, _gameData, SpatialTerrain, PathingTopology);
             actions.AddRange(scoutExecution.Actions);
-            foreach (var rejected in scoutExecution.Decisions.Where(decision => !decision.IsAccepted))
-                Console.WriteLine($"[StrategicJob] {rejected.Posting.Id}: rejected: {rejected.Reason}");
+            if (_writeDiagnostics)
+                foreach (var rejected in scoutExecution.Decisions.Where(decision => !decision.IsAccepted))
+                    _openingTrace.RecordEvent("StrategicJobRejected", normalized.GameLoop,
+                        $"job={rejected.Posting.Id};reason={rejected.Reason}");
         }
         var buildingAccessActions = new List<SC2APIProtocol.Action>();
         SC2APIProtocol.Action sprayAction = null;

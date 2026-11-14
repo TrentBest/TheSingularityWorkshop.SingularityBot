@@ -37,9 +37,10 @@ public static class StrategicScoutActionExecutor
             var translation = translator.TranslateScoutMove(tag, target, observation, map, gameData, terrain, topology);
             if (translation.IsBlocked)
             { results.Add(Reject(decision, translation.Reason)); continue; }
+            // A valid existing order still occupies this unit's strategic slot for the frame.
+            issuedUnits.Add(tag);
             if (translation.Actions.Count > 0)
             {
-                issuedUnits.Add(tag);
                 actions.AddRange(translation.Actions);
                 results.Add(new StrategicJobDecision(posting, true,
                     "Validated Scout Move action emitted through the shared SC2 action translator."));

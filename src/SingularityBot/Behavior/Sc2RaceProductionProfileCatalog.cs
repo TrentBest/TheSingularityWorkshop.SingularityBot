@@ -13,7 +13,11 @@ public sealed record Sc2RaceProductionProfile(
     string ProducerUnit,
     IReadOnlyList<string> RequiredCompletedUnits,
     bool RequiresPoweredProducer,
-    string Status);
+    string Status)
+{
+    /// <summary>Units created by one accepted producer order (Zerglings are produced in pairs).</summary>
+    public int UnitsPerOrder { get; init; } = 1;
+}
 
 /// <summary>
 /// Trusted production profile catalogue for the first-unit milestones. A profile
@@ -105,7 +109,8 @@ public sealed class Sc2RaceProductionProfileCatalog
         new Sc2RaceProductionProfile(
             "zerg.zergling.v1", Race.Zerg, "Zergling", "Larva",
             new[] { "SpawningPool" }, false,
-            "First Zerg production path; requires a completed Spawning Pool and an available Larva."),
+            "First Zerg production path; requires a completed Spawning Pool and an available Larva.")
+            { UnitsPerOrder = 2 },
         new Sc2RaceProductionProfile(
             "protoss.zealot.v1", Race.Protoss, "Zealot", "Gateway",
             new[] { "Pylon" }, true,

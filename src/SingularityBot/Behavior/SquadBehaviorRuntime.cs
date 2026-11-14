@@ -12,7 +12,7 @@ namespace SingularityBot.Behavior;
 public sealed class SquadBehaviorRuntime
 {
     private readonly Dictionary<string, SquadContext> _squads = new(StringComparer.Ordinal);
-    private readonly Dictionary<ulong, string> _membership = new(StringComparer.Ordinal);
+    private readonly Dictionary<ulong, string> _membership = new();
 
     public SquadBehaviorRuntime()
     {

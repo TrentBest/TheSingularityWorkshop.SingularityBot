@@ -529,10 +529,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var assignments = _workerAssignments.Reconcile(
             normalized, _economyAdvisor.Settings.MineralSaturation);
         var actions = new List<SC2APIProtocol.Action>();
+        IReadOnlyList<StrategicJobDecision> scoutDecisions = Array.Empty<StrategicJobDecision>();
+        ulong? plannerReservedScoutTag = null;
+        var usePlannerScoutReservation = SpatialMap is not null;
         if (SpatialMap is not null)
         {
-            var scoutDecisions = _strategicPlanner.Evaluate(
+            scoutDecisions = _strategicPlanner.Evaluate(
                 _advisorJobBoard, normalized.GameLoop, normalized, SpatialMap);
+            var acceptedScout = scoutDecisions.FirstOrDefault(decision =>
+                decision.IsAccepted && decision.Posting.Kind == StrategicJobKind.Scout);
+            if (acceptedScout?.Posting.Constraints is not null &&
+                acceptedScout.Posting.Constraints.TryGetValue("unitTag", out var reservedTagText) &&
+                ulong.TryParse(reservedTagText, System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out var reservedTag))
+                plannerReservedScoutTag = reservedTag;
+
             var scoutExecution = StrategicScoutActionExecutor.Execute(
                 scoutDecisions, normalized, SpatialMap, _gameData, SpatialTerrain, PathingTopology);
             actions.AddRange(scoutExecution.Actions);
@@ -1167,7 +1178,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // attack target; the remaining Marines share the combat focus and patrol.
         if (_openingMarine.MarineDeployed)
         {
-            var scoutTag = _marineRally.GetScoutTag(normalized, _combatWeapons);
+            var scoutTag = _marineRally.GetScoutTag(
+                normalized, _combatWeapons, plannerReservedScoutTag, usePlannerScoutReservation);
             var excludedScoutTags = scoutTag is ulong dedicatedScoutTag
                 ? new HashSet<ulong> { dedicatedScoutTag }
                 : null;
@@ -1193,7 +1205,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 SpatialTerrain, PathingTopology, visibilityGrid,
                 advanceToEnemyStart: _compiledStrategy.ShouldAdvanceToEnemyStart(_goalActionPlan),
                 executeDedicatedScout: false,
-                weaponsByUnitType: _combatWeapons);
+                weaponsByUnitType: _combatWeapons,
+                plannerReservedScoutTag: plannerReservedScoutTag,
+                usePlannerReservation: usePlannerScoutReservation);
             actions.AddRange(marineRallyActions);
             if (_writeDiagnostics &&
                 _marineRally.TryTakeScoutStatusChange(out var scoutStatus, out var scoutDetails))

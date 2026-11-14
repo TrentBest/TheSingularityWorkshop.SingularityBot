@@ -47,7 +47,9 @@ public sealed class Sc2MarineRallyController
 
     public ulong? GetScoutTag(
         NormalizedObservation observation,
-        IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType = null)
+        IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType = null,
+        ulong? plannerReservedScoutTag = null,
+        bool usePlannerReservation = false)
     {
         ArgumentNullException.ThrowIfNull(observation);
         var liveMarineTags = observation.Units
@@ -59,8 +61,15 @@ public sealed class Sc2MarineRallyController
             .Select(unit => unit.Tag)
             .OrderBy(tag => tag)
             .ToArray();
+        // When the planner owns the reservation, never independently select a
+        // substitute Marine: combat exclusion and strategic execution share one tag.
+        var selectedScoutTag = usePlannerReservation
+            ? plannerReservedScoutTag
+            : liveMarineTags.Length > 0 ? liveMarineTags[0] : null;
+        if (selectedScoutTag is ulong reservedTag && !liveMarineTags.Contains(reservedTag))
+            selectedScoutTag = null;
 
-        if (liveMarineTags.Length == 0)
+        if (selectedScoutTag is null)
         {
             if (_scoutTag is not null)
             {
@@ -76,9 +85,9 @@ public sealed class Sc2MarineRallyController
             return null;
         }
 
-        if (_scoutTag is null || !liveMarineTags.Contains(_scoutTag.Value))
+        if (_scoutTag is null || _scoutTag.Value != selectedScoutTag.Value)
         {
-            _scoutTag = liveMarineTags[0];
+            _scoutTag = selectedScoutTag.Value;
             _scoutTarget = null;
             _scoutPlan = null;
             _scoutRetreatTarget = null;
@@ -110,7 +119,9 @@ public sealed class Sc2MarineRallyController
         SpatialGridSnapshot visibility = null,
         bool advanceToEnemyStart = false,
         bool executeDedicatedScout = true,
-        IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType = null)
+        IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType = null,
+        ulong? plannerReservedScoutTag = null,
+        bool usePlannerReservation = false)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -132,7 +143,7 @@ public sealed class Sc2MarineRallyController
         foreach (var retired in _lastRallyTargets.Keys.Where(tag => !liveMarineTags.Contains(tag)).ToArray())
             _lastRallyTargets.Remove(retired);
 
-        var scoutTag = GetScoutTag(observation, weaponsByUnitType);
+        var scoutTag = GetScoutTag(observation, weaponsByUnitType, plannerReservedScoutTag, usePlannerReservation);
         var scout = scoutTag is ulong assignedScoutTag
             ? observation.Units.FirstOrDefault(unit =>
                 unit.Tag == assignedScoutTag && unit.IsLiveVisible && unit.HasPosition)

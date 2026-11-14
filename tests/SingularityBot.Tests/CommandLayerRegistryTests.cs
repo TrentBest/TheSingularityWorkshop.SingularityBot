@@ -73,7 +73,6 @@ public sealed class CommandLayerRegistryTests
 
         Assert.Same(first.Descriptor, second.Descriptor);
     }
-}
 
     [Fact]
     public void Registry_SnapshotsDescriptorMetadataAtRegistration()
@@ -130,4 +129,4 @@ public sealed class CommandLayerRegistryTests
             RequiredCapabilities = new[] { " " }
         }));
     }
-
+}

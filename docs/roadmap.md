@@ -45,7 +45,8 @@ The compile-time strategy seam now supplies validated `BotDefinition` data, exec
 - [ ] Use game-loop deltas for cheap phase reevaluation; confirm every transition from observations.
 - [x] Coordinate node reservations and saturation centrally; prevent duplicate/conflicting assignments.
 - [x] Select and reserve an eligible SCV for the first Depot builder, including the returning-worker opening gate.
-- [ ] Measure delivered minerals, worker idle/travel/queue/gather/return time and assignment churn in repeatable local matches.
+- [x] Capture per-worker observation frames and structured worker assignment/release events, including assignment generations, to support repeatable economy analysis.
+- [ ] Derive delivered-resource, idle/travel/queue/gather/return durations and assignment-churn metrics from controlled local matches; keep inferred worker income distinct from authoritative player-bank changes.
 
 ## 3. Complete the first playable Terran opening
 

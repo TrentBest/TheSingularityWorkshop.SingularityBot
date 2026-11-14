@@ -219,6 +219,71 @@ namespace SC2API_CSharp
             return response.Query;
         }
 
+        /// <summary>
+        /// Joins this already-running SC2 process as an observer. The host must
+        /// supply an explicit observed-player perspective and a port block unique
+        /// to this SC2 process. This method does not launch or own the process.
+        /// </summary>
+        public async Task<ResponseJoinGame> JoinObserver(uint observedPlayerId, int startPort)
+        {
+            RequestJoinGame joinGame = new RequestJoinGame();
+            joinGame.ObservedPlayerId = observedPlayerId;
+            joinGame.SharedPort = startPort + 1;
+            joinGame.ServerPorts = new PortSet();
+            joinGame.ServerPorts.GamePort = startPort + 2;
+            joinGame.ServerPorts.BasePort = startPort + 3;
+            joinGame.ClientPorts.Add(new PortSet());
+            joinGame.ClientPorts[0].GamePort = startPort + 4;
+            joinGame.ClientPorts[0].BasePort = startPort + 5;
+            joinGame.Options = new InterfaceOptions();
+            joinGame.Options.Raw = true;
+            joinGame.Options.Score = true;
+
+            Request request = new Request();
+            request.JoinGame = joinGame;
+            Response response = await proxy.SendRequest(request);
+            if (response?.JoinGame == null)
+                throw new InvalidOperationException("The SC2 observer client did not acknowledge JoinGame.");
+            return response.JoinGame;
+        }
+
+        /// <summary>Gets one raw SC2 observation/status response from this session.</summary>
+        public async Task<Response> Observe()
+        {
+            Request request = new Request();
+            request.Observation = new RequestObservation();
+            return await proxy.SendRequest(request);
+        }
+
+        /// <summary>Requests replay bytes from this SC2 session after terminal status.</summary>
+        public async Task<Google.Protobuf.ByteString> SaveReplay()
+        {
+            Request request = new Request();
+            request.SaveReplay = new RequestSaveReplay();
+            Response response = await proxy.SendRequest(request);
+            if (response?.SaveReplay == null || response.SaveReplay.Data == null || response.SaveReplay.Data.Length == 0)
+                throw new InvalidOperationException("SC2 did not return replay bytes.");
+            return response.SaveReplay.Data;
+        }
+
+        /// <summary>Requests metadata for replay bytes using the pinned SC2 protocol.</summary>
+        public async Task<ResponseReplayInfo> GetReplayInfo(Google.Protobuf.ByteString replayData)
+        {
+            if (replayData == null || replayData.Length == 0)
+                throw new ArgumentException("Non-empty replay bytes are required.", nameof(replayData));
+
+            Request request = new Request();
+            request.ReplayInfo = new RequestReplayInfo();
+            request.ReplayInfo.ReplayData = replayData;
+            Response response = await proxy.SendRequest(request);
+            if (response?.ReplayInfo == null)
+                throw new InvalidOperationException("SC2 did not return replay metadata.");
+            if (response.ReplayInfo.Error != ResponseReplayInfo.Types.Error.Unset)
+                throw new InvalidOperationException(
+                    $"SC2 rejected replay metadata inspection: {response.ReplayInfo.Error} {response.ReplayInfo.ErrorDetails}".Trim());
+            return response.ReplayInfo;
+        }
+
         public async Task Run(Bot bot, uint playerId, string opponentID)
         {
             Request gameInfoReq = new Request();
@@ -255,7 +320,7 @@ namespace SC2API_CSharp
                 }
                 if (response.Status == Status.Ended || response.Status == Status.Quit)
                 {
-                    var finalResult = observation.PlayerResult[(int)playerId - 1].Result;
+                    var finalResult = Sc2PlayerResultResolver.GetRequiredResult(observation, playerId);
                     Console.WriteLine($"SC2_RESULT playerId={playerId} result={finalResult}");
                     bot.OnEnd(observation, finalResult);
                     break;

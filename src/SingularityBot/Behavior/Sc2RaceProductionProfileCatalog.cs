@@ -30,13 +30,20 @@ public sealed class Sc2RaceProductionProfileCatalog
     public Sc2RaceProductionProfileCatalog(IEnumerable<Sc2RaceProductionProfile> profiles)
     {
         ArgumentNullException.ThrowIfNull(profiles);
-        var indexed = profiles.ToDictionary(profile => profile.ModeId, StringComparer.Ordinal);
+        var profileList = profiles.ToArray();
+        if (profileList.Any(profile => profile is null))
+            throw new ArgumentException("Production profiles cannot contain null entries.", nameof(profiles));
+
+        var indexed = profileList.ToDictionary(profile => profile.ModeId, StringComparer.Ordinal);
         if (indexed.Values.Any(profile =>
             string.IsNullOrWhiteSpace(profile.ModeId) ||
             string.IsNullOrWhiteSpace(profile.TargetUnit) ||
             string.IsNullOrWhiteSpace(profile.ProducerUnit) ||
+            string.IsNullOrWhiteSpace(profile.Status) ||
+            profile.UnitsPerOrder <= 0 ||
             profile.RequiredCompletedUnits is null ||
-            profile.RequiredCompletedUnits.Any(string.IsNullOrWhiteSpace)))
+            profile.RequiredCompletedUnits.Any(string.IsNullOrWhiteSpace) ||
+            profile.RequiredCompletedUnits.Distinct(StringComparer.OrdinalIgnoreCase).Count() != profile.RequiredCompletedUnits.Count))
             throw new ArgumentException("Production profile identities and unit requirements are required.", nameof(profiles));
         _profiles = new System.Collections.ObjectModel.ReadOnlyDictionary<string, Sc2RaceProductionProfile>(indexed);
     }

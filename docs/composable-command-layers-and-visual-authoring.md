@@ -53,7 +53,7 @@ This makes a layer composable because its neighbors depend on contracts, not its
 | Squad | Cohesive tactical assignment and formation membership | “Raid this mineral line and preserve escape capacity” |
 | Unit | Individual execution, local target choice, abilities, survival | “Acquire target, use ability when legal, disengage” |
 
-Not every bot needs every layer. The default simple composition can be Strategic -> Army -> Squad -> Unit. Task Force and Platoon are optional coordination capabilities, not mandatory empty ranks. A developer can also define domain-specific layers when a real need exists, provided the contract and authority model remain valid.
+Not every bot needs every layer. The default simple composition can be Strategic -> Army -> Squad -> Unit. Task Force and Platoon are optional coordination capabilities, not mandatory empty ranks. A composition may contain **at most five enabled command layers**. This is a deliberate usability and domain-complexity limit: SC2 has a bounded unit population, and adding another tier should require a real coordination benefit. Disabled optional slots do not count toward the limit. A developer can define domain-specific implementations within the five-layer budget, provided the contract and authority model remain valid.
 
 The hierarchy describes responsibility, not necessarily a literal organizational chart or one-to-one parent-child tree. A squad can be referenced by an operation and a task force without acquiring duplicate ownership. Unit assignment remains singular and authoritative through the shared reservation planner.
 
@@ -63,7 +63,7 @@ The shared shell owns race-neutral services: observations, normalized evidence, 
 
 At match start, the selected race module binds race-specific capabilities: unit and structure ontology, production semantics, abilities, construction rules, and race-specific command-layer implementations. The editor can present a race tab as the authoring context for those registered capabilities.
 
-A race module should publish a capability catalogue, not dictate one mandatory doctrine. A Terran developer may compose different command doctrines from the same Terran production and action capabilities. The same principle applies to Protoss and Zerg.
+A race module should publish a capability catalogue, not dictate one mandatory doctrine. A Terran developer may compose different command doctrines from the same Terran production and action capabilities. The same principle applies to Protoss and Zerg. Race selection also changes the authoring vocabulary and available structural templates. For example, a Zerg Overmind/Cerebrate-inspired preset can model Cerebrates as the top-level editable authorities and deliberately omit additional command tiers. Another Zerg doctrine may expose more intermediate layers. These are selectable command models, not claims that every lore structure exists as a playable SC2 unit or runtime controller.
 
 Unsupported race, missing module, missing implementation, incompatible contract, or unavailable required capability must fail closed. Never silently substitute Terran behavior.
 
@@ -83,11 +83,13 @@ A layer card should show:
 
 The authoring flow should support:
 - Select race module.
+- Start from curated, working example compositions (the fastest way to learn is to inspect, clone, compare, and improve another creator's work).
 - Add, remove, reorder, enable, or disable optional layer slots.
 - Choose from registered implementations for each slot.
 - Select presentation independently.
 - Inspect and connect intent contracts.
 - Configure layer settings with schema-aware controls.
+- Generate the visible controls from the selected implementation's settings schema and capabilities; hide or disable controls that the selected doctrine does not support.
 - Validate the whole composition before launch.
 - Save, clone, export, import, and compare bot definitions.
 - Preview the doctrine as a readable chain of responsibility.
@@ -121,12 +123,12 @@ The repository already has useful foundations:
 
 There is also a major migration constraint: the current `BotDefinitionValidator` only supports Terran, the default compiled strategy is Marine-specific, and `SingularityBot` eagerly owns many Terran controllers. The new composition contract must not be mistaken for completed three-race runtime composition. The race-neutral shell / race-specific module boundary still needs to be implemented.
 
-The first contract implementation lives in `Behavior/CommandLayerComposition.cs`. It defines ordered layer selections, independent doctrine and presentation IDs, accepted/emitted intent contracts, capability declarations, sparse hierarchy support, and deterministic validation. It intentionally does not load or execute implementations.
+The first contract implementation lives in `Behavior/CommandLayerComposition.cs`. It defines ordered layer selections, independent doctrine and presentation IDs, accepted/emitted intent contracts, capability declarations, sparse hierarchy support, a five-enabled-layer ceiling, and deterministic validation. `Behavior/CommandLayerRegistry.cs` adds a trusted compiled descriptor catalogue and fail-closed resolution by implementation ID, layer kind, race, and required capabilities. Portable definitions still cannot load or execute arbitrary implementations.
 
 ## Implementation sequence
 
-1. **Composition contract** — stable layer slots, implementation IDs, presentation IDs, intent contracts, capability declarations, and validation. (Initial contract and tests added.)
-2. **Registry and descriptors** — trusted compiled implementation catalogue with race compatibility, schema metadata, and capability declarations.
+1. **Composition contract** — stable layer slots, implementation IDs, presentation IDs, intent contracts, capability declarations, five-layer ceiling, and validation. (Implemented with tests.)
+2. **Registry and descriptors** — trusted compiled implementation catalogue with race compatibility and capability declarations. (Initial resolver and tests implemented; settings-schema metadata and runtime factories remain.)
 3. **Runtime adapter boundary** — each layer receives a narrow context and emits typed intents; no layer bypasses shared planners or action validation.
 4. **Squad vertical slice** — first real formation layer, stable identity, membership lifecycle, role/objective, and single-owner unit reservations.
 5. **Army Commander extraction** — translate accepted military intent into named operations and subordinate assignments.

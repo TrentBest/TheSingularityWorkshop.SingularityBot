@@ -69,6 +69,43 @@ public sealed class Sc2RaceBuildingActionTranslatorTests
     }
 
     [Fact]
+    public void Translation_AllowsOnlyExplicitlyWhitelistedGatherOrdersToBeInterrupted()
+    {
+        var worker = Unit(8, "Drone", hasOrders: true) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(777, null, null, null) }
+        };
+        var result = Sc2RaceBuildingActionTranslator.Translate(
+            new Sc2UnitFacts(200, "SpawningPool", 1344, 200, 0, 0, 0),
+            new Sc2UnitFacts(104, "Drone", 0, 50, 0, 1, 0),
+            Ability(1344, isBuilding: true),
+            Observation(500, 0, worker),
+            8, 22, 31, new HashSet<ulong>(),
+            new HashSet<uint> { 777 });
+
+        Assert.False(result.IsBlocked);
+        Assert.Equal(8ul, result.WorkerTag);
+    }
+
+    [Fact]
+    public void Translation_RejectsUnrecognizedOrdersEvenWhenGatherOrdersAreAllowed()
+    {
+        var worker = Unit(8, "Drone", hasOrders: true) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(778, null, null, null) }
+        };
+        var result = Sc2RaceBuildingActionTranslator.Translate(
+            new Sc2UnitFacts(200, "SpawningPool", 1344, 200, 0, 0, 0),
+            new Sc2UnitFacts(104, "Drone", 0, 50, 0, 1, 0),
+            Ability(1344, isBuilding: true),
+            Observation(500, 0, worker),
+            8, 22, 31, new HashSet<ulong>(),
+            new HashSet<uint> { 777 });
+
+        Assert.True(result.IsBlocked);
+    }
+
+    [Fact]
     public void Translation_FailsClosedWhenResourcesCannotCoverStructure()
     {
         var result = Sc2RaceBuildingActionTranslator.Translate(

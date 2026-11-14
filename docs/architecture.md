@@ -33,6 +33,39 @@ Existing shared runtime, intent arbitration and validated action pipeline
 
 The local and ladder runner now requests `Race.Random` from SC2. This is a race-selection setting, not evidence that all three execution adapters are complete. The currently compiled strategy and macro/action implementation remain Terran-specific. Until race detection, dispatch and non-Terran adapters are implemented and tested, a Random-selected Zerg or Protoss match is not considered supported or match-verified. Do not infer race from the configured selection; use authoritative match/player information and observed facts before dispatching. Unsupported race execution must fail closed rather than issuing Terran actions.
 
+## Four-layer executive control
+
+Every active observation is processed through one ordered control cycle, enforced by `ExecutiveController`:
+
+1. **Executive Reaction — Chief:** consumes the normalized match state and updates the executive picture of the match. The existing `GameStateContext` and spatial-intelligence update are the first implementation of this responsibility.
+2. **Subcontrollers — Commanders:** apply configured domain policy and publish strategic jobs/intents. The current Terran economy, intelligence, scouting and compiled-strategy policies are the baseline behaviors to be moved behind race-specific Commander contracts; they are not yet fully extracted.
+3. **Executive Review — Chief:** reviews proposed strategic jobs, arbitrates/reserves work through the strategic planner, and decides which proposals may proceed. The existing planner is the first review implementation.
+4. **Unit AI:** updates per-unit FSM behavior after executive review. The existing `UnitBehaviorRuntime` and FSM_API processing groups are the current implementation of this layer.
+
+The enforced order is:
+
+```text
+Executive Reaction (Chief)
+        |
+Subcontrollers (Terran Commanders / Zerg Cerebrates / Protoss Judicators)
+        |
+Executive Review (Chief)
+        |
+Unit AI (individual unit behavior)
+        |
+Existing intent validation and SC2 action pipeline
+```
+
+The first refactor deliberately captures current Terran behavior rather than redesigning its tactics. The existing advisors and controllers are the behavioral baseline. The next extraction moves their policy behind Commander-owned contracts while preserving their observed decisions and action pipeline. The Chief owns situation assessment, desired direction, and review; Commanders own the configurable methods for achieving assigned goals; Unit AI owns local execution choices. None of these layers submits protocol actions directly.
+
+The current integration enforces stage ordering in the live `OnFrame` path. It does not yet complete the full policy extraction: several Terran macro controllers and advisor policies are still fields on `SingularityBot`. That is explicitly unfinished work, not a claim that the mono-controller refactor is complete.
+
+## Captured scenarios and decision rehearsal
+
+Captured observations, screen-derived map annotations, and prestaged scenarios should become versioned decision fixtures. A fixture records the exact observation/state at a game loop, relevant unit statistics and visible context, the selected policy version, the decision alternatives, and the observed result. The editor can present these fixtures as reusable rehearsals: enable a scenario set, choose an accepted/rejected decision, and compare downstream outcomes and metrics.
+
+Screen capture is an annotation and reconstruction aid, not an authority that silently replaces SC2 observations. A screenshot-derived fixture must retain provenance and uncertainty for facts that cannot be recovered exactly. Deterministic normalized-observation replay remains the preferred source when available. Rehearsal runs must not issue live game actions or create a second execution engine. Scenario settings belong to the Commander/Unit AI policy that consumes them, while the Chief may use scenario results as evidence when reviewing policy.
+
 ## Composition and execution boundary
 
 The bot is a self-contained compiled DLL. The Runner selects the statically linked `AdaptiveMarineStrategy`, which implements `ICompiledBotStrategy`. The contract supplies a validated `BotDefinition`, executable initial-goal composition, goal-assignment policy and the Marine advance-to-enemy-start decision; `SingularityBot` consumes those decisions while retaining one shared runtime and action pipeline. `GoalActionPlanner` remains a shared engine service invoked through the strategy contract. `BotDefinitionCatalog` remains compiled typed data, not the strategy class itself. The personality boundary is partially implemented: objective/transition composition and most macro/tactical policy still reside in shared controllers and planners. Runtime JSON files, reflection-based discovery and dynamic assembly loading are not used.

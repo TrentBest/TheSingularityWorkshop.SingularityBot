@@ -9,6 +9,22 @@ namespace SingularityBot.Tests;
 public sealed class Sc2MarineRallyControllerTests
 {
     [Fact]
+    public void DedicatedScoutSelectionUsesTheSameUsableWeaponEligibilityAsScoutingAdvisor()
+    {
+        var controller = new Sc2MarineRallyController();
+        var observation = Snapshot(
+            Fact(1, "Marine", 10, 10),
+            Fact(2, "Marine", 12, 10));
+        var weapons = new Dictionary<uint, CombatWeaponProfile>
+        {
+            [48] = new CombatWeaponProfile(5, 6)
+        };
+
+        Assert.Equal(1UL, controller.GetScoutTag(observation));
+        Assert.Equal(1UL, controller.GetScoutTag(observation, weapons));
+    }
+
+    [Fact]
     public void FirstMarineScoutsTheFarthestSafeAdjacentSectorWhileFourOthersDeploy()
     {
         var controller = new Sc2MarineRallyController();

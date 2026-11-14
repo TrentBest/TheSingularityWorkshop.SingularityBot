@@ -2,6 +2,7 @@
 
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
+using FSM_API;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -235,7 +236,7 @@ public sealed class BuildingBehaviorContext : IStateContext
     internal void DestroyHandles()
     {
         foreach (var handle in _handles.Values)
-            FSM_API.Interaction.DestroyInstance(handle);
+            FsmApi.Interact.DestroyInstance(handle);
         _handles.Clear();
         IsValid = false;
     }
@@ -276,10 +277,10 @@ public sealed class BuildingBehaviorRuntime
         _designatedCommandCenterArea = null;
 
     public void UpdateLifecycle() =>
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
+        FsmApi.Interact.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
 
     public void UpdateActivityAndAccess() =>
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interact.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
     public void Update()
     {
@@ -289,16 +290,16 @@ public sealed class BuildingBehaviorRuntime
 
     public static void RegisterDefinitions()
     {
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.LifecycleFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.LifecycleFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.DataSyncProcessingGroup)
                 .State("UnderConstruction", null, null, null)
                 .State("Operational", context => (context as BuildingBehaviorContext)?.EmitOperational(), null, null)
                 .Transition("UnderConstruction", "Operational", IsOperational)
                 .WithInitialState("UnderConstruction").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ProductionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ProductionFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.ProductionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ProductionFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Idle", null, null, null)
                 .State("Producing", null, null, null)
@@ -306,8 +307,8 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Producing", "Idle", IsNotProducing)
                 .WithInitialState("Idle").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ResearchFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ResearchFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.ResearchFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ResearchFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Idle", null, null, null)
                 .State("Researching", null, null, null)
@@ -315,8 +316,8 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Researching", "Idle", IsNotResearching)
                 .WithInitialState("Idle").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.ThreatFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ThreatFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.ThreatFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ThreatFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Clear", null, null, null)
                 .State("EnemyWithin10", null, null, null)
@@ -335,8 +336,8 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Unobserved", "Clear", HasVisibleEnemyOutside10)
                 .WithInitialState("Clear").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Assess", null, null, null)
                 .State("Lowered", context => (context as BuildingBehaviorContext)?.EmitDepotAccess(false), null, null)
@@ -347,8 +348,8 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Raised", "Lowered", ShouldLowerDepot)
                 .WithInitialState("Assess").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallUpgradeFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallUpgradeFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("WaitingForPrerequisites", null, null, null)
                 .State("UpgradeReady", null, null, null)
@@ -363,8 +364,8 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Upgrading", "UpgradeReady", UpgradeOrderNoLongerObserved)
                 .WithInitialState("WaitingForPrerequisites").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.OrbitalScanFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.OrbitalScanFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.OrbitalScanFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.OrbitalScanFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Idle", null, null, null)
                 .State("Ready", null, context => (context as BuildingBehaviorContext)?.EmitScanRequest(), null)
@@ -375,8 +376,8 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("AwaitingEvidence", "Ready", CanRetryScan)
                 .WithInitialState("Idle").BuildDefinition();
 
-        if (!FSM_API.Interaction.Exists(BuildingBehaviorCatalog.TownHallExpansionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
-            FSM_API.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallExpansionFsm, processRate: -1,
+        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.TownHallExpansionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+            FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallExpansionFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Waiting", null, null, null)
                 .State("StreamingCommandCenters", null, null, null)
@@ -544,7 +545,7 @@ public sealed class BuildingBehaviorRuntime
         kind.Contains("TechLab", StringComparison.OrdinalIgnoreCase);
 
     private static void Attach(BuildingBehaviorContext context, string fsmName, string group) =>
-        context.Attach(fsmName, FSM_API.Create.CreateInstance(fsmName, context, group));
+        context.Attach(fsmName, FsmApi.Create.CreateInstance(fsmName, context, group));
 
     public bool RequestOrbitalScan(ulong buildingTag, float targetX, float targetY)
     {

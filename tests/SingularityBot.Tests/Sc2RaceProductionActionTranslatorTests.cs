@@ -81,7 +81,7 @@ public sealed class Sc2RaceProductionActionTranslatorTests
             new HashSet<ulong>());
 
         Assert.True(result.IsBlocked);
-        Assert.Contains("power", result.BlockReason, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("power", result.BlockReason.ToLowerInvariant());
     }
 
     [Fact]
@@ -91,11 +91,14 @@ public sealed class Sc2RaceProductionActionTranslatorTests
             .Single(item => item.ModeId == "zerg.zergling.v1");
         var observation = Observation(
             100, 0, 10, 20,
-            Unit(1, "Larva"),
-            Unit(2, "Larva", hasOrders: true),
-            Unit(3, "Larva"),
-            Unit(4, "SpawningPool", buildProgress: 1f),
-            dead: new HashSet<ulong> { 3 });
+            new[]
+            {
+                Unit(1, "Larva"),
+                Unit(2, "Larva", hasOrders: true),
+                Unit(3, "Larva"),
+                Unit(4, "SpawningPool", buildProgress: 1f)
+            },
+            new HashSet<ulong> { 3 });
 
         var result = Sc2RaceProductionActionTranslator.Translate(
             profile,

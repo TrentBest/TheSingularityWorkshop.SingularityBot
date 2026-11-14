@@ -30,6 +30,30 @@ jobs:
           repository: TrentBest/TheSingularityWorkshop.CommandAi
           ref: development
           path: dependencies/CommandAi
+      - name: Check out FSM_API development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_API
+          ref: development
+          path: dependencies/FSM_API
+      - name: Check out FSM_UserIO development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_UserIO
+          ref: development
+          path: dependencies/FSM_UserIO
+      - name: Check out MicroBundleDomain development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.MicroBundleDomain
+          ref: development
+          path: dependencies/TheSingularityWorkshop.MicroBundleDomain
+      - name: Check out HeadlessAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.HeadlessAi
+          ref: development
+          path: dependencies/HeadlessAi
       - name: Check out FSM_Serialization development source
         uses: actions/checkout@v4
         with:

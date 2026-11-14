@@ -29,6 +29,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly TerranCommander _terranCommander = new();
     private readonly RaceModuleCatalog _raceModules = RaceModuleCatalog.CreateDefault();
     private readonly BotModeCatalog _botModes = BotModeCatalog.CreateDefault();
+    private readonly Sc2RaceProductionProfileCatalog _raceProductionProfiles = Sc2RaceProductionProfileCatalog.CreateDefault();
+    private Sc2RaceProductionProfile _activeProductionProfile;
     private RaceModuleDescriptor _activeRaceModule;
     private BotModeDescriptor _activeMode;
     private readonly AdvisorJobBoard _advisorJobBoard = new();
@@ -154,6 +156,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public Race ActualRace => _actualRace;
     /// <summary>The map-selected mode after validation against authoritative RaceActual.</summary>
     public BotModeDescriptor ActiveMode => _activeMode;
+    /// <summary>Race/mode-specific first-unit production profile resolved from authoritative match game data.</summary>
+    public Sc2RaceProductionProfile ActiveProductionProfile => _activeProductionProfile;
     /// <summary>Retained direct-observation evidence available to transition policy evaluation.</summary>
     public IReadOnlyList<StrategyEvidence> CurrentStrategyEvidence => _currentStrategyEvidence;
     public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
@@ -421,6 +425,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _marineRally.Reset();
         }
         _gameData = Sc2GameDataCatalog.Create(data);
+        _activeProductionProfile = null;
+        if (_activeMode is not null && _raceProductionProfiles.TryResolveGameData(
+            _activeMode.Id, _actualRace, _gameData,
+            out var productionProfile, out var targetFacts, out var producerFacts, out var productionError))
+        {
+            _activeProductionProfile = productionProfile;
+            Console.WriteLine($"[RaceProduction] Resolved mode={productionProfile.ModeId}; target={targetFacts.Name} ability={targetFacts.AbilityId} mineral={targetFacts.MineralCost} gas={targetFacts.VespeneCost} food={targetFacts.FoodRequired}; producer={producerFacts.Name}; prerequisites={string.Join(",", productionProfile.RequiredCompletedUnits)}; poweredProducerRequired={productionProfile.RequiresPoweredProducer}. {productionProfile.Status}");
+        }
+        else if (_activeMode is not null && _raceProductionProfiles.TryResolve(_activeMode.Id, out _))
+        {
+            _raceProductionProfiles.TryResolveGameData(
+                _activeMode.Id, _actualRace, _gameData,
+                out _, out _, out _, out var productionError);
+            Console.WriteLine($"[RaceProduction] FAIL-CLOSED: mode={_activeMode.Id}; {productionError}");
+        }
         if (_militaryPlan is not null)
         {
             var militaryRuntime = new MilitaryPlanRuntime();

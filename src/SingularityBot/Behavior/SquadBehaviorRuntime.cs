@@ -125,6 +125,7 @@ public sealed class SquadContext : IStateContext
     private readonly HashSet<ulong> _unitTags = new();
     private FSMHandle _handle;
     private bool _ownsHandle;
+    private string _terminalLifecycleState = "Uninitialized";
 
     internal SquadContext(string squadId, string role, string objectiveId)
     {
@@ -145,7 +146,7 @@ public sealed class SquadContext : IStateContext
     public bool ShouldRegroup { get; internal set; }
     public bool IsDisbanding { get; private set; }
     public bool IsValid { get; set; }
-    public string LifecycleState => _ownsHandle ? _handle.CurrentState : "Uninitialized";
+    public string LifecycleState => _ownsHandle ? _handle.CurrentState : _terminalLifecycleState;
 
     public bool SetObjective(string objectiveId)
     {
@@ -177,6 +178,7 @@ public sealed class SquadContext : IStateContext
     internal void DestroyOwnedHandle()
     {
         if (!_ownsHandle) return;
+        _terminalLifecycleState = _handle.CurrentState;
         FSM_API.Interaction.DestroyInstance(_handle);
         _ownsHandle = false;
     }

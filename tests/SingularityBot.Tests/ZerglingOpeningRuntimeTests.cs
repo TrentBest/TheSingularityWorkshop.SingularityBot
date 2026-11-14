@@ -132,24 +132,4 @@ public sealed class ZerglingOpeningRuntimeTests
             100, 100, 0, 0, 1, 20, 20, true,
             false, false, false, false, false, 100);
 
-    private sealed class Sc2GameDataCatalogTestFactory
-    {
-        public Sc2GameDataCatalog Create() =>
-            (Sc2GameDataCatalog)Activator.CreateInstance(
-                typeof(Sc2GameDataCatalog),
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
-                binder: null,
-                args: new object[]
-                {
-                    new Dictionary<uint, Sc2UnitFacts>(),
-                    new Dictionary<uint, string>(),
-                    new Dictionary<uint, string>(),
-                    new Dictionary<uint, Sc2AbilityFacts>(),
-                    new Dictionary<uint, IReadOnlyList<Sc2WeaponFacts>>(),
-                    null, null, 0u, 0f, null, null, null, null, 0u,
-                    null, 0u, null, 0u, 0f, null, null, null, 0u,
-                    null, null, 0u, null, 0u
-                },
-                culture: null)!;
-    }
 }

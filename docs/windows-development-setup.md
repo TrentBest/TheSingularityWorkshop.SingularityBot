@@ -54,14 +54,53 @@ git pull
 
 The repository's intended branch set is exactly `master` and `development`. Do not create a feature branch for this work unless we explicitly decide to change that policy.
 
-## 4. Open the solution in Visual Studio Community
+## 4. Initialize the Workshop source dependencies
+
+SingularityBot intentionally references active Workshop source projects for CommandAi and FSM_COS during development. These repositories are **not Git submodules**, so cloning SingularityBot alone does not populate the `dependencies` directory. The build errors mentioning missing `dependencies\\CommandAi` or `dependencies\\FSM_COS` mean this step has not been completed (or the folders are not at the expected paths).
+
+Run these commands from the SingularityBot repository root in PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force .\\dependencies | Out-Null
+
+if (-not (Test-Path .\\dependencies\\CommandAi\\TheSingularityWorkshop.CommandAi.csproj)) {
+    git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git .\\dependencies\\CommandAi
+}
+
+if (-not (Test-Path .\\dependencies\\FSM_COS\\src\\FSM_COS\\FSM_COS.csproj)) {
+    git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_COS.git .\\dependencies\\FSM_COS
+}
+
+if (-not (Test-Path .\\dependencies\\FSM_Serialization\\TheSingularityWorkshop.FSM_Serialization.csproj)) {
+    git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_Serialization.git .\\dependencies\\FSM_Serialization
+}
+```
+
+Verify that all three referenced source projects now exist:
+
+```powershell
+Test-Path .\\dependencies\\CommandAi\\TheSingularityWorkshop.CommandAi.csproj
+Test-Path .\\dependencies\\FSM_COS\\src\\FSM_COS\\FSM_COS.csproj
+Test-Path .\\dependencies\\FSM_Serialization\\TheSingularityWorkshop.FSM_Serialization.csproj
+```
+
+Each command should print `True`. Then restore and build:
+
+```powershell
+dotnet restore .\\src\\SingularityBot.Runner\\SingularityBot.Runner.csproj
+dotnet build .\\src\\SingularityBot.Runner\\SingularityBot.Runner.csproj --configuration Release --no-restore
+```
+
+If a dependency directory already exists but is incomplete, inspect it before deleting or recloning it; preserve any local work. To update an existing dependency checkout safely, run `git -C <path> status` first, then switch/pull its `development` branch only when the working tree is clean.
+
+## 5. Open the solution in Visual Studio Community
 
 1. Open the repository folder after cloning and switching to `development`.
 2. Double-click `TheSingularityWorkshop.SingularityBot.sln` in the repository root, or use **File → Open → Project/Solution** in Visual Studio.
 3. In Solution Explorer, right-click **SingularityBot.Runner** and choose **Set as Startup Project**. The bot project is a class library; the Runner is the executable entry point, just as `DotnetCoreRunner` is the executable entry point in Simon Prins' ExampleBot solution.
 4. Select **Debug** or **Release** and build the solution. The solution contains the protocol, API adapter, bot and runner projects.
 
-## 5. Build without launching the game
+## 6. Build without launching the game
 
 From the repository root:
 
@@ -72,7 +111,7 @@ dotnet build .\src\SingularityBot.Runner\SingularityBot.Runner.csproj --configur
 
 This builds the .NET 8 runner, bot, protocol adapter and referenced projects. It does not start StarCraft II.
 
-## 6. Check the configured local map
+## 7. Check the configured local map
 
 The current local program is configured for:
 
@@ -82,7 +121,7 @@ AcolyteLE.SC2Map
 
 The adapter checks the StarCraft II installation's `Maps` directory first, then searches its subfolders for that exact filename. You can keep folders such as `Maps\\Ladder2017Season3\\` intact; do not delete them just to make the map lookup work. If the same filename exists in more than one subfolder, set `MapName` to a relative path (for example, `Ladder2017Season3\\AcolyteLE.SC2Map`) to select the intended copy. The local launcher reports a clear error if no matching map is found.
 
-## 7. Launch a local session
+## 8. Launch a local session
 
 From the repository root:
 
@@ -92,7 +131,7 @@ dotnet run --project .\src\SingularityBot.Runner\SingularityBot.Runner.csproj --
 
 With no arguments, the runner selects the local single-player path. Do not pass ladder arguments. Close the game normally when the match ends; if startup fails, preserve the full console exception and the contents of `ExecuteInfo.txt` with personal paths redacted.
 
-## 8. What to verify in the next Terran match
+## 9. What to verify in the next Terran match
 
 The first test is not about winning. We will record whether the bot:
 

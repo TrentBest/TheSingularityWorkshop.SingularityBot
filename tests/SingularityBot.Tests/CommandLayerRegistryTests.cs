@@ -103,8 +103,7 @@ public sealed class CommandLayerRegistryTests
 
         Assert.True(resolved.Success);
         Assert.Equal("Terran", Assert.Single(resolved.Descriptor.SupportedRaces));
-        Assert.Equal("planner.reservations", Assert.Contains("planner.reservations", resolved.Descriptor.RequiredCapabilities)
-            ? "planner.reservations" : null);
+        Assert.Contains("planner.reservations", resolved.Descriptor.RequiredCapabilities);
         Assert.Throws<NotSupportedException>(() =>
             ((IList<string>)resolved.Descriptor.SupportedRaces)[0] = "Zerg");
     }

@@ -37,6 +37,7 @@ SC2 Runner is the live host: it owns the connection, callbacks, frame lifecycle 
 - [Roadmap and acceptance gates](roadmap.md)
 - [Windows development and local testing](windows-development-setup.md)
 - [Local game sessions](local-game-sessions.md)
+- [ServerSC2 runner/observer integration contract v1](server-sc2-runner-contract-v1.md)
 - [GitHub Pages publishing](pages.md)
 
 ## Design rule

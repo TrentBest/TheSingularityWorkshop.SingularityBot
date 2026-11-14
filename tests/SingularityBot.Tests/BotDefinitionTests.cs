@@ -50,6 +50,22 @@ public sealed class BotDefinitionTests
     }
 
     [Fact]
+    public void CompiledZerglingOpeningDefinition_IsValidAndComposesThroughFsmCos()
+    {
+        var definition = BotDefinitionCatalog.CreateZerglingOpening();
+
+        Assert.Empty(definition.Validate());
+        Assert.Equal("Zerg", definition.Race);
+        Assert.Equal("zerg.zergling.v1", definition.ModeId);
+        Assert.Equal("Zergling", Assert.Single(definition.Opening.Steps).Target);
+
+        var bot = new global::SingularityBot.SingularityBot(botDefinition: definition);
+        Assert.Equal(definition.Id, bot.Definition.Id);
+        Assert.Equal("Zerg", bot.Manifest.Bot.Race);
+        Assert.Equal(2, bot.ComposedRuntime.Bundles.Count);
+    }
+
+    [Fact]
     public void AiPolicy_RejectsMoreThanOneStartupOrThreeMatchCalls()
     {
         var definition = CreateValidDefinition();

@@ -1,3 +1,4 @@
+using ShortApi = global::FSM_API.FsmApi;
 using SC2APIProtocol;
 using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
@@ -22,7 +23,7 @@ public sealed class Sc2OpeningProductionController : IDisposable
     public Sc2OpeningProductionController()
     {
         EnsureDefinition();
-        _handle = FSM_API.Create.CreateInstance(FsmName, _context, ProcessingGroup);
+        _handle = ShortApi.Create.CreateInstance(FsmName, _context, ProcessingGroup);
     }
 
     /// <summary>The authoritative FSM_API state for this production request lifecycle.</summary>
@@ -54,7 +55,7 @@ public sealed class Sc2OpeningProductionController : IDisposable
             gameData.ScvTrainAbilityId is > 0 &&
             commandCenters.Any(center => center.Orders.Any(order =>
                 order.AbilityId == gameData.ScvTrainAbilityId.Value)));
-        FSM_API.Interaction.Update(ProcessingGroup);
+        ShortApi.Interact.Update(ProcessingGroup);
 
         if (_handle.CurrentState != Ready ||
             gameData.ScvTrainAbilityId is not > 0 ||
@@ -87,7 +88,7 @@ public sealed class Sc2OpeningProductionController : IDisposable
         };
 
         _context.MarkSubmitted(observation.GameLoop);
-        FSM_API.Interaction.Update(ProcessingGroup);
+        ShortApi.Interact.Update(ProcessingGroup);
         return action;
     }
 
@@ -96,7 +97,7 @@ public sealed class Sc2OpeningProductionController : IDisposable
         if (result is null || result != ActionResult.Success)
         {
             _context.MarkRejected();
-            FSM_API.Interaction.Update(ProcessingGroup);
+            ShortApi.Interact.Update(ProcessingGroup);
             _context.ClearRejection();
         }
     }
@@ -104,15 +105,15 @@ public sealed class Sc2OpeningProductionController : IDisposable
     public void Dispose()
     {
         _context.IsValid = false;
-        FSM_API.Interaction.DestroyInstance(_handle);
+        ShortApi.Interact.DestroyInstance(_handle);
     }
 
     private static void EnsureDefinition()
     {
-        if (FSM_API.Interaction.Exists(FsmName, ProcessingGroup))
+        if (ShortApi.Interact.Exists(FsmName, ProcessingGroup))
             return;
 
-        FSM_API.Create.CreateFiniteStateMachine(
+        ShortApi.Create.CreateFiniteStateMachine(
                 FsmName,
                 processRate: -1,
                 processingGroup: ProcessingGroup)

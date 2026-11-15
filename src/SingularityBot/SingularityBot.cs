@@ -613,7 +613,29 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _gameData.BuffNames);
         _lastGameLoop = normalized.GameLoop;
         if (zerglingOpeningEnabled)
-            return _zerglingOpeningRuntime.OnFrame(normalized);
+        {
+            var raceActions = _zerglingOpeningRuntime.OnFrame(normalized);
+            if (_writeDiagnostics)
+            {
+                _binaryTrace.RecordFrame(
+                    normalized.GameLoop, normalized.Minerals,
+                    normalized.FoodUsed, normalized.FoodCap,
+                    normalized.Units.Count, raceActions.Count);
+                _binaryTrace.RecordEconomySnapshot(normalized, activeBuildJobs: 0);
+                _binaryTrace.RecordRaceSnapshot(
+                    normalized, _actualRace, _activeMode.Id,
+                    _zerglingOpeningRuntime.State, raceActions.Count);
+                if (_lastUnitSnapshotGameLoop == 0 ||
+                    normalized.GameLoop >= _lastUnitSnapshotGameLoop + 8)
+                {
+                    _binaryTrace.RecordUnitSnapshots(normalized);
+                    _lastUnitSnapshotGameLoop = normalized.GameLoop;
+                }
+                foreach (var action in raceActions)
+                    _binaryTrace.RecordAction(normalized.GameLoop, action);
+            }
+            return raceActions;
+        }
         var executive = new ExecutiveController(normalized.GameLoop);
         _currentStrategyEvidence = _strategyEvidenceCollector.Apply(normalized);
         var intents = new BehaviorIntentBuffer();
@@ -1439,6 +1461,28 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (_zerglingOpeningRuntime is not null && _actualRace == Race.Zerg &&
             _activeMode?.Id == "zerg.zergling.v1")
         {
+            if (_writeDiagnostics)
+            {
+                if (response?.Result is { Count: > 0 })
+                {
+                    for (var index = 0; index < response.Result.Count; index++)
+                    {
+                        var command = index < (submittedActions?.Count ?? 0)
+                            ? submittedActions[index].ActionRaw?.UnitCommand
+                            : null;
+                        _binaryTrace.RecordActionResult(
+                            _lastGameLoop, index,
+                            unchecked((uint)(command?.AbilityId ?? 0)),
+                            response.Result[index].ToString());
+                    }
+                }
+                else
+                {
+                    _binaryTrace.RecordDecision(
+                        _lastGameLoop, "ActionResult",
+                        "Zerg action request returned no per-action result; runtime submission latch retained.");
+                }
+            }
             _zerglingOpeningRuntime.OnActionResult(response);
             return;
         }
@@ -1588,6 +1632,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (_zerglingOpeningRuntime is not null && _actualRace == Race.Zerg &&
             _activeMode?.Id == "zerg.zergling.v1")
         {
+            if (_writeDiagnostics)
+                _binaryTrace.RecordDecision(
+                    _lastGameLoop, "PlacementQueryResult",
+                    response is null
+                        ? "response=null"
+                        : $"placements={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
             _zerglingOpeningRuntime.OnQueryResult(response);
             return;
         }

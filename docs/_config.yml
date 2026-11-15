@@ -1,0 +1,14 @@
+title: SingularityBot
+description: An evidence-driven StarCraft II bot built on The Singularity Workshop.
+markdown: kramdown
+permalink: pretty
+
+plugins:
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: true
+
+kramdown:
+  input: GFM

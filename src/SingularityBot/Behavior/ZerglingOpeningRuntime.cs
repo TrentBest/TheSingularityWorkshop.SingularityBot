@@ -63,6 +63,7 @@ public sealed class ZerglingOpeningRuntime
     }
 
     public bool IsReady => _state is OpeningState.Producing or OpeningState.Complete;
+    public bool IsComplete => _state == OpeningState.Complete;
     public string State => _state.ToString();
     public int PlacementAttempts => _placementAttempts;
 

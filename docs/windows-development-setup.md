@@ -172,12 +172,14 @@ Run the first match as a systems and behavior smoke test. Compare subsequent mat
 
 ## FSM_API integration rule
 
-The bot references `TheSingularityWorkshop.FSM_API` version `1.0.13`. The integration must use its public contracts:
+SingularityBot development builds consume the `development` source checkout of FSM_API through a project reference. They do **not** consume the released `TheSingularityWorkshop.FSM_API` 1.0.13 package. Keep the source checkout and all other Workshop dependencies initialized by section 4.
 
-- Shared behavior definitions are built once with `FSM_API.Create.CreateFiniteStateMachine(...)` and finalized with `BuildDefinition()`.
-- Each live entity supplies its own POCO implementing `IStateContext`; the SC2 protocol types stay outside those contexts.
-- Live instances are created with `FSM_API.Create.CreateInstance(...)` and retained as `FSMHandle` references for lifecycle/state inspection.
-- The game observation loop performs one explicit `FSM_API.Interaction.Update(processingGroup)` pass per observation.
-- When an entity disappears, its context is invalidated and its handle is explicitly retired with `FSM_API.Interaction.DestroyInstance(handle)`. The API's invalid-context behavior remains a safety net, not a substitute for clear ownership.
+Use the current FSM_API facade for operations:
 
-Do not create a second custom FSM scheduler beside FSM_API. Keep strategy decisions in FSM definitions and domain contexts; keep SC2 observation normalization and action serialization in the adapter.
+- Add `using FSM_API;` and call `FsmApi.Create.CreateFiniteStateMachine(...)` to build shared behavior definitions.
+- Use `FsmApi.Create` for instance creation and other creation operations.
+- Perform one explicit `FsmApi.Interact.Update(processingGroup)` pass per game observation, and use `FsmApi.Interact` for interaction/lifecycle operations.
+- Retain `using TheSingularityWorkshop.FSM_API;` where implementation/runtime types such as `FSMHandle` and `IStateContext` are needed. The facade namespace does not replace the implementation namespace for those types.
+- Keep SC2 protocol types outside the domain contexts. When an entity disappears, invalidate its context and explicitly retire its handle; invalid-context behavior is a safety net, not a substitute for clear ownership.
+
+Do not create a second custom FSM scheduler beside FSM_API. Keep strategy decisions in FSM definitions and domain contexts; keep SC2 observation normalization and action serialization in the adapter. The released 1.x package API remains a separate compatibility surface; do not mix it with this development-source integration.

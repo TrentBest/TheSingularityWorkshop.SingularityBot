@@ -1,3 +1,4 @@
+using ShortApi = global::FSM_API.FsmApi;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -31,7 +32,7 @@ public sealed class ProductionPlanRuntime : IDisposable
 
         var context = new ProductionStepContext(definition, _emit);
         context.SetDependencyResolver(() => AreDependenciesComplete(definition));
-        var handle = FSM_API.Create.CreateInstance(
+        var handle = ShortApi.Create.CreateInstance(
             ProductionBehaviorCatalog.ProductionStepFsm,
             context,
             UnitBehaviorCatalog.ProductionProcessingGroup);
@@ -82,12 +83,12 @@ public sealed class ProductionPlanRuntime : IDisposable
     }
 
     public void Update() =>
-        FSM_API.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        ShortApi.Interact.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
     public void Dispose()
     {
         foreach (var step in _steps.Values)
-            FSM_API.Interaction.DestroyInstance(step.Handle);
+            ShortApi.Interact.DestroyInstance(step.Handle);
         _steps.Clear();
     }
 }

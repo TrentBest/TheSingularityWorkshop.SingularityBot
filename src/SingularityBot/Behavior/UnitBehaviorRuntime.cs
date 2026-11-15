@@ -1,4 +1,4 @@
-using ShortApi = global::FSM_API.FsmApi;
+using FsmApi = global::FSM_API.FsmApi;
 #nullable enable annotations
 
 using SingularityBot.Observation;
@@ -66,7 +66,7 @@ public sealed class UnitBehaviorRuntime
     private static void AttachHandle(UnitBehaviorContext context, string fsmName, string processingGroup)
     {
         if (context.HasCapability(fsmName)) return;
-        var handle = ShortApi.Create.CreateInstance(fsmName, context, processingGroup);
+        var handle = FsmApi.Create.CreateInstance(fsmName, context, processingGroup);
         context.OwnHandle(fsmName, handle);
     }
 
@@ -206,7 +206,7 @@ public sealed class UnitBehaviorRuntime
     {
         if (string.IsNullOrWhiteSpace(processingGroup))
             throw new ArgumentException("A processing group is required.", nameof(processingGroup));
-        ShortApi.Interact.Update(processingGroup);
+        FsmApi.Interact.Update(processingGroup);
     }
 
     public void EndFrame() => _activeEmit = null;

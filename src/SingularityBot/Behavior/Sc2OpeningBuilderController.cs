@@ -1,4 +1,4 @@
-using ShortApi = global::FSM_API.FsmApi;
+using FsmApi = global::FSM_API.FsmApi;
 using SC2APIProtocol;
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
@@ -57,7 +57,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     {
         _movementProcessingGroup = $"{MovementProcessingGroup}.{System.Threading.Interlocked.Increment(ref _nextMovementGroupId)}";
         EnsureMovementDefinition(_movementProcessingGroup);
-        _movementHandle = ShortApi.Create.CreateInstance(MovementFsmName, this, _movementProcessingGroup);
+        _movementHandle = FsmApi.Create.CreateInstance(MovementFsmName, this, _movementProcessingGroup);
     }
 
     public ulong? BuilderTag => _builderTag;
@@ -76,10 +76,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
     private static void EnsureMovementDefinition(string processingGroup)
     {
-        if (ShortApi.Interact.Exists(MovementFsmName, processingGroup))
+        if (FsmApi.Interact.Exists(MovementFsmName, processingGroup))
             return;
 
-        ShortApi.Create.CreateFiniteStateMachine(
+        FsmApi.Create.CreateFiniteStateMachine(
                 MovementFsmName,
                 processRate: -1,
                 processingGroup: processingGroup)
@@ -140,7 +140,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         if (MovementState == Moving && HasMoveRetryElapsed(this))
             _movementHandle.TransitionTo(MovementIdle);
 
-        ShortApi.Interact.Update(_movementProcessingGroup);
+        FsmApi.Interact.Update(_movementProcessingGroup);
         _moveSubmissionRequested = false;
         _moveAccepted = false;
         _moveRejected = false;
@@ -151,7 +151,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public void Dispose()
     {
         IsValid = false;
-        ShortApi.Interact.DestroyInstance(_movementHandle);
+        FsmApi.Interact.DestroyInstance(_movementHandle);
         _ownedBuildJobs.Clear();
     }
 

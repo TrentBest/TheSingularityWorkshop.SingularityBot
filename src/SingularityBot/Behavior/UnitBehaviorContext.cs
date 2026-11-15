@@ -1,4 +1,4 @@
-using ShortApi = global::FSM_API.FsmApi;
+using FsmApi = global::FSM_API.FsmApi;
 #nullable enable annotations
 
 using SingularityBot.Observation;
@@ -133,7 +133,7 @@ public sealed class UnitBehaviorContext : IStateContext
     internal void DestroyOwnedHandles()
     {
         foreach (var handle in _ownedHandles.Values)
-            ShortApi.Interact.DestroyInstance(handle);
+            FsmApi.Interact.DestroyInstance(handle);
         _ownedHandles.Clear();
     }
 

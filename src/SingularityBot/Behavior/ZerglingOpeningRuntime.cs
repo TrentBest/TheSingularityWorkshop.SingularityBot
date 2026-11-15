@@ -183,12 +183,12 @@ public sealed class ZerglingOpeningRuntime
 
         // Select the globally closest eligible Drone-to-town-hall pair. This is
         // independent of observation ordering and includes Hatchery, Lair, and Hive.
-        var nearestPair = (from drone in eligibleDrones
+        var nearestPair = (from candidateDrone in eligibleDrones
                            from townHall in townHalls
-                           let dx = drone.PositionX - townHall.PositionX
-                           let dy = drone.PositionY - townHall.PositionY
-                           orderby (dx * dx) + (dy * dy), drone.Tag, townHall.Tag
-                           select (Drone: drone, TownHall: townHall)).First();
+                           let dx = candidateDrone.PositionX - townHall.PositionX
+                           let dy = candidateDrone.PositionY - townHall.PositionY
+                           orderby (dx * dx) + (dy * dy), candidateDrone.Tag, townHall.Tag
+                           select (Drone: candidateDrone, TownHall: townHall)).First();
         var drone = nearestPair.Drone;
         var hatchery = nearestPair.TownHall;
         _builderTag = drone.Tag;

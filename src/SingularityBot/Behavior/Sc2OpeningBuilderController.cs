@@ -1,3 +1,4 @@
+using ShortApi = global::FSM_API.FsmApi;
 using SC2APIProtocol;
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
@@ -56,7 +57,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     {
         _movementProcessingGroup = $"{MovementProcessingGroup}.{System.Threading.Interlocked.Increment(ref _nextMovementGroupId)}";
         EnsureMovementDefinition(_movementProcessingGroup);
-        _movementHandle = FSM_API.Create.CreateInstance(MovementFsmName, this, _movementProcessingGroup);
+        _movementHandle = ShortApi.Create.CreateInstance(MovementFsmName, this, _movementProcessingGroup);
     }
 
     public ulong? BuilderTag => _builderTag;
@@ -75,10 +76,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
     private static void EnsureMovementDefinition(string processingGroup)
     {
-        if (FSM_API.Interaction.Exists(MovementFsmName, processingGroup))
+        if (ShortApi.Interact.Exists(MovementFsmName, processingGroup))
             return;
 
-        FSM_API.Create.CreateFiniteStateMachine(
+        ShortApi.Create.CreateFiniteStateMachine(
                 MovementFsmName,
                 processRate: -1,
                 processingGroup: processingGroup)
@@ -139,7 +140,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         if (MovementState == Moving && HasMoveRetryElapsed(this))
             _movementHandle.TransitionTo(MovementIdle);
 
-        FSM_API.Interaction.Update(_movementProcessingGroup);
+        ShortApi.Interact.Update(_movementProcessingGroup);
         _moveSubmissionRequested = false;
         _moveAccepted = false;
         _moveRejected = false;
@@ -150,7 +151,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public void Dispose()
     {
         IsValid = false;
-        FSM_API.Interaction.DestroyInstance(_movementHandle);
+        ShortApi.Interact.DestroyInstance(_movementHandle);
         _ownedBuildJobs.Clear();
     }
 

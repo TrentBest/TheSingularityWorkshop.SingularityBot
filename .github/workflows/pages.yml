@@ -20,25 +20,30 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Prepare Pages content
-        run: |
-          mkdir -p _site
-          cp -R docs/. _site/
-          mkdir -p _site/strategies
-          cp strategies/*.json _site/strategies/
-          mkdir -p _site/military-plans
-          cp military-plans/*.json _site/military-plans/
-          touch _site/.nojekyll
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
 
-      - name: Include strategy and military schemas
+      - name: Stage documentation and reference artifacts
         run: |
-          mkdir -p _site/schemas
-          cp schemas/*.json _site/schemas/
+          mkdir -p _pages
+          cp -R docs/. _pages/
+          mkdir -p _pages/strategies
+          cp strategies/*.json _pages/strategies/
+          mkdir -p _pages/military-plans
+          cp military-plans/*.json _pages/military-plans/
+          mkdir -p _pages/schemas
+          cp schemas/*.json _pages/schemas/
+
+      - name: Build Markdown documentation site
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: _pages
+          destination: ./_site
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: ./_site
 
   deploy:
     environment:

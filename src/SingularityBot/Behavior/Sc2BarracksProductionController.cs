@@ -15,6 +15,9 @@ public sealed class Sc2BarracksProductionController
 
     public ulong? PendingProducerTag => _pendingBarracksTag;
 
+    /// <summary>Clears producer correlation when the owning match lifecycle ends or restarts.</summary>
+    public void Reset() => ClearPending();
+
     public SC2APIProtocol.Action TryCreateMarineTrainingAction(
         NormalizedObservation observation,
         Sc2GameDataCatalog gameData,

@@ -392,6 +392,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         // A bot instance may be reused by a host. Never carry a query assembled
         // for the previous match into the next match's callback stream.
         _pendingQuery = null;
+        _barracksProduction.Reset();
         _workerAssignments.Clear();
         _currentWorkerAssignmentGenerations.Clear();
         if (_writeDiagnostics)
@@ -1949,6 +1950,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _openingBuilder.Dispose();
         _supplyDepotExpansion.Dispose();
         _thirdSupplyDepot.Dispose();
+        _barracksProduction.Reset();
         _buildJobs.Clear();
         _pendingQuery = null;
         _workerAssignments.Clear();

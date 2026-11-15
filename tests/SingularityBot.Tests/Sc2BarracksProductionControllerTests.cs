@@ -123,6 +123,29 @@ public sealed class Sc2BarracksProductionControllerTests
         jobs.Clear();
     }
 
+    [Fact]
+    public void ResetsPendingProducerCorrelationAcrossMatchLifecycle()
+    {
+        var controller = new Sc2BarracksProductionController();
+        var jobs = new BuildJobRuntime();
+        var units = new[] { Fact(100, "Barracks"), Fact(200, "Barracks") };
+
+        Assert.NotNull(controller.TryCreateMarineTrainingAction(
+            Snapshot(50, 10, 15, units), GameData(), jobs));
+        Assert.Equal(200UL, controller.PendingProducerTag);
+
+        controller.Reset();
+        Assert.Null(controller.PendingProducerTag);
+
+        // The owning bot clears match-scoped jobs after resetting the adapter.
+        jobs.Clear();
+        Assert.NotNull(controller.TryCreateMarineTrainingAction(
+            SnapshotAt(5, 50, 10, 15, units), GameData(), jobs));
+        Assert.Equal(200UL, controller.PendingProducerTag);
+        Assert.Single(jobs.Jobs);
+        jobs.Clear();
+    }
+
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();

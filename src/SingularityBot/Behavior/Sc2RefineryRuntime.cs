@@ -1,4 +1,4 @@
-using ShortApi = global::FSM_API.FsmApi;
+using FsmApi = global::FSM_API.FsmApi;
 #nullable enable annotations
 
 using SC2APIProtocol;
@@ -125,7 +125,7 @@ public sealed class Sc2RefineryRuntime
     public static void RegisterDefinition()
     {
         if (_registered) return;
-        ShortApi.Create.CreateFiniteStateMachine(FsmName, processRate: -1,
+        FsmApi.Create.CreateFiniteStateMachine(FsmName, processRate: -1,
                 processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
             .State("Available", null, null, null)
             .State("Building", null, null, null)
@@ -325,7 +325,7 @@ public sealed class Sc2RefineryRuntime
         if (_sites.TryGetValue(tag, out var existing)) return existing;
         var site = new RefinerySiteContext(tag, x, y, gameLoop);
         _sites.Add(tag, site);
-        _handles.Add(tag, ShortApi.Create.CreateInstance(FsmName, site, UnitBehaviorCatalog.ProductionProcessingGroup));
+        _handles.Add(tag, FsmApi.Create.CreateInstance(FsmName, site, UnitBehaviorCatalog.ProductionProcessingGroup));
         return site;
     }
 

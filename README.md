@@ -26,7 +26,7 @@ Prove a sustainable Terran economy and production loop, then prove its tactical 
 7. Send the first Marine to the farthest safe, non-enemy sector adjacent to our starting sector to watch for cannon rushes, proxies, worker rushes and other cheese; keep it separate from the first four-Marine pressure squad.
 8. Measure economy, production, movement, combat and outcomes from game-loop diagnostics; replay and compare controlled matches.
 
-The first worker, construction and production stages have progressed beyond the original single-Depot prototype and have controller regression coverage. The current `development` head also has a regression test for the four-Marine rendezvous gate. These are implementation and automated-test facts—not proof that SC2 pathing, ramp safety, the complete four-Barracks economy, or the full opening has succeeded in a live match. The latest implementation commit with recorded successful GitHub Actions checks is [`b9bbc5f460309484418b5398ed8cf65254316340`](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/commit/b9bbc5f460309484418b5398ed8cf65254316340) (Build #1358 and Sith Policy #1583). Subsequent documentation/runner-help alignment commits are newer; check their workflow results against the exact current `development` head before calling that head CI-verified. The Pages artifact build previously passed while the separate GitHub Pages deploy job failed; documentation deployment is not counted as successful. Consult [the roadmap](docs/roadmap.md) and [CiAi evidence workflow](docs/ciai-evidence.md) for the exact proof boundaries.
+The first worker, construction and production stages have progressed beyond the original single-Depot prototype and have controller regression coverage. The four-Marine rendezvous gate also has regression coverage. These are implementation and automated-test facts—not proof that the opening has succeeded in a live match. The current source has an outstanding compile blocker: Build #1606 reported duplicate definitions of `SingularityBot.Behavior.GamePhase` (`CS0101`) at commit `1fd0aed45c6272eea5d4b7b561b879a7fd441276`. Documentation commits are now updating the project guide and Pages build; their exact-head CI runs must complete before the current branch is called CI-verified. No live SC2 match/replay has established full-opening success or ladder readiness. See the [documentation home](docs/index.md), [roadmap](docs/roadmap.md), and [CiAi evidence workflow](docs/ciai-evidence.md) for the current proof boundaries.
 
 ## Architecture at a glance
 
@@ -46,6 +46,8 @@ The first worker, construction and production stages have progressed beyond the 
 The runtime is authoritative. GUI is an authoring and inspection client; it does not contain a second bot engine. SC2 protocol types stay at the adapter boundary. FSM_API remains game-independent. CiAi observes and verifies CI-provider evidence; GitHub Actions remains the build/test executor. Neither a passing CI run nor an LLM assessment authorizes publication, deployment or release.
 
 ## Documentation
+
+Start with the [SingularityBot documentation home](docs/index.md) for current state, architecture, developer paths and evidence boundaries.
 
 - [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](docs/bot-definition-v1.md)
 

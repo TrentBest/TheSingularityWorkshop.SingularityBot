@@ -402,15 +402,18 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
         if (_passiveBaseline || _writeDiagnostics)
             _baselineRecorder.Start();
-        if (_writeDiagnostics)
-        {
-            _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
-            _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
-        }
         _constructionSiteSafety.Reset();
         _playerId = playerId;
         var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
         _actualRace = playerInfo?.RaceActual ?? Race.Random;
+        _lastUnitSnapshotGameLoop = 0;
+        if (_writeDiagnostics)
+        {
+            Console.WriteLine($"[Diagnostics] Capture directory: {Sc2Diagnostics.OutputDirectory} (override with SINGULARITYBOT_DIAGNOSTICS_DIR).");
+            if (_actualRace == Race.Terran)
+                _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
+            _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
+        }
         _unsupportedRaceLogged = false;
         _activeRaceModule = _raceModules.TryResolve(_actualRace, out var selectedRaceModule)
             ? selectedRaceModule
@@ -597,6 +600,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 Console.WriteLine($"[RaceComposition] FAIL-CLOSED: race={_actualRace}, module={moduleId}, botMode={_activeMode?.Id ?? _definition.ModeId}, modeExecutable={_activeMode?.CanIssueGameplayActions.ToString() ?? "false"}; no gameplay actions will be issued.");
                 _unsupportedRaceLogged = true;
             }
+            if (_writeDiagnostics)
+                RecordFailClosedRaceFrame(observation);
             return Array.Empty<SC2APIProtocol.Action>();
         }
 
@@ -1931,6 +1936,41 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             Console.WriteLine($"[Spatial] First index: friendly={intelligence.VisibleFriendlyCount}, enemy={intelligence.VisibleEnemyCount}, remembered-enemy={intelligence.RememberedEnemyCount}, known={intelligence.KnownContactCount}.");
             _spatialDiagnosticsReported = true;
+        }
+    }
+
+    private void RecordFailClosedRaceFrame(ResponseObservation observation)
+    {
+        var normalized = Sc2ObservationNormalizer.Normalize(
+            observation, _playerId, _gameData.UnitNames, _gameData.BuffNames);
+        _lastGameLoop = normalized.GameLoop;
+        var moduleId = _activeRaceModule?.Id ?? "unregistered";
+        var modeId = _activeMode?.Id ?? _definition.ModeId;
+        var controllerState = $"FailClosed:{moduleId}:{_activeRaceModule?.ExecutionMode.ToString() ?? "NoModule"}";
+
+        _binaryTrace.RecordFrame(
+            normalized.GameLoop, normalized.Minerals,
+            normalized.FoodUsed, normalized.FoodCap,
+            normalized.Units.Count, actionCount: 0);
+        _binaryTrace.RecordEconomySnapshot(normalized, activeBuildJobs: 0);
+        _binaryTrace.RecordRaceSnapshot(
+            normalized, _actualRace, modeId, controllerState, proposedActionCount: 0);
+        _binaryTrace.RecordDecision(
+            normalized.GameLoop, "GameplayFailClosed",
+            $"race={_actualRace};module={moduleId};mode={modeId};reason=NoExecutableRaceAdapter");
+        if (observation is not null)
+        {
+            foreach (var error in observation.ActionErrors)
+                _binaryTrace.RecordDecision(
+                    normalized.GameLoop, "ActionError",
+                    $"unit={error.UnitTag};ability={error.AbilityId};result={error.Result}");
+        }
+
+        if (_lastUnitSnapshotGameLoop == 0 ||
+            normalized.GameLoop >= _lastUnitSnapshotGameLoop + 8)
+        {
+            _binaryTrace.RecordUnitSnapshots(normalized);
+            _lastUnitSnapshotGameLoop = normalized.GameLoop;
         }
     }
 

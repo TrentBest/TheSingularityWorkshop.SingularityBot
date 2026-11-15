@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+
 #nullable enable
 
 using SingularityBot.Observation;
@@ -230,13 +230,15 @@ public sealed class BuildingBehaviorContext : IStateContext
     public IReadOnlyList<UnitOrderObservationFacts> ObservedOrders { get; private set; } =
         Array.Empty<UnitOrderObservationFacts>();
 
+    public int Context_ID => throw new NotImplementedException();
+
     private string CurrentState(string name) =>
         _handles.TryGetValue(name, out var handle) ? handle.CurrentState : "Unknown";
 
     internal void DestroyHandles()
     {
         foreach (var handle in _handles.Values)
-            FsmApi.Interact.DestroyInstance(handle);
+            FsmApi.Interaction.DestroyInstance(handle);
         _handles.Clear();
         IsValid = false;
     }
@@ -277,10 +279,10 @@ public sealed class BuildingBehaviorRuntime
         _designatedCommandCenterArea = null;
 
     public void UpdateLifecycle() =>
-        FsmApi.Interact.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.DataSyncProcessingGroup);
 
     public void UpdateActivityAndAccess() =>
-        FsmApi.Interact.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
     public void Update()
     {
@@ -290,7 +292,7 @@ public sealed class BuildingBehaviorRuntime
 
     public static void RegisterDefinitions()
     {
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.LifecycleFsm, UnitBehaviorCatalog.DataSyncProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.LifecycleFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.DataSyncProcessingGroup)
                 .State("UnderConstruction", null, null, null)
@@ -298,7 +300,7 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("UnderConstruction", "Operational", IsOperational)
                 .WithInitialState("UnderConstruction").BuildDefinition();
 
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.ProductionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.ProductionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ProductionFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Idle", null, null, null)
@@ -307,7 +309,7 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Producing", "Idle", IsNotProducing)
                 .WithInitialState("Idle").BuildDefinition();
 
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.ResearchFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.ResearchFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ResearchFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Idle", null, null, null)
@@ -316,7 +318,7 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Researching", "Idle", IsNotResearching)
                 .WithInitialState("Idle").BuildDefinition();
 
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.ThreatFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.ThreatFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.ThreatFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Clear", null, null, null)
@@ -336,7 +338,7 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Unobserved", "Clear", HasVisibleEnemyOutside10)
                 .WithInitialState("Clear").BuildDefinition();
 
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.DepotAccessFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.DepotAccessFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Assess", null, null, null)
@@ -348,7 +350,7 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Raised", "Lowered", ShouldLowerDepot)
                 .WithInitialState("Assess").BuildDefinition();
 
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.TownHallUpgradeFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallUpgradeFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("WaitingForPrerequisites", null, null, null)
@@ -364,7 +366,7 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("Upgrading", "UpgradeReady", UpgradeOrderNoLongerObserved)
                 .WithInitialState("WaitingForPrerequisites").BuildDefinition();
 
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.OrbitalScanFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.OrbitalScanFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.OrbitalScanFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Idle", null, null, null)
@@ -376,7 +378,7 @@ public sealed class BuildingBehaviorRuntime
                 .Transition("AwaitingEvidence", "Ready", CanRetryScan)
                 .WithInitialState("Idle").BuildDefinition();
 
-        if (!FsmApi.Interact.Exists(BuildingBehaviorCatalog.TownHallExpansionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (!FsmApi.Interaction.Exists(BuildingBehaviorCatalog.TownHallExpansionFsm, UnitBehaviorCatalog.ProductionProcessingGroup))
             FsmApi.Create.CreateFiniteStateMachine(BuildingBehaviorCatalog.TownHallExpansionFsm, processRate: -1,
                     processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
                 .State("Waiting", null, null, null)

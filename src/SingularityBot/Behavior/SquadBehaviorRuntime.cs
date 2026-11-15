@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 #nullable enable annotations
 
 using TheSingularityWorkshop.FSM_API;
@@ -106,7 +106,7 @@ public sealed class SquadBehaviorRuntime
         return true;
     }
 
-    public void Update() => FsmApi.Interact.Update(UnitBehaviorCatalog.StrategyProcessingGroup);
+    public void Update() => FsmApi.Interaction.Update(UnitBehaviorCatalog.StrategyProcessingGroup);
 
     public void Clear()
     {
@@ -149,6 +149,8 @@ public sealed class SquadContext : IStateContext
     public bool IsValid { get; set; }
     public string LifecycleState => _ownsHandle ? _handle.CurrentState : _terminalLifecycleState;
 
+    public int Context_ID => throw new NotImplementedException();
+
     public bool SetObjective(string objectiveId)
     {
         if (!IsValid || IsDisbanding || string.IsNullOrWhiteSpace(objectiveId))
@@ -180,7 +182,7 @@ public sealed class SquadContext : IStateContext
     {
         if (!_ownsHandle) return;
         _terminalLifecycleState = _handle.CurrentState;
-        FsmApi.Interact.DestroyInstance(_handle);
+        FsmApi.Interaction.DestroyInstance(_handle);
         _ownsHandle = false;
     }
 }

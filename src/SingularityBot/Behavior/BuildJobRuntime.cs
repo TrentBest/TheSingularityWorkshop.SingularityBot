@@ -1,4 +1,3 @@
-using FsmApi = global::FSM_API.FsmApi;
 #nullable enable
 
 using System.Diagnostics.CodeAnalysis;
@@ -44,6 +43,8 @@ public sealed class BuildJobContext : IStateContext
     public bool IsCompleted => CurrentState == "Completed";
     public bool IsFailed => CurrentState == "Failed";
     public string FailureReason { get; private set; } = string.Empty;
+
+    public int Context_ID => throw new NotImplementedException();
 
     internal void AttachHandle(FSMHandle handle) =>
         _handle = handle ?? throw new ArgumentNullException(nameof(handle));
@@ -116,7 +117,7 @@ public sealed class BuildJobRuntime
 
     public static void RegisterDefinition()
     {
-        if (FsmApi.Interact.Exists(FsmName, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (FsmApi.Interaction.Exists(FsmName, UnitBehaviorCatalog.ProductionProcessingGroup))
             return;
 
         FsmApi.Create.CreateFiniteStateMachine(
@@ -372,7 +373,7 @@ public sealed class BuildJobRuntime
 
     /// <summary>Advances all build-job lifecycle FSMs in the production processing group.</summary>
     public void Update() =>
-        FsmApi.Interact.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
     public bool Retire(long id)
     {
@@ -380,7 +381,7 @@ public sealed class BuildJobRuntime
         job.IsValid = false;
         _excludedResultTags.Remove(id);
         _excludedUnitTags.Remove(id);
-        if (_handles.Remove(id, out var handle)) FsmApi.Interact.DestroyInstance(handle);
+        if (_handles.Remove(id, out var handle)) FsmApi.Interaction.DestroyInstance(handle);
         return true;
     }
 

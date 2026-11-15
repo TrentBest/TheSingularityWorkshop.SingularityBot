@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+
 using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
 
@@ -33,6 +33,8 @@ public sealed class GameStateContext : IStateContext
     public int FriendlyBaseCount { get; private set; }
     public bool HasAdvancedTech { get; private set; }
     public bool HasLateGameTech { get; private set; }
+
+    public int Context_ID => throw new NotImplementedException();
 
     public void Apply(NormalizedObservation observation)
     {
@@ -136,7 +138,7 @@ public static class AdvisorWorkScheduler
     public static void Advance(GamePhase phase)
     {
         foreach (var group in GetFrameSchedule(phase))
-            FsmApi.Interact.Update(group);
+            FsmApi.Interaction.Update(group);
     }
 }
 

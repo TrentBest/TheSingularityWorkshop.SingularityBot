@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;

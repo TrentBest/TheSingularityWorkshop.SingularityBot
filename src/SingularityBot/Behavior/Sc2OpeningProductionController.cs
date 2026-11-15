@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 using SC2APIProtocol;
 using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
@@ -55,7 +55,7 @@ public sealed class Sc2OpeningProductionController : IDisposable
             gameData.ScvTrainAbilityId is > 0 &&
             commandCenters.Any(center => center.Orders.Any(order =>
                 order.AbilityId == gameData.ScvTrainAbilityId.Value)));
-        FsmApi.Interact.Update(ProcessingGroup);
+        FsmApi.Interaction.Update(ProcessingGroup);
 
         if (_handle.CurrentState != Ready ||
             gameData.ScvTrainAbilityId is not > 0 ||
@@ -88,7 +88,7 @@ public sealed class Sc2OpeningProductionController : IDisposable
         };
 
         _context.MarkSubmitted(observation.GameLoop);
-        FsmApi.Interact.Update(ProcessingGroup);
+        FsmApi.Interaction.Update(ProcessingGroup);
         return action;
     }
 
@@ -97,7 +97,7 @@ public sealed class Sc2OpeningProductionController : IDisposable
         if (result is null || result != ActionResult.Success)
         {
             _context.MarkRejected();
-            FsmApi.Interact.Update(ProcessingGroup);
+            FsmApi.Interaction.Update(ProcessingGroup);
             _context.ClearRejection();
         }
     }
@@ -105,12 +105,12 @@ public sealed class Sc2OpeningProductionController : IDisposable
     public void Dispose()
     {
         _context.IsValid = false;
-        FsmApi.Interact.DestroyInstance(_handle);
+        FsmApi.Interaction.DestroyInstance(_handle);
     }
 
     private static void EnsureDefinition()
     {
-        if (FsmApi.Interact.Exists(FsmName, ProcessingGroup))
+        if (FsmApi.Interaction.Exists(FsmName, ProcessingGroup))
             return;
 
         FsmApi.Create.CreateFiniteStateMachine(
@@ -144,6 +144,8 @@ public sealed class Sc2OpeningProductionController : IDisposable
         public bool SubmissionRequested { get; private set; }
         public bool HasObservedTrainingOrder { get; private set; }
         public bool ActionRejected { get; private set; }
+
+        public int Context_ID => throw new NotImplementedException();
 
         public void ApplyObservation(uint gameLoop, bool hasObservedTrainingOrder)
         {

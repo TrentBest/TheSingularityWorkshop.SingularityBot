@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 using System.Collections.Generic;
 using Google.Protobuf;
 using System.Text.Json;
@@ -1258,7 +1258,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             executive.Advance(ExecutiveStage.UnitAi);
             foreach (var pg in ProcessGroupsThisFrame)
             {
-                FsmApi.Interact.Update(pg);
+                FsmApi.Interaction.Update(pg);
                 if (pg == UnitBehaviorCatalog.StrategyProcessingGroup)
                 {
                     AdvisorWorkScheduler.Advance(_gameState.Phase);

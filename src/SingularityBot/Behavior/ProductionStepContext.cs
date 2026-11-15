@@ -46,6 +46,8 @@ public sealed class ProductionStepContext : IStateContext
         DependenciesSatisfied &&
         !RequestPending;
 
+    public int Context_ID => throw new NotImplementedException();
+
     internal void SetDependencyResolver(Func<bool> resolver) =>
         _dependenciesSatisfied = resolver ?? throw new ArgumentNullException(nameof(resolver));
 

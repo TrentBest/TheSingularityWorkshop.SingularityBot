@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 #nullable enable annotations
 
 using SingularityBot.Observation;
@@ -100,6 +100,8 @@ public sealed class UnitBehaviorContext : IStateContext
     public IReadOnlyDictionary<string, string> CurrentStates =>
         _ownedHandles.ToDictionary(pair => pair.Key, pair => pair.Value.CurrentState, StringComparer.Ordinal);
 
+    public int Context_ID => throw new NotImplementedException();
+
     public bool TryGetState(string fsmName, out string state)
     {
         if (_ownedHandles.TryGetValue(fsmName, out var handle))
@@ -133,7 +135,7 @@ public sealed class UnitBehaviorContext : IStateContext
     internal void DestroyOwnedHandles()
     {
         foreach (var handle in _ownedHandles.Values)
-            FsmApi.Interact.DestroyInstance(handle);
+            FsmApi.Interaction.DestroyInstance(handle);
         _ownedHandles.Clear();
     }
 

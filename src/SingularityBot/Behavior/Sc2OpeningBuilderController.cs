@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 using SC2APIProtocol;
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
@@ -74,9 +74,11 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
 
+    public int Context_ID => throw new NotImplementedException();
+
     private static void EnsureMovementDefinition(string processingGroup)
     {
-        if (FsmApi.Interact.Exists(MovementFsmName, processingGroup))
+        if (FsmApi.Interaction.Exists(MovementFsmName, processingGroup))
             return;
 
         FsmApi.Create.CreateFiniteStateMachine(
@@ -140,7 +142,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         if (MovementState == Moving && HasMoveRetryElapsed(this))
             _movementHandle.TransitionTo(MovementIdle);
 
-        FsmApi.Interact.Update(_movementProcessingGroup);
+        FsmApi.Interaction.Update(_movementProcessingGroup);
         _moveSubmissionRequested = false;
         _moveAccepted = false;
         _moveRejected = false;
@@ -151,7 +153,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public void Dispose()
     {
         IsValid = false;
-        FsmApi.Interact.DestroyInstance(_movementHandle);
+        FsmApi.Interaction.DestroyInstance(_movementHandle);
         _ownedBuildJobs.Clear();
     }
 

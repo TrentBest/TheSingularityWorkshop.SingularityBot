@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 #nullable enable annotations
 
 using SingularityBot.Observation;
@@ -206,7 +206,7 @@ public sealed class UnitBehaviorRuntime
     {
         if (string.IsNullOrWhiteSpace(processingGroup))
             throw new ArgumentException("A processing group is required.", nameof(processingGroup));
-        FsmApi.Interact.Update(processingGroup);
+        FsmApi.Interaction.Update(processingGroup);
     }
 
     public void EndFrame() => _activeEmit = null;

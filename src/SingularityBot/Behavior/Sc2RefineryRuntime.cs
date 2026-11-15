@@ -1,4 +1,4 @@
-using FsmApi = global::FSM_API.FsmApi;
+ 
 #nullable enable annotations
 
 using SC2APIProtocol;
@@ -42,6 +42,8 @@ public sealed class RefinerySiteContext : IStateContext
     public bool IsDestroyed { get; private set; }
     public ulong? BuilderTag { get; private set; }
     public HashSet<ulong> GasWorkerTags { get; } = new();
+
+    public int Context_ID => throw new NotImplementedException();
 
     public void BeginFrame() => IsGeyserVisible = false;
 

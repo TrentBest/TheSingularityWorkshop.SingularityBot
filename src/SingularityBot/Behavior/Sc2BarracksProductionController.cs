@@ -44,7 +44,7 @@ public sealed class Sc2BarracksProductionController
         // request is still pending, executing, or terminal.
         if (_pendingBarracksTag is ulong pendingTag)
         {
-            var pendingProducer = barracks.Skip(1).FirstOrDefault(unit => unit.Tag == pendingTag);
+            var pendingProducer = barracks.FirstOrDefault(unit => unit.Tag == pendingTag);
             BuildJobContext pendingJob = null;
             var hasJob = _pendingJobId is long id && buildJobs.TryGet(id, out pendingJob);
             if (hasJob && (pendingJob.IsExecuting || pendingJob.HasExecutionEvidence))

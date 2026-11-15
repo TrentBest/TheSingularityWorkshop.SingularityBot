@@ -124,6 +124,26 @@ public sealed class Sc2BarracksProductionControllerTests
     }
 
     [Fact]
+    public void KeepsPendingSecondaryProducerWhenOpeningBarracksIsDestroyed()
+    {
+        var controller = new Sc2BarracksProductionController();
+        var jobs = new BuildJobRuntime();
+        Assert.NotNull(controller.TryCreateMarineTrainingAction(Snapshot(50, 10, 15,
+            Fact(100, "Barracks"), Fact(200, "Barracks")), GameData(), jobs));
+        jobs.Update();
+
+        var afterOpeningBarracksLoss = new NormalizedObservation(
+            101, 1, new[] { Fact(200, "Barracks") }, new HashSet<ulong> { 100 })
+        { Minerals = 50, FoodUsed = 10, FoodCap = 15 };
+
+        Assert.Null(controller.TryCreateMarineTrainingAction(
+            afterOpeningBarracksLoss, GameData(), jobs));
+        Assert.Equal(200UL, controller.PendingProducerTag);
+        Assert.Equal(200UL, Assert.Single(jobs.Jobs).ProducerTag);
+        jobs.Clear();
+    }
+
+    [Fact]
     public void ResetsPendingProducerCorrelationAcrossMatchLifecycle()
     {
         var controller = new Sc2BarracksProductionController();

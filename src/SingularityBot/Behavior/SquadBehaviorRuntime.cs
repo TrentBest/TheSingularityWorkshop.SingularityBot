@@ -1,3 +1,4 @@
+using ShortApi = global::FSM_API.FsmApi;
 #nullable enable annotations
 
 using TheSingularityWorkshop.FSM_API;
@@ -39,7 +40,7 @@ public sealed class SquadBehaviorRuntime
             throw new InvalidOperationException($"Squad '{squadId}' already exists.");
 
         var squad = new SquadContext(squadId, role, objectiveId);
-        squad.OwnHandle(FSM_API.Create.CreateInstance(
+        squad.OwnHandle(ShortApi.Create.CreateInstance(
             SquadBehaviorCatalog.LifecycleFsm, squad, UnitBehaviorCatalog.StrategyProcessingGroup));
         _squads.Add(squadId, squad);
         return squad;
@@ -105,7 +106,7 @@ public sealed class SquadBehaviorRuntime
         return true;
     }
 
-    public void Update() => FSM_API.Interaction.Update(UnitBehaviorCatalog.StrategyProcessingGroup);
+    public void Update() => ShortApi.Interact.Update(UnitBehaviorCatalog.StrategyProcessingGroup);
 
     public void Clear()
     {
@@ -179,7 +180,7 @@ public sealed class SquadContext : IStateContext
     {
         if (!_ownsHandle) return;
         _terminalLifecycleState = _handle.CurrentState;
-        FSM_API.Interaction.DestroyInstance(_handle);
+        ShortApi.Interact.DestroyInstance(_handle);
         _ownsHandle = false;
     }
 }
@@ -203,7 +204,7 @@ public static class SquadBehaviorCatalog
 
     private static void RegisterDefinition()
     {
-        FSM_API.Create.CreateFiniteStateMachine(
+        ShortApi.Create.CreateFiniteStateMachine(
                 LifecycleFsm, processRate: -1, processingGroup: UnitBehaviorCatalog.StrategyProcessingGroup)
             .State("Forming", null, null, null)
             .State("Ready", null, null, null)

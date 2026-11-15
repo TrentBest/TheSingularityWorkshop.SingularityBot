@@ -164,6 +164,38 @@ internal sealed class Sc2BinaryEventRecorder : IDisposable
         Write(ActionResult, 0, index, abilityId, result, gameLoop);
     }
 
+    /// <summary>Records a race-neutral controller decision or external result.</summary>
+    public void RecordDecision(uint gameLoop, string eventName, string details)
+    {
+        if (string.IsNullOrWhiteSpace(eventName))
+            throw new ArgumentException("A diagnostic event name is required.", nameof(eventName));
+        Write(8, 0, 0, 0, $"event={eventName};{details}", gameLoop);
+    }
+
+    /// <summary>
+    /// Captures the race-specific unit and structure census alongside the
+    /// controller state. This keeps non-Terran execution observable as well.
+    /// </summary>
+    public void RecordRaceSnapshot(
+        NormalizedObservation observation,
+        SC2APIProtocol.Race race,
+        string modeId,
+        string controllerState,
+        int proposedActionCount)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        Write(9, 0, (long)race, proposedActionCount,
+            $"race={race};mode={modeId};controller={controllerState};" +
+            $"probes={Count(observation, "Probe")};drones={Count(observation, "Drone")};" +
+            $"overlords={Count(observation, "Overlord")};pylons={Count(observation, "Pylon")};" +
+            $"gateways={Count(observation, "Gateway")};zealots={Count(observation, "Zealot")};" +
+            $"stalkers={Count(observation, "Stalker")};nexuses={Count(observation, "Nexus")};" +
+            $"larvae={Count(observation, "Larva")};hatcheries={Count(observation, "Hatchery")};" +
+            $"spawningPools={Count(observation, "SpawningPool")};zerglings={Count(observation, "Zergling")};" +
+            $"scvs={Count(observation, "SCV")};marines={Count(observation, "Marine")}",
+            observation.GameLoop);
+    }
+
     public void RecordEconomySnapshot(NormalizedObservation observation, int activeBuildJobs)
     {
         Write(EconomySnapshot, 0, observation.Minerals, observation.Vespene,

@@ -3,6 +3,7 @@ using ShortApi = global::FSM_API.FsmApi;
 
 using SC2APIProtocol;
 using SingularityBot.Observation;
+using FSM_API;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;

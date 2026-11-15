@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: "17 4 * * *"
   workflow_dispatch:
+    inputs:
+      allow_branch_deletion:
+        description: 'Explicitly authorize archival and deletion of non-permanent branches for this run.'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -33,6 +39,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          ALLOW_BRANCH_DELETION: ${{ inputs.allow_branch_deletion || false }}
         run: |
           set -euo pipefail
           mkdir -p assets
@@ -47,10 +54,7 @@ jobs:
 
             # Enforce the two-branch policy from an authoritative branch only.
             # Preserve every removed branch head as an immutable archive tag first.
-            if [[ "$GITHUB_REF" == "refs/heads/development" ||
-                  "$GITHUB_REF" == "refs/heads/master" ||
-                  "$GITHUB_EVENT_NAME" == "schedule" ||
-                  "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$ALLOW_BRANCH_DELETION" == "true" ]]; then
               open_pr_file="$(mktemp)"
               if gh api --paginate "repos/$GH_REPO/pulls?state=open&per_page=100" --jq '.[].head.ref' > "$open_pr_file"; then
                 for branch in "${branches[@]}"; do

@@ -2,9 +2,11 @@
 
 The shortest path to a bot that actually completes a local StarCraft II match remains the priority. Do not let editor polish, generalized strategy tooling, neural policy, ladder operations or additional races displace the first playable Terran economy.
 
-## Evidence status (2026-11-11)
+## Evidence status (2026-11-15)
 
-The runtime behavior baseline is `42f943e14fcc2d85fb3b83ec01ae0f5f74729010`; its [Build](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42977688888) and [Sith Policy](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42977688947) runs both succeeded, with 166 tests passed, 0 failed and 0 skipped. The subsequent documentation-only revision [`644dc6535936ec5b29b36b1c7bf905e48cb846f9`](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/commit/644dc6535936ec5b29b36b1c7bf905e48cb846f9) also passed its [Build](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42978689180) and [Sith Policy](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/42978689315) workflows. These are CI facts only. No live SC2 match was run as part of either CI execution.
+The historical 2026-11-11 baseline below remains useful as a dated test record, but it is not evidence for the current branch head. The latest reviewed source checkpoint, `1fd0aed45c6272eea5d4b7b561b879a7fd441276`, has successful Sith Policy #1847 but failed Build #1606 with compiler error `CS0101`: `SingularityBot.Behavior` already contains a definition for `GamePhase`. The duplicate definition is a source-level blocker and must be resolved before the branch can be considered build-green. See [Build #1606](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43686312041) and [Sith Policy #1847](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43686312056).
+
+Documentation updates are being committed after that source checkpoint. Their Build and Sith Policy workflows are separate exact-SHA checks and must finish successfully before the current `development` head is called CI-verified. The documentation Pages workflow is manual-only and has not been dispatched as part of this work. No live SC2 match/replay has been established by these CI runs.
 
 Evidence levels must remain distinct:
 
@@ -13,6 +15,7 @@ Evidence levels must remain distinct:
 3. **CI-verified** — the exact candidate SHA has complete, successful required workflow evidence, observable through [CiAi](ciai-evidence.md).
 4. **Match-verified** — a local SC2 match/replay demonstrates observed state transitions, action results, movement and arrival, and the intended outcome.
 5. **Release-authorized** — the owner explicitly authorizes promotion/publication/deployment for the exact candidate. CI or model output never supplies this authorization.
+
 ## 0A. Civilization identity and race dispatch
 
 - [x] Add a race-independent strategic-domain vocabulary and campaign-inspired leadership identities: Terran Admiral/Commanders, Zerg Overmind/Cerebrates, Protoss Conclave/Judicators.

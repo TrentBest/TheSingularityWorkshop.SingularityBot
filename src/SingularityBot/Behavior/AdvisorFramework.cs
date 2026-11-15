@@ -1,3 +1,4 @@
+using ShortApi = global::FSM_API.FsmApi;
 using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
 
@@ -129,13 +130,13 @@ public static class AdvisorWorkScheduler
     public static void RegisterProcessingGroups()
     {
         foreach (var domain in Domains)
-            FSM_API.Create.CreateProcessingGroup(GroupFor(domain));
+            ShortApi.Create.CreateProcessingGroup(GroupFor(domain));
     }
 
     public static void Advance(GamePhase phase)
     {
         foreach (var group in GetFrameSchedule(phase))
-            FSM_API.Interaction.Update(group);
+            ShortApi.Interact.Update(group);
     }
 }
 

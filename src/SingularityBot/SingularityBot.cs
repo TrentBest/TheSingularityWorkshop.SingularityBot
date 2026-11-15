@@ -1,4 +1,4 @@
-using ShortApi = global::FSM_API.FsmApi;
+using FsmApi = global::FSM_API.FsmApi;
 using System.Collections.Generic;
 using Google.Protobuf;
 using System.Text.Json;
@@ -519,7 +519,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         UnitBehaviorCatalog.Register();
         BuildingBehaviorRuntime.RegisterDefinitions();
-        ShortApi.Create.CreateInstance("SingularityBot.GameState", _gameState, UnitBehaviorCatalog.StrategyProcessingGroup);
+        FsmApi.Create.CreateInstance("SingularityBot.GameState", _gameState, UnitBehaviorCatalog.StrategyProcessingGroup);
         _behaviorCatalogRegistered = true;
 
         Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, smart={_gameData.SmartAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, rally-workers={_gameData.RallyWorkersAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}), move={_gameData.MoveAbilityId?.ToString() ?? "unavailable"}, build-Depot={_gameData.SupplyDepotBuildAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.SupplyDepotMineralCost}), build-Barracks={_gameData.BarracksBuildAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.BarracksMineralCost}), train-Marine={_gameData.MarineTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.MarineMineralCost}, supply={_gameData.MarineFoodRequired}).");
@@ -1258,7 +1258,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             executive.Advance(ExecutiveStage.UnitAi);
             foreach (var pg in ProcessGroupsThisFrame)
             {
-                ShortApi.Interact.Update(pg);
+                FsmApi.Interact.Update(pg);
                 if (pg == UnitBehaviorCatalog.StrategyProcessingGroup)
                 {
                     AdvisorWorkScheduler.Advance(_gameState.Phase);

@@ -1,6 +1,6 @@
 # Documentation site
 
-The documentation source lives in `docs/`. GitHub Pages is built from that Markdown source with Jekyll; the workflow stages the docs together with the strategy examples, military plans and JSON schemas before building the site.
+The documentation source lives in `docs/`. GitHub Pages is built from that Markdown source with Jekyll. `docs/_config.yml` enables relative Markdown links so links such as `architecture.md` resolve to their rendered pages. The workflow stages the docs together with the strategy examples, military plans and JSON schemas before building the site.
 
 ## Publishing boundary
 

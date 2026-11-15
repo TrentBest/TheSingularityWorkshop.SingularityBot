@@ -9,8 +9,18 @@ namespace SingularityBot.Behavior;
 /// <summary>Local destination and writers for captured SC2 diagnostic files.</summary>
 internal static class Sc2Diagnostics
 {
-    // Keep all local-run captures beside the existing extracted session records.
-    public const string OutputDirectory = @"C:\Users\TheSi\source\repos\TheSingularityWorkshop.SingularityBot\extracted";
+    // Prefer an explicit host-provided location; otherwise keep captures beside the bot executable.
+    // This avoids binding diagnostics to one developer's checkout path.
+    public static string OutputDirectory
+    {
+        get
+        {
+            var configured = Environment.GetEnvironmentVariable("SINGULARITYBOT_DIAGNOSTICS_DIR");
+            return Path.GetFullPath(string.IsNullOrWhiteSpace(configured)
+                ? Path.Combine(AppContext.BaseDirectory, "extracted")
+                : configured);
+        }
+    }
 
     /// <summary>
     /// Writes the unmodified StartRaw terrain-height image and a coordinate-indexed

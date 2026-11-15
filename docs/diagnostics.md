@@ -4,7 +4,7 @@ Local development matches capture diagnostics by default. The intent is to prese
 
 ## Output
 
-Files are written beneath the local diagnostics directory configured by `Sc2Diagnostics.OutputDirectory` (currently the `extracted` directory in the developer workspace).
+Files are written beneath `Sc2Diagnostics.OutputDirectory`. Set the `SINGULARITYBOT_DIAGNOSTICS_DIR` environment variable on the bot host to an explicit writable directory. If unset, captures go to an `extracted` directory beside the bot executable (`AppContext.BaseDirectory`). The bot prints the resolved absolute directory at match start; use that exact path to retrieve the files.
 
 - `on-start-*.json` preserves the protocol inputs supplied at match start: game info, game data, ping response, and initial observation.
 - `terrain-calibration-*` preserves raw terrain-height data and a separate candidate conversion for analysis.
@@ -31,6 +31,8 @@ Current event types:
 | 9 | Race snapshot | Authoritative race value in `ValueA`, proposed action count in `ValueB`, and a self-unit census in details: Probe/Drone/Overlord/Pylon/Gateway/Zealot/Stalker/Nexus/Larva/Hatchery/SpawningPool/Zergling/SCV/Marine. Also records mode and controller state. |
 
 Event types 8 and 9 extend the version-1 record vocabulary without changing the record layout. Event 8 provides a common envelope for decisions and external results that should not be encoded as Terran-only events. Event 9 samples the active race, mode and controller state alongside the visible own-unit/structure census, making non-Terran runtime behavior diagnosable. The census counts only live, visible units whose alliance is Self; it is not a full hidden-state or opponent census. Readers should preserve unknown event IDs rather than interpreting them as one of the earlier event types.
+
+Protoss and other fail-closed race modes still emit frame, economy, race-census, unit-snapshot and explicit `GameplayFailClosed` events; diagnostics must not disappear merely because gameplay actions are intentionally disabled. The Terran-only opening CSV is created only for Terran matches.
 
 The binary timeline is diagnostic evidence, not a save-game or deterministic replay format. It does not claim to capture every hidden game state or guarantee that a match can be resumed. The CSV remains available for quick inspection and now tracks minerals, vespene, supply, worker and Marine counts, town halls, Orbitals, refineries, Engineering Bays, Barracks, Depots, visible enemy composition, active build jobs, opening-builder state, and the preserved expansion Command Center coordinates/lifecycle. Binary unit snapshots are sampled every 8 game loops and include current orders, positions, health, energy, cooldowns and construction progress. These observations are intended to support economy throughput and production-idle analysis, not just debugging.
 

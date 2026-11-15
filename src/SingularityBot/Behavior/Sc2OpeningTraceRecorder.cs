@@ -16,12 +16,21 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
 
     public void Start(string directory)
     {
-        Directory.CreateDirectory(directory);
-        _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
-        _writer = new StreamWriter(_path, false);
-        _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete,thirdSupplyDepotBuilderTag,thirdSupplyDepotX,thirdSupplyDepotY,thirdSupplyDepotMoveSubmitted,thirdSupplyDepotBuildSubmitted,thirdSupplyDepotComplete");
-        _writer.Flush();
-        Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
+        try
+        {
+            Directory.CreateDirectory(directory);
+            _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
+            _writer = new StreamWriter(_path, false);
+            _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete,thirdSupplyDepotBuilderTag,thirdSupplyDepotX,thirdSupplyDepotY,thirdSupplyDepotMoveSubmitted,thirdSupplyDepotBuildSubmitted,thirdSupplyDepotComplete");
+            _writer.Flush();
+            Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine($"[Diagnostics] Opening trace unavailable: {exception.Message}");
+            _writer?.Dispose();
+            _writer = null;
+        }
     }
 
     public void RecordFrame(
@@ -100,6 +109,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             B(thirdSupplyDepot?.IsCompleted ?? false)
         };
         _writer.WriteLine(string.Join(",", row));
+        _writer.Flush();
     }
 
     public void RecordEvent(string eventName, uint gameLoop, string details)

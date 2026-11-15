@@ -1,3 +1,4 @@
+using ShortApi = global::FSM_API.FsmApi;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -12,7 +13,7 @@ public static class ProductionBehaviorCatalog
     {
         if (_registered) return;
 
-        FSM_API.Create.CreateFiniteStateMachine(
+        ShortApi.Create.CreateFiniteStateMachine(
                 ProductionStepFsm,
                 processRate: -1,
                 processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)

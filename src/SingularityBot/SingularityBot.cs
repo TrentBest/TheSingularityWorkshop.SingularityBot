@@ -389,6 +389,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         uint playerId,
         string opponentId)
     {
+        // A bot instance may be reused by a host. Never carry a query assembled
+        // for the previous match into the next match's callback stream.
+        _pendingQuery = null;
+        _workerAssignments.Clear();
+        _currentWorkerAssignmentGenerations.Clear();
         if (_writeDiagnostics)
         {
             WriteOnStartSnapshot(gameInfo, data, pingResponse, observation, playerId, opponentId);
@@ -1945,6 +1950,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _supplyDepotExpansion.Dispose();
         _thirdSupplyDepot.Dispose();
         _buildJobs.Clear();
+        _pendingQuery = null;
         _workerAssignments.Clear();
         _currentWorkerAssignmentGenerations.Clear();
         _marineRally.Reset();

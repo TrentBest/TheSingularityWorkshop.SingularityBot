@@ -75,18 +75,11 @@ The live bot is a self-contained compiled DLL. The Runner selects a statically l
 
 ## Source dependencies
 
-The bot builds against active ecosystem source branches. CI checks out CommandAi and FSM_Serialization from their `development` branches; no NuGet publication wait is required. For a local checkout, initialize the source dependencies before building:
+The bot builds against active ecosystem source branches. CI checks out all seven required source repositories from their `development` branches; no NuGet publication wait is required.
 
-```bash
-mkdir -p dependencies
-git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git dependencies/CommandAi
-git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_Serialization.git dependencies/FSM_Serialization
-git clone --branch development https://github.com/TrentBest/FSM_API.git dependencies/FSM_API
-git clone --branch development https://github.com/TrentBest/TheSingularityWorkshop.FSM_COS.git dependencies/FSM_COS
-dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj
-```
+For a Windows local checkout, follow the complete, guarded PowerShell bootstrap in [Windows development setup — section 4](docs/windows-development-setup.md#4-initialize-workshop-development-source-dependencies). It initializes CommandAi, FSM_API, FSM_COS, FSM_UserIO, FSM_Serialization, HeadlessAi, and TheSingularityWorkshop.MicroBundleDomain at the exact project-reference paths, verifies every referenced project file, then restores and builds the Runner.
 
-Keep dependency integration source-based during active development. When an integration exposes a missing capability, identify and contribute the requirement to the owning repository instead of copying its implementation into SingularityBot.
+Do not use published Workshop NuGet packages for this development build. Keep dependency integration source-based during active development. When an integration exposes a missing capability, identify and contribute the requirement to the owning repository instead of copying its implementation into SingularityBot.
 
 ## Development rules
 

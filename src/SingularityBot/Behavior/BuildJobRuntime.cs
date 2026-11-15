@@ -1,7 +1,7 @@
+using ShortApi = global::FSM_API.FsmApi;
 #nullable enable
 
 using System.Diagnostics.CodeAnalysis;
-using FSM_API;
 using TheSingularityWorkshop.FSM_API;
 
 namespace SingularityBot.Behavior;
@@ -116,10 +116,10 @@ public sealed class BuildJobRuntime
 
     public static void RegisterDefinition()
     {
-        if (FsmApi.Interact.Exists(FsmName, UnitBehaviorCatalog.ProductionProcessingGroup))
+        if (ShortApi.Interact.Exists(FsmName, UnitBehaviorCatalog.ProductionProcessingGroup))
             return;
 
-        FsmApi.Create.CreateFiniteStateMachine(
+        ShortApi.Create.CreateFiniteStateMachine(
                 FsmName,
                 processRate: -1,
                 processingGroup: UnitBehaviorCatalog.ProductionProcessingGroup)
@@ -159,7 +159,7 @@ public sealed class BuildJobRuntime
         RegisterDefinition();
         var job = new BuildJobContext(++_nextId, buildableKind, workerTag, producerTag, gameLoop);
         _jobs.Add(job.Id, job);
-        var handle = FsmApi.Create.CreateInstance(FsmName, job, UnitBehaviorCatalog.ProductionProcessingGroup);
+        var handle = ShortApi.Create.CreateInstance(FsmName, job, UnitBehaviorCatalog.ProductionProcessingGroup);
         job.AttachHandle(handle);
         _handles.Add(job.Id, handle);
         return job;
@@ -372,7 +372,7 @@ public sealed class BuildJobRuntime
 
     /// <summary>Advances all build-job lifecycle FSMs in the production processing group.</summary>
     public void Update() =>
-        FsmApi.Interact.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        ShortApi.Interact.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
     public bool Retire(long id)
     {
@@ -380,7 +380,7 @@ public sealed class BuildJobRuntime
         job.IsValid = false;
         _excludedResultTags.Remove(id);
         _excludedUnitTags.Remove(id);
-        if (_handles.Remove(id, out var handle)) FsmApi.Interact.DestroyInstance(handle);
+        if (_handles.Remove(id, out var handle)) ShortApi.Interact.DestroyInstance(handle);
         return true;
     }
 

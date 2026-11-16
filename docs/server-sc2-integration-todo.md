@@ -1,7 +1,7 @@
 # ServerSC2 Integration — Living To Do
 
 **Status:** active planning baseline  
-**Last reconciled:** 2026-11-15 (local date)  
+**Last reconciled:** 2026-11-16  
 **Working branch:** `development`  
 **Scope:** complete the SingularityBot runner/client side of the ServerSC2 integration and track the cross-repository proof needed to establish a trustworthy hosted match lifecycle.
 
@@ -44,12 +44,36 @@ The companion [ServerSC2 Runner Contract v1](server-sc2-runner-contract-v1.md) r
 
 Source paths and protocol facts are documented in the contract. Reinspect them before implementation; this table is a planning snapshot, not a substitute for current source review.
 
+## Cross-repository reconciliation — 2026-11-16
+
+**ServerSC2 development checkpoint:** `9c422d5390c06b4c31c72fa0ce84c4518a43f3db` (CI run [#238](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/actions/runs/43639841768) passed). The host-side issue remains open: [ServerSC2 #1 — host-authoritative SC2 match results and replay evidence](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/issues/1).
+
+Verified host-side state at that checkpoint:
+
+- `Sc2MatchEvidence` and `Sc2MatchEvidenceValidator` exist, with identity, terminal status, participant/player mapping, replay size/digest and replay metadata checks.
+- The completion gate accepts validator-produced evidence, not caller-supplied booleans. Production `Sc2ProcessSessionRuntime.GetStatusAsync` still calls it with `evidence: null`, so production cannot report Completed.
+- Production `Sc2ProcessSessionRuntime` still launches exactly two participant SC2 processes and two runner processes. It has no production observer controller/session, no observer terminal polling, no replay-save/ReplayInfo producer, and no persisted evidence envelope.
+- The isolated `tools/sc2-probe` has a three-process setup candidate and fake/protocol preflight tests. CI does not launch SC2; live observer perspective, isolation, terminal results and replay remain unproven.
+- ServerSC2's CI workflow is `.github/workflows/ci.yml`, job `build-and-check`; its contract-check JSON artifact is `server-sc2-contract-check-results`. The current workflow evidence is deterministic contract/preflight evidence, not live SC2 proof.
+
+Runner source anchors verified on this repository's current `development` head:
+
+- [Runner executable forwarding](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/blob/development/src/SingularityBot.Runner/Program.cs#L1-L18).
+- [Program dispatch to RunLadder](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/blob/development/src/SingularityBot/Program.cs#L75-L93).
+- [Host attach path and participant join](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/blob/development/src/SC2API.CSharp/GameConnection.cs#L166-L190) and [RunLadder / CreateGame host sequence](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/blob/development/src/SC2API.CSharp/GameConnection.cs#L380-L407).
+- [Observer, typed observation and replay primitives](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/blob/development/src/SC2API.CSharp/GameConnection.cs#L214-L282).
+- [Player-ID result resolver](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/blob/development/src/SC2API.CSharp/Sc2PlayerResultResolver.cs) and [resolver regression tests](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/blob/development/tests/SingularityBot.Tests/Sc2PlayerResultResolverTests.cs).
+
+**Contract discrepancy to resolve before Phase 1 can exit:** the runner contract and current runner implementation assign CreateGame to Participant A, which then joins as a participant; Participant B and the observer join from their own SC2 processes. ServerSC2 issue #1's coordination comments also selected that participant-hosted sequence. However, the current [ServerSC2 observer-host design](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/blob/development/docs/OBSERVER_HOST_DESIGN.md) still describes a candidate sequence where the dedicated observer/host creates the game and then joins as observer. The issue comment is the latest explicit coordination decision, but the design document must be reconciled and the chosen sequence still requires live proof. Do not wire production topology from the stale alternative.
+
+**Next cross-repository action:** reconcile the ServerSC2 design/runbook with the participant-A CreateGame sequence and freeze the exact versioned launch/join contract. Then extend the isolated live probe to prove the three-client join and PortSet/perspective behavior on a pinned local SC2 build before any production runtime topology change.
+
 ## Phase 0 — Keep the plan and contract truthful
 
 - [x] Record the runner/host boundary and current capability gaps in [Runner Contract v1](server-sc2-runner-contract-v1.md).
 - [x] Distinguish supported runner primitives from unverified live topology.
-- [ ] Reconcile this checklist against the current ServerSC2 repository issue/implementation before each cross-repository milestone.
-- [ ] Add source links/line anchors for every capability marked supported or implemented.
+- [x] Reconcile this checklist against the current ServerSC2 repository issue/implementation for the 2026-11-16 checkpoint (see cross-repository reconciliation below).
+- [x] Add source links/line anchors for the runner capabilities verified in this checkpoint; add further anchors when implementation changes.
 - [ ] Record the pinned SC2 executable version, protocol/schema revision, map identity and test environment used for the live probe.
 - [ ] Keep a dated evidence record for each live probe; do not rewrite a failed experiment as if it passed.
 - [ ] Keep README, docs index, roadmap and this checklist consistent when status changes.
@@ -73,7 +97,7 @@ Source paths and protocol facts are documented in the contract. Reinspect them b
 
 ## Phase 2 — Verify and harden participant attachment
 
-- [ ] Trace `Program.cs` → `SingularityBot.Program.Run` → `RunLadder` → `Connect(gamePort)` on current source.
+- [x] Trace `src/SingularityBot.Runner/Program.cs` → `SingularityBot.Program.Run` → `GameConnection.RunLadder` → `Connect(gamePort)` on current source.
 - [ ] Verify host mode never starts a replacement SC2 process implicitly.
 - [ ] Verify the runner attaches only to the assigned endpoint and rejects invalid/unavailable ports cleanly.
 - [ ] Verify participant JoinGame sends the expected race, interface options and network ports.

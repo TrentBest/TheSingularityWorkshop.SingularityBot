@@ -245,10 +245,11 @@ Runner source anchors verified on this repository's current `development` head:
 ## Immediate next actions
 
 1. Reinspect current runner source and tests for `JoinObserver`, `Observe`, `SaveReplay`, `GetReplayInfo` and `Sc2PlayerResultResolver`; add source anchors to this plan.
-2. Inspect the current ServerSC2 issue/branch state and map each host-owned checklist item to its existing implementation or issue. Do not duplicate work blindly.
-3. Agree the v1 readiness and typed-evidence shape across repositories.
-4. Design the smallest reproducible three-client live probe, including the observer perspective question, before adding more speculative runtime code.
-5. Keep the plan updated as implementation and evidence change.
+2. Keep the ServerSC2 design record and runner contract aligned; the observer-host design was reconciled to Participant A creating/joining as a player, with the observer joining independently.
+3. Freeze the v1 readiness and typed-evidence shape across repositories, including explicit observer identity and player-ID correlation.
+4. Extend the isolated probe to exercise the participant-hosted three-client order and derive the PortSet footprint from the pinned protocol/reference coordinator.
+5. Run the smallest reproducible live probe against a pinned local SC2 build; do not mark perspective, terminal results, replay or cleanup gates complete until evidence is retained.
+6. Keep the plan updated as implementation and evidence change.
 
 ## Working rules
 
@@ -258,3 +259,14 @@ Runner source anchors verified on this repository's current `development` head:
 - Never claim live topology, terminal result, replay validation or cleanup success without recorded live evidence.
 - No merge, release, publication, deployment, Pages dispatch or branch deletion without explicit owner authorization.
 - When an item is checked, include a commit, test, workflow or evidence-report reference where applicable.
+
+
+## Cross-repository reconciliation — 2026-11-16 follow-up
+
+- ServerSC2 `development` documentation commit: [`3291f3b`](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/commit/3291f3b0c59a2b187241eabc85a398fbaaf7bc74).
+- Updated [`docs/OBSERVER_HOST_DESIGN.md`](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/blob/development/docs/OBSERVER_HOST_DESIGN.md) to identify the selected integration candidate: Participant A's SC2 connection creates the game and joins as Participant A; other entrants join from independent player processes; an independent observer joins separately.
+- Removed the contradictory observer-created-game startup sequence from the design decision and candidate startup sequence. Participant A remains an ordinary competitor; it receives no observer privileges.
+- This is documentation/contract alignment only. It does not prove the three-client handshake, observer perspective, PortSet layout, readiness, terminal results, replay capture, or cleanup on a live SC2 build.
+- ServerSC2's latest known CI run [#238](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/actions/runs/43639841768) passed on the prior source commit `9c422d5390c06b4c31c72fa0ce84c4518a43f3db`; it is not CI evidence for documentation commit `3291f3b`.
+- SingularityBot exact-head Build [#43814317278](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43814317278) and Sith Policy [#43814317265](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43814317265) both passed on `dd37928568cf48cce99dae555956ef7f78221c88`.
+

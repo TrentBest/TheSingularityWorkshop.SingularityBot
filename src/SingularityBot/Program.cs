@@ -13,6 +13,7 @@ public static class Program
     {
         var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
+        var diagnosticsRequested = args.Contains("--diagnostics", StringComparer.Ordinal);
         var designatedAreaArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--cc-area=", StringComparison.Ordinal));
         var modeArgument = args.FirstOrDefault(argument =>
@@ -34,6 +35,10 @@ public static class Program
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
             throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.");
 
+        // Local matches capture by default. Ladder hosts remain file-silent unless
+        // the operator explicitly opts in, since host filesystem persistence varies.
+        var writeDiagnostics = diagnostics && (localRun || diagnosticsRequested);
+
         SingularityBot bot;
         var requestedRace = MatchConfiguration.RequestedRace;
         if (string.IsNullOrWhiteSpace(selectedModeId))
@@ -43,7 +48,7 @@ public static class Program
             Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
             bot = new SingularityBot(
                 passiveBaseline: passiveBaseline,
-                writeDiagnostics: localRun && diagnostics,
+                writeDiagnostics: writeDiagnostics,
                 compiledStrategy: strategy);
         }
         else if (string.Equals(selectedModeId, "zerg.zergling.v1", StringComparison.Ordinal))
@@ -53,7 +58,7 @@ public static class Program
             Console.WriteLine($"[BotStrategy] Using experimental '{definition.Id}' ({definition.Name}), mode={definition.ModeId}.");
             bot = new SingularityBot(
                 passiveBaseline: passiveBaseline,
-                writeDiagnostics: localRun && diagnostics,
+                writeDiagnostics: writeDiagnostics,
                 botDefinition: definition);
         }
         else

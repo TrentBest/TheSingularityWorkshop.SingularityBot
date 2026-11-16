@@ -32,7 +32,7 @@ Current event types:
 
 Event types 8 and 9 extend the version-1 record vocabulary without changing the record layout. Event 8 provides a common envelope for decisions and external results that should not be encoded as Terran-only events. Event 9 samples the active race, mode and controller state alongside the visible own-unit/structure census, making non-Terran runtime behavior diagnosable. The census counts only live, visible units whose alliance is Self; it is not a full hidden-state or opponent census. Readers should preserve unknown event IDs rather than interpreting them as one of the earlier event types.
 
-Protoss and other fail-closed race modes still emit frame, economy, race-census, unit-snapshot and explicit `GameplayFailClosed` events; diagnostics must not disappear merely because gameplay actions are intentionally disabled. The Terran-only opening CSV is created only for Terran matches.
+When diagnostics capture is enabled, Protoss and other fail-closed race modes still emit frame, economy, race-census, unit-snapshot and explicit `GameplayFailClosed` events. The Terran-only opening CSV is created only for Terran matches.
 
 The binary timeline is diagnostic evidence, not a save-game or deterministic replay format. It does not claim to capture every hidden game state or guarantee that a match can be resumed. The CSV remains available for quick inspection and now tracks minerals, vespene, supply, worker and Marine counts, town halls, Orbitals, refineries, Engineering Bays, Barracks, Depots, visible enemy composition, active build jobs, opening-builder state, and the preserved expansion Command Center coordinates/lifecycle. Binary unit snapshots are sampled every 8 game loops and include current orders, positions, health, energy, cooldowns and construction progress. These observations are intended to support economy throughput and production-idle analysis, not just debugging.
 
@@ -42,16 +42,17 @@ The build workflow checks out `TrentBest/TheSingularityWorkshop.FSM_Serializatio
 
 No NuGet publication or ladder release is part of this integration. The serialization package and bot can continue evolving on their development branches until release approval.
 
-## Disable capture
+## Disable or enable capture
 
-Local runs capture diagnostics by default. Pass `--no-diagnostics` to opt out for a specific local run. Ladder runs do not enable local file capture. Once the bot's decisions are validated and the diagnostic evidence is no longer needed, we can change the development default deliberately.
+Local runs capture diagnostics by default. Pass `--no-diagnostics` to opt out for a specific local run.
 
+Ladder runs do not capture local files by default. Pass `--diagnostics` to explicitly opt in for a ladder run. The ladder host must permit writes to the configured diagnostics directory, and the files must be collected from that host before it is recycled. Set `SINGULARITYBOT_DIAGNOSTICS_DIR` to a known writable/persistent location when the host supports one. The bot prints the resolved path and any writer failure to its console output. An explicit opt-in does not guarantee that the ladder environment preserves files.
 
 The opening trace now includes independent state for the first Supply Depot, first Barracks, second Barracks, follow-up Supply Depot, and expansion Command Center controllers. It records the assigned/recycled SCV tags, placement coordinates, construction gates, and completion flags so worker reuse and overlapping construction can be measured directly.
 
 ## Worker and opening experiment measurements
 
-The active-run worker CSV records one row per visible SCV per observation frame: game loop, worker tag and position, resource-cargo state, first observed order ability, target unit tag and position, distance to that target, and the observed town-hall position. The active-run economy CSV and opening trace preserve the mineral bank, supply, SCV/Marine/structure counts and construction milestones over time. The binary economy timeline records resource/supply snapshots each frame; binary unit snapshots are sampled every 8 game loops and include unit type, position, orders, cargo, energy and build progress. This supports sub-second structure, Orbital and MULE appearance timing, worker-cycle reconstruction, and resource-bank comparisons.
+The active-run worker CSV records one row per visible SCV per observation frame: game loop, worker tag and position, resource-cargo state, first observed order ability, target unit tag and position, distance to that target, and the observed town-hall position. The active-run economy CSV and opening trace preserve the mineral bank, supply, SCV/Marine/structure counts and construction milestones. The binary economy timeline records resource/supply snapshots each frame; binary unit snapshots are sampled every 8 game loops and include unit type, position, orders, cargo, energy and build progress. This supports sub-second structure, Orbital and MULE appearance timing, worker-cycle reconstruction, and resource-bank comparisons.
 
 The opening CSV also writes structured comment events for worker assignment lifecycle:
 - `WorkerAssignment`: worker tag, mineral tag, town-hall tag, assignment generation and supplemental-worker status.

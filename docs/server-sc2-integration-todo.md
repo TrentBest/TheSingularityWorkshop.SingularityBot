@@ -247,9 +247,10 @@ Runner source anchors verified on this repository's current `development` head:
 1. Reinspect current runner source and tests for `JoinObserver`, `Observe`, `SaveReplay`, `GetReplayInfo` and `Sc2PlayerResultResolver`; add source anchors to this plan.
 2. Keep the ServerSC2 design record and runner contract aligned; the observer-host design was reconciled to Participant A creating/joining as a player, with the observer joining independently.
 3. Freeze the v1 readiness and typed-evidence shape across repositories, including explicit observer identity and player-ID correlation.
-4. Extend the isolated probe to exercise the participant-hosted three-client order and derive the PortSet footprint from the pinned protocol/reference coordinator.
-5. Run the smallest reproducible live probe against a pinned local SC2 build; do not mark perspective, terminal results, replay or cleanup gates complete until evidence is retained.
-6. Keep the plan updated as implementation and evidence change.
+4. Resolve the ServerSC2 / ServerApp target-framework contract before treating ServerSC2 CI as healthy: ServerApp development is .NET 10; ServerSC2 adapter and workflow currently target .NET 8. Obtain an explicit owner decision before changing either target.
+5. Extend the isolated probe to exercise the participant-hosted three-client order and derive the PortSet footprint from the pinned protocol/reference coordinator.
+6. Run the smallest reproducible live probe against a pinned local SC2 build; do not mark perspective, terminal results, replay or cleanup gates complete until evidence is retained.
+7. Keep the plan updated as implementation and evidence change.
 
 ## Working rules
 
@@ -272,3 +273,16 @@ Runner source anchors verified on this repository's current `development` head:
 - ServerSC2's latest known CI run [#238](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/actions/runs/43639841768) passed on the prior source commit `9c422d5390c06b4c31c72fa0ce84c4518a43f3db`; it is not CI evidence for documentation commit `3291f3b`.
 - SingularityBot exact-head Build [#43814317278](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43814317278) and Sith Policy [#43814317265](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43814317265) both passed on `dd37928568cf48cce99dae555956ef7f78221c88`.
 
+
+
+## Cross-repository reconciliation — 2026-11-16 framework follow-up
+
+- SingularityBot current development head: `30ca1aa22662d2aca7bd6c4208aba471aa18c91f`.
+- Exact-head Build [#43817222918](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43817222918) completed successfully on that SHA.
+- Exact-head Sith Policy [#43817222902](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43817222902) completed successfully on that SHA.
+- ServerSC2 current development head remains `3291f3b0c59a2b187241eabc85a398fbaaf7bc74`; its CI [#43817071342](https://github.com/TrentBest/TheSingularityWorkshop.ServerSC2/actions/runs/43817071342) fails with `NU1201` when restoring `ServerApp.Core` for the net8.0 adapter.
+- Confirmed ServerApp's framework intent from multiple independent source files on its `development` branch: `global.json` pins SDK `10.0.100`; `src/ServerApp.Core/ServerApp.Core.csproj` targets `net10.0`; and `.github/workflows/ci.yml` installs `10.0.x`. ServerApp's current branch head is `5e9bf21e206526d068718689ae52fc11f0c50d22`.
+- Confirmed the mismatch on the ServerSC2 side: `src/ServerSC2.ServerAppAdapter/ServerSC2.ServerAppAdapter.csproj` targets `net8.0`, while `.github/workflows/ci.yml` installs only `8.0.x` before building the adapter.
+- This is not an incidental SDK-install omission: a net8.0 project cannot reference the net10.0 ServerApp.Core project. A compatible resolution must align both the adapter target framework and the CI SDK, or deliberately change ServerApp's framework contract. The evidence currently supports ServerApp's .NET 10 choice; no source/framework change has been made.
+- **Owner decision required before implementation:** confirm that ServerSC2's ServerApp adapter and its CI should move to .NET 10 to match ServerApp, or specify a different compatibility contract. Do not retarget ServerApp Core downward or change either repository's runtime target speculatively.
+- This blocker is separate from the SC2 live-probe gates. Even after CI is repaired, no three-client handshake, observer perspective, PortSet, terminal-result, replay or cleanup claim is promoted without pinned-build live evidence.

@@ -34,7 +34,7 @@ The [roadmap](roadmap.md) is the authoritative checklist. The [CiAi evidence gui
 - **Run and inspect it:** [Windows development setup](windows-development-setup.md) · [Local game sessions](local-game-sessions.md) · [Diagnostics and trace format](diagnostics.md)
 - **Understand the bot's decisions:** [Opening economy and logistics](opening-economy-logistics.md) · [Military organization and game phases](military-organization-and-game-phases.md) · [Engagement allocation](engagement-allocation.md) · [Movement doctrine](movement-doctrine.md)
 - **Extend the system:** [BotDefinition v1](bot-definition-v1.md) · [Compiled strategy and visual authoring](composable-command-layers-and-visual-authoring.md) · [CommandAi integration](commandai-integration-v1.md)
-- **Verify the boundaries:** [CiAi evidence](ciai-evidence.md) · [ServerSC2 runner contract](server-sc2-runner-contract-v1.md) · [Roadmap and acceptance gates](roadmap.md)
+- **Verify the boundaries:** [CiAi evidence](ciai-evidence.md) · [ServerSC2 runner contract](server-sc2-runner-contract-v1.md) · [ServerSC2 integration To Do](server-sc2-integration-todo.md) · [Roadmap and acceptance gates](roadmap.md)
 - **Understand provenance:** [Lineage and licensing](lineage.md) · [Source migration audit](migration-audit.md)
 
 ## Architecture at a glance

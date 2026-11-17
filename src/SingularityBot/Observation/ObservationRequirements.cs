@@ -35,6 +35,7 @@ public enum ObservationFields
     Combat = Health | Shields | Position | Mobility | WeaponCooldown,
     Spatial = Position,
     Scouting = Position,
+    Opening = WorkerAssignment | Production,
     PassiveBaseline = All,
 
     Gameplay = UnitFsm | WorkerAssignment | Production | Building | Refinery | Combat | Scouting
@@ -56,6 +57,7 @@ public readonly record struct ObservationRequirements(ObservationFields Fields)
     public static ObservationRequirements Combat => new(ObservationFields.Combat);
     public static ObservationRequirements Spatial => new(ObservationFields.Spatial);
     public static ObservationRequirements Scouting => new(ObservationFields.Scouting);
+    public static ObservationRequirements Opening => new(ObservationFields.Opening);
     public static ObservationRequirements PassiveBaseline => new(ObservationFields.PassiveBaseline);
     public static ObservationRequirements Gameplay => new(ObservationFields.Gameplay);
 

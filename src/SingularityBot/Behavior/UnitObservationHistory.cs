@@ -42,7 +42,7 @@ public sealed class UnitObservationHistory
     public float PreviousWeaponCooldown { get; private set; }
     public float WeaponCooldownDelta { get; private set; }
 
-    internal void Record(UnitBehaviorContext current, UnitObservationFacts facts)
+    internal void Record(UnitObservationFacts facts)
     {
         if (!facts.IsLiveVisible) return;
 

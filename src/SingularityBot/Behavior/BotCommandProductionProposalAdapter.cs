@@ -89,12 +89,18 @@ public sealed class BotCommandProductionProposalAdapter
             runtimeStep.Definition != authoredStep)
             return Fail("The authored production objective is not registered in the active runtime.", out error);
 
+        // Priority arbitration is not yet connected to the live SC2 action
+        // scheduler. Accepting a different value here would be a false promise:
+        // the objective context would change while live action ordering would not.
         var priority = runtimeStep.EffectivePriority;
-        if (command.Arguments.TryGetValue(BotCommandVocabulary.Parameters.ProductionPriority, out var priorityValue) &&
-            !int.TryParse(priorityValue.Text, NumberStyles.None, CultureInfo.InvariantCulture, out priority))
-            return Fail("The production priority is invalid.", out error);
-        if (priority is < 0 or > 100)
-            return Fail("The production priority must be between 0 and 100.", out error);
+        if (command.Arguments.TryGetValue(BotCommandVocabulary.Parameters.ProductionPriority, out var priorityValue))
+        {
+            if (!int.TryParse(priorityValue.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var proposedPriority) ||
+                proposedPriority is < 0 or > 100)
+                return Fail("The production priority is invalid.", out error);
+            if (proposedPriority != runtimeStep.Definition.Priority)
+                return Fail("Production priority overrides are not supported until live scheduler arbitration is integrated.", out error);
+        }
 
         var fingerprint = CreateFingerprint(proposal);
         lock (_gate)

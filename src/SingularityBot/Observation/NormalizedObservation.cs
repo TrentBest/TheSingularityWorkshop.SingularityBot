@@ -54,6 +54,9 @@ public sealed record UnitObservationFacts(
     /// <summary>Remaining Vespene in a geyser or Refinery, as reported by SC2 raw unit data.</summary>
     public uint VespeneContents { get; init; }
 
+    /// <summary>Optional fields actually populated by the normalizer; manually authored facts default to full capture.</summary>
+    public ObservationFields CapturedFields { get; init; } = ObservationFields.All;
+
     public IReadOnlyList<UnitOrderObservationFacts> Orders { get; init; } = Array.Empty<UnitOrderObservationFacts>();
 
     public bool IsLiveVisible => Visibility == UnitVisibility.Visible;

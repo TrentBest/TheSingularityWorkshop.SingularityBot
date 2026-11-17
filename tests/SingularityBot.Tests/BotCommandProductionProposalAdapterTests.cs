@@ -16,21 +16,38 @@ public sealed class BotCommandProductionProposalAdapterTests
         Assert.Empty(runtime.AddPlan(definition.Opening));
         Assert.True(runtime.TryGetStep("marine-core", out var marine));
         var adapter = new BotCommandProductionProposalAdapter();
-        var proposal = CreateMarineProposal("5", "50");
+        var proposal = CreateMarineProposal("5", "80");
         var gameData = CreateMarineGameData();
 
         Assert.True(adapter.TryApply(
             proposal, "commandai:proposal:1", true, definition, Race.Terran,
             gameData, runtime, out var error), error);
         Assert.Equal(5, marine.EffectiveDesiredCount);
-        Assert.Equal(50, marine.EffectivePriority);
+        Assert.Equal(80, marine.EffectivePriority);
 
         // A delivery retry with the same key and same content is an acknowledged no-op.
         Assert.True(adapter.TryApply(
             proposal, "commandai:proposal:1", true, definition, Race.Terran,
             gameData, runtime, out error), error);
         Assert.Equal(5, marine.EffectiveDesiredCount);
-        Assert.Equal(50, marine.EffectivePriority);
+        Assert.Equal(80, marine.EffectivePriority);
+    }
+
+    [Fact]
+    public void ProposalRejectsPriorityOverrideUntilLiveSchedulerSupportsArbitration()
+    {
+        var definition = BotDefinitionCatalog.CreateDefault();
+        using var runtime = new ProductionPlanRuntime(_ => { });
+        Assert.Empty(runtime.AddPlan(definition.Opening));
+        Assert.True(runtime.TryGetStep("marine-core", out var marine));
+        var adapter = new BotCommandProductionProposalAdapter();
+
+        Assert.False(adapter.TryApply(
+            CreateMarineProposal("5", "50"), "commandai:proposal:priority", true,
+            definition, Race.Terran, CreateMarineGameData(), runtime, out var error));
+        Assert.Contains("priority overrides are not supported", error);
+        Assert.Equal(60, marine.EffectiveDesiredCount);
+        Assert.Equal(80, marine.EffectivePriority);
     }
 
     [Fact]
@@ -43,7 +60,7 @@ public sealed class BotCommandProductionProposalAdapterTests
         var adapter = new BotCommandProductionProposalAdapter();
 
         Assert.False(adapter.TryApply(
-            CreateMarineProposal("5", "50"), "commandai:proposal:2", false,
+            CreateMarineProposal("5", "80"), "commandai:proposal:2", false,
             definition, Race.Terran, CreateMarineGameData(), runtime, out var error));
         Assert.Contains("not authorized", error);
         Assert.Equal(60, marine.EffectiveDesiredCount);
@@ -61,7 +78,7 @@ public sealed class BotCommandProductionProposalAdapterTests
         var gameData = CreateMarineGameData();
 
         Assert.True(adapter.TryApply(
-            CreateMarineProposal("5", "50"), "commandai:proposal:3", true,
+            CreateMarineProposal("5", "80"), "commandai:proposal:3", true,
             definition, Race.Terran, gameData, runtime, out var error), error);
         Assert.False(adapter.TryApply(
             CreateMarineProposal("6", "50"), "commandai:proposal:3", true,
@@ -80,7 +97,7 @@ public sealed class BotCommandProductionProposalAdapterTests
         var adapter = new BotCommandProductionProposalAdapter();
 
         Assert.False(adapter.TryApply(
-            CreateMarineProposal("5", "50"), "commandai:proposal:4", true,
+            CreateMarineProposal("5", "80"), "commandai:proposal:4", true,
             definition, Race.Zerg, CreateMarineGameData(), runtime, out var error));
         Assert.Contains("does not match", error);
         Assert.Equal(60, marine.EffectiveDesiredCount);

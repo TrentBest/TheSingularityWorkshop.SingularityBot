@@ -14,6 +14,8 @@ public sealed class ProductionStepContext : IStateContext
     public ProductionStepContext(ProductionStepDefinition definition, Action<ProductionIntent> emit)
     {
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
+        EffectiveDesiredCount = definition.DesiredCount;
+        EffectivePriority = definition.Priority;
         _emit = emit ?? throw new ArgumentNullException(nameof(emit));
         Name = $"Production:{definition.Id}";
         IsValid = true;
@@ -24,8 +26,8 @@ public sealed class ProductionStepContext : IStateContext
     public bool IsValid { get; set; }
     public uint GameLoop { get; private set; }
     public int CurrentCount { get; private set; }
-    public int EffectiveDesiredCount { get; private set; } = definition.DesiredCount;
-    public int EffectivePriority { get; private set; } = definition.Priority;
+    public int EffectiveDesiredCount { get; private set; }
+    public int EffectivePriority { get; private set; }
     public int InProgressCount { get; private set; }
     public bool ProducerAvailable { get; private set; }
     public bool PrerequisitesSatisfied { get; private set; }

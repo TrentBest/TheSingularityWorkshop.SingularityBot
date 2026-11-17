@@ -46,7 +46,8 @@ public sealed class UnitObservationHistory
     {
         if (!facts.IsLiveVisible) return;
 
-        if ((_fields & UnitObservationHistoryFields.Health) != 0)
+        if ((_fields & UnitObservationHistoryFields.Health) != 0 &&
+            (facts.CapturedFields & ObservationFields.Health) != 0)
         {
             if (HasPreviousHealth)
                 HealthDelta = facts.Health - PreviousHealth;
@@ -54,7 +55,8 @@ public sealed class UnitObservationHistory
             HasPreviousHealth = true;
         }
 
-        if ((_fields & UnitObservationHistoryFields.Position) != 0 && facts.HasPosition)
+        if ((_fields & UnitObservationHistoryFields.Position) != 0 &&
+            (facts.CapturedFields & ObservationFields.Position) != 0 && facts.HasPosition)
         {
             if (HasPreviousPosition)
             {
@@ -66,7 +68,8 @@ public sealed class UnitObservationHistory
             HasPreviousPosition = true;
         }
 
-        if ((_fields & UnitObservationHistoryFields.WeaponCooldown) != 0)
+        if ((_fields & UnitObservationHistoryFields.WeaponCooldown) != 0 &&
+            (facts.CapturedFields & ObservationFields.WeaponCooldown) != 0)
         {
             if (HasPreviousWeaponCooldown)
                 WeaponCooldownDelta = facts.WeaponCooldownRemaining - PreviousWeaponCooldown;

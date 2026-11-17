@@ -39,8 +39,8 @@ public sealed class SelectiveObservationNormalizerTests
         var unit = Assert.Single(normalized.Units);
         Assert.Equal(35f, unit.Health);
         Assert.Equal(45f, unit.HealthMax); // Mandatory identity/context fact, not an optional capture.
-        Assert.Equal(0f, unit.Shields);
-        Assert.Equal(0f, unit.ShieldsMax);
+        Assert.Equal(0f, unit.Shield);
+        Assert.Equal(0f, unit.ShieldMax);
         Assert.Equal(0f, unit.Energy);
         Assert.True(unit.HasOrders); // Order details imply presence.
         Assert.Equal(ObservationFields.Health | ObservationFields.OrderDetails, unit.CapturedFields);

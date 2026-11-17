@@ -81,7 +81,7 @@ public sealed class BotCommandProductionProposalAdapterTests
             CreateMarineProposal("5", "80"), "commandai:proposal:3", true,
             definition, Race.Terran, gameData, runtime, out var error), error);
         Assert.False(adapter.TryApply(
-            CreateMarineProposal("6", "50"), "commandai:proposal:3", true,
+            CreateMarineProposal("6", "80"), "commandai:proposal:3", true,
             definition, Race.Terran, gameData, runtime, out error));
         Assert.Contains("different proposal", error);
         Assert.Equal(5, marine.EffectiveDesiredCount);

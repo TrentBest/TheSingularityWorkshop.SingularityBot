@@ -45,6 +45,36 @@ public sealed class ObservationRequirementsTests
     }
 
     [Fact]
+    public void AuditedGameplayRequirementsCoverAllKnownRuntimeConsumers()
+    {
+        var requirements = ObservationRequirements.Combine(
+            ObservationRequirements.UnitFsm,
+            ObservationRequirements.WorkerAssignment,
+            ObservationRequirements.Production,
+            ObservationRequirements.Building,
+            ObservationRequirements.Refinery,
+            ObservationRequirements.Combat,
+            ObservationRequirements.Scouting);
+
+        Assert.Equal(ObservationFields.Gameplay, requirements.Fields);
+        Assert.True(requirements.Includes(
+            ObservationFields.Health | ObservationFields.Shields |
+            ObservationFields.BuildProgress | ObservationFields.Position |
+            ObservationFields.Cargo | ObservationFields.HasOrders |
+            ObservationFields.OrderDetails | ObservationFields.Mobility |
+            ObservationFields.WeaponCooldown | ObservationFields.Energy |
+            ObservationFields.VespeneContents | ObservationFields.Economy));
+        Assert.False(requirements.Includes(ObservationFields.CollisionRadius));
+    }
+
+    [Fact]
+    public void PassiveBaselineRemainsFullCapture()
+    {
+        Assert.Equal(ObservationFields.All, ObservationRequirements.PassiveBaseline.Fields);
+        Assert.True(ObservationRequirements.Gameplay.Includes(ObservationFields.VespeneContents));
+    }
+
+    [Fact]
     public void OrderDetailsCanBeRequestedSeparatelyFromPresence()
     {
         var presenceOnly = new ObservationRequirements(ObservationFields.HasOrders);

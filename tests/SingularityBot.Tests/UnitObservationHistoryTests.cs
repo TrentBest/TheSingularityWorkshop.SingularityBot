@@ -14,12 +14,12 @@ public sealed class UnitObservationHistoryTests
                                         UnitObservationHistoryFields.Position;
 
         context.Apply(Facts(health: 40, x: 10, y: 20, loop: 1));
-        Assert.False(context.History.HasPreviousHealth);
-        Assert.False(context.History.HasPreviousPosition);
+        Assert.True(context.History.HasPreviousHealth);
+        Assert.True(context.History.HasPreviousPosition);
+        Assert.Equal(40, context.History.PreviousHealth);
 
         context.Apply(Facts(health: 35, x: 13, y: 18, loop: 2));
-        Assert.True(context.History.HasPreviousHealth);
-        Assert.Equal(40, context.History.PreviousHealth);
+        Assert.Equal(35, context.History.PreviousHealth);
         Assert.Equal(-5, context.History.HealthDelta);
         Assert.Equal(3, context.History.PositionDeltaX);
         Assert.Equal(-2, context.History.PositionDeltaY);

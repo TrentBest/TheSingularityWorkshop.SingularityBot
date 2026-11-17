@@ -84,7 +84,8 @@ public static class Sc2ObservationNormalizer
                     VespeneContents = Has(ObservationFields.VespeneContents)
                         ? checked((uint)Math.Max(0, unit.VespeneContents))
                         : 0,
-                    Orders = orders
+                    Orders = orders,
+                    CapturedFields = fields
                 };
             })
             .ToArray();

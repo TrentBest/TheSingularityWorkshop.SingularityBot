@@ -38,6 +38,9 @@ public sealed class BotCommandProductionProposalAdapter
 
         if (!authorized)
             return Fail("The host has not authorized this proposal.", out error);
+        var definitionErrors = definition.Validate();
+        if (definitionErrors.Count != 0)
+            return Fail("The active BotDefinition is invalid: " + string.Join(" ", definitionErrors), out error);
         if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 128)
             return Fail("A stable idempotency key of 1 to 128 characters is required.", out error);
         if (!Enum.TryParse<Race>(definition.Race, ignoreCase: false, out var configuredRace) ||

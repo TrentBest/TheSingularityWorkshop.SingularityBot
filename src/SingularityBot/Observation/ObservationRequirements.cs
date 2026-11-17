@@ -31,12 +31,13 @@ public enum ObservationFields
     WorkerAssignment = Position | Cargo | HasOrders | OrderDetails,
     Production = BuildProgress | Cargo | HasOrders | OrderDetails | Economy,
     Building = BuildProgress | OrderDetails | Mobility | Energy,
+    Refinery = Position | Cargo | OrderDetails | BuildProgress | VespeneContents | Economy,
     Combat = Health | Shields | Position | Mobility | WeaponCooldown,
     Spatial = Position,
     Scouting = Position,
     PassiveBaseline = All,
 
-    Gameplay = UnitFsm | WorkerAssignment | Production | Building | Combat | Scouting
+    Gameplay = UnitFsm | WorkerAssignment | Production | Building | Refinery | Combat | Scouting
 }
 
 /// <summary>
@@ -51,6 +52,7 @@ public readonly record struct ObservationRequirements(ObservationFields Fields)
     public static ObservationRequirements WorkerAssignment => new(ObservationFields.WorkerAssignment);
     public static ObservationRequirements Production => new(ObservationFields.Production);
     public static ObservationRequirements Building => new(ObservationFields.Building);
+    public static ObservationRequirements Refinery => new(ObservationFields.Refinery);
     public static ObservationRequirements Combat => new(ObservationFields.Combat);
     public static ObservationRequirements Spatial => new(ObservationFields.Spatial);
     public static ObservationRequirements Scouting => new(ObservationFields.Scouting);

@@ -167,7 +167,7 @@ public sealed class UnitBehaviorContext : IStateContext
 
         if (facts.IsLiveVisible)
         {
-            History.Record(this, facts);
+            History.Record(facts);
             LastSeenGameLoop = facts.GameLoop;
             Health = facts.Health;
             HealthMax = facts.HealthMax;

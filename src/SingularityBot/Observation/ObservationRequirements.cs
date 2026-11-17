@@ -22,13 +22,21 @@ public enum ObservationFields
     VespeneContents = 1 << 11,
     Economy = 1 << 12,
 
-    UnitFsm = Health | Shields | BuildProgress | Position | Cargo |
-             HasOrders | OrderDetails | Mobility | WeaponCooldown,
-    Production = BuildProgress | Cargo | HasOrders | OrderDetails | Economy,
-    Spatial = Position,
     All = Health | Shields | BuildProgress | Position | Cargo |
           HasOrders | OrderDetails | Mobility | WeaponCooldown |
-          CollisionRadius | Energy | VespeneContents | Economy
+          CollisionRadius | Energy | VespeneContents | Economy,
+
+    UnitFsm = Health | Shields | BuildProgress | Position | Cargo |
+             HasOrders | OrderDetails | Mobility | WeaponCooldown,
+    WorkerAssignment = Position | Cargo | HasOrders | OrderDetails,
+    Production = BuildProgress | Cargo | HasOrders | OrderDetails | Economy,
+    Building = BuildProgress | OrderDetails | Mobility | Energy,
+    Combat = Health | Shields | Position | Mobility | WeaponCooldown,
+    Spatial = Position,
+    Scouting = Position,
+    PassiveBaseline = All,
+
+    Gameplay = UnitFsm | WorkerAssignment | Production | Building | Combat | Scouting
 }
 
 /// <summary>
@@ -40,8 +48,14 @@ public readonly record struct ObservationRequirements(ObservationFields Fields)
     public static ObservationRequirements None => new(ObservationFields.None);
     public static ObservationRequirements All => new(ObservationFields.All);
     public static ObservationRequirements UnitFsm => new(ObservationFields.UnitFsm);
+    public static ObservationRequirements WorkerAssignment => new(ObservationFields.WorkerAssignment);
     public static ObservationRequirements Production => new(ObservationFields.Production);
+    public static ObservationRequirements Building => new(ObservationFields.Building);
+    public static ObservationRequirements Combat => new(ObservationFields.Combat);
     public static ObservationRequirements Spatial => new(ObservationFields.Spatial);
+    public static ObservationRequirements Scouting => new(ObservationFields.Scouting);
+    public static ObservationRequirements PassiveBaseline => new(ObservationFields.PassiveBaseline);
+    public static ObservationRequirements Gameplay => new(ObservationFields.Gameplay);
 
     public bool Includes(ObservationFields fields) => (Fields & fields) == fields;
 

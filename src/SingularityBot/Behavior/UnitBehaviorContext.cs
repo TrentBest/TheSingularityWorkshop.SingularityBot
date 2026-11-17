@@ -165,36 +165,55 @@ public sealed class UnitBehaviorContext : IStateContext
         CurrentVisibility = facts.Visibility;
         LastObservedGameLoop = facts.GameLoop;
 
+        var captured = facts.CapturedFields;
+        bool Captured(ObservationFields field) => (captured & field) == field;
+
         if (facts.IsLiveVisible)
         {
             History.Record(facts);
             LastSeenGameLoop = facts.GameLoop;
-            Health = facts.Health;
+            // HealthMax is a mandatory identity/reconciliation fact. Optional values
+            // only update persistent state when this sample actually captured them.
             HealthMax = facts.HealthMax;
-            Shield = facts.Shield;
-            ShieldMax = facts.ShieldMax;
-            BuildProgress = facts.BuildProgress;
-            PositionX = facts.PositionX;
-            PositionY = facts.PositionY;
-            HasPosition = facts.HasPosition;
-            HasCargo = facts.HasCargo;
-            WeaponCooldownRemaining = facts.WeaponCooldownRemaining;
-            HasAssignedWork = facts.HasOrders;
-            ObservedOrders = facts.Orders;
-            IsFlying = facts.IsFlying;
-            IsBurrowed = facts.IsBurrowed;
-            IsHallucination = facts.IsHallucination;
+            if (Captured(ObservationFields.Health)) Health = facts.Health;
+            if (Captured(ObservationFields.Shields))
+            {
+                Shield = facts.Shield;
+                ShieldMax = facts.ShieldMax;
+            }
+            if (Captured(ObservationFields.BuildProgress)) BuildProgress = facts.BuildProgress;
+            if (Captured(ObservationFields.Position))
+            {
+                PositionX = facts.PositionX;
+                PositionY = facts.PositionY;
+                HasPosition = facts.HasPosition;
+            }
+            if (Captured(ObservationFields.Cargo)) HasCargo = facts.HasCargo;
+            if (Captured(ObservationFields.WeaponCooldown))
+                WeaponCooldownRemaining = facts.WeaponCooldownRemaining;
+            if (Captured(ObservationFields.HasOrders) || Captured(ObservationFields.OrderDetails))
+                HasAssignedWork = facts.HasOrders;
+            if (Captured(ObservationFields.OrderDetails)) ObservedOrders = facts.Orders;
+            if (Captured(ObservationFields.Mobility))
+            {
+                IsFlying = facts.IsFlying;
+                IsBurrowed = facts.IsBurrowed;
+                IsHallucination = facts.IsHallucination;
+            }
         }
         else
         {
             if (facts.HealthMax > 0)
             {
-                Health = facts.Health;
                 HealthMax = facts.HealthMax;
-                Shield = facts.Shield;
-                ShieldMax = facts.ShieldMax;
+                if (Captured(ObservationFields.Health)) Health = facts.Health;
+                if (Captured(ObservationFields.Shields))
+                {
+                    Shield = facts.Shield;
+                    ShieldMax = facts.ShieldMax;
+                }
             }
-            if (facts.HasPosition)
+            if (Captured(ObservationFields.Position) && facts.HasPosition)
             {
                 PositionX = facts.PositionX;
                 PositionY = facts.PositionY;

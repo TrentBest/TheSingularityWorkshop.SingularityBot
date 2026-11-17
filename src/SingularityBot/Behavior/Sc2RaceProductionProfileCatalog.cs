@@ -114,6 +114,10 @@ public sealed class Sc2RaceProductionProfileCatalog
     public static Sc2RaceProductionProfileCatalog CreateDefault() => new(new[]
     {
         new Sc2RaceProductionProfile(
+            "terran.marine.v1", Race.Terran, "Marine", "Barracks",
+            new[] { "Barracks" }, false,
+            "Terran Marine production requires a completed Barracks and an available producer."),
+        new Sc2RaceProductionProfile(
             "zerg.zergling.v1", Race.Zerg, "Zergling", "Larva",
             new[] { "SpawningPool" }, false,
             "First Zerg production path; requires a completed Spawning Pool and an available Larva.")

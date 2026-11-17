@@ -7,6 +7,57 @@ namespace SingularityBot.Tests;
 public sealed class Sc2RaceProductionProfileCatalogTests
 {
     [Fact]
+    public void TerranMarineProfile_ResolvesAgainstAuthoritativeMatchData()
+    {
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData { UnitId = 21, Name = "Barracks", AbilityId = 321, MineralCost = 150 });
+        data.Units.Add(new UnitTypeData { UnitId = 48, Name = "Marine", AbilityId = 560, MineralCost = 50, FoodRequired = 1 });
+        var catalog = Sc2GameDataCatalog.Create(data);
+        var profiles = Sc2RaceProductionProfileCatalog.CreateDefault();
+
+        Assert.True(profiles.TryResolveGameData(
+            "terran.marine.v1", Race.Terran, catalog,
+            out var profile, out var target, out var producer, out var error));
+        Assert.Equal("Marine", target.Name);
+        Assert.Equal((uint)560, target.AbilityId);
+        Assert.Equal("Barracks", producer.Name);
+        Assert.Equal("Barracks", Assert.Single(profile.RequiredCompletedUnits));
+        Assert.Empty(error);
+    }
+
+    [Fact]
+    public void TerranMarineProfile_RejectsWrongRaceAndAmbiguousMatchData()
+    {
+        var profiles = Sc2RaceProductionProfileCatalog.CreateDefault();
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData { UnitId = 21, Name = "Barracks", AbilityId = 321, MineralCost = 150 });
+        data.Units.Add(new UnitTypeData { UnitId = 48, Name = "Marine", AbilityId = 560, MineralCost = 50 });
+
+        Assert.False(profiles.TryResolveGameData(
+            "terran.marine.v1", Race.Zerg, Sc2GameDataCatalog.Create(data),
+            out _, out _, out _, out var raceError));
+        Assert.Contains("requires race Terran", raceError);
+
+        data.Units.Add(new UnitTypeData { UnitId = 49, Name = "Marine", AbilityId = 561, MineralCost = 50 });
+        Assert.False(profiles.TryResolveGameData(
+            "terran.marine.v1", Race.Terran, Sc2GameDataCatalog.Create(data),
+            out _, out _, out _, out var ambiguityError));
+        Assert.Contains("missing or ambiguous", ambiguityError);
+    }
+
+    [Fact]
+    public void TerranMarineProfile_FailsClosedWhenBarracksIsMissing()
+    {
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData { UnitId = 48, Name = "Marine", AbilityId = 560, MineralCost = 50 });
+
+        Assert.False(Sc2RaceProductionProfileCatalog.CreateDefault().TryResolveGameData(
+            "terran.marine.v1", Race.Terran, Sc2GameDataCatalog.Create(data),
+            out _, out _, out _, out var error));
+        Assert.Contains("Barracks", error);
+    }
+
+    [Fact]
     public void ZerglingProfile_ResolvesTargetProducerAndPrerequisiteFromAuthoritativeData()
     {
         var data = new ResponseData();

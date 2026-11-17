@@ -68,6 +68,21 @@ public sealed class ObservationRequirementsTests
     }
 
     [Fact]
+    public void OpeningRequirementsCaptureProductionAndWorkerFactsWithoutCombatOnlyFields()
+    {
+        var requirements = ObservationRequirements.Opening;
+
+        Assert.True(requirements.Includes(
+            ObservationFields.Position | ObservationFields.Cargo |
+            ObservationFields.HasOrders | ObservationFields.OrderDetails |
+            ObservationFields.BuildProgress | ObservationFields.Economy));
+        Assert.False(requirements.Includes(
+            ObservationFields.Health | ObservationFields.Shields |
+            ObservationFields.Mobility | ObservationFields.WeaponCooldown |
+            ObservationFields.Energy | ObservationFields.VespeneContents));
+    }
+
+    [Fact]
     public void PassiveBaselineRemainsFullCapture()
     {
         Assert.Equal(ObservationFields.All, ObservationRequirements.PassiveBaseline.Fields);

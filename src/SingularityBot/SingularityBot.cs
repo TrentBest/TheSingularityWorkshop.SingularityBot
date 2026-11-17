@@ -607,11 +607,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         // DataSync starts immediately after normalization. Every later decision
         // consumes the same persistent entity registry and frame facts.
+        // The Zergling opener has a smaller, audited consumer contract. The
+        // composed gameplay path keeps every field required by its FSM and
+        // sub-controller consumers. Diagnostic recording deliberately opts
+        // back into full capture until its schema can declare its own needs.
+        var observationRequirements = _writeDiagnostics
+            ? ObservationRequirements.All
+            : openerEnabled
+                ? ObservationRequirements.Opening
+                : ObservationRequirements.Gameplay;
         var normalized = Sc2ObservationNormalizer.Normalize(
             observation,
             _playerId,
             _gameData.UnitNames,
-            _gameData.BuffNames);
+            _gameData.BuffNames,
+            observationRequirements);
         _lastGameLoop = normalized.GameLoop;
         if (openerEnabled)
         {

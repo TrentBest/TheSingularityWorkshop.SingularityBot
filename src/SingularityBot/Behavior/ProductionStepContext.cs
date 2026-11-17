@@ -24,6 +24,8 @@ public sealed class ProductionStepContext : IStateContext
     public bool IsValid { get; set; }
     public uint GameLoop { get; private set; }
     public int CurrentCount { get; private set; }
+    public int EffectiveDesiredCount { get; private set; } = definition.DesiredCount;
+    public int EffectivePriority { get; private set; } = definition.Priority;
     public int InProgressCount { get; private set; }
     public bool ProducerAvailable { get; private set; }
     public bool PrerequisitesSatisfied { get; private set; }
@@ -35,10 +37,10 @@ public sealed class ProductionStepContext : IStateContext
     /// their configured targets. In-progress work and submitted commands do not count.
     /// </summary>
     public bool DependenciesSatisfied => _dependenciesSatisfied();
-    public bool IsComplete => CurrentCount >= Definition.DesiredCount;
+    public bool IsComplete => CurrentCount >= EffectiveDesiredCount;
     public bool CanIssue => IsValid &&
         !IsComplete &&
-        CurrentCount + InProgressCount < Definition.DesiredCount &&
+        CurrentCount + InProgressCount < EffectiveDesiredCount &&
         GameLoop >= Definition.EarliestGameLoop &&
         ProducerAvailable &&
         PrerequisitesSatisfied &&
@@ -74,7 +76,16 @@ public sealed class ProductionStepContext : IStateContext
     /// <summary>Release the submission latch after an observed order or rejection.</summary>
     public void ResolveSubmission() => RequestPending = false;
 
-    internal void EmitIntent() => _emit(new ProductionIntent(Definition.Id, Definition.Target, Definition.Producer, Definition.Priority));
+    internal bool TryApplyAuthorizedTarget(int desiredCount, int priority)
+    {
+        if (desiredCount < 1 || priority is < 0 or > 100)
+            return false;
+        EffectiveDesiredCount = desiredCount;
+        EffectivePriority = priority;
+        return true;
+    }
+
+    internal void EmitIntent() => _emit(new ProductionIntent(Definition.Id, Definition.Target, Definition.Producer, EffectivePriority));
 }
 
 public sealed record ProductionIntent(string StepId, string Target, string Producer, int Priority);

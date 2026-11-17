@@ -79,6 +79,8 @@ public sealed class BotCommandProductionProposalAdapter
             return Fail("The active BotDefinition must contain exactly one authored objective for this target and producer.", out error);
 
         var authoredStep = openingMatches[0];
+        if (!HasRequiredPrerequisites(authoredStep, definition.Opening.Steps, profile.RequiredCompletedUnits))
+            return Fail("The active production objective does not depend on every profile prerequisite.", out error);
         if (!runtime.TryGetStep(authoredStep.Id, out var runtimeStep) ||
             !ReferenceEquals(runtimeStep.Definition, authoredStep) &&
             runtimeStep.Definition != authoredStep)
@@ -111,6 +113,32 @@ public sealed class BotCommandProductionProposalAdapter
 
         error = string.Empty;
         return true;
+    }
+
+    private static bool HasRequiredPrerequisites(
+        ProductionStepDefinition step,
+        IReadOnlyList<ProductionStepDefinition> steps,
+        IReadOnlyList<string> requiredUnits)
+    {
+        var byId = steps.Where(candidate => candidate is not null)
+            .ToDictionary(candidate => candidate.Id, StringComparer.Ordinal);
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var ancestors = new List<ProductionStepDefinition>();
+
+        void Visit(ProductionStepDefinition current)
+        {
+            foreach (var dependencyId in current.DependsOn ?? Array.Empty<string>())
+            {
+                if (!visited.Add(dependencyId) || !byId.TryGetValue(dependencyId, out var dependency))
+                    continue;
+                ancestors.Add(dependency);
+                Visit(dependency);
+            }
+        }
+
+        Visit(step);
+        return requiredUnits.All(required => ancestors.Any(ancestor =>
+            string.Equals(ancestor.Target, required, StringComparison.OrdinalIgnoreCase)));
     }
 
     private static string CreateFingerprint(CommandProposal proposal) =>

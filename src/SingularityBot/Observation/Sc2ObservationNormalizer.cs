@@ -8,15 +8,27 @@ namespace SingularityBot.Observation;
 /// </summary>
 public static class Sc2ObservationNormalizer
 {
+    /// <summary>Compatibility overload: captures every optional field.</summary>
     public static NormalizedObservation Normalize(
         ResponseObservation response,
         uint playerId,
         IReadOnlyDictionary<uint, string> unitNames,
-        IReadOnlyDictionary<uint, string> buffNames)
+        IReadOnlyDictionary<uint, string> buffNames) =>
+        Normalize(response, playerId, unitNames, buffNames, ObservationRequirements.All);
+
+    public static NormalizedObservation Normalize(
+        ResponseObservation response,
+        uint playerId,
+        IReadOnlyDictionary<uint, string> unitNames,
+        IReadOnlyDictionary<uint, string> buffNames,
+        ObservationRequirements requirements)
     {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(unitNames);
         ArgumentNullException.ThrowIfNull(buffNames);
+
+        var fields = requirements.Fields;
+        bool Has(ObservationFields value) => (fields & value) == value;
 
         var observation = response.Observation
             ?? throw new ArgumentException("The response does not contain an observation.", nameof(response));
@@ -29,7 +41,21 @@ public static class Sc2ObservationNormalizer
             .Select(unit =>
             {
                 unitNames.TryGetValue(unit.UnitType, out var unitKind);
-                var position = unit.Pos;
+                var captureHealth = Has(ObservationFields.Health);
+                var captureShields = Has(ObservationFields.Shields);
+                var capturePosition = Has(ObservationFields.Position);
+                var captureCargo = Has(ObservationFields.Cargo);
+                var captureOrderDetails = Has(ObservationFields.OrderDetails);
+                var position = capturePosition ? unit.Pos : null;
+                var orders = captureOrderDetails
+                    ? unit.Orders.Select(order => new UnitOrderObservationFacts(
+                        order.AbilityId,
+                        order.TargetCase == UnitOrder.TargetOneofCase.TargetUnitTag ? order.TargetUnitTag : null,
+                        order.TargetCase == UnitOrder.TargetOneofCase.TargetWorldSpacePos ? order.TargetWorldSpacePos?.X : null,
+                        order.TargetCase == UnitOrder.TargetOneofCase.TargetWorldSpacePos ? order.TargetWorldSpacePos?.Y : null))
+                        .ToArray()
+                    : Array.Empty<UnitOrderObservationFacts>();
+
                 return new UnitObservationFacts(
                     unit.Tag,
                     unit.UnitType,
@@ -37,31 +63,28 @@ public static class Sc2ObservationNormalizer
                     unit.Owner,
                     MapAlliance(unit.Alliance),
                     MapVisibility(unit.DisplayType),
-                    unit.Health,
+                    captureHealth ? unit.Health : 0,
                     unit.HealthMax,
-                    unit.Shield,
-                    unit.ShieldMax,
-                    unit.BuildProgress,
+                    captureShields ? unit.Shield : 0,
+                    captureShields ? unit.ShieldMax : 0,
+                    Has(ObservationFields.BuildProgress) ? unit.BuildProgress : 0,
                     position?.X ?? 0,
                     position?.Y ?? 0,
                     position is not null,
-                    HasResourceCargo(unit, buffNames),
-                    unit.Orders.Count > 0,
-                    unit.IsFlying,
-                    unit.IsBurrowed,
-                    unit.IsHallucination,
+                    captureCargo && HasResourceCargo(unit, buffNames),
+                    Has(ObservationFields.HasOrders) || captureOrderDetails ? unit.Orders.Count > 0 : false,
+                    Has(ObservationFields.Mobility) && unit.IsFlying,
+                    Has(ObservationFields.Mobility) && unit.IsBurrowed,
+                    Has(ObservationFields.Mobility) && unit.IsHallucination,
                     observation.GameLoop)
                 {
-                    WeaponCooldownRemaining = unit.WeaponCooldown,
-                    CollisionRadius = unit.Radius,
-                    Energy = unit.Energy,
-                    VespeneContents = checked((uint)Math.Max(0, unit.VespeneContents)),
-                    Orders = unit.Orders.Select(order => new UnitOrderObservationFacts(
-                        order.AbilityId,
-                        order.TargetCase == UnitOrder.TargetOneofCase.TargetUnitTag ? order.TargetUnitTag : null,
-                        order.TargetCase == UnitOrder.TargetOneofCase.TargetWorldSpacePos ? order.TargetWorldSpacePos?.X : null,
-                        order.TargetCase == UnitOrder.TargetOneofCase.TargetWorldSpacePos ? order.TargetWorldSpacePos?.Y : null))
-                        .ToArray()
+                    WeaponCooldownRemaining = Has(ObservationFields.WeaponCooldown) ? unit.WeaponCooldown : 0,
+                    CollisionRadius = Has(ObservationFields.CollisionRadius) ? unit.Radius : 0,
+                    Energy = Has(ObservationFields.Energy) ? unit.Energy : 0,
+                    VespeneContents = Has(ObservationFields.VespeneContents)
+                        ? checked((uint)Math.Max(0, unit.VespeneContents))
+                        : 0,
+                    Orders = orders
                 };
             })
             .ToArray();
@@ -72,10 +95,10 @@ public static class Sc2ObservationNormalizer
 
         return new NormalizedObservation(observation.GameLoop, playerId, units, deadTags)
         {
-            Minerals = observation.PlayerCommon?.Minerals ?? 0,
-            Vespene = observation.PlayerCommon?.Vespene ?? 0,
-            FoodUsed = observation.PlayerCommon?.FoodUsed ?? 0,
-            FoodCap = observation.PlayerCommon?.FoodCap ?? 0
+            Minerals = Has(ObservationFields.Economy) ? observation.PlayerCommon?.Minerals ?? 0 : 0,
+            Vespene = Has(ObservationFields.Economy) ? observation.PlayerCommon?.Vespene ?? 0 : 0,
+            FoodUsed = Has(ObservationFields.Economy) ? observation.PlayerCommon?.FoodUsed ?? 0 : 0,
+            FoodCap = Has(ObservationFields.Economy) ? observation.PlayerCommon?.FoodCap ?? 0 : 0
         };
     }
 

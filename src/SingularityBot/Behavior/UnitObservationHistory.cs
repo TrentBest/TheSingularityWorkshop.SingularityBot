@@ -50,7 +50,7 @@ public sealed class UnitObservationHistory
         {
             if (HasPreviousHealth)
                 HealthDelta = facts.Health - PreviousHealth;
-            PreviousHealth = current.Health;
+            PreviousHealth = facts.Health;
             HasPreviousHealth = true;
         }
 
@@ -61,8 +61,8 @@ public sealed class UnitObservationHistory
                 PositionDeltaX = facts.PositionX - PreviousPositionX;
                 PositionDeltaY = facts.PositionY - PreviousPositionY;
             }
-            PreviousPositionX = current.PositionX;
-            PreviousPositionY = current.PositionY;
+            PreviousPositionX = facts.PositionX;
+            PreviousPositionY = facts.PositionY;
             HasPreviousPosition = true;
         }
 
@@ -70,7 +70,7 @@ public sealed class UnitObservationHistory
         {
             if (HasPreviousWeaponCooldown)
                 WeaponCooldownDelta = facts.WeaponCooldownRemaining - PreviousWeaponCooldown;
-            PreviousWeaponCooldown = current.WeaponCooldownRemaining;
+            PreviousWeaponCooldown = facts.WeaponCooldownRemaining;
             HasPreviousWeaponCooldown = true;
         }
     }

@@ -43,6 +43,8 @@ public sealed class UnitBehaviorContext : IStateContext
     public UnitVisibility CurrentVisibility { get; private set; } = UnitVisibility.Unknown;
     public uint LastObservedGameLoop { get; private set; }
     public uint LastSeenGameLoop { get; private set; }
+    /// <summary>Optional per-field history; disabled fields incur no history writes.</summary>
+    public UnitObservationHistory History { get; } = new();
     public bool IsCurrentlyVisible => CurrentVisibility == UnitVisibility.Visible;
     public float Health { get; private set; }
     public float HealthMax { get; private set; }
@@ -165,6 +167,7 @@ public sealed class UnitBehaviorContext : IStateContext
 
         if (facts.IsLiveVisible)
         {
+            History.Record(this, facts);
             LastSeenGameLoop = facts.GameLoop;
             Health = facts.Health;
             HealthMax = facts.HealthMax;

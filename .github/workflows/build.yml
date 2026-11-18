@@ -118,6 +118,8 @@ jobs:
                   raise SystemExit(f"Military plan validation failed: {path}")
               print(f"Validated {path} against military schema")
           PY
+      - name: Check Forge browser script syntax
+        run: node --check docs/forge/forge.js
       - name: Restore
         run: dotnet restore src/SingularityBot.Runner/SingularityBot.Runner.csproj
       - name: Build

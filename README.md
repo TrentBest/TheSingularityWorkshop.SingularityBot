@@ -45,6 +45,10 @@ The first worker, construction and production stages have progressed beyond the 
 
 The runtime is authoritative. GUI is an authoring and inspection client; it does not contain a second bot engine. SC2 protocol types stay at the adapter boundary. FSM_API remains game-independent. CiAi observes and verifies CI-provider evidence; GitHub Actions remains the build/test executor. Neither a passing CI run nor an LLM assessment authorizes publication, deployment or release.
 
+## Forge — create your own bot
+
+Open the [Forge browser workbench](docs/forge/) to load the checked-in Terran example, edit a BotDefinition, inspect its JSON, run browser-side core checks, and import/export a portable definition. The browser is an authoring client; SingularityBot remains the validation and execution authority. The Test Arena host panel stays disabled until the ServerSC2 match lifecycle and evidence contract are proven and connected.
+
 ## Documentation
 
 Start with the [SingularityBot documentation home](docs/index.md) for current state, architecture, developer paths and evidence boundaries.

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Forge — create, validate, import and export portable SingularityBot definitions.">
+  <title>Forge · SingularityBot</title>
+  <link rel="stylesheet" href="forge.css">
+  <script src="forge.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../"><span class="brand-mark">✳</span><span>THE SINGULARITY WORKSHOP<small>SINGULARITYBOT / FORGE</small></span></a>
+    <nav><a href="../">Documentation</a><a href="https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot">Source</a></nav>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">BOT WORKBENCH <span>DEFINITION V1</span></div>
+      <h1>Forge your bot.</h1>
+      <p class="lede">Author a bot as portable data. Inspect the definition, validate its contract, and export the exact JSON artifact you can bring back to the runtime.</p>
+      <div class="hero-meta"><span class="status-dot"></span> Browser authoring · Local export · No account required</div>
+    </section>
+
+    <section class="workspace">
+      <div class="editor-column">
+        <div class="section-heading"><div><span class="eyebrow">01 / IDENTITY</span><h2>Bot definition</h2></div><span class="tag">TERRAN V1</span></div>
+        <div class="panel identity-grid">
+          <label>Display name<input id="bot-name" maxlength="160" autocomplete="off"></label>
+          <label>Stable ID<input id="bot-id" maxlength="128" autocomplete="off"></label>
+          <label>Strategy profile<input id="strategy-profile" autocomplete="off"></label>
+          <label>Race<select id="bot-race" disabled><option>Terran</option></select><small>Terran is the only playable definition target in this schema/runtime slice.</small></label>
+          <label>Default unit posture<select id="default-role"><option value="none">None</option><option value="rally">Rally</option><option value="scout">Scout</option><option value="contain">Contain</option><option value="engage">Engage</option><option value="fallback">Fallback</option></select></label>
+          <label class="toggle-row">Optional AI consultation <input id="ai-enabled" type="checkbox"><small>Bounded strategic advice; never direct unit-command authority.</small></label>
+        </div>
+
+        <div class="section-heading subhead"><div><span class="eyebrow">02 / AUTHORING ARTIFACT</span><h2>Definition JSON</h2></div><div class="button-row"><button id="format-json" class="quiet">Format</button><button id="reset-sample" class="quiet">Load example</button></div></div>
+        <div class="panel code-panel">
+          <div class="code-toolbar"><span><i></i> bot-definition.v1.json</span><span id="json-state">Unsaved edits stay in this browser</span></div>
+          <textarea id="definition-json" spellcheck="false" aria-label="Bot definition JSON" autocapitalize="off" autocomplete="off"></textarea>
+          <div class="editor-footer"><span id="validation-count">Waiting for validation</span><span>Strict JSON · Schema v1</span></div>
+        </div>
+        <div class="action-row">
+          <button id="validate" class="primary">Validate definition <span>↗</span></button>
+          <button id="export" class="secondary">Export JSON ↓</button>
+          <label class="file-button secondary">Import JSON ↑<input id="import-file" type="file" accept=".json,application/json"></label>
+        </div>
+        <div id="validation-results" class="validation-results" role="status" aria-live="polite"></div>
+      </div>
+
+      <aside class="side-column">
+        <section class="section-heading"><div><span class="eyebrow">03 / MATCH HOST</span><h2>Test Arena</h2></div><span class="tag muted">HOST GATED</span></section>
+        <div class="panel arena-panel">
+          <div class="arena-visual">
+            <div class="arena-grid"></div>
+            <div class="arena-center"><span class="arena-symbol">✳</span><strong>TEST ARENA</strong><small>SC2 MATCH SESSION</small></div>
+            <span class="corner-label top-left">PLAYER A</span><span class="corner-label top-right">PLAYER B</span>
+            <span class="corner-label bottom-left">OBSERVER</span><span class="corner-label bottom-right">REPLAY</span>
+          </div>
+          <div class="host-status"><span class="warning-dot"></span><div><strong>Match host not connected</strong><p>This Pages experience has no ServerSC2 session endpoint configured.</p></div></div>
+          <button class="disabled-action" disabled title="Requires a verified ServerSC2 host integration">Launch match <span>↗</span></button>
+          <p class="fine-print">A real match requires ServerSC2 to launch and supervise two participant processes plus an independent observer, then validate terminal results and replay evidence. This panel does not simulate or claim a live match.</p>
+        </div>
+
+        <section class="panel artifact-panel">
+          <span class="eyebrow">YOUR ARTIFACT</span>
+          <div class="artifact-icon">JSON</div>
+          <h3>Portable bot DNA</h3>
+          <p>Your export contains declarative settings only. It cannot inject code, load assemblies, or bypass the compiled runtime capability catalog.</p>
+          <a href="../bot-definition-v1/">Read the BotDefinition contract ↗</a>
+        </section>
+        <section class="panel checklist-panel">
+          <span class="eyebrow">AUTHORING CHECKS</span>
+          <ul><li>Versioned identity and strategy</li><li>Compiled runtime manifest</li><li>Production opening and dependencies</li><li>Default goals and posture</li><li>Evidence-gated strategy transitions</li><li>Bounded AI consultation policy</li></ul>
+          <p class="fine-print">Browser checks are a convenience. The SingularityBot runtime remains the final validator and authority.</p>
+        </section>
+      </aside>
+    </section>
+  </main>
+  <footer><span>THE SINGULARITY WORKSHOP</span><span>IF A PICTURE IS WORTH A THOUSAND WORDS, WHAT IS A LIVING PICTURE WORTH?</span></footer>
+</body>
+</html>

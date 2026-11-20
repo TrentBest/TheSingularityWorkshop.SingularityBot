@@ -222,12 +222,12 @@ public sealed class SpatialTopology
     }
 
     private static MapPoint CellCenter(SpatialGridSnapshot grid, int x, int y) =>
-        new((x + 0.5f) * grid.WorldWidth / grid.Width,
-            (y + 0.5f) * grid.WorldHeight / grid.Height);
+        new(grid.WorldOriginX + (x + 0.5f) * grid.WorldWidth / grid.Width,
+            grid.WorldOriginY + (y + 0.5f) * grid.WorldHeight / grid.Height);
 
     private static MapPoint GridPoint(SpatialGridSnapshot grid, GridVertex point) =>
-        new(point.X * grid.WorldWidth / grid.Width,
-            point.Y * grid.WorldHeight / grid.Height);
+        new(grid.WorldOriginX + point.X * grid.WorldWidth / grid.Width,
+            grid.WorldOriginY + point.Y * grid.WorldHeight / grid.Height);
 
     private readonly record struct GridVertex(int X, int Y);
     private readonly record struct GridEdge(int X1, int Y1, int X2, int Y2)

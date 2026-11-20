@@ -130,19 +130,33 @@ public static class SingularityBotDocumentJson
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         WriteIndented = false
     };
 
     public static byte[] Serialize<T>(T document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        ValidateDocumentVersion(document);
         ValidateCanonicalOrdering(document);
         return JsonSerializer.SerializeToUtf8Bytes(document, Options);
     }
 
-    public static T Deserialize<T>(ReadOnlySpan<byte> json) =>
-        JsonSerializer.Deserialize<T>(json, Options)
-        ?? throw new JsonException($"The JSON document did not contain a {typeof(T).Name} value.");
+    public static T Deserialize<T>(ReadOnlySpan<byte> json)
+    {
+        var document = JsonSerializer.Deserialize<T>(json, Options)
+            ?? throw new JsonException($"The JSON document did not contain a {typeof(T).Name} value.");
+        try
+        {
+            ValidateDocumentVersion(document);
+            ValidateCanonicalOrdering(document);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new JsonException("The document violates the supported v1 contract.", exception);
+        }
+        return document;
+    }
 
     /// <summary>
     /// Computes the map identity digest with ContentHash cleared, avoiding a
@@ -160,6 +174,14 @@ public static class SingularityBotDocumentJson
     public static bool IsSha256(string? value) =>
         value is { Length: 64 } && value.All(character =>
             character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static void ValidateDocumentVersion<T>(T document)
+    {
+        if (document is MapDocumentV1 map && map.SchemaVersion != 1)
+            throw new ArgumentException($"Unsupported MapDocument schema version {map.SchemaVersion}.", nameof(document));
+        if (document is MatchSnapshotV1 snapshot && snapshot.SchemaVersion != 1)
+            throw new ArgumentException($"Unsupported MatchSnapshot schema version {snapshot.SchemaVersion}.", nameof(document));
+    }
 
     private static void ValidateCanonicalOrdering<T>(T document)
     {
@@ -188,8 +210,13 @@ public static class SingularityBotDocumentJson
             if (!IsSha256(snapshot.MapContentHash))
                 throw new ArgumentException("Match snapshots must reference a lowercase SHA-256 map content hash.", nameof(document));
 
+            if (snapshot.Lifecycle is not ("initializing" or "running" or "ended" or "unknown"))
+                throw new ArgumentException($"Unsupported match lifecycle '{snapshot.Lifecycle}'.", nameof(document));
+
             foreach (var unit in snapshot.Units)
             {
+                if (unit.Alliance is not ("unknown" or "self" or "ally" or "neutral" or "enemy"))
+                    throw new ArgumentException($"Unsupported unit alliance '{unit.Alliance}'.", nameof(document));
                 var hasPosition = unit.X.HasValue && unit.Y.HasValue;
                 switch (unit.ContactState)
                 {

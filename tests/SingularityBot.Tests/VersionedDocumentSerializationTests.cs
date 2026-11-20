@@ -96,6 +96,42 @@ public sealed class VersionedDocumentSerializationTests
         Assert.DoesNotContain(restored.Units, unit => unit.Tag == 300);
     }
 
+    [Fact]
+    public void CanonicalMapFixtureHasAValidContentDigestAndExplicitUnavailableLayer()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "MapDocuments",
+            "translated-two-start.map.v1.json");
+        var bytes = File.ReadAllBytes(path);
+        var map = SingularityBotDocumentJson.Deserialize<MapDocumentV1>(bytes);
+
+        Assert.Equal(map.ContentHash, SingularityBotDocumentJson.ComputeMapContentHash(map));
+        Assert.NotEqual(map.FullBounds.MinX, map.PlayableBounds.MinX);
+        Assert.NotEqual(map.FullBounds.MaxY, map.PlayableBounds.MaxY);
+        Assert.Equal(2, map.StartLocations.Count);
+        Assert.Contains(map.Layers, layer => layer.Id == "resource-nodes" && layer.Availability == "unavailable");
+    }
+
+    [Fact]
+    public void CanonicalMatchFramesRetainFogAndDoNotInferDestructionFromAbsence()
+    {
+        MatchSnapshotV1 Read(string name)
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "MatchSnapshots", name);
+            return SingularityBotDocumentJson.Deserialize<MatchSnapshotV1>(File.ReadAllBytes(path));
+        }
+
+        var visible = Read("translated-two-start.frame-0001.snapshot.v1.json");
+        var remembered = Read("translated-two-start.frame-0002.snapshot.v1.json");
+        var enemy = Assert.Single(remembered.Units, unit => unit.Tag == 200);
+
+        Assert.Equal(visible.MapContentHash, remembered.MapContentHash);
+        Assert.Equal("visible", Assert.Single(visible.Units, unit => unit.Tag == 200).ContactState);
+        Assert.Equal("remembered", enemy.ContactState);
+        Assert.Equal((uint?)400, enemy.LastSeenGameLoop);
+        Assert.Contains((ulong)300, remembered.AuthoritativelyDestroyedUnitTags);
+        Assert.DoesNotContain(remembered.Units, unit => unit.Tag == 300);
+    }
+
     private static MapDocumentV1 CreateMapDocument() => new()
     {
         SchemaVersion = 1,

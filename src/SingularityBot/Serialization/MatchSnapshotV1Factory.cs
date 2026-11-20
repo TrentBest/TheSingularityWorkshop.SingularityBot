@@ -119,6 +119,7 @@ public static class MatchSnapshotV1Factory
             MapId = mapId,
             MapContentHash = mapContentHash,
             ObserverPlayerId = observation.PlayerId,
+            CapturedFields = GetCapturedFieldNames(observation.CapturedFields),
             Sequence = sequence,
             GameLoop = observation.GameLoop,
             Lifecycle = lifecycle,
@@ -193,6 +194,19 @@ public static class MatchSnapshotV1Factory
             TargetY = order.TargetPositionY
         }).ToArray();
     }
+
+    private static IReadOnlyList<string> GetCapturedFieldNames(ObservationFields fields) =>
+        Enum.GetValues<ObservationFields>()
+            .Where(field => field != ObservationFields.None &&
+                (((int)field & ((int)field - 1)) == 0) &&
+                (fields & field) == field)
+            .Select(field =>
+            {
+                var name = field.ToString();
+                return char.ToLowerInvariant(name[0]) + name[1..];
+            })
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
 
     private static string MapAlliance(UnitAlliance alliance) => alliance switch
     {

@@ -186,18 +186,18 @@ public sealed class VersionedDocumentSerializationTests
                 Id = "terrain-height",
                 Semantic = "terrain-elevation-byte",
                 Availability = "available",
-                Source = "SC2 StartRaw TerrainHeight",
+                Source = "canonical-fixture-payload",
                 Width = 2,
                 Height = 2,
                 WorldOriginX = 0,
                 WorldOriginY = 0,
                 WorldWidth = 256,
                 WorldHeight = 224,
-                Encoding = "uint8-row-major",
+                Encoding = "hex-text-uint8-row-major",
                 Units = "raw-byte-un-calibrated",
                 Compression = "none",
                 PayloadReference = "payloads/terrain-height.fixture.hex",
-                PayloadSha256 = new string('b', 64)
+                PayloadSha256 = "d6bbff4501793f6776bc5ece5ee470d31d909af1ce1cdbc817c623921eef948a"
             },
             new MapLayerV1
             {

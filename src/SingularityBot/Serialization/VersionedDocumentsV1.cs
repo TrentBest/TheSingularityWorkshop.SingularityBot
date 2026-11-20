@@ -1,0 +1,141 @@
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace SingularityBot.Serialization;
+
+/// <summary>Protocol-independent immutable static map contract consumed by Forge.</summary>
+public sealed record MapDocumentV1
+{
+    public required int SchemaVersion { get; init; } = 1;
+    public required string MapId { get; init; }
+    public required string MapName { get; init; }
+    public required string Source { get; init; }
+    public required string ContentHash { get; init; }
+    public required CoordinateSystemV1 CoordinateSystem { get; init; }
+    public required MapRectangleV1 FullBounds { get; init; }
+    public required MapRectangleV1 PlayableBounds { get; init; }
+    public required IReadOnlyList<MapStartLocationV1> StartLocations { get; init; }
+    public required IReadOnlyList<MapLayerV1> Layers { get; init; }
+}
+
+/// <summary>Declares world-space axes, units and the edge convention used by all map layers.</summary>
+public sealed record CoordinateSystemV1
+{
+    public required string Kind { get; init; } = "cartesian-2d";
+    public required string Units { get; init; } = "sc2-world-units";
+    public required string XAxis { get; init; } = "east";
+    public required string YAxis { get; init; } = "north";
+    public required string CellEdgeConvention { get; init; } = "minimum-inclusive-maximum-exclusive";
+}
+
+public sealed record MapRectangleV1
+{
+    public required double MinX { get; init; }
+    public required double MinY { get; init; }
+    public required double MaxX { get; init; }
+    public required double MaxY { get; init; }
+}
+
+public sealed record MapStartLocationV1
+{
+    public required string Id { get; init; }
+    public required double X { get; init; }
+    public required double Y { get; init; }
+}
+
+public sealed record MapLayerV1
+{
+    public required string Id { get; init; }
+    public required string Semantic { get; init; }
+    public required string Availability { get; init; }
+    public required string Source { get; init; }
+    public int? Width { get; init; }
+    public int? Height { get; init; }
+    public double? WorldOriginX { get; init; }
+    public double? WorldOriginY { get; init; }
+    public double? WorldWidth { get; init; }
+    public double? WorldHeight { get; init; }
+    public string? Encoding { get; init; }
+    public string? Units { get; init; }
+    public string? PayloadSha256 { get; init; }
+}
+
+/// <summary>One complete normalized observation frame, linked to an exact immutable map digest.</summary>
+public sealed record MatchSnapshotV1
+{
+    public required int SchemaVersion { get; init; } = 1;
+    public required string MatchId { get; init; }
+    public required string MapId { get; init; }
+    public required string MapContentHash { get; init; }
+    public required ulong Sequence { get; init; }
+    public required uint GameLoop { get; init; }
+    public required string Lifecycle { get; init; }
+    public required IReadOnlyList<MatchPlayerV1> Players { get; init; }
+    public required IReadOnlyList<MatchUnitV1> Units { get; init; }
+    public required IReadOnlyList<ulong> AuthoritativelyDestroyedUnitTags { get; init; }
+}
+
+public sealed record MatchPlayerV1
+{
+    public required uint PlayerId { get; init; }
+    public required string Team { get; init; }
+    public required string Race { get; init; }
+    public uint? Minerals { get; init; }
+    public uint? Vespene { get; init; }
+    public uint? FoodUsed { get; init; }
+    public uint? FoodCap { get; init; }
+}
+
+public sealed record MatchUnitV1
+{
+    public required ulong Tag { get; init; }
+    public required uint UnitTypeId { get; init; }
+    public required string UnitKind { get; init; }
+    public required int OwnerId { get; init; }
+    public required string Alliance { get; init; }
+    public required string ContactState { get; init; }
+    public uint? LastSeenGameLoop { get; init; }
+    public double? X { get; init; }
+    public double? Y { get; init; }
+    public double? Health { get; init; }
+    public double? HealthMax { get; init; }
+    public double? Shield { get; init; }
+    public double? ShieldMax { get; init; }
+    public double? Energy { get; init; }
+    public double? BuildProgress { get; init; }
+    public IReadOnlyList<MatchOrderV1> Orders { get; init; } = Array.Empty<MatchOrderV1>();
+}
+
+public sealed record MatchOrderV1
+{
+    public required uint AbilityId { get; init; }
+    public ulong? TargetUnitTag { get; init; }
+    public double? TargetX { get; init; }
+    public double? TargetY { get; init; }
+}
+
+/// <summary>
+/// Deterministic v1 JSON codec. Callers must provide arrays in canonical order:
+/// starts by ordinal Id, layers by ordinal Id, players by PlayerId, units and
+/// destroyed tags by numeric tag. Hashes are lowercase SHA-256 hex over UTF-8 bytes.
+/// </summary>
+public static class SingularityBotDocumentJson
+{
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = false
+    };
+
+    public static byte[] Serialize<T>(T document) =>
+        JsonSerializer.SerializeToUtf8Bytes(document, Options);
+
+    public static string ComputeSha256<T>(T document) =>
+        Convert.ToHexString(SHA256.HashData(Serialize(document))).ToLowerInvariant();
+
+    public static bool IsSha256(string? value) =>
+        value is { Length: 64 } && value.All(character =>
+            character is >= '0' and <= '9' or >= 'a' and <= 'f');
+}

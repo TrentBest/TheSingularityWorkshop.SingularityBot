@@ -223,6 +223,11 @@
       if (frames.some(frame => frame.schemaVersion !== 1 || frame.mapId !== map.mapId || frame.mapContentHash !== map.contentHash)) {
         throw new Error("A match frame does not reference this exact map document.");
       }
+      if (frames.some(frame => !Array.isArray(frame.capturedFields) ||
+          !Array.isArray(frame.players) ||
+          !frame.players.some(player => player.playerId === frame.observerPlayerId))) {
+        throw new Error("A match frame must declare captured fields and include its observer in the player roster.");
+      }
       frames.sort((a, b) => a.sequence - b.sequence);
       if (frames.some((frame, index) => index > 0 && frame.sequence <= frames[index - 1].sequence)) {
         throw new Error("Match frame sequence must be strictly increasing.");

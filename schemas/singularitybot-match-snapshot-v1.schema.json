@@ -65,6 +65,14 @@
         "shieldMax": { "type": "number", "minimum": 0 },
         "energy": { "type": "number", "minimum": 0 },
         "buildProgress": { "type": "number", "minimum": 0, "maximum": 1 },
+        "hasCargo": { "type": "boolean" },
+        "hasOrders": { "type": "boolean" },
+        "isFlying": { "type": "boolean" },
+        "isBurrowed": { "type": "boolean" },
+        "isHallucination": { "type": "boolean" },
+        "weaponCooldownRemaining": { "type": "number", "minimum": 0 },
+        "collisionRadius": { "type": "number", "minimum": 0 },
+        "vespeneContents": { "type": "integer", "minimum": 0 },
         "orders": { "type": "array", "items": { "$ref": "#/$defs/order" } }
       },
       "allOf": [

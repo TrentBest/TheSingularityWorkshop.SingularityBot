@@ -132,6 +132,30 @@ public sealed class VersionedDocumentSerializationTests
         Assert.DoesNotContain(remembered.Units, unit => unit.Tag == 300);
     }
 
+    [Fact]
+    public void MatchSnapshotRejectsNonCanonicalUnitOrdering()
+    {
+        var snapshot = new MatchSnapshotV1
+        {
+            SchemaVersion = 1,
+            MatchId = "fixture-match-01",
+            MapId = "fixture-translated-map",
+            MapContentHash = new string('a', 64),
+            Sequence = 1,
+            GameLoop = 1,
+            Lifecycle = "running",
+            Players = Array.Empty<MatchPlayerV1>(),
+            Units =
+            [
+                new MatchUnitV1 { Tag = 200, UnitTypeId = 1, UnitKind = "B", OwnerId = 2, Alliance = "enemy", ContactState = "unknown" },
+                new MatchUnitV1 { Tag = 100, UnitTypeId = 1, UnitKind = "A", OwnerId = 1, Alliance = "self", ContactState = "unknown" }
+            ],
+            AuthoritativelyDestroyedUnitTags = Array.Empty<ulong>()
+        };
+
+        Assert.Throws<ArgumentException>(() => SingularityBotDocumentJson.Serialize(snapshot));
+    }
+
     private static MapDocumentV1 CreateMapDocument() => new()
     {
         SchemaVersion = 1,

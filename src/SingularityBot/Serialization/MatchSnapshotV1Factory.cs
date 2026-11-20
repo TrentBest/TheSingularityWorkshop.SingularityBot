@@ -9,11 +9,12 @@ public sealed record LastSeenContactV1(
     string UnitKind,
     int OwnerId,
     UnitAlliance Alliance,
+    uint ObserverPlayerId,
     uint GameLoop,
     double X,
     double Y)
 {
-    public static LastSeenContactV1 FromVisible(UnitObservationFacts facts)
+    public static LastSeenContactV1 FromVisible(UnitObservationFacts facts, uint observerPlayerId)
     {
         ArgumentNullException.ThrowIfNull(facts);
         if (!facts.IsLiveVisible || !facts.HasPosition ||
@@ -21,7 +22,7 @@ public sealed record LastSeenContactV1(
             throw new ArgumentException("Last-seen history can only be captured from a live-visible unit with position.", nameof(facts));
         return new LastSeenContactV1(
             facts.Tag, facts.UnitTypeId, facts.UnitKind, facts.OwnerId,
-            facts.Alliance, facts.GameLoop, facts.PositionX, facts.PositionY);
+            facts.Alliance, observerPlayerId, facts.GameLoop, facts.PositionX, facts.PositionY);
     }
 }
 
@@ -79,6 +80,7 @@ public static class MatchSnapshotV1Factory
         {
             var memory = pair.Value;
             if (pair.Key == 0 || memory.Tag != pair.Key ||
+                memory.ObserverPlayerId != observation.PlayerId ||
                 !double.IsFinite(memory.X) || !double.IsFinite(memory.Y) ||
                 memory.GameLoop > observation.GameLoop)
                 throw new ArgumentException($"Last-seen history for unit {pair.Key} is invalid.", nameof(lastSeenContacts));

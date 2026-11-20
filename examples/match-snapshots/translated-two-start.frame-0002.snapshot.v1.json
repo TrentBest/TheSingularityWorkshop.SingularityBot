@@ -4,6 +4,7 @@
   "mapId": "fixture-translated-map",
   "mapContentHash": "86c64b9d76c6add5306e35720a3ebb3ae4eed6455446a906db0f32a84862d7ac",
   "observerPlayerId": 1,
+  "capturedFields": ["economy", "health", "position"],
   "sequence": 2,
   "gameLoop": 480,
   "lifecycle": "running",
@@ -13,7 +14,7 @@
   ],
   "units": [
     { "tag": 100, "unitTypeId": 48, "unitKind": "Marine", "ownerId": 1, "alliance": "self", "contactState": "visible", "x": 25.5, "y": 33.5, "health": 45, "healthMax": 45, "orders": [] },
-    { "tag": 200, "unitTypeId": 48, "unitKind": "Marine", "ownerId": 2, "alliance": "enemy", "contactState": "remembered", "lastSeenGameLoop": 400, "x": 198.5, "y": 164.5, "health": 45, "healthMax": 45, "orders": [] }
+    { "tag": 200, "unitTypeId": 48, "unitKind": "Marine", "ownerId": 2, "alliance": "enemy", "contactState": "remembered", "lastSeenGameLoop": 400, "x": 198.5, "y": 164.5, "orders": [] }
   ],
   "authoritativelyDestroyedUnitTags": [300]
 }

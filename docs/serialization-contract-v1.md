@@ -31,6 +31,8 @@ Contact semantics:
 
 Absence from a snapshot is not destruction evidence. Unknown optional values are omitted rather than represented as zero. Unit and player arrays are sorted by stable numeric identity; dead tags are unique and sorted. Orders retain their observed sequence.
 
+`MatchSnapshotV1Factory` projects a `NormalizedObservation` plus explicit player metadata and retained `LastSeenContactV1` history. A contact omitted from the current observation remains remembered if live-visible history exists; authoritative dead tags override both current and remembered contacts. Snapshot/hidden facts never invent their own last-seen timestamp. Visible units require captured position, so callers must include `ObservationFields.Position`; otherwise projection fails closed. `NormalizedObservation.CapturedFields` records which optional facts were actually captured.
+
 ## Deterministic JSON and hashes
 
 The v1 .NET codec uses compact UTF-8 JSON, camelCase property names, declaration/schema property order, direct UTF-8 characters with JSON-required escaping, and omission of null properties. It does not write a BOM or indentation.

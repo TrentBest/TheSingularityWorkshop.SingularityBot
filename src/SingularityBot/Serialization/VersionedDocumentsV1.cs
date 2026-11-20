@@ -58,6 +58,7 @@ public sealed record MapLayerV1
     public double? WorldHeight { get; init; }
     public string? Encoding { get; init; }
     public string? Units { get; init; }
+    public string? Compression { get; init; }
     public string? PayloadSha256 { get; init; }
 }
 

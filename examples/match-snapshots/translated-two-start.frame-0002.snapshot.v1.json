@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "matchId": "fixture-match-01",
   "mapId": "fixture-translated-map",
-  "mapContentHash": "97a2546d95b5f79b7e27e5cc5fd918897bbf477b8d600b03394c5392c281c112",
+  "mapContentHash": "454ad099930ceadb40c2059a07bc6db1088a4f2eb19648cb65b363323bce8161",
   "sequence": 2,
   "gameLoop": 480,
   "lifecycle": "running",

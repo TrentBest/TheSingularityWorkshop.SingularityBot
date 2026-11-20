@@ -258,6 +258,100 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Equal(new byte[] { 2, 3, 4, 5 }, storedPayloads["terrain-height"]);
     }
 
+    [Fact]
+    public void MatchSnapshotFactoryUsesLiveHistoryForRememberedContactsAndDeathEvidence()
+    {
+        var captured = ObservationFields.Position | ObservationFields.Health |
+                       ObservationFields.Shields | ObservationFields.Energy |
+                       ObservationFields.BuildProgress | ObservationFields.OrderDetails |
+                       ObservationFields.Economy;
+        UnitObservationFacts Unit(
+            ulong tag,
+            UnitAlliance alliance,
+            UnitVisibility visibility,
+            bool hasPosition,
+            float x,
+            float y,
+            ObservationFields fields) =>
+            new(tag, 48, "Marine", alliance == UnitAlliance.Self ? 1 : 2,
+                alliance, visibility, 45, 45, 0, 0, 1,
+                x, y, hasPosition, false, false, false, false, false, 480)
+            {
+                CapturedFields = fields,
+                Orders = Array.Empty<UnitOrderObservationFacts>()
+            };
+
+        var observation = new NormalizedObservation(
+            480,
+            1,
+            [
+                Unit(100, UnitAlliance.Self, UnitVisibility.Visible, true, 25, 35, captured),
+                Unit(200, UnitAlliance.Enemy, UnitVisibility.Snapshot, false, 0, 0, ObservationFields.Health),
+                Unit(300, UnitAlliance.Enemy, UnitVisibility.Hidden, false, 0, 0, ObservationFields.None),
+                Unit(400, UnitAlliance.Enemy, UnitVisibility.Visible, true, 40, 40, captured)
+            ],
+            new HashSet<ulong> { 400 })
+        {
+            Minerals = 150,
+            Vespene = 75,
+            FoodUsed = 19,
+            FoodCap = 23,
+            CapturedFields = captured
+        };
+
+        var snapshot = MatchSnapshotV1Factory.Create(
+            "fixture-match-01",
+            "fixture-translated-map",
+            new string('a', 64),
+            2,
+            "running",
+            observation,
+            [
+                new MatchPlayerV1 { PlayerId = 1, Team = "1", Race = "Terran", Minerals = 1 },
+                new MatchPlayerV1 { PlayerId = 2, Team = "2", Race = "Terran" }
+            ],
+            new Dictionary<ulong, LastSeenContactV1>
+            {
+                [200] = new(400, 198.5, 164.5)
+            });
+
+        var visible = Assert.Single(snapshot.Units, unit => unit.Tag == 100);
+        var remembered = Assert.Single(snapshot.Units, unit => unit.Tag == 200);
+        var unknown = Assert.Single(snapshot.Units, unit => unit.Tag == 300);
+        Assert.Equal("visible", visible.ContactState);
+        Assert.Equal(25, visible.X);
+        Assert.Equal(35, visible.Y);
+        Assert.Equal("remembered", remembered.ContactState);
+        Assert.Equal((uint?)400, remembered.LastSeenGameLoop);
+        Assert.Equal(198.5, remembered.X);
+        Assert.Equal(164.5, remembered.Y);
+        Assert.Equal("unknown", unknown.ContactState);
+        Assert.Null(unknown.X);
+        Assert.Contains((ulong)400, snapshot.AuthoritativelyDestroyedUnitTags);
+        Assert.DoesNotContain(snapshot.Units, unit => unit.Tag == 400);
+        Assert.Equal((uint?)150, snapshot.Players[0].Minerals);
+        Assert.Equal(snapshot.MapContentHash, new string('a', 64));
+        _ = SingularityBotDocumentJson.Serialize(snapshot);
+    }
+
+    [Fact]
+    public void MatchSnapshotFactoryRejectsVisibleUnitsWithoutCapturedPosition()
+    {
+        var facts = new UnitObservationFacts(
+            100, 48, "Marine", 1, UnitAlliance.Self, UnitVisibility.Visible,
+            45, 45, 0, 0, 1, 0, 0, false, false, false,
+            false, false, false, 10)
+        {
+            CapturedFields = ObservationFields.Health
+        };
+        var observation = new NormalizedObservation(10, 1, [facts], new HashSet<ulong>());
+        var players = new[] { new MatchPlayerV1 { PlayerId = 1, Team = "1", Race = "Terran" } };
+
+        Assert.Throws<InvalidOperationException>(() => MatchSnapshotV1Factory.Create(
+            "match", "map", new string('a', 64), 1, "running",
+            observation, players, new Dictionary<ulong, LastSeenContactV1>()));
+    }
+
     private static MapDocumentV1 CreateMapDocument() => new()
     {
         SchemaVersion = 1,

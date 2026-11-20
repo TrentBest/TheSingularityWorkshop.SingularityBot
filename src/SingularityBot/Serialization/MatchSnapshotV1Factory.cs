@@ -56,16 +56,21 @@ public static class MatchSnapshotV1Factory
         if (!playerFacts.TryGetValue(observation.PlayerId, out var observingPlayer))
             throw new ArgumentException("Player metadata must include the observing player.", nameof(players));
 
-        if ((observation.CapturedFields & ObservationFields.Economy) != 0)
-        {
-            playerFacts[observation.PlayerId] = observingPlayer with
+        playerFacts[observation.PlayerId] = (observation.CapturedFields & ObservationFields.Economy) != 0
+            ? observingPlayer with
             {
                 Minerals = observation.Minerals,
                 Vespene = observation.Vespene,
                 FoodUsed = observation.FoodUsed,
                 FoodCap = observation.FoodCap
+            }
+            : observingPlayer with
+            {
+                Minerals = null,
+                Vespene = null,
+                FoodUsed = null,
+                FoodCap = null
             };
-        }
 
         var destroyedTags = observation.DeadUnitTags
             .Where(tag => tag != 0)

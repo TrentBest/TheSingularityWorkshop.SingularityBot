@@ -57,6 +57,7 @@ public sealed class VersionedDocumentSerializationTests
             MapId = "fixture-translated-map",
             MapContentHash = new string('a', 64),
             ObserverPlayerId = 1,
+            CapturedFields = ["health", "position"],
             Sequence = 2,
             GameLoop = 480,
             Lifecycle = "running",
@@ -146,6 +147,7 @@ public sealed class VersionedDocumentSerializationTests
             MapId = "fixture-translated-map",
             MapContentHash = new string('a', 64),
             ObserverPlayerId = 1,
+            CapturedFields = ["health", "position"],
             Sequence = 1,
             GameLoop = 1,
             Lifecycle = "running",
@@ -171,6 +173,7 @@ public sealed class VersionedDocumentSerializationTests
             MapId = "fixture-translated-map",
             MapContentHash = new string('a', 64),
             ObserverPlayerId = 1,
+            CapturedFields = ["health", "position"],
             Sequence = 1,
             GameLoop = 1,
             Lifecycle = "running",
@@ -341,6 +344,7 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Equal((uint?)150, snapshot.Players[0].Minerals);
         Assert.Equal(new string('a', 64), snapshot.MapContentHash);
         Assert.Equal((uint)1, snapshot.ObserverPlayerId);
+        Assert.Equal(new[] { "buildProgress", "economy", "energy", "health", "orderDetails", "position", "shields" }, snapshot.CapturedFields);
         _ = SingularityBotDocumentJson.Serialize(snapshot);
     }
 

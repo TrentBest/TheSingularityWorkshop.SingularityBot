@@ -143,6 +143,120 @@
     document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
     $("json-state").textContent = "Exported · " + link.download;
   }
+
+  const mapPreview = { map: null, frames: [], index: 0 };
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  function svgElement(name, attributes, parent) {
+    const node = document.createElementNS(svgNamespace, name);
+    for (const [key, value] of Object.entries(attributes || {})) node.setAttribute(key, String(value));
+    parent.appendChild(node);
+    return node;
+  }
+  function mapTransform() {
+    const bounds = mapPreview.map.fullBounds;
+    const left = 42, top = 34, availableWidth = 916, availableHeight = 632;
+    const scale = Math.min(availableWidth / (bounds.maxX - bounds.minX), availableHeight / (bounds.maxY - bounds.minY));
+    const width = (bounds.maxX - bounds.minX) * scale;
+    const height = (bounds.maxY - bounds.minY) * scale;
+    const offsetX = left + (availableWidth - width) / 2;
+    const offsetY = top + (availableHeight - height) / 2;
+    return {
+      x: value => offsetX + (value - bounds.minX) * scale,
+      y: value => offsetY + height - (value - bounds.minY) * scale,
+      rect: rect => ({ x: offsetX + (rect.minX - bounds.minX) * scale, y: offsetY + height - (rect.maxY - bounds.minY) * scale, width: (rect.maxX - rect.minX) * scale, height: (rect.maxY - rect.minY) * scale })
+    };
+  }
+  function renderStaticMap() {
+    const layer = $("map-static-layer");
+    layer.replaceChildren();
+    const map = mapPreview.map;
+    const transform = mapTransform();
+    const full = transform.rect(map.fullBounds);
+    const playable = transform.rect(map.playableBounds);
+    svgElement("rect", { ...full, rx: 8, class: "full-bounds" }, layer);
+    svgElement("rect", { ...playable, rx: 3, class: "playable-bounds" }, layer);
+    for (const start of map.startLocations) {
+      const x = transform.x(start.x), y = transform.y(start.y);
+      svgElement("circle", { cx: x, cy: y, r: 10, class: "start-point" }, layer);
+      const label = svgElement("text", { x: x + 14, y: y - 12, class: "unit-label" }, layer);
+      label.textContent = start.id;
+    }
+  }
+  function renderMatchFrame() {
+    const frame = mapPreview.frames[mapPreview.index];
+    const layer = $("map-unit-layer");
+    layer.replaceChildren();
+    const transform = mapTransform();
+    for (const unit of frame.units) {
+      if (unit.contactState === "unknown" || !Number.isFinite(unit.x) || !Number.isFinite(unit.y)) continue;
+      const x = transform.x(unit.x), y = transform.y(unit.y);
+      const remembered = unit.contactState === "remembered";
+      const unitClass = remembered ? "unit-remembered" : unit.alliance === "self" ? "unit-self" : unit.alliance === "enemy" ? "unit-enemy" : "unit-self";
+      svgElement("circle", { cx: x, cy: y, r: remembered ? 9 : 7, class: unitClass }, layer);
+      const label = svgElement("text", { x: x + 12, y: y - 9, class: "unit-label" }, layer);
+      label.textContent = String(unit.tag);
+    }
+    $("frame-label").textContent = "Frame " + (mapPreview.index + 1) + " / " + mapPreview.frames.length + " · Loop " + frame.gameLoop;
+    $("destroyed-label").textContent = frame.authoritativelyDestroyedUnitTags.length
+      ? "Destroyed (authoritative): " + frame.authoritativelyDestroyedUnitTags.join(", ")
+      : "No destruction evidence";
+    $("frame-scrubber").value = String(mapPreview.index);
+    $("frame-previous").disabled = mapPreview.index === 0;
+    $("frame-next").disabled = mapPreview.index === mapPreview.frames.length - 1;
+  }
+  async function loadMapPreview() {
+    const status = $("map-status");
+    try {
+      const [mapResponse, firstResponse, secondResponse] = await Promise.all([
+        fetch("../examples/map-documents/translated-two-start.map.v1.json", { cache: "no-store" }),
+        fetch("../examples/match-snapshots/translated-two-start.frame-0001.snapshot.v1.json", { cache: "no-store" }),
+        fetch("../examples/match-snapshots/translated-two-start.frame-0002.snapshot.v1.json", { cache: "no-store" })
+      ]);
+      for (const response of [mapResponse, firstResponse, secondResponse]) {
+        if (!response.ok) throw new Error("Fixture request failed with HTTP " + response.status);
+      }
+      const map = await mapResponse.json();
+      const frames = await Promise.all([firstResponse.json(), secondResponse.json()]);
+      if (!map.fullBounds || !map.playableBounds || !Array.isArray(map.startLocations) || !Array.isArray(map.layers)) {
+        throw new Error("MapDocument v1 is missing required geometry or layer metadata.");
+      }
+      if (frames.some(frame => frame.schemaVersion !== 1 || frame.mapId !== map.mapId || frame.mapContentHash !== map.contentHash)) {
+        throw new Error("A match frame does not reference this exact map document.");
+      }
+      frames.sort((a, b) => a.sequence - b.sequence);
+      if (frames.some((frame, index) => index > 0 && frame.sequence <= frames[index - 1].sequence)) {
+        throw new Error("Match frame sequence must be strictly increasing.");
+      }
+      mapPreview.map = map;
+      mapPreview.frames = frames;
+      mapPreview.index = 0;
+      $("map-title").textContent = map.mapName;
+      $("frame-scrubber").min = "0";
+      $("frame-scrubber").max = String(frames.length - 1);
+      $("frame-scrubber").disabled = frames.length < 2;
+      status.textContent = map.layers.filter(layer => layer.availability === "available").length + " available layer(s)";
+      renderStaticMap();
+      renderMatchFrame();
+    } catch (error) {
+      status.textContent = "Preview unavailable";
+      $("map-title").textContent = "Could not load map fixture";
+      $("frame-label").textContent = error.message;
+      $("map-static-layer").replaceChildren();
+      $("map-unit-layer").replaceChildren();
+    }
+  }
+  $("frame-scrubber").addEventListener("input", event => {
+    mapPreview.index = Number(event.target.value);
+    renderMatchFrame();
+  });
+  $("frame-previous").addEventListener("click", () => {
+    if (mapPreview.index > 0) { mapPreview.index--; renderMatchFrame(); }
+  });
+  $("frame-next").addEventListener("click", () => {
+    if (mapPreview.index < mapPreview.frames.length - 1) { mapPreview.index++; renderMatchFrame(); }
+  });
+  loadMapPreview();
+
   $("validate").addEventListener("click", validate);
   $("export").addEventListener("click", download);
   $("format-json").addEventListener("click", () => { const parsed = parse(); if (!parsed.error) editor.value = JSON.stringify(parsed.value, null, 2); else validate(); });

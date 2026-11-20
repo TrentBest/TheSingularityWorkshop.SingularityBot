@@ -59,6 +59,7 @@ public sealed record MapLayerV1
     public string? Encoding { get; init; }
     public string? Units { get; init; }
     public string? Compression { get; init; }
+    public string? PayloadReference { get; init; }
     public string? PayloadSha256 { get; init; }
 }
 

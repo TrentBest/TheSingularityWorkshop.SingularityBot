@@ -1,0 +1,52 @@
+# Versioned map and match documents
+
+Forge consumes protocol-independent JSON documents. SC2 protocol decoding and normalization stay inside SingularityBot; ServerSC2 remains authoritative for assignment, process lifecycle, adjudication and replay persistence. These documents are read-only visualization data and cannot authorize bot actions or declare a match complete.
+
+## Static map: MapDocument v1
+
+Schema: [`singularitybot-map-document-v1.schema.json`](../schemas/singularitybot-map-document-v1.schema.json)
+
+A map document is immutable and contains:
+
+- Stable `mapId`, display name, source and a SHA-256 `contentHash`.
+- A declared 2D world coordinate system in SC2 world units; X increases east, Y increases north.
+- Full-map bounds and playable bounds as separate rectangles. Both may have non-zero origins.
+- Start locations in canonical ordinal-ID order.
+- Independently described layers. Each available layer declares dimensions, world origin and extent, semantic meaning, encoding, units, compression, payload reference and SHA-256 digest. Unavailable/unsupported layers carry no payload digest and must never be fabricated.
+
+Layer payload hashes cover the exact stored payload bytes (after compression, if any). Payload references are relative to the map document. The fixture's tiny terrain payload is hex text; its declared encoding makes that representation explicit. Terrain-height values remain raw bytes with uncalibrated physical units.
+
+## Dynamic match: MatchSnapshot v1
+
+Schema: [`singularitybot-match-snapshot-v1.schema.json`](../schemas/singularitybot-match-snapshot-v1.schema.json)
+
+Each snapshot is a complete observation frame, not a delta. It binds to both `mapId` and the exact `mapContentHash`, and includes match identity, monotonically increasing observation sequence, game loop, lifecycle, player/economy facts, unit facts and authoritative dead-unit tags.
+
+Contact semantics:
+
+- `visible`: currently observed; position and captured values describe this frame.
+- `remembered`: last known contact, with required `lastSeenGameLoop`; it is not current visibility.
+- `unknown`: no current fact is asserted; position is omitted.
+- Destruction is represented only in `authoritativelyDestroyedUnitTags`, sourced from explicit death evidence. Destroyed tags cannot also remain in the active/remembered unit array.
+
+Absence from a snapshot is not destruction evidence. Unknown optional values are omitted rather than represented as zero. Unit and player arrays are sorted by stable numeric identity; dead tags are unique and sorted. Orders retain their observed sequence.
+
+## Deterministic JSON and hashes
+
+The v1 .NET codec uses compact UTF-8 JSON, camelCase property names, declaration/schema property order, direct UTF-8 characters with JSON-required escaping, and omission of null properties. It does not write a BOM or indentation.
+
+- Map `contentHash` is SHA-256 over the exact v1 serialized map document after setting `contentHash` to the empty string. The returned lowercase hex digest is then stored in that field.
+- Layer `payloadSha256` is SHA-256 over the exact stored payload bytes.
+- Match snapshots carry the map content hash; they do not redefine or recompute map identity.
+
+Canonical array ordering is enforced by the codec: map starts/layers by ordinal ID; match players by player ID; units and destroyed tags by numeric tag. Non-canonical order and duplicate identities are rejected before serialization.
+
+V1 is immutable. Incompatible shape or semantic changes require a new schema/version rather than silently changing the meaning of an existing field. Readers must reject unsupported schema versions and unknown enum values; optional fields may be absent, never guessed.
+
+## Fixtures and current scope
+
+- `examples/map-documents/translated-two-start.map.v1.json`: non-square full bounds, translated playable bounds, two starts, one payload-backed layer and one explicitly unavailable layer.
+- `examples/match-snapshots/translated-two-start.frame-0001.snapshot.v1.json` and `frame-0002...`: a visible enemy becomes remembered with its last-seen loop; a separate tag is authoritatively destroyed.
+- `tests/SingularityBot.Tests/VersionedDocumentSerializationTests.cs`: byte stability, map digest, round-trip, canonical ordering, fog retention and destruction/absence separation.
+
+This first slice defines the DTOs, schemas, codec and synthetic canonical fixtures. SC2-to-document production adapters, raster payload packaging for real maps, match-frame capture, Forge loading/scrubbing and live ServerSC2 integration remain subsequent work. Event/delta replay is deliberately deferred until full-snapshot reconstruction is proven deterministic.

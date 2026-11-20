@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thesingularityworkshop.dev/schemas/singularitybot-match-snapshot-v1.schema.json",
+  "title": "SingularityBot MatchSnapshot v1",
+  "description": "One complete, read-only normalized observation frame bound to an exact MapDocument digest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "matchId", "mapId", "mapContentHash", "sequence", "gameLoop", "lifecycle", "players", "units", "authoritativelyDestroyedUnitTags"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "matchId": { "type": "string", "minLength": 1 },
+    "mapId": { "type": "string", "minLength": 1 },
+    "mapContentHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "gameLoop": { "type": "integer", "minimum": 0 },
+    "lifecycle": { "enum": ["initializing", "running", "ended", "unknown"] },
+    "players": { "type": "array", "items": { "$ref": "#/$defs/player" } },
+    "units": { "type": "array", "items": { "$ref": "#/$defs/unit" } },
+    "authoritativelyDestroyedUnitTags": { "type": "array", "uniqueItems": true, "items": { "type": "integer", "minimum": 1 } }
+  },
+  "$defs": {
+    "player": {
+      "type": "object", "additionalProperties": false,
+      "required": ["playerId", "team", "race"],
+      "properties": {
+        "playerId": { "type": "integer", "minimum": 1 },
+        "team": { "type": "string", "minLength": 1 },
+        "race": { "type": "string", "minLength": 1 },
+        "minerals": { "type": "integer", "minimum": 0 },
+        "vespene": { "type": "integer", "minimum": 0 },
+        "foodUsed": { "type": "integer", "minimum": 0 },
+        "foodCap": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "order": {
+      "type": "object", "additionalProperties": false,
+      "required": ["abilityId"],
+      "properties": {
+        "abilityId": { "type": "integer", "minimum": 0 },
+        "targetUnitTag": { "type": "integer", "minimum": 1 },
+        "targetX": { "type": "number" }, "targetY": { "type": "number" }
+      }
+    },
+    "unit": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tag", "unitTypeId", "unitKind", "ownerId", "alliance", "contactState", "orders"],
+      "properties": {
+        "tag": { "type": "integer", "minimum": 1 },
+        "unitTypeId": { "type": "integer", "minimum": 0 },
+        "unitKind": { "type": "string" },
+        "ownerId": { "type": "integer", "minimum": 0 },
+        "alliance": { "enum": ["unknown", "self", "ally", "neutral", "enemy"] },
+        "contactState": { "enum": ["visible", "remembered", "destroyed", "unknown"] },
+        "lastSeenGameLoop": { "type": "integer", "minimum": 0 },
+        "x": { "type": "number" }, "y": { "type": "number" },
+        "health": { "type": "number", "minimum": 0 },
+        "healthMax": { "type": "number", "minimum": 0 },
+        "shield": { "type": "number", "minimum": 0 },
+        "shieldMax": { "type": "number", "minimum": 0 },
+        "energy": { "type": "number", "minimum": 0 },
+        "buildProgress": { "type": "number", "minimum": 0, "maximum": 1 },
+        "orders": { "type": "array", "items": { "$ref": "#/$defs/order" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "contactState": { "const": "remembered" } } },
+          "then": { "required": ["lastSeenGameLoop"] }
+        },
+        {
+          "if": { "properties": { "contactState": { "enum": ["unknown", "destroyed"] } } },
+          "then": { "not": { "anyOf": [{ "required": ["x"] }, { "required": ["y"] }] } }
+        }
+      ]
+    }
+  }
+}

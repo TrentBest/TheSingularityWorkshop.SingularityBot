@@ -3,7 +3,7 @@
   "mapId": "fixture-translated-map",
   "mapName": "Translated Two-Start Fixture",
   "source": "canonical-test-fixture",
-  "contentHash": "454ad099930ceadb40c2059a07bc6db1088a4f2eb19648cb65b363323bce8161",
+  "contentHash": "318bb72f51049fd8b61d17acd037f1c07a134cc74c9be8bf738be20b1e88d60e",
   "coordinateSystem": {
     "kind": "cartesian-2d",
     "units": "sc2-world-units",
@@ -18,6 +18,12 @@
     { "id": "start-02", "x": 220.5, "y": 180.5 }
   ],
   "layers": [
+    {
+      "id": "resource-nodes",
+      "semantic": "resource-node-features",
+      "availability": "unavailable",
+      "source": "not-yet-decoded"
+    },
     {
       "id": "terrain-height",
       "semantic": "terrain-elevation-byte",
@@ -34,12 +40,7 @@
       "compression": "none",
       "payloadReference": "payloads/terrain-height.fixture.hex",
       "payloadSha256": "d6bbff4501793f6776bc5ece5ee470d31d909af1ce1cdbc817c623921eef948a"
-    },
-    {
-      "id": "resource-nodes",
-      "semantic": "resource-node-features",
-      "availability": "unavailable",
-      "source": "not-yet-decoded"
     }
+
   ]
 }

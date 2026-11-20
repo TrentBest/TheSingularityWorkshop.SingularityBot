@@ -183,6 +183,13 @@ public sealed class VersionedDocumentSerializationTests
         [
             new MapLayerV1
             {
+                Id = "resource-nodes",
+                Semantic = "resource-node-features",
+                Availability = "unavailable",
+                Source = "not-yet-decoded"
+            },
+            new MapLayerV1
+            {
                 Id = "terrain-height",
                 Semantic = "terrain-elevation-byte",
                 Availability = "available",
@@ -198,13 +205,6 @@ public sealed class VersionedDocumentSerializationTests
                 Compression = "none",
                 PayloadReference = "payloads/terrain-height.fixture.hex",
                 PayloadSha256 = "d6bbff4501793f6776bc5ece5ee470d31d909af1ce1cdbc817c623921eef948a"
-            },
-            new MapLayerV1
-            {
-                Id = "resource-nodes",
-                Semantic = "resource-node-features",
-                Availability = "unavailable",
-                Source = "not-yet-decoded"
             }
         ]
     };

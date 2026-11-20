@@ -78,6 +78,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check jsonschema
           python - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
           from jsonschema import Draft202012Validator
@@ -122,7 +123,25 @@ jobs:
                       location = "/".join(map(str, error.absolute_path)) or "$"
                       print(f"{path}:{location}: {error.message}")
                   raise SystemExit(f"Map document validation failed: {path}")
-              print(f"Validated {path} against map document schema")
+              hash_document = dict(document)
+              expected_hash = hash_document["contentHash"]
+              hash_document["contentHash"] = ""
+              canonical_bytes = json.dumps(
+                  hash_document, separators=(",", ":"), ensure_ascii=False
+              ).encode("utf-8")
+              actual_hash = hashlib.sha256(canonical_bytes).hexdigest()
+              if actual_hash != expected_hash:
+                  raise SystemExit(f"{path}: contentHash mismatch (expected {expected_hash}, computed {actual_hash})")
+              for layer in document["layers"]:
+                  if layer["availability"] != "available":
+                      continue
+                  payload_path = (path.parent / layer["payloadReference"]).resolve()
+                  if path.parent.resolve() not in payload_path.parents or not payload_path.is_file():
+                      raise SystemExit(f"{path}: missing or unsafe payload reference for layer {layer['id']}")
+                  payload_hash = hashlib.sha256(payload_path.read_bytes()).hexdigest()
+                  if payload_hash != layer["payloadSha256"]:
+                      raise SystemExit(f"{path}: payload digest mismatch for layer {layer['id']}")
+              print(f"Validated {path} schema, map digest and layer payloads")
 
           snapshot_files = sorted(Path("examples/match-snapshots").glob("*.json"))
           if not snapshot_files:

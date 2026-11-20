@@ -233,3 +233,62 @@ public sealed class Sc2SpatialTerrainFactoryTests
         Assert.False(terrain.TryGetTerrainHeight(new MapPoint(8, 3), out _));
     }
 }
+
+
+public sealed class Sc2SpatialVisionFactoryTests
+{
+    [Fact]
+    public void VisibilityGridPreservesTranslatedPlayableAreaCoordinates()
+    {
+        var map = new SpatialMap(
+            new MapBounds(2, 1, 7, 5),
+            new MapPoint(3, 2),
+            new MapPoint(6, 4));
+        var response = new SC2APIProtocol.ResponseObservation
+        {
+            Observation = new SC2APIProtocol.Observation
+            {
+                RawData = new SC2APIProtocol.ObservationRaw
+                {
+                    MapState = new SC2APIProtocol.MapState
+                    {
+                        Visibility = new SC2APIProtocol.ImageData
+                        {
+                            BitsPerPixel = 8,
+                            Size = new SC2APIProtocol.Size2DI { X = 2, Y = 2 },
+                            Data = Google.Protobuf.ByteString.CopyFrom(new byte[] { 1, 2, 3, 4 })
+                        }
+                    }
+                }
+            }
+        };
+
+        Assert.True(Sc2SpatialVisionFactory.TryCreate(response, map, out var visibility));
+
+        Assert.Equal(2f, visibility.WorldOriginX);
+        Assert.Equal(1f, visibility.WorldOriginY);
+        Assert.True(visibility.TryGetValue(new MapPoint(2.1f, 1.1f), out var southWest));
+        Assert.Equal((byte)1, southWest);
+        Assert.True(visibility.TryGetValue(new MapPoint(6.9f, 4.9f), out var northEast));
+        Assert.Equal((byte)4, northEast);
+        Assert.False(visibility.TryGetValue(new MapPoint(1.9f, 2), out _));
+        Assert.False(visibility.TryGetValue(new MapPoint(7, 2), out _));
+    }
+}
+
+public sealed class SpatialGridOriginTests
+{
+    [Fact]
+    public void GridMapsWorldCoordinatesRelativeToExplicitOrigin()
+    {
+        var grid = new SpatialGridSnapshot(
+            2, 2, 20, 20, new byte[] { 1, 2, 3, 4 }, worldOriginX: 10, worldOriginY: 30);
+
+        Assert.True(grid.TryGetCellIndex(new MapPoint(10, 30), out var southWest));
+        Assert.Equal(0, southWest);
+        Assert.True(grid.TryGetValue(new MapPoint(29, 49), out var northEast));
+        Assert.Equal((byte)4, northEast);
+        Assert.False(grid.TryGetCellIndex(new MapPoint(9.99f, 30), out _));
+        Assert.False(grid.TryGetCellIndex(new MapPoint(30, 40), out _));
+    }
+}

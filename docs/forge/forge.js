@@ -196,7 +196,7 @@
       const label = svgElement("text", { x: x + 12, y: y - 9, class: "unit-label" }, layer);
       label.textContent = String(unit.tag);
     }
-    $("frame-label").textContent = "Frame " + (mapPreview.index + 1) + " / " + mapPreview.frames.length + " · Loop " + frame.gameLoop;
+    $("frame-label").textContent = "Frame " + (mapPreview.index + 1) + " / " + mapPreview.frames.length + " · Loop " + frame.gameLoop + " · Observer P" + frame.observerPlayerId;
     $("destroyed-label").textContent = frame.authoritativelyDestroyedUnitTags.length
       ? "Destroyed (authoritative): " + frame.authoritativelyDestroyedUnitTags.join(", ")
       : "No destruction evidence";

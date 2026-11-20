@@ -1,4 +1,5 @@
 using SingularityBot.Serialization;
+using SingularityBot.Spatial;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -211,6 +212,50 @@ public sealed class VersionedDocumentSerializationTests
 
         Assert.Throws<System.Text.Json.JsonException>(() =>
             SingularityBotDocumentJson.Deserialize<MapDocumentV1>(System.Text.Encoding.UTF8.GetBytes(extended)));
+    }
+
+    [Fact]
+    public void MapDocumentFactoryPreservesLayerOriginsAndExplicitAvailability()
+    {
+        var spatialMap = new SpatialMap(
+            new MapBounds(10, 20, 30, 40),
+            new MapPoint(12, 22),
+            new MapPoint(28, 38));
+        var pathing = new SpatialGridSnapshot(
+            2, 2, 40, 50, new byte[] { 1, 0, 1, 1 }, -5, 2);
+        var heights = new SpatialGridSnapshot(
+            2, 2, 40, 50, new byte[] { 2, 3, 4, 5 }, -5, 2);
+        var terrain = new SpatialTerrain(pathing, null, heights);
+        var storedPayloads = new Dictionary<string, byte[]>();
+
+        var document = MapDocumentV1Factory.Create(
+            "translated-fixture",
+            "Translated Fixture",
+            "unit-test",
+            new MapRectangleV1 { MinX = -5, MinY = 2, MaxX = 35, MaxY = 52 },
+            spatialMap,
+            [
+                new MapStartLocationV1 { Id = "start-b", X = 28, Y = 38 },
+                new MapStartLocationV1 { Id = "start-a", X = 12, Y = 22 }
+            ],
+            terrain,
+            (id, payload) =>
+            {
+                storedPayloads.Add(id, payload);
+                return "payloads/" + id + ".bin";
+            });
+
+        Assert.Equal(document.ContentHash, SingularityBotDocumentJson.ComputeMapContentHash(document));
+        Assert.Equal(new[] { "start-a", "start-b" }, document.StartLocations.Select(start => start.Id));
+        Assert.Equal(new[] { "pathing", "placement", "terrain-height" }, document.Layers.Select(layer => layer.Id));
+        var pathingLayer = document.Layers[0];
+        Assert.Equal("available", pathingLayer.Availability);
+        Assert.Equal(-5, pathingLayer.WorldOriginX);
+        Assert.Equal(2, pathingLayer.WorldOriginY);
+        Assert.Equal("payloads/pathing.bin", pathingLayer.PayloadReference);
+        Assert.Equal("unavailable", document.Layers[1].Availability);
+        Assert.Equal(new byte[] { 1, 0, 1, 1 }, storedPayloads["pathing"]);
+        Assert.Equal(new byte[] { 2, 3, 4, 5 }, storedPayloads["terrain-height"]);
     }
 
     private static MapDocumentV1 CreateMapDocument() => new()

@@ -92,4 +92,5 @@ public sealed class NormalizedObservation
     public uint Vespene { get; init; }
     public uint FoodUsed { get; init; }
     public uint FoodCap { get; init; }
+    public ObservationFields CapturedFields { get; init; } = ObservationFields.All;
 }

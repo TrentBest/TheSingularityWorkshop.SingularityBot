@@ -60,7 +60,7 @@ public sealed class VersionedDocumentSerializationTests
             Sequence = 2,
             GameLoop = 480,
             Lifecycle = "running",
-            Players = Array.Empty<MatchPlayerV1>(),
+            Players = [new MatchPlayerV1 { PlayerId = 1, Team = "1", Race = "Terran" }],
             Units =
             [
                 new MatchUnitV1
@@ -149,7 +149,7 @@ public sealed class VersionedDocumentSerializationTests
             Sequence = 1,
             GameLoop = 1,
             Lifecycle = "running",
-            Players = Array.Empty<MatchPlayerV1>(),
+            Players = [new MatchPlayerV1 { PlayerId = 1, Team = "1", Race = "Terran" }],
             Units =
             [
                 new MatchUnitV1 { Tag = 200, UnitTypeId = 1, UnitKind = "B", OwnerId = 2, Alliance = "enemy", ContactState = "unknown" },
@@ -174,7 +174,7 @@ public sealed class VersionedDocumentSerializationTests
             Sequence = 1,
             GameLoop = 1,
             Lifecycle = "running",
-            Players = Array.Empty<MatchPlayerV1>(),
+            Players = [new MatchPlayerV1 { PlayerId = 1, Team = "1", Race = "Terran" }],
             Units =
             [
                 new MatchUnitV1

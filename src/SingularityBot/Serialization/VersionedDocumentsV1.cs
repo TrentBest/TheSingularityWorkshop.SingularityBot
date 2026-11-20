@@ -132,6 +132,16 @@ public static class SingularityBotDocumentJson
     public static byte[] Serialize<T>(T document) =>
         JsonSerializer.SerializeToUtf8Bytes(document, Options);
 
+    /// <summary>
+    /// Computes the map identity digest with ContentHash cleared, avoiding a
+    /// self-referential hash. Store the returned lowercase digest in ContentHash.
+    /// </summary>
+    public static string ComputeMapContentHash(MapDocumentV1 document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return ComputeSha256(document with { ContentHash = string.Empty });
+    }
+
     public static string ComputeSha256<T>(T document) =>
         Convert.ToHexString(SHA256.HashData(Serialize(document))).ToLowerInvariant();
 

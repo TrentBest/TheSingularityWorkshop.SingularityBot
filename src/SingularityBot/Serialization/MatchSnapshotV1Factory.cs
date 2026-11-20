@@ -118,6 +118,7 @@ public static class MatchSnapshotV1Factory
             MatchId = matchId,
             MapId = mapId,
             MapContentHash = mapContentHash,
+            ObserverPlayerId = observation.PlayerId,
             Sequence = sequence,
             GameLoop = observation.GameLoop,
             Lifecycle = lifecycle,

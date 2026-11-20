@@ -112,6 +112,23 @@ public sealed class SpatialTopologyTests
         Assert.Equal(14, region.Contours.Sum(SignedArea), 5);
     }
 
+    [Fact]
+    public void TopologyContoursAndQueriesPreserveTranslatedGridOrigin()
+    {
+        var pathing = new SpatialGridSnapshot(
+            2, 1, 20, 10, new byte[] { 1, 1 },
+            worldOriginX: 100, worldOriginY: 50);
+        var topology = SpatialTopology.Build(new SpatialTerrain(pathing, null, null));
+        var region = Assert.Single(topology.Regions);
+        var contour = Assert.Single(region.Contours);
+
+        Assert.True(topology.AreConnected(new MapPoint(105, 55), new MapPoint(115, 55)));
+        Assert.False(topology.TryGetRegionId(new MapPoint(5, 5), out _));
+        Assert.Equal(new MapPoint(100, 50), contour.Points[0]);
+        Assert.Equal(new MapPoint(100, 50), contour.Points[^1]);
+        Assert.Equal(new MapPoint(120, 60), contour.Points.MaxBy(point => point.X + point.Y));
+    }
+
     private static double SignedArea(SpatialBoundaryContour contour)
     {
         double twiceArea = 0;

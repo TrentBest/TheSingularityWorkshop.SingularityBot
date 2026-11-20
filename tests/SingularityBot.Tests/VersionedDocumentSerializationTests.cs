@@ -1,4 +1,5 @@
 using SingularityBot.Serialization;
+using Xunit;
 
 namespace SingularityBot.Tests;
 

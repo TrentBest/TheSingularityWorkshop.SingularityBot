@@ -67,6 +67,14 @@
           "then": { "required": ["lastSeenGameLoop"] }
         },
         {
+          "if": { "properties": { "contactState": { "const": "visible" } } },
+          "then": { "required": ["x", "y"] }
+        },
+        {
+          "if": { "properties": { "contactState": { "const": "remembered" } } },
+          "then": { "required": ["lastSeenGameLoop", "x", "y"] }
+        },
+        {
           "if": { "properties": { "contactState": { "const": "unknown" } } },
           "then": { "not": { "anyOf": [{ "required": ["x"] }, { "required": ["y"] }] } }
         }

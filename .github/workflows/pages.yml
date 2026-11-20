@@ -33,6 +33,13 @@ jobs:
           cp military-plans/*.json _pages/military-plans/
           mkdir -p _pages/schemas
           cp schemas/*.json _pages/schemas/
+          mkdir -p _pages/examples/bot-definitions
+          cp examples/bot-definitions/*.json _pages/examples/bot-definitions/
+          mkdir -p _pages/examples/map-documents/payloads
+          cp examples/map-documents/*.json _pages/examples/map-documents/
+          cp examples/map-documents/payloads/* _pages/examples/map-documents/payloads/
+          mkdir -p _pages/examples/match-snapshots
+          cp examples/match-snapshots/*.json _pages/examples/match-snapshots/
 
       - name: Build Markdown documentation site
         uses: actions/jekyll-build-pages@v1

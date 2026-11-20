@@ -4,6 +4,7 @@
   "mapId": "fixture-translated-map",
   "mapContentHash": "86c64b9d76c6add5306e35720a3ebb3ae4eed6455446a906db0f32a84862d7ac",
   "observerPlayerId": 1,
+  "capturedFields": ["economy", "health", "position"],
   "sequence": 1,
   "gameLoop": 400,
   "lifecycle": "running",

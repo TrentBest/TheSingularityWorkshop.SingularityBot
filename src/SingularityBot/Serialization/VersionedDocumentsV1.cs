@@ -204,6 +204,7 @@ public static class SingularityBotDocumentJson
                 !snapshot.Units.Select(item => item.Tag).SequenceEqual(snapshot.Units.Select(item => item.Tag).OrderBy(tag => tag)) ||
                 !snapshot.AuthoritativelyDestroyedUnitTags.SequenceEqual(snapshot.AuthoritativelyDestroyedUnitTags.OrderBy(tag => tag)) ||
                 snapshot.Players.Select(item => item.PlayerId).Distinct().Count() != snapshot.Players.Count ||
+                !snapshot.Players.Any(player => player.PlayerId == snapshot.ObserverPlayerId) ||
                 snapshot.Units.Select(item => item.Tag).Distinct().Count() != snapshot.Units.Count ||
                 snapshot.AuthoritativelyDestroyedUnitTags.Distinct().Count() != snapshot.AuthoritativelyDestroyedUnitTags.Count ||
                 snapshot.Units.Any(unit => snapshot.AuthoritativelyDestroyedUnitTags.Contains(unit.Tag)))

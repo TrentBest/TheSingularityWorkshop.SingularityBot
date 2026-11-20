@@ -3,7 +3,7 @@
   "mapId": "fixture-translated-map",
   "mapName": "Translated Two-Start Fixture",
   "source": "canonical-test-fixture",
-  "contentHash": "8396c5e6abbfd012f5bbed8aa3f820bfcb4e8708413537b467b9a143532659b3",
+  "contentHash": "97a2546d95b5f79b7e27e5cc5fd918897bbf477b8d600b03394c5392c281c112",
   "coordinateSystem": {
     "kind": "cartesian-2d",
     "units": "sc2-world-units",
@@ -31,6 +31,7 @@
       "worldHeight": 224,
       "encoding": "uint8-row-major",
       "units": "raw-byte-un-calibrated",
+      "compression": "none",
       "payloadSha256": "e2d325e3a71724289823e54b025467bb79dbd0de0021efd29c51e49a323fc7f5"
     },
     {

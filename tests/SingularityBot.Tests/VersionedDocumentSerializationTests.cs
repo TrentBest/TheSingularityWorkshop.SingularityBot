@@ -13,7 +13,7 @@ public sealed class VersionedDocumentSerializationTests
 
         Assert.Equal(first, second);
         var restored = SingularityBotDocumentJson.Deserialize<MapDocumentV1>(first);
-        Assert.Equal(document, restored);
+        Assert.Equal(first, SingularityBotDocumentJson.Serialize(restored));
         Assert.Equal(
             SingularityBotDocumentJson.ComputeMapContentHash(document),
             SingularityBotDocumentJson.ComputeMapContentHash(restored));
@@ -49,6 +49,7 @@ public sealed class VersionedDocumentSerializationTests
     {
         var snapshot = new MatchSnapshotV1
         {
+            SchemaVersion = 1,
             MatchId = "fixture-match-01",
             MapId = "fixture-translated-map",
             MapContentHash = new string('a', 64),
@@ -90,18 +91,26 @@ public sealed class VersionedDocumentSerializationTests
 
         Assert.Equal(bytes, SingularityBotDocumentJson.Serialize(restored));
         Assert.Equal("remembered", restored.Units[1].ContactState);
-        Assert.Equal((uint)400, restored.Units[1].LastSeenGameLoop);
+        Assert.Equal((uint?)400, restored.Units[1].LastSeenGameLoop);
         Assert.Contains((ulong)300, restored.AuthoritativelyDestroyedUnitTags);
         Assert.DoesNotContain(restored.Units, unit => unit.Tag == 300);
     }
 
     private static MapDocumentV1 CreateMapDocument() => new()
     {
+        SchemaVersion = 1,
         MapId = "fixture-translated-map",
         MapName = "Translated Two-Start Fixture",
         Source = "canonical-test-fixture",
         ContentHash = new string('a', 64),
-        CoordinateSystem = new CoordinateSystemV1(),
+        CoordinateSystem = new CoordinateSystemV1
+        {
+            Kind = "cartesian-2d",
+            Units = "sc2-world-units",
+            XAxis = "east",
+            YAxis = "north",
+            CellEdgeConvention = "minimum-inclusive-maximum-exclusive"
+        },
         FullBounds = new MapRectangleV1 { MinX = 0, MinY = 0, MaxX = 256, MaxY = 224 },
         PlayableBounds = new MapRectangleV1 { MinX = 16, MinY = 8, MaxX = 240, MaxY = 200 },
         StartLocations =

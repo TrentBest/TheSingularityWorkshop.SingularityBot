@@ -3,19 +3,30 @@ using System;
 namespace SingularityBot.Spatial;
 
 /// <summary>
-/// Immutable byte-per-cell SC2 map image mapped into world coordinates.
-/// SC2 map images use a bottom-left origin, matching world-space coordinates.
+/// Immutable byte-per-cell image mapped into world coordinates. The origin is
+/// explicit so playable-area images retain their translated map coordinates.
 /// </summary>
 public sealed class SpatialGridSnapshot
 {
     private readonly byte[] _cells;
 
-    public SpatialGridSnapshot(int width, int height, float worldWidth, float worldHeight, ReadOnlySpan<byte> cells)
+    public SpatialGridSnapshot(
+        int width,
+        int height,
+        float worldWidth,
+        float worldHeight,
+        ReadOnlySpan<byte> cells,
+        float worldOriginX = 0,
+        float worldOriginY = 0)
     {
         if (width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         if (height <= 0) throw new ArgumentOutOfRangeException(nameof(height));
         if (!float.IsFinite(worldWidth) || worldWidth <= 0) throw new ArgumentOutOfRangeException(nameof(worldWidth));
         if (!float.IsFinite(worldHeight) || worldHeight <= 0) throw new ArgumentOutOfRangeException(nameof(worldHeight));
+        if (!float.IsFinite(worldOriginX)) throw new ArgumentOutOfRangeException(nameof(worldOriginX));
+        if (!float.IsFinite(worldOriginY)) throw new ArgumentOutOfRangeException(nameof(worldOriginY));
+        if (!float.IsFinite(worldOriginX + worldWidth)) throw new ArgumentOutOfRangeException(nameof(worldWidth));
+        if (!float.IsFinite(worldOriginY + worldHeight)) throw new ArgumentOutOfRangeException(nameof(worldHeight));
         if (cells.Length != checked(width * height))
             throw new ArgumentException("Grid data length must equal width multiplied by height.", nameof(cells));
 
@@ -23,6 +34,8 @@ public sealed class SpatialGridSnapshot
         Height = height;
         WorldWidth = worldWidth;
         WorldHeight = worldHeight;
+        WorldOriginX = worldOriginX;
+        WorldOriginY = worldOriginY;
         _cells = cells.ToArray();
     }
 
@@ -30,18 +43,22 @@ public sealed class SpatialGridSnapshot
     public int Height { get; }
     public float WorldWidth { get; }
     public float WorldHeight { get; }
+    public float WorldOriginX { get; }
+    public float WorldOriginY { get; }
 
-    /// <summary>Reads the cell containing a world-space point; max map edges are exclusive.</summary>
+    /// <summary>Reads a world-space cell; maximum edges are exclusive.</summary>
     public bool TryGetCellIndex(MapPoint point, out int index)
     {
         index = -1;
+        var localX = point.X - WorldOriginX;
+        var localY = point.Y - WorldOriginY;
         if (!float.IsFinite(point.X) || !float.IsFinite(point.Y) ||
-            point.X < 0 || point.Y < 0 ||
-            point.X >= WorldWidth || point.Y >= WorldHeight)
+            localX < 0 || localY < 0 ||
+            localX >= WorldWidth || localY >= WorldHeight)
             return false;
 
-        var x = Math.Min(Width - 1, (int)(point.X * Width / WorldWidth));
-        var y = Math.Min(Height - 1, (int)(point.Y * Height / WorldHeight));
+        var x = Math.Min(Width - 1, (int)(localX * Width / WorldWidth));
+        var y = Math.Min(Height - 1, (int)(localY * Height / WorldHeight));
         index = y * Width + x;
         return true;
     }

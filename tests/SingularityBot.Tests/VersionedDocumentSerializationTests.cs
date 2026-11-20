@@ -195,6 +195,7 @@ public sealed class VersionedDocumentSerializationTests
                 Encoding = "uint8-row-major",
                 Units = "raw-byte-un-calibrated",
                 Compression = "none",
+                PayloadReference = "payloads/terrain-height.fixture.hex",
                 PayloadSha256 = new string('b', 64)
             },
             new MapLayerV1

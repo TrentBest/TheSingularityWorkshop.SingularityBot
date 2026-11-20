@@ -177,6 +177,11 @@ public static class SingularityBotDocumentJson
         value is { Length: 64 } && value.All(character =>
             character is >= '0' and <= '9' or >= 'a' and <= 'f');
 
+    private static bool IsKnownCapturedField(string field) => field is
+        "buildProgress" or "cargo" or "collisionRadius" or "economy" or "energy" or
+        "hasOrders" or "health" or "mobility" or "orderDetails" or "position" or
+        "shields" or "vespeneContents" or "weaponCooldown";
+
     private static void ValidateDocumentVersion<T>(T document)
     {
         if (document is MapDocumentV1 map && map.SchemaVersion != 1)
@@ -200,7 +205,10 @@ public static class SingularityBotDocumentJson
         }
         else if (document is MatchSnapshotV1 snapshot)
         {
-            if (snapshot.Players is null || snapshot.Units is null || snapshot.AuthoritativelyDestroyedUnitTags is null ||
+            if (snapshot.Players is null || snapshot.Units is null || snapshot.AuthoritativelyDestroyedUnitTags is null || snapshot.CapturedFields is null ||
+                !snapshot.CapturedFields.SequenceEqual(snapshot.CapturedFields.OrderBy(field => field, StringComparer.Ordinal)) ||
+                snapshot.CapturedFields.Distinct(StringComparer.Ordinal).Count() != snapshot.CapturedFields.Count ||
+                snapshot.CapturedFields.Any(field => !IsKnownCapturedField(field)) ||
                 !snapshot.Players.Select(item => item.PlayerId).SequenceEqual(snapshot.Players.Select(item => item.PlayerId).OrderBy(id => id)) ||
                 !snapshot.Units.Select(item => item.Tag).SequenceEqual(snapshot.Units.Select(item => item.Tag).OrderBy(tag => tag)) ||
                 !snapshot.AuthoritativelyDestroyedUnitTags.SequenceEqual(snapshot.AuthoritativelyDestroyedUnitTags.OrderBy(tag => tag)) ||

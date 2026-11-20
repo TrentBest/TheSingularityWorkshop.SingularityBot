@@ -50,7 +50,7 @@
         "unitKind": { "type": "string" },
         "ownerId": { "type": "integer", "minimum": 0 },
         "alliance": { "enum": ["unknown", "self", "ally", "neutral", "enemy"] },
-        "contactState": { "enum": ["visible", "remembered", "destroyed", "unknown"] },
+        "contactState": { "enum": ["visible", "remembered", "unknown"] },
         "lastSeenGameLoop": { "type": "integer", "minimum": 0 },
         "x": { "type": "number" }, "y": { "type": "number" },
         "health": { "type": "number", "minimum": 0 },
@@ -67,7 +67,7 @@
           "then": { "required": ["lastSeenGameLoop"] }
         },
         {
-          "if": { "properties": { "contactState": { "enum": ["unknown", "destroyed"] } } },
+          "if": { "properties": { "contactState": { "const": "unknown" } } },
           "then": { "not": { "anyOf": [{ "required": ["x"] }, { "required": ["y"] }] } }
         }
       ]

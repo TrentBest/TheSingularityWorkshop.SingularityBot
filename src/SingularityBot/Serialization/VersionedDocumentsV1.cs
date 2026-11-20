@@ -109,6 +109,14 @@ public sealed record MatchUnitV1
     public double? ShieldMax { get; init; }
     public double? Energy { get; init; }
     public double? BuildProgress { get; init; }
+    public bool? HasCargo { get; init; }
+    public bool? HasOrders { get; init; }
+    public bool? IsFlying { get; init; }
+    public bool? IsBurrowed { get; init; }
+    public bool? IsHallucination { get; init; }
+    public double? WeaponCooldownRemaining { get; init; }
+    public double? CollisionRadius { get; init; }
+    public uint? VespeneContents { get; init; }
     public IReadOnlyList<MatchOrderV1> Orders { get; init; } = Array.Empty<MatchOrderV1>();
 }
 

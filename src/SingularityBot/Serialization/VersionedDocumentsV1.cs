@@ -71,6 +71,7 @@ public sealed record MatchSnapshotV1
     public required string MatchId { get; init; }
     public required string MapId { get; init; }
     public required string MapContentHash { get; init; }
+    public required uint ObserverPlayerId { get; init; }
     public required ulong Sequence { get; init; }
     public required uint GameLoop { get; init; }
     public required string Lifecycle { get; init; }

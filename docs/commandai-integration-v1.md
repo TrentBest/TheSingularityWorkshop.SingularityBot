@@ -1,3 +1,10 @@
+<!-- The Singularity Workshop animated moniker -->
+<p align="center">
+  <a href="https://github.com/TrentBest">
+    <img src="https://raw.githubusercontent.com/TrentBest/TheSingularityWorkshop.Visualize/development/docs/assets/moniker.svg" alt="The Singularity Workshop — animated workshop moniker" width="720" />
+  </a>
+</p>
+
 # CommandAi integration: bot-owned vocabulary v1
 
 ## Purpose
@@ -58,6 +65,22 @@ SingularityBot consumes the actual `TheSingularityWorkshop.CommandAi` project fr
 
 The adapter changes the existing step context's effective desired count while retaining its immutable authored `ProductionStepDefinition`. Priority values are currently accepted only when they equal the authored priority: live action arbitration does not yet consume proposal priority, so a different value is rejected rather than silently ignored. The normal production FSM continues to own scheduling; the adapter does not append another step, create a second scheduler, create a BuildJob, or dispatch an SC2 action. Re-delivery with the same key and identical proposal is an acknowledged no-op; reuse of that key for different content is rejected. This replay ledger currently lives in the adapter instance and is not durable across process/match restarts.
 
+## GrammarAi boundary: optional authoring structure, not runtime authority
+
+GrammarAi is **not a current SingularityBot runtime dependency**. The implemented command path above uses the bot-owned `BotCommandVocabulary`, actual CommandAi proposal types, and bot-owned validation/adaptation. BotDefinition and its domain validators remain authoritative for the live bot.
+
+GrammarAi is worth considering only if Forge, an LLM authoring tool, and another independent consumer need to exchange a shared, versioned knowledge graph—such as goal/subgoal relationships, prerequisite ancestry, capability roles, or bounded strategy composition—that is not already covered by BotDefinition. It must not duplicate BotDefinition's fixed schema, replace bot-domain validation, or become a second strategy engine.
+
+If that use case is proven, the optional composition is:
+- ProtocolAi owns stable qualified vocabulary/category/member identities.
+- GrammarAi owns typed node kinds, contextual slots, cardinality, ordering, and structural validation. Its host-supplied external resolver must be bound to the exact request/catalog snapshot.
+- An enriched CommandAi atomic command may carry an opaque GrammarAi body. CommandAi validates its framing and limits, but does not decode or validate the body.
+- SingularityBot pins the exact GrammarAi definition/schema version, validates the structure, maps it into real BotDefinition/domain types, and applies its existing match-state, policy, authorization, idempotency, and SC2 execution gates.
+
+The current SingularityBot adapter is not documented as consuming that enriched grammar-body path. Do not claim otherwise until an exact-revision consumer test exercises it.
+
+See [GrammarAi and SingularityBot](https://github.com/TrentBest/TheSingularityWorkshop.GrammarAi/blob/development/docs/INTEGRATION_SINGULARITYBOT.md) for the complete cross-repository source audit, ProtocolAi boundary, versioning details, and acceptance tests. The related coordination points are [SingularityBot #12](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/issues/12) and [SingularityBot #15](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/issues/15).
+
 ## Remaining integration work
 
 This is an implemented proposal-to-objective bridge, not yet the complete end-to-end production proof. The following acceptance work remains:
@@ -86,3 +109,7 @@ Do not describe a proposal as completed when only an objective was accepted or a
 `BotCommandProposalValidatorTests` exercises the real CommandAi builder/types and covers valid Marine-production-shaped proposals, unknown actions/parameters, missing required values, invalid counts, and invalid priorities.
 
 `BotCommandProductionProposalAdapterTests` covers authorized updates to the existing `marine-core` objective, same-key replay, conflicting key reuse, unauthorized rejection, race mismatch, and rejection of priority overrides that the live scheduler cannot yet honor. The adapter additionally validates the active definition, match-authoritative Marine/Barracks profile, and authored prerequisite dependency chain before mutation.
+---
+
+<!-- THE SINGULARITY WORKSHOP FOOTER -->
+<p align="center"><img src="https://raw.githubusercontent.com/TrentBest/FSM_API/master/Documentation/Branding/TheSingularityWorkshop.png" alt="The Singularity Workshop" width="200" /></p>

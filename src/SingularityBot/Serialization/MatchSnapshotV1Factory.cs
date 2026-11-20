@@ -39,7 +39,7 @@ public static class MatchSnapshotV1Factory
             observation.Units.Any(unit => unit.Tag == 0))
             throw new ArgumentException("Normalized units must have non-zero stable tags.", nameof(observation));
 
-        if (observation.CapturedEconomy())
+        if ((observation.CapturedFields & ObservationFields.Economy) != 0)
         {
             playerFacts[observation.PlayerId] = observingPlayer with
             {
@@ -162,12 +162,3 @@ public static class MatchSnapshotV1Factory
     };
 }
 
-internal static class NormalizedObservationSerializationExtensions
-{
-    public static bool CapturedEconomy(this NormalizedObservation observation) =>
-        observation.Units.Count == 0
-            ? observation.Minerals != 0 || observation.Vespene != 0 ||
-              observation.FoodUsed != 0 || observation.FoodCap != 0
-            : observation.Units.Any(unit =>
-                (unit.CapturedFields & ObservationFields.Economy) != 0);
-}

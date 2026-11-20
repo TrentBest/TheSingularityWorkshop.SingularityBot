@@ -20,7 +20,7 @@ Layer payload hashes cover the exact stored payload bytes (after compression, if
 
 Schema: [`singularitybot-match-snapshot-v1.schema.json`](../schemas/singularitybot-match-snapshot-v1.schema.json)
 
-Each snapshot is a complete observation frame, not a delta. It binds to both `mapId` and the exact `mapContentHash`, and includes match identity, monotonically increasing observation sequence, game loop, lifecycle, player/economy facts, unit facts and authoritative dead-unit tags.
+Each snapshot is a complete observation frame, not a delta. It binds to both `mapId` and the exact `mapContentHash`, and includes match identity, explicit `observerPlayerId`, monotonically increasing observation sequence, game loop, lifecycle, player/economy facts, unit facts and authoritative dead-unit tags. Unit alliance values (`self`, `ally`, `enemy`, `neutral`) are relative to that observer; the observer must appear in the player roster.
 
 Contact semantics:
 
@@ -31,7 +31,7 @@ Contact semantics:
 
 Absence from a snapshot is not destruction evidence. Unknown optional values are omitted rather than represented as zero. Unit and player arrays are sorted by stable numeric identity; dead tags are unique and sorted. Orders retain their observed sequence.
 
-`MatchSnapshotV1Factory` projects a `NormalizedObservation` plus explicit player metadata and retained `LastSeenContactV1` history. A contact omitted from the current observation remains remembered if live-visible history exists; authoritative dead tags override both current and remembered contacts. Snapshot/hidden facts never invent their own last-seen timestamp. Visible units require captured position, so callers must include `ObservationFields.Position`; otherwise projection fails closed. `NormalizedObservation.CapturedFields` records which optional facts were actually captured.
+`MatchSnapshotV1Factory` projects a `NormalizedObservation` plus explicit player metadata and retained `LastSeenContactV1` history; it binds the observer identity from the normalized observation. A contact omitted from the current observation remains remembered if live-visible history exists; authoritative dead tags override both current and remembered contacts. Snapshot/hidden facts never invent their own last-seen timestamp. Visible units require captured position, so callers must include `ObservationFields.Position`; otherwise projection fails closed. `NormalizedObservation.CapturedFields` records which optional facts were actually captured.
 
 ## Deterministic JSON and hashes
 

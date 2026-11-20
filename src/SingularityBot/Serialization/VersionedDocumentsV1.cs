@@ -129,8 +129,12 @@ public static class SingularityBotDocumentJson
         WriteIndented = false
     };
 
-    public static byte[] Serialize<T>(T document) =>
-        JsonSerializer.SerializeToUtf8Bytes(document, Options);
+    public static byte[] Serialize<T>(T document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ValidateCanonicalOrdering(document);
+        return JsonSerializer.SerializeToUtf8Bytes(document, Options);
+    }
 
     public static T Deserialize<T>(ReadOnlySpan<byte> json) =>
         JsonSerializer.Deserialize<T>(json, Options)
@@ -152,4 +156,33 @@ public static class SingularityBotDocumentJson
     public static bool IsSha256(string? value) =>
         value is { Length: 64 } && value.All(character =>
             character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    private static void ValidateCanonicalOrdering<T>(T document)
+    {
+        if (document is MapDocumentV1 map)
+        {
+            if (map.StartLocations is null || map.Layers is null ||
+                !map.StartLocations.Select(item => item.Id)
+                    .SequenceEqual(map.StartLocations.Select(item => item.Id).OrderBy(id => id, StringComparer.Ordinal)) ||
+                !map.Layers.Select(item => item.Id)
+                    .SequenceEqual(map.Layers.Select(item => item.Id).OrderBy(id => id, StringComparer.Ordinal)) ||
+                map.StartLocations.Select(item => item.Id).Distinct(StringComparer.Ordinal).Count() != map.StartLocations.Count ||
+                map.Layers.Select(item => item.Id).Distinct(StringComparer.Ordinal).Count() != map.Layers.Count)
+                throw new ArgumentException("Map start locations and layers must have unique IDs in ordinal ascending order.", nameof(document));
+        }
+        else if (document is MatchSnapshotV1 snapshot)
+        {
+            if (snapshot.Players is null || snapshot.Units is null || snapshot.AuthoritativelyDestroyedUnitTags is null ||
+                !snapshot.Players.Select(item => item.PlayerId).SequenceEqual(snapshot.Players.Select(item => item.PlayerId).OrderBy(id => id)) ||
+                !snapshot.Units.Select(item => item.Tag).SequenceEqual(snapshot.Units.Select(item => item.Tag).OrderBy(tag => tag)) ||
+                !snapshot.AuthoritativelyDestroyedUnitTags.SequenceEqual(snapshot.AuthoritativelyDestroyedUnitTags.OrderBy(tag => tag)) ||
+                snapshot.Players.Select(item => item.PlayerId).Distinct().Count() != snapshot.Players.Count ||
+                snapshot.Units.Select(item => item.Tag).Distinct().Count() != snapshot.Units.Count ||
+                snapshot.AuthoritativelyDestroyedUnitTags.Distinct().Count() != snapshot.AuthoritativelyDestroyedUnitTags.Count ||
+                snapshot.Units.Any(unit => snapshot.AuthoritativelyDestroyedUnitTags.Contains(unit.Tag)))
+                throw new ArgumentException("Match players, units and destruction tags must be unique, sorted, and destruction tags must not remain in the unit set.", nameof(document));
+            if (!IsSha256(snapshot.MapContentHash))
+                throw new ArgumentException("Match snapshots must reference a lowercase SHA-256 map content hash.", nameof(document));
+        }
+    }
 }

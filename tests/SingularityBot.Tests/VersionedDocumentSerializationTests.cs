@@ -271,7 +271,10 @@ public sealed class VersionedDocumentSerializationTests
         var captured = ObservationFields.Position | ObservationFields.Health |
                        ObservationFields.Shields | ObservationFields.Energy |
                        ObservationFields.BuildProgress | ObservationFields.OrderDetails |
-                       ObservationFields.Economy;
+                       ObservationFields.Economy | ObservationFields.Cargo |
+                       ObservationFields.HasOrders | ObservationFields.Mobility |
+                       ObservationFields.WeaponCooldown | ObservationFields.CollisionRadius |
+                       ObservationFields.VespeneContents;
         UnitObservationFacts Unit(
             ulong tag,
             UnitAlliance alliance,
@@ -285,6 +288,10 @@ public sealed class VersionedDocumentSerializationTests
                 x, y, hasPosition, false, false, false, false, false, 480)
             {
                 CapturedFields = fields,
+                Energy = 50,
+                WeaponCooldownRemaining = 2,
+                CollisionRadius = 0.375f,
+                VespeneContents = 100,
                 Orders = Array.Empty<UnitOrderObservationFacts>()
             };
 
@@ -331,6 +338,12 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Equal("visible", visible.ContactState);
         Assert.Equal((double?)25, visible.X);
         Assert.Equal((double?)35, visible.Y);
+        Assert.Equal(false, visible.HasCargo);
+        Assert.Equal(false, visible.HasOrders);
+        Assert.Equal(false, visible.IsFlying);
+        Assert.Equal((double?)2, visible.WeaponCooldownRemaining);
+        Assert.Equal((double?)0.375, visible.CollisionRadius);
+        Assert.Equal((uint?)100, visible.VespeneContents);
         Assert.Equal("remembered", remembered.ContactState);
         Assert.Equal((uint?)400, remembered.LastSeenGameLoop);
         Assert.Equal((double?)198.5, remembered.X);
@@ -344,7 +357,7 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Equal((uint?)150, snapshot.Players[0].Minerals);
         Assert.Equal(new string('a', 64), snapshot.MapContentHash);
         Assert.Equal((uint)1, snapshot.ObserverPlayerId);
-        Assert.Equal(new[] { "buildProgress", "economy", "energy", "health", "orderDetails", "position", "shields" }, snapshot.CapturedFields);
+        Assert.Equal(new[] { "buildProgress", "cargo", "collisionRadius", "economy", "energy", "hasOrders", "health", "mobility", "orderDetails", "position", "shields", "vespeneContents", "weaponCooldown" }, snapshot.CapturedFields);
         _ = SingularityBotDocumentJson.Serialize(snapshot);
     }
 

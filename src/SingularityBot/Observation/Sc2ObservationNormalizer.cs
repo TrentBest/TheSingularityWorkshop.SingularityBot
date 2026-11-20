@@ -99,7 +99,8 @@ public static class Sc2ObservationNormalizer
             Minerals = Has(ObservationFields.Economy) ? observation.PlayerCommon?.Minerals ?? 0 : 0,
             Vespene = Has(ObservationFields.Economy) ? observation.PlayerCommon?.Vespene ?? 0 : 0,
             FoodUsed = Has(ObservationFields.Economy) ? observation.PlayerCommon?.FoodUsed ?? 0 : 0,
-            FoodCap = Has(ObservationFields.Economy) ? observation.PlayerCommon?.FoodCap ?? 0 : 0
+            FoodCap = Has(ObservationFields.Economy) ? observation.PlayerCommon?.FoodCap ?? 0 : 0,
+            CapturedFields = fields
         };
     }
 

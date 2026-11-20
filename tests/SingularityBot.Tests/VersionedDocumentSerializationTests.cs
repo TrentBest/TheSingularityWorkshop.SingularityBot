@@ -194,6 +194,7 @@ public sealed class VersionedDocumentSerializationTests
                 WorldHeight = 224,
                 Encoding = "uint8-row-major",
                 Units = "raw-byte-un-calibrated",
+                Compression = "none",
                 PayloadSha256 = new string('b', 64)
             },
             new MapLayerV1

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "mapId": "fixture-translated-map",
+  "mapName": "Translated Two-Start Fixture",
+  "source": "canonical-test-fixture",
+  "contentHash": "8396c5e6abbfd012f5bbed8aa3f820bfcb4e8708413537b467b9a143532659b3",
+  "coordinateSystem": {
+    "kind": "cartesian-2d",
+    "units": "sc2-world-units",
+    "xAxis": "east",
+    "yAxis": "north",
+    "cellEdgeConvention": "minimum-inclusive-maximum-exclusive"
+  },
+  "fullBounds": { "minX": 0, "minY": 0, "maxX": 256, "maxY": 224 },
+  "playableBounds": { "minX": 16, "minY": 8, "maxX": 240, "maxY": 200 },
+  "startLocations": [
+    { "id": "start-01", "x": 32.5, "y": 28.5 },
+    { "id": "start-02", "x": 220.5, "y": 180.5 }
+  ],
+  "layers": [
+    {
+      "id": "terrain-height",
+      "semantic": "terrain-elevation-byte",
+      "availability": "available",
+      "source": "SC2 StartRaw TerrainHeight",
+      "width": 2,
+      "height": 2,
+      "worldOriginX": 0,
+      "worldOriginY": 0,
+      "worldWidth": 256,
+      "worldHeight": 224,
+      "encoding": "uint8-row-major",
+      "units": "raw-byte-un-calibrated",
+      "payloadSha256": "e2d325e3a71724289823e54b025467bb79dbd0de0021efd29c51e49a323fc7f5"
+    },
+    {
+      "id": "resource-nodes",
+      "semantic": "resource-node-features",
+      "availability": "unavailable",
+      "source": "not-yet-decoded"
+    }
+  ]
+}

@@ -205,17 +205,27 @@ public static class MatchSnapshotV1Factory
         }).ToArray();
     }
 
+    private static readonly (ObservationFields Field, string Name)[] CapturedFieldNames =
+    [
+        (ObservationFields.BuildProgress, "buildProgress"),
+        (ObservationFields.Cargo, "cargo"),
+        (ObservationFields.CollisionRadius, "collisionRadius"),
+        (ObservationFields.Economy, "economy"),
+        (ObservationFields.Energy, "energy"),
+        (ObservationFields.HasOrders, "hasOrders"),
+        (ObservationFields.Health, "health"),
+        (ObservationFields.Mobility, "mobility"),
+        (ObservationFields.OrderDetails, "orderDetails"),
+        (ObservationFields.Position, "position"),
+        (ObservationFields.Shields, "shields"),
+        (ObservationFields.VespeneContents, "vespeneContents"),
+        (ObservationFields.WeaponCooldown, "weaponCooldown")
+    ];
+
     private static IReadOnlyList<string> GetCapturedFieldNames(ObservationFields fields) =>
-        Enum.GetValues<ObservationFields>()
-            .Where(field => field != ObservationFields.None &&
-                (((int)field & ((int)field - 1)) == 0) &&
-                (fields & field) == field)
-            .Select(field =>
-            {
-                var name = field.ToString();
-                return char.ToLowerInvariant(name[0]) + name[1..];
-            })
-            .OrderBy(name => name, StringComparer.Ordinal)
+        CapturedFieldNames
+            .Where(item => (fields & item.Field) == item.Field)
+            .Select(item => item.Name)
             .ToArray();
 
     private static string MapAlliance(UnitAlliance alliance) => alliance switch

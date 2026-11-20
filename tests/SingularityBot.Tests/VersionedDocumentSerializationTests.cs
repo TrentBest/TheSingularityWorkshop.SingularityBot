@@ -338,9 +338,9 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Equal("visible", visible.ContactState);
         Assert.Equal((double?)25, visible.X);
         Assert.Equal((double?)35, visible.Y);
-        Assert.Equal(false, visible.HasCargo);
-        Assert.Equal(false, visible.HasOrders);
-        Assert.Equal(false, visible.IsFlying);
+        Assert.Equal((bool?)false, visible.HasCargo);
+        Assert.Equal((bool?)false, visible.HasOrders);
+        Assert.Equal((bool?)false, visible.IsFlying);
         Assert.Equal((double?)2, visible.WeaponCooldownRemaining);
         Assert.Equal((double?)0.375, visible.CollisionRadius);
         Assert.Equal((uint?)100, visible.VespeneContents);

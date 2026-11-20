@@ -48,7 +48,28 @@
       </div>
 
       <aside class="side-column">
-        <section class="section-heading"><div><span class="eyebrow">03 / MATCH HOST</span><h2>Test Arena</h2></div><span class="tag muted">HOST GATED</span></section>
+        <section class="section-heading"><div><span class="eyebrow">03 / MAP-FIRST PREVIEW</span><h2>Map &amp; match</h2></div><span class="tag">READ ONLY</span></section>
+        <section class="panel map-panel">
+          <div class="map-toolbar"><strong id="map-title">Loading canonical map…</strong><span id="map-status">Fixture</span></div>
+          <svg id="map-canvas" class="map-canvas" viewBox="0 0 1000 700" role="img" aria-label="Static map with selected match frame overlay">
+            <g id="map-static-layer"></g>
+            <g id="map-unit-layer"></g>
+          </svg>
+          <div class="map-legend">
+            <span><i class="legend-start"></i> Start</span>
+            <span><i class="legend-self"></i> Self</span>
+            <span><i class="legend-enemy"></i> Visible enemy</span>
+            <span><i class="legend-memory"></i> Remembered</span>
+          </div>
+          <div class="scrubber-row">
+            <button id="frame-previous" class="quiet" type="button" aria-label="Previous frame">←</button>
+            <input id="frame-scrubber" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Match frame">
+            <button id="frame-next" class="quiet" type="button" aria-label="Next frame">→</button>
+          </div>
+          <div class="frame-meta"><span id="frame-label">No match frames loaded</span><span id="destroyed-label"></span></div>
+          <p class="fine-print">Static map and synthetic snapshots are loaded without a live SC2 process. This preview uses the map document’s world-coordinate transform; raster interpretation and live match streaming are not enabled yet.</p>
+        </section>
+        <section class="section-heading"><div><span class="eyebrow">04 / MATCH HOST</span><h2>Test Arena</h2></div><span class="tag muted">HOST GATED</span></section>
         <div class="panel arena-panel">
           <div class="arena-visual">
             <div class="arena-grid"></div>

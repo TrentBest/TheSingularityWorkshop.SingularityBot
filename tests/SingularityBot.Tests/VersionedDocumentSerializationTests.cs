@@ -382,6 +382,42 @@ public sealed class VersionedDocumentSerializationTests
         });
     }
 
+    [Fact]
+    public void MatchSnapshotFactoryOmitsEconomyWhenItWasNotCaptured()
+    {
+        var observation = new NormalizedObservation(10, 1, Array.Empty<UnitObservationFacts>(), new HashSet<ulong>())
+        {
+            Minerals = 0,
+            Vespene = 0,
+            FoodUsed = 0,
+            FoodCap = 0,
+            CapturedFields = ObservationFields.Position
+        };
+        var players = new[]
+        {
+            new MatchPlayerV1
+            {
+                PlayerId = 1,
+                Team = "1",
+                Race = "Terran",
+                Minerals = 500,
+                Vespene = 250,
+                FoodUsed = 10,
+                FoodCap = 20
+            }
+        };
+
+        var snapshot = MatchSnapshotV1Factory.Create(
+            "match", "map", new string('a', 64), 1, "running",
+            observation, players, new Dictionary<ulong, LastSeenContactV1>());
+
+        Assert.Null(snapshot.Players[0].Minerals);
+        Assert.Null(snapshot.Players[0].Vespene);
+        Assert.Null(snapshot.Players[0].FoodUsed);
+        Assert.Null(snapshot.Players[0].FoodCap);
+        Assert.Equal(new[] { "position" }, snapshot.CapturedFields);
+    }
+
     private static MapDocumentV1 CreateMapDocument() => new()
     {
         SchemaVersion = 1,

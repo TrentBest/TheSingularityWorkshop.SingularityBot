@@ -319,12 +319,12 @@ public sealed class VersionedDocumentSerializationTests
         var remembered = Assert.Single(snapshot.Units, unit => unit.Tag == 200);
         var unknown = Assert.Single(snapshot.Units, unit => unit.Tag == 300);
         Assert.Equal("visible", visible.ContactState);
-        Assert.Equal(25, visible.X);
-        Assert.Equal(35, visible.Y);
+        Assert.Equal((double?)25, visible.X);
+        Assert.Equal((double?)35, visible.Y);
         Assert.Equal("remembered", remembered.ContactState);
         Assert.Equal((uint?)400, remembered.LastSeenGameLoop);
-        Assert.Equal(198.5, remembered.X);
-        Assert.Equal(164.5, remembered.Y);
+        Assert.Equal((double?)198.5, remembered.X);
+        Assert.Equal((double?)164.5, remembered.Y);
         Assert.Equal("unknown", unknown.ContactState);
         Assert.Null(unknown.X);
         Assert.Contains((ulong)400, snapshot.AuthoritativelyDestroyedUnitTags);

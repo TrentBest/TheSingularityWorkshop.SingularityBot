@@ -20,11 +20,17 @@ public static class Sc2SpatialVisionFactory
             return false;
 
         var cells = image.Data.ToByteArray();
-        if (cells.Length != width * height)
+        if ((long)cells.Length != (long)width * height)
             return false;
 
         visibility = new SpatialGridSnapshot(
-            width, height, map.Bounds.Width, map.Bounds.Height, cells);
+            width,
+            height,
+            map.Bounds.Width,
+            map.Bounds.Height,
+            cells,
+            map.Bounds.MinX,
+            map.Bounds.MinY);
         return true;
     }
 }

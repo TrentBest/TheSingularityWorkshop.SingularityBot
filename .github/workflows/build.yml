@@ -9,6 +9,8 @@ on:
       - "schemas/**"
       - "strategies/**"
       - "military-plans/**"
+      - "examples/map-documents/**"
+      - "examples/match-snapshots/**"
       - "docs/**"
       - "README.md"
       - "AGENTS.md"
@@ -85,6 +87,8 @@ jobs:
               "production": json.loads(Path("schemas/production-plan.schema.json").read_text(encoding="utf-8")),
               "goal": json.loads(Path("schemas/goal-action-plan.schema.json").read_text(encoding="utf-8")),
               "military": json.loads(Path("schemas/military-plan.schema.json").read_text(encoding="utf-8")),
+              "map": json.loads(Path("schemas/singularitybot-map-document-v1.schema.json").read_text(encoding="utf-8")),
+              "snapshot": json.loads(Path("schemas/singularitybot-match-snapshot-v1.schema.json").read_text(encoding="utf-8")),
           }
           validators = {name: Draft202012Validator(schema) for name, schema in schemas.items()}
           files = sorted(Path("strategies").glob("*.json"))
@@ -103,6 +107,38 @@ jobs:
                       print(f"{path}:{location}: {error.message}")
                   raise SystemExit(f"{schema_name.title()} validation failed: {path}")
               print(f"Validated {path} against {schema_name} schema")
+
+          map_files = sorted(Path("examples/map-documents").glob("*.json"))
+          if not map_files:
+              raise SystemExit("No canonical map document fixtures found.")
+          for path in map_files:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              errors = sorted(
+                  validators["map"].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
+              if errors:
+                  for error in errors:
+                      location = "/".join(map(str, error.absolute_path)) or "$"
+                      print(f"{path}:{location}: {error.message}")
+                  raise SystemExit(f"Map document validation failed: {path}")
+              print(f"Validated {path} against map document schema")
+
+          snapshot_files = sorted(Path("examples/match-snapshots").glob("*.json"))
+          if not snapshot_files:
+              raise SystemExit("No canonical match snapshot fixtures found.")
+          for path in snapshot_files:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              errors = sorted(
+                  validators["snapshot"].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
+              if errors:
+                  for error in errors:
+                      location = "/".join(map(str, error.absolute_path)) or "$"
+                      print(f"{path}:{location}: {error.message}")
+                  raise SystemExit(f"Match snapshot validation failed: {path}")
+              print(f"Validated {path} against match snapshot schema")
 
           military_files = sorted(Path("military-plans").glob("*.json"))
           if not military_files:

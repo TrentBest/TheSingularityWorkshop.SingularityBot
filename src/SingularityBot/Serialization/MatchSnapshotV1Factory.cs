@@ -153,6 +153,14 @@ public static class MatchSnapshotV1Factory
             ShieldMax = (facts.CapturedFields & ObservationFields.Shields) != 0 ? facts.ShieldMax : null,
             Energy = (facts.CapturedFields & ObservationFields.Energy) != 0 ? facts.Energy : null,
             BuildProgress = (facts.CapturedFields & ObservationFields.BuildProgress) != 0 ? facts.BuildProgress : null,
+            HasCargo = (facts.CapturedFields & ObservationFields.Cargo) != 0 ? facts.HasCargo : null,
+            HasOrders = (facts.CapturedFields & ObservationFields.HasOrders) != 0 ? facts.HasOrders : null,
+            IsFlying = (facts.CapturedFields & ObservationFields.Mobility) != 0 ? facts.IsFlying : null,
+            IsBurrowed = (facts.CapturedFields & ObservationFields.Mobility) != 0 ? facts.IsBurrowed : null,
+            IsHallucination = (facts.CapturedFields & ObservationFields.Mobility) != 0 ? facts.IsHallucination : null,
+            WeaponCooldownRemaining = (facts.CapturedFields & ObservationFields.WeaponCooldown) != 0 ? facts.WeaponCooldownRemaining : null,
+            CollisionRadius = (facts.CapturedFields & ObservationFields.CollisionRadius) != 0 ? facts.CollisionRadius : null,
+            VespeneContents = (facts.CapturedFields & ObservationFields.VespeneContents) != 0 ? facts.VespeneContents : null,
             Orders = ProjectOrders(facts)
         };
     }

@@ -187,6 +187,26 @@ public static class SingularityBotDocumentJson
                 throw new ArgumentException("Match players, units and destruction tags must be unique, sorted, and destruction tags must not remain in the unit set.", nameof(document));
             if (!IsSha256(snapshot.MapContentHash))
                 throw new ArgumentException("Match snapshots must reference a lowercase SHA-256 map content hash.", nameof(document));
+
+            foreach (var unit in snapshot.Units)
+            {
+                var hasPosition = unit.X.HasValue && unit.Y.HasValue;
+                switch (unit.ContactState)
+                {
+                    case "visible" when !hasPosition:
+                        throw new ArgumentException("Visible contacts require both world coordinates.", nameof(document));
+                    case "remembered" when !hasPosition || !unit.LastSeenGameLoop.HasValue:
+                        throw new ArgumentException("Remembered contacts require coordinates and lastSeenGameLoop.", nameof(document));
+                    case "unknown" when unit.X.HasValue || unit.Y.HasValue:
+                        throw new ArgumentException("Unknown contacts cannot assert world coordinates.", nameof(document));
+                    case "visible":
+                    case "remembered":
+                    case "unknown":
+                        break;
+                    default:
+                        throw new ArgumentException($"Unsupported contact state '{unit.ContactState}'.", nameof(document));
+                }
+            }
         }
     }
 }

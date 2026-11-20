@@ -29,7 +29,7 @@ Contact semantics:
 - `unknown`: no current fact is asserted; position is omitted.
 - Destruction is represented only in `authoritativelyDestroyedUnitTags`, sourced from explicit death evidence. Destroyed tags cannot also remain in the active/remembered unit array.
 
-Absence from a snapshot is not destruction evidence. Unknown optional values are omitted rather than represented as zero. Unit and player arrays are sorted by stable numeric identity; dead tags are unique and sorted. Orders retain their observed sequence.
+Absence from a snapshot is not destruction evidence. Unknown optional values are omitted rather than represented as zero. The v1 unit projection has explicit optional properties for health, shields, build progress, cargo/orders flags, mobility flags, weapon cooldown, collision radius, energy and Vespene contents; the mandatory health maximum remains part of the normalized baseline. Unit and player arrays are sorted by stable numeric identity; dead tags are unique and sorted. Orders retain their observed sequence.
 
 `MatchSnapshotV1Factory` projects a `NormalizedObservation` plus explicit player metadata and retained `LastSeenContactV1` history; it binds the observer identity from the normalized observation. A contact omitted from the current observation remains remembered if live-visible history exists; authoritative dead tags override both current and remembered contacts. Snapshot/hidden facts never invent their own last-seen timestamp. Visible units require captured position, so callers must include `ObservationFields.Position`; otherwise projection fails closed. `NormalizedObservation.CapturedFields` records which optional facts were actually captured.
 

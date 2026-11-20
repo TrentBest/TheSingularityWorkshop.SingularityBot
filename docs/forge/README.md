@@ -13,6 +13,8 @@ When GitHub Pages is published, open the `/forge/` route from the documentation 
 - Exposes the complete definition as JSON for advanced authoring.
 - Imports and exports JSON files without sending them to a server.
 - Performs browser-side parsing and core contract checks.
+- Loads a versioned static MapDocument fixture and overlays two versioned MatchSnapshot fixtures.
+- Scrubs deterministic frames using the map document's full-map world-coordinate transform, preserving remembered contacts and displaying only authoritative destruction tags.
 
 The browser checks are intentionally not represented as the authoritative runtime validator. SingularityBot's `BotDefinition.Parse` / `BotDefinition.Validate` and compiled capability resolution remain authoritative.
 

@@ -336,7 +336,7 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Contains((ulong)400, snapshot.AuthoritativelyDestroyedUnitTags);
         Assert.DoesNotContain(snapshot.Units, unit => unit.Tag == 400);
         Assert.Equal((uint?)150, snapshot.Players[0].Minerals);
-        Assert.Equal(snapshot.MapContentHash, new string('a', 64));
+        Assert.Equal(new string('a', 64), snapshot.MapContentHash);
         _ = SingularityBotDocumentJson.Serialize(snapshot);
     }
 
@@ -353,9 +353,12 @@ public sealed class VersionedDocumentSerializationTests
         var observation = new NormalizedObservation(10, 1, [facts], new HashSet<ulong>());
         var players = new[] { new MatchPlayerV1 { PlayerId = 1, Team = "1", Race = "Terran" } };
 
-        Assert.Throws<InvalidOperationException>(() => MatchSnapshotV1Factory.Create(
-            "match", "map", new string('a', 64), 1, "running",
-            observation, players, new Dictionary<ulong, LastSeenContactV1>()));
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            _ = MatchSnapshotV1Factory.Create(
+                "match", "map", new string('a', 64), 1, "running",
+                observation, players, new Dictionary<ulong, LastSeenContactV1>());
+        });
     }
 
     private static MapDocumentV1 CreateMapDocument() => new()

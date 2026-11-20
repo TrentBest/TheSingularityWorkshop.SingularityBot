@@ -46,6 +46,9 @@ public sealed class SpatialGridSnapshot
     public float WorldOriginX { get; }
     public float WorldOriginY { get; }
 
+    /// <summary>Returns a defensive copy of the row-major byte payload.</summary>
+    public byte[] CopyCells() => _cells.ToArray();
+
     /// <summary>Reads a world-space cell; maximum edges are exclusive.</summary>
     public bool TryGetCellIndex(MapPoint point, out int index)
     {

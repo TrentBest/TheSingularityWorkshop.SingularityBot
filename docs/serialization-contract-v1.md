@@ -20,7 +20,7 @@ Layer payload hashes cover the exact stored payload bytes (after compression, if
 
 Schema: [`singularitybot-match-snapshot-v1.schema.json`](../schemas/singularitybot-match-snapshot-v1.schema.json)
 
-Each snapshot is a complete observation frame, not a delta. It binds to both `mapId` and the exact `mapContentHash`, and includes match identity, explicit `observerPlayerId`, monotonically increasing observation sequence, game loop, lifecycle, player/economy facts, unit facts and authoritative dead-unit tags. Unit alliance values (`self`, `ally`, `enemy`, `neutral`) are relative to that observer; the observer must appear in the player roster.
+Each snapshot is a complete observation frame, not a delta. It binds to both `mapId` and the exact `mapContentHash`, and includes match identity, explicit `observerPlayerId`, the sorted `capturedFields` declaration, monotonically increasing observation sequence, game loop, lifecycle, player/economy facts, unit facts and authoritative dead-unit tags. `capturedFields` names the optional observation fields requested and populated by the normalizer; it prevents consumers from treating omitted values as zero or assuming that a field was captured. Unit alliance values (`self`, `ally`, `enemy`, `neutral`) are relative to that observer; the observer must appear in the player roster.
 
 Contact semantics:
 

@@ -312,12 +312,15 @@ public sealed class VersionedDocumentSerializationTests
             ],
             new Dictionary<ulong, LastSeenContactV1>
             {
-                [200] = new(400, 198.5, 164.5)
+                [200] = new(200, 48, "Marine", 2, UnitAlliance.Enemy, 400, 198.5, 164.5),
+                [250] = new(250, 48, "Marine", 2, UnitAlliance.Enemy, 350, 185.5, 155.5),
+                [400] = new(400, 48, "Marine", 2, UnitAlliance.Enemy, 470, 40, 40)
             });
 
         var visible = Assert.Single(snapshot.Units, unit => unit.Tag == 100);
         var remembered = Assert.Single(snapshot.Units, unit => unit.Tag == 200);
         var unknown = Assert.Single(snapshot.Units, unit => unit.Tag == 300);
+        var absentButRemembered = Assert.Single(snapshot.Units, unit => unit.Tag == 250);
         Assert.Equal("visible", visible.ContactState);
         Assert.Equal((double?)25, visible.X);
         Assert.Equal((double?)35, visible.Y);
@@ -326,6 +329,8 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Equal((double?)198.5, remembered.X);
         Assert.Equal((double?)164.5, remembered.Y);
         Assert.Equal("unknown", unknown.ContactState);
+        Assert.Equal("remembered", absentButRemembered.ContactState);
+        Assert.Equal((uint?)350, absentButRemembered.LastSeenGameLoop);
         Assert.Null(unknown.X);
         Assert.Contains((ulong)400, snapshot.AuthoritativelyDestroyedUnitTags);
         Assert.DoesNotContain(snapshot.Units, unit => unit.Tag == 400);

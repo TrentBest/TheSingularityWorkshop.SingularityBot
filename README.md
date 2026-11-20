@@ -58,6 +58,7 @@ Start with the [SingularityBot documentation home](docs/index.md) for current st
 
 The live bot is a self-contained compiled DLL. The Runner selects a statically linked `AdaptiveMarineStrategy` through `ICompiledBotStrategy`; the shared engine obtains its validated definition, initial-goal composition, goal-assignment policy and Marine rally decision through that contract. Two compiled strategies are regression-tested through the same engine and action vocabulary. Objective/transition composition and most macro/tactical policy still need to move behind the contract. FSM_COS composes the definition and CommandAi vocabulary at startup. JSON remains an authoring/import/export representation, not a live runtime file. The SC2 Runner drives the bot lifecycle and frame callbacks; it is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
 - [CommandAi integration v1: bot-owned command vocabulary and validation boundary](docs/commandai-integration-v1.md)
+- [GrammarAi optional authoring/interchange boundary](https://github.com/TrentBest/TheSingularityWorkshop.GrammarAi/blob/development/docs/INTEGRATION_SINGULARITYBOT.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)
 - [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)

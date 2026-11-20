@@ -132,6 +132,10 @@ public static class SingularityBotDocumentJson
     public static byte[] Serialize<T>(T document) =>
         JsonSerializer.SerializeToUtf8Bytes(document, Options);
 
+    public static T Deserialize<T>(ReadOnlySpan<byte> json) =>
+        JsonSerializer.Deserialize<T>(json, Options)
+        ?? throw new JsonException($"The JSON document did not contain a {typeof(T).Name} value.");
+
     /// <summary>
     /// Computes the map identity digest with ContentHash cleared, avoiding a
     /// self-referential hash. Store the returned lowercase digest in ContentHash.

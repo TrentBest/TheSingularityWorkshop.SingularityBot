@@ -340,6 +340,7 @@ public sealed class VersionedDocumentSerializationTests
         Assert.DoesNotContain(snapshot.Units, unit => unit.Tag == 400);
         Assert.Equal((uint?)150, snapshot.Players[0].Minerals);
         Assert.Equal(new string('a', 64), snapshot.MapContentHash);
+        Assert.Equal((uint)1, snapshot.ObserverPlayerId);
         _ = SingularityBotDocumentJson.Serialize(snapshot);
     }
 

@@ -3,12 +3,32 @@ using SingularityBot.Observation;
 namespace SingularityBot.Serialization;
 
 /// <summary>Last live-visible contact state retained by the match observation owner.</summary>
-public sealed record LastSeenContactV1(uint GameLoop, double X, double Y);
+public sealed record LastSeenContactV1(
+    ulong Tag,
+    uint UnitTypeId,
+    string UnitKind,
+    int OwnerId,
+    UnitAlliance Alliance,
+    uint GameLoop,
+    double X,
+    double Y)
+{
+    public static LastSeenContactV1 FromVisible(UnitObservationFacts facts)
+    {
+        ArgumentNullException.ThrowIfNull(facts);
+        if (!facts.IsLiveVisible || !facts.HasPosition ||
+            (facts.CapturedFields & ObservationFields.Position) == 0)
+            throw new ArgumentException("Last-seen history can only be captured from a live-visible unit with position.", nameof(facts));
+        return new LastSeenContactV1(
+            facts.Tag, facts.UnitTypeId, facts.UnitKind, facts.OwnerId,
+            facts.Alliance, facts.GameLoop, facts.PositionX, facts.PositionY);
+    }
+}
 
 /// <summary>
-/// Projects one normalized observation into a complete MatchSnapshot v1.
-/// Remembered positions and timestamps must come from retained live-visible
-/// history; fog snapshots never manufacture their own last-seen timestamp.
+/// Projects one normalized observation plus retained live-visible history into
+/// a complete MatchSnapshot v1. Fog snapshots and observation absence never
+/// manufacture destruction or a last-seen timestamp.
 /// </summary>
 public static class MatchSnapshotV1Factory
 {
@@ -35,10 +55,6 @@ public static class MatchSnapshotV1Factory
         if (!playerFacts.TryGetValue(observation.PlayerId, out var observingPlayer))
             throw new ArgumentException("Player metadata must include the observing player.", nameof(players));
 
-        if ((observation.Units.Count > 0) &&
-            observation.Units.Any(unit => unit.Tag == 0))
-            throw new ArgumentException("Normalized units must have non-zero stable tags.", nameof(observation));
-
         if ((observation.CapturedFields & ObservationFields.Economy) != 0)
         {
             playerFacts[observation.PlayerId] = observingPlayer with
@@ -55,12 +71,46 @@ public static class MatchSnapshotV1Factory
             .OrderBy(tag => tag)
             .ToArray();
         var destroyed = destroyedTags.ToHashSet();
+        var currentUnits = observation.Units.ToDictionary(unit => unit.Tag);
+        if (currentUnits.ContainsKey(0))
+            throw new ArgumentException("Normalized units must have non-zero stable tags.", nameof(observation));
 
-        var units = observation.Units
-            .Where(unit => !destroyed.Contains(unit.Tag))
-            .OrderBy(unit => unit.Tag)
-            .Select(unit => ProjectUnit(unit, observation.GameLoop, lastSeenContacts))
-            .ToArray();
+        foreach (var pair in lastSeenContacts)
+        {
+            var memory = pair.Value;
+            if (pair.Key == 0 || memory.Tag != pair.Key ||
+                !double.IsFinite(memory.X) || !double.IsFinite(memory.Y) ||
+                memory.GameLoop > observation.GameLoop)
+                throw new ArgumentException($"Last-seen history for unit {pair.Key} is invalid.", nameof(lastSeenContacts));
+        }
+
+        var projected = new SortedDictionary<ulong, MatchUnitV1>();
+        foreach (var facts in observation.Units)
+        {
+            if (destroyed.Contains(facts.Tag))
+                continue;
+
+            if (facts.Visibility == UnitVisibility.Visible)
+            {
+                projected.Add(facts.Tag, ProjectVisibleUnit(facts, observation.GameLoop));
+            }
+            else if (lastSeenContacts.TryGetValue(facts.Tag, out var memory))
+            {
+                projected.Add(facts.Tag, ProjectRememberedUnit(memory));
+            }
+            else
+            {
+                projected.Add(facts.Tag, ProjectUnknownUnit(facts));
+            }
+        }
+
+        // A unit omitted from this observation remains a remembered contact
+        // when live-visible history exists. Absence alone is never destruction.
+        foreach (var pair in lastSeenContacts.OrderBy(pair => pair.Key))
+        {
+            if (!destroyed.Contains(pair.Key) && !currentUnits.ContainsKey(pair.Key))
+                projected.Add(pair.Key, ProjectRememberedUnit(pair.Value));
+        }
 
         return new MatchSnapshotV1
         {
@@ -72,64 +122,17 @@ public static class MatchSnapshotV1Factory
             GameLoop = observation.GameLoop,
             Lifecycle = lifecycle,
             Players = playerFacts.Values.OrderBy(player => player.PlayerId).ToArray(),
-            Units = units,
+            Units = projected.Values.ToArray(),
             AuthoritativelyDestroyedUnitTags = destroyedTags
         };
     }
 
-    private static MatchUnitV1 ProjectUnit(
-        UnitObservationFacts facts,
-        uint currentGameLoop,
-        IReadOnlyDictionary<ulong, LastSeenContactV1> lastSeenContacts)
+    private static MatchUnitV1 ProjectVisibleUnit(UnitObservationFacts facts, uint currentGameLoop)
     {
-        var contactState = "unknown";
-        double? x = null;
-        double? y = null;
-        uint? lastSeenGameLoop = null;
-
-        switch (facts.Visibility)
-        {
-            case UnitVisibility.Visible:
-                if (!facts.HasPosition ||
-                    (facts.CapturedFields & ObservationFields.Position) == 0)
-                    throw new InvalidOperationException(
-                        $"Visible unit {facts.Tag} has no captured position. Include ObservationFields.Position.");
-                contactState = "visible";
-                x = facts.PositionX;
-                y = facts.PositionY;
-                lastSeenGameLoop = currentGameLoop;
-                break;
-
-            case UnitVisibility.Snapshot:
-                if (lastSeenContacts.TryGetValue(facts.Tag, out var memory))
-                {
-                    if (!double.IsFinite(memory.X) || !double.IsFinite(memory.Y) ||
-                        memory.GameLoop > currentGameLoop)
-                        throw new InvalidOperationException(
-                            $"Last-seen history for unit {facts.Tag} is invalid for game loop {currentGameLoop}.");
-                    contactState = "remembered";
-                    x = memory.X;
-                    y = memory.Y;
-                    lastSeenGameLoop = memory.GameLoop;
-                }
-                break;
-
-            case UnitVisibility.Hidden:
-            case UnitVisibility.Unknown:
-            default:
-                break;
-        }
-
-        var fields = facts.CapturedFields;
-        var orders = (fields & ObservationFields.OrderDetails) != 0
-            ? facts.Orders.Select(order => new MatchOrderV1
-            {
-                AbilityId = order.AbilityId,
-                TargetUnitTag = order.TargetUnitTag,
-                TargetX = order.TargetPositionX,
-                TargetY = order.TargetPositionY
-            }).ToArray()
-            : Array.Empty<MatchOrderV1>();
+        if (!facts.HasPosition ||
+            (facts.CapturedFields & ObservationFields.Position) == 0)
+            throw new InvalidOperationException(
+                $"Visible unit {facts.Tag} has no captured position. Include ObservationFields.Position.");
 
         return new MatchUnitV1
         {
@@ -138,18 +141,56 @@ public static class MatchSnapshotV1Factory
             UnitKind = facts.UnitKind ?? string.Empty,
             OwnerId = facts.OwnerId,
             Alliance = MapAlliance(facts.Alliance),
-            ContactState = contactState,
-            LastSeenGameLoop = lastSeenGameLoop,
-            X = x,
-            Y = y,
-            Health = (fields & ObservationFields.Health) != 0 ? facts.Health : null,
+            ContactState = "visible",
+            LastSeenGameLoop = currentGameLoop,
+            X = facts.PositionX,
+            Y = facts.PositionY,
+            Health = (facts.CapturedFields & ObservationFields.Health) != 0 ? facts.Health : null,
             HealthMax = facts.HealthMax,
-            Shield = (fields & ObservationFields.Shields) != 0 ? facts.Shield : null,
-            ShieldMax = (fields & ObservationFields.Shields) != 0 ? facts.ShieldMax : null,
-            Energy = (fields & ObservationFields.Energy) != 0 ? facts.Energy : null,
-            BuildProgress = (fields & ObservationFields.BuildProgress) != 0 ? facts.BuildProgress : null,
-            Orders = orders
+            Shield = (facts.CapturedFields & ObservationFields.Shields) != 0 ? facts.Shield : null,
+            ShieldMax = (facts.CapturedFields & ObservationFields.Shields) != 0 ? facts.ShieldMax : null,
+            Energy = (facts.CapturedFields & ObservationFields.Energy) != 0 ? facts.Energy : null,
+            BuildProgress = (facts.CapturedFields & ObservationFields.BuildProgress) != 0 ? facts.BuildProgress : null,
+            Orders = ProjectOrders(facts)
         };
+    }
+
+    private static MatchUnitV1 ProjectRememberedUnit(LastSeenContactV1 memory) => new()
+    {
+        Tag = memory.Tag,
+        UnitTypeId = memory.UnitTypeId,
+        UnitKind = memory.UnitKind ?? string.Empty,
+        OwnerId = memory.OwnerId,
+        Alliance = MapAlliance(memory.Alliance),
+        ContactState = "remembered",
+        LastSeenGameLoop = memory.GameLoop,
+        X = memory.X,
+        Y = memory.Y
+    };
+
+    private static MatchUnitV1 ProjectUnknownUnit(UnitObservationFacts facts) => new()
+    {
+        Tag = facts.Tag,
+        UnitTypeId = facts.UnitTypeId,
+        UnitKind = facts.UnitKind ?? string.Empty,
+        OwnerId = facts.OwnerId,
+        Alliance = MapAlliance(facts.Alliance),
+        ContactState = "unknown",
+        HealthMax = facts.HealthMax
+    };
+
+    private static IReadOnlyList<MatchOrderV1> ProjectOrders(UnitObservationFacts facts)
+    {
+        if ((facts.CapturedFields & ObservationFields.OrderDetails) == 0)
+            return Array.Empty<MatchOrderV1>();
+
+        return facts.Orders.Select(order => new MatchOrderV1
+        {
+            AbilityId = order.AbilityId,
+            TargetUnitTag = order.TargetUnitTag,
+            TargetX = order.TargetPositionX,
+            TargetY = order.TargetPositionY
+        }).ToArray();
     }
 
     private static string MapAlliance(UnitAlliance alliance) => alliance switch
@@ -161,4 +202,3 @@ public static class MatchSnapshotV1Factory
         _ => "unknown"
     };
 }
-

@@ -157,6 +157,39 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Throws<ArgumentException>(() => SingularityBotDocumentJson.Serialize(snapshot));
     }
 
+    [Fact]
+    public void UnknownContactCannotAssertWorldCoordinates()
+    {
+        var snapshot = new MatchSnapshotV1
+        {
+            SchemaVersion = 1,
+            MatchId = "fixture-match-01",
+            MapId = "fixture-translated-map",
+            MapContentHash = new string('a', 64),
+            Sequence = 1,
+            GameLoop = 1,
+            Lifecycle = "running",
+            Players = Array.Empty<MatchPlayerV1>(),
+            Units =
+            [
+                new MatchUnitV1
+                {
+                    Tag = 100,
+                    UnitTypeId = 1,
+                    UnitKind = "Unknown",
+                    OwnerId = 2,
+                    Alliance = "enemy",
+                    ContactState = "unknown",
+                    X = 10,
+                    Y = 10
+                }
+            ],
+            AuthoritativelyDestroyedUnitTags = Array.Empty<ulong>()
+        };
+
+        Assert.Throws<ArgumentException>(() => SingularityBotDocumentJson.Serialize(snapshot));
+    }
+
     private static MapDocumentV1 CreateMapDocument() => new()
     {
         SchemaVersion = 1,

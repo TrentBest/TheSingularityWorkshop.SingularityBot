@@ -1,4 +1,5 @@
 using SingularityBot.Serialization;
+using SingularityBot.Observation;
 using SingularityBot.Spatial;
 using Xunit;
 

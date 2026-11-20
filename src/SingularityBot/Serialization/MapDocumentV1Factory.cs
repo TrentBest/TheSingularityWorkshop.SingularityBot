@@ -34,6 +34,7 @@ public static class MapDocumentV1Factory
             .ToArray();
         if (starts.Length == 0 || starts.Any(location =>
                 string.IsNullOrWhiteSpace(location.Id) ||
+                !double.IsFinite(location.X) || !double.IsFinite(location.Y) ||
                 location.X < spatialMap.Bounds.MinX || location.X > spatialMap.Bounds.MaxX ||
                 location.Y < spatialMap.Bounds.MinY || location.Y > spatialMap.Bounds.MaxY))
             throw new ArgumentException("Start locations must have IDs and lie within playable bounds.", nameof(startLocations));
@@ -105,7 +106,9 @@ public static class MapDocumentV1Factory
         var reference = storePayload(id, payload);
         if (string.IsNullOrWhiteSpace(reference) ||
             reference.StartsWith("/", StringComparison.Ordinal) ||
-            reference.Contains("..", StringComparison.Ordinal))
+            reference.Contains('\\') ||
+            reference.Contains(':') ||
+            reference.Split('/').Any(segment => segment is "" or "." or ".."))
             throw new InvalidOperationException($"The payload store returned an invalid relative reference for layer '{id}'.");
 
         return new MapLayerV1
@@ -135,7 +138,9 @@ public static class MapDocumentV1Factory
             full.MaxX <= full.MinX || full.MaxY <= full.MinY)
             throw new ArgumentException("Full map bounds must be finite and have positive width and height.", nameof(full));
 
-        if (playable.MinX < full.MinX || playable.MinY < full.MinY ||
+        if (!float.IsFinite(playable.MinX) || !float.IsFinite(playable.MinY) ||
+            !float.IsFinite(playable.MaxX) || !float.IsFinite(playable.MaxY) ||
+            playable.MinX < full.MinX || playable.MinY < full.MinY ||
             playable.MaxX > full.MaxX || playable.MaxY > full.MaxY)
             throw new ArgumentException("Playable bounds must be contained by full map bounds.", nameof(playable));
     }

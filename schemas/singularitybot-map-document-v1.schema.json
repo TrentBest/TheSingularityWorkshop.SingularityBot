@@ -63,12 +63,13 @@
         "encoding": { "type": "string", "minLength": 1 },
         "units": { "type": "string", "minLength": 1 },
         "compression": { "enum": ["none", "gzip", "zstd"] },
+        "payloadReference": { "type": "string", "minLength": 1 },
         "payloadSha256": { "$ref": "#/$defs/sha256" }
       },
       "allOf": [
         {
           "if": { "properties": { "availability": { "const": "available" } } },
-          "then": { "required": ["width", "height", "worldOriginX", "worldOriginY", "worldWidth", "worldHeight", "encoding", "compression", "payloadSha256"] }
+          "then": { "required": ["width", "height", "worldOriginX", "worldOriginY", "worldWidth", "worldHeight", "encoding", "compression", "payloadReference", "payloadSha256"] }
         },
         {
           "if": { "properties": { "availability": { "enum": ["unavailable", "unsupported"] } } },

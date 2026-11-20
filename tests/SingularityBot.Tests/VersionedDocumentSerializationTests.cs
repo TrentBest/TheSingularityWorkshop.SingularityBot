@@ -190,6 +190,29 @@ public sealed class VersionedDocumentSerializationTests
         Assert.Throws<ArgumentException>(() => SingularityBotDocumentJson.Serialize(snapshot));
     }
 
+    [Fact]
+    public void UnsupportedMapSchemaVersionsAreRejected()
+    {
+        var document = CreateMapDocument();
+        Assert.Throws<ArgumentException>(() =>
+            SingularityBotDocumentJson.Serialize(document with { SchemaVersion = 2 }));
+
+        var json = System.Text.Encoding.UTF8.GetString(SingularityBotDocumentJson.Serialize(document));
+        var futureVersion = json.Replace("\"schemaVersion\":1", "\"schemaVersion\":2", StringComparison.Ordinal);
+        Assert.Throws<System.Text.Json.JsonException>(() =>
+            SingularityBotDocumentJson.Deserialize<MapDocumentV1>(System.Text.Encoding.UTF8.GetBytes(futureVersion)));
+    }
+
+    [Fact]
+    public void UnknownMapDocumentPropertiesAreRejected()
+    {
+        var json = System.Text.Encoding.UTF8.GetString(SingularityBotDocumentJson.Serialize(CreateMapDocument()));
+        var extended = json.Replace("\"mapId\":", "\"unexpected\":true,\"mapId\":", StringComparison.Ordinal);
+
+        Assert.Throws<System.Text.Json.JsonException>(() =>
+            SingularityBotDocumentJson.Deserialize<MapDocumentV1>(System.Text.Encoding.UTF8.GetBytes(extended)));
+    }
+
     private static MapDocumentV1 CreateMapDocument() => new()
     {
         SchemaVersion = 1,

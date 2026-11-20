@@ -11,6 +11,8 @@ on:
       - "military-plans/**"
       - "docs/**"
       - "README.md"
+      - "AGENTS.md"
+      - "AgentOnboarding.md"
       - "Directory.Build.props"
       - ".github/workflows/build.yml"
   pull_request:
@@ -117,6 +119,28 @@ jobs:
                       print(f"{path}:{location}: {error.message}")
                   raise SystemExit(f"Military plan validation failed: {path}")
               print(f"Validated {path} against military schema")
+          PY
+      - name: Validate exact-commit agent onboarding contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("AgentOnboarding.md")
+          if not path.is_file():
+              raise SystemExit("AgentOnboarding.md is required for CiAi admission.")
+          content = path.read_text(encoding="utf-8").strip()
+          required = (
+              "Mandatory admission rule",
+              "exact target commit",
+              "NOT ELIGIBLE",
+              "Human approval remains a separate host-side boundary.",
+              "ServerSC2 owns host process supervision",
+              "Forge owns map-first authoring",
+          )
+          missing = [item for item in required if item not in content]
+          if missing:
+              raise SystemExit("AgentOnboarding.md is missing required contract sections: " + ", ".join(missing))
+          print(f"Validated {path} ({len(content)} characters) at the checked-out commit")
           PY
       - name: Check Forge browser script syntax
         run: node --check docs/forge/forge.js

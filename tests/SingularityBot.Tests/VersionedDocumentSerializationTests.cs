@@ -326,9 +326,9 @@ public sealed class VersionedDocumentSerializationTests
             ],
             new Dictionary<ulong, LastSeenContactV1>
             {
-                [200] = new(200, 48, "Marine", 2, UnitAlliance.Enemy, 400, 198.5, 164.5),
-                [250] = new(250, 48, "Marine", 2, UnitAlliance.Enemy, 350, 185.5, 155.5),
-                [400] = new(400, 48, "Marine", 2, UnitAlliance.Enemy, 470, 40, 40)
+                [200] = new(200, 48, "Marine", 2, UnitAlliance.Enemy, 1, 400, 198.5, 164.5),
+                [250] = new(250, 48, "Marine", 2, UnitAlliance.Enemy, 1, 350, 185.5, 155.5),
+                [400] = new(400, 48, "Marine", 2, UnitAlliance.Enemy, 1, 470, 40, 40)
             });
 
         var visible = Assert.Single(snapshot.Units, unit => unit.Tag == 100);

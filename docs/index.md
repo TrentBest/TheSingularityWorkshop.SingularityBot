@@ -11,7 +11,7 @@
 
 SingularityBot is a single decision system: observations become a normalized world picture, persistent contexts preserve entity behavior, strategic and tactical controllers propose intent, arbitration resolves competing intent, and a validated action pipeline submits commands to StarCraft II.
 
-The first competitive target is a disciplined Terran opening. The architecture is being shaped so that additional civilizations, strategies, and authoring tools can grow around the same runtime without creating competing engines.
+SingularityBot is a race-configurable agent: the runner requests Random by default, and the runtime has explicit race/mode selection checked against authoritative in-game race data. This is not yet equivalent to full Terran/Protoss/Zerg strategy support. Terran Marine Mode is the implemented baseline; Zergling has an experimental selectable opening; Protoss modes are registered but not yet executable. The target is one shared decision system with race-specific economy, production, and unit-capability compositions. See [Race support and first-tier pressure](race-support.md) for the current capability matrix and acceptance gates.
 
 > **Engineering rule:** describe what the source does, prove what tests exercise, identify what CI verifies, and reserve claims of successful play for observed matches and replays.
 
@@ -30,7 +30,7 @@ The [roadmap](roadmap.md) is the authoritative checklist. The [CiAi evidence gui
 
 ## Start here
 
-- **Understand the system:** [Architecture](architecture.md) · [Behavior and FSM model](behavior-model.md) · [Terran FSM catalog](terran-fsm-catalog.md)
+- **Understand the system:** [Architecture](architecture.md) · [Behavior and FSM model](behavior-model.md) · [Race support and first-tier pressure](race-support.md) · [Terran FSM catalog](terran-fsm-catalog.md)
 - **Run and inspect it:** [Windows development setup](windows-development-setup.md) · [Local game sessions](local-game-sessions.md) · [Diagnostics and trace format](diagnostics.md)
 - **Understand the bot's decisions:** [Opening economy and logistics](opening-economy-logistics.md) · [Military organization and game phases](military-organization-and-game-phases.md) · [Engagement allocation](engagement-allocation.md) · [Movement doctrine](movement-doctrine.md)
 - **Create a bot in Forge:** [Open the browser workbench](forge/) · [BotDefinition v1](bot-definition-v1.md) · [Map and match serialization v1](serialization-contract-v1.md) · [Compiled strategy and visual authoring](composable-command-layers-and-visual-authoring.md) · [CommandAi integration](commandai-integration-v1.md) · [GrammarAi optional authoring boundary](https://github.com/TrentBest/TheSingularityWorkshop.GrammarAi/blob/development/docs/INTEGRATION_SINGULARITYBOT.md)

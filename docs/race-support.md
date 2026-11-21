@@ -15,7 +15,7 @@ Race configuration is a property of the bot/match composition. It must select th
 | Protoss / Zealot or Stalker | Registered mode identities only | The catalogue records intended modes, but they are not yet authorized to issue gameplay actions. |
 | Other registered modes | Selection metadata only unless explicitly marked executable | A name in the catalogue is not proof of a working strategy. |
 
-The default Random request must not silently fall through to the Terran Marine strategy when SC2 assigns Protoss or Zerg. Match startup must resolve actual race and a compatible executable composition; if none exists, it must fail closed without issuing cross-race commands. Until that default-path admission gate and the chosen race's end-to-end behavior are verified, do not describe Random as three-race gameplay parity.
+The default Random request must not silently fall through to the Terran Marine strategy when SC2 assigns Protoss or Zerg. The current default BotDefinition is Terran Marine; selecting a different race requires a matching definition/mode and an executable opener. Match startup must resolve actual race and a compatible executable composition; if none exists, it must fail closed without issuing cross-race commands. Forge v1 currently keeps its visual race selector disabled and Terran-only, even though the runtime schema/catalogue contain additional race identities. Until that authoring path and the chosen race's end-to-end behavior are verified, do not describe Random as three-race gameplay parity.
 
 ## Strategic objective: fast first-tier pressure, intelligently
 

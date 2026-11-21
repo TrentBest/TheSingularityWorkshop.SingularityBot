@@ -7,7 +7,7 @@ namespace SingularityBot.Tests;
 public sealed class BotRaceSelectionTests
 {
     private static readonly BotRaceSelectionContext Context =
-        new(Race.Protoss, Difficulty.Hard, "AcolyteLE.SC2Map");
+        new(Race.Zerg, Difficulty.Hard, "AcolyteLE.SC2Map");
 
     [Fact]
     public void RandomSelection_UsesOnlyDeclaredRacesWithExecutableAdapters()
@@ -19,7 +19,7 @@ public sealed class BotRaceSelectionTests
         };
 
         var result = new BotRaceSelectionResolver().Resolve(
-            definition, new[] { Race.Terran }, Context, _ => 0);
+            definition, RaceModuleCatalog.CreateDefault().ExecutableRaces, Context, _ => 0);
 
         Assert.Equal(Race.Terran, result.SelectedRace);
         Assert.Equal(new[] { Race.Terran }, result.EligibleExecutableRaces);
@@ -27,8 +27,7 @@ public sealed class BotRaceSelectionTests
 
     [Theory]
     [InlineData(0, Race.Terran)]
-    [InlineData(1, Race.Protoss)]
-    [InlineData(2, Race.Zerg)]
+    [InlineData(1, Race.Zerg)]
     public void RandomSelection_CanSelectEveryExecutableRace(int index, Race expected)
     {
         var definition = new BotRaceSelectionDefinition
@@ -38,7 +37,7 @@ public sealed class BotRaceSelectionTests
         };
 
         var result = new BotRaceSelectionResolver().Resolve(
-            definition, definition.EligibleRaces, Context, _ => index);
+            definition, RaceModuleCatalog.CreateDefault().ExecutableRaces, Context, _ => index);
 
         Assert.Equal(expected, result.SelectedRace);
     }
@@ -71,10 +70,10 @@ public sealed class BotRaceSelectionTests
         var result = new BotRaceSelectionResolver(new[] { selector }).Resolve(
             definition, definition.EligibleRaces, Context);
 
-        Assert.Equal(Race.Protoss, result.SelectedRace);
+        Assert.Equal(Race.Zerg, result.SelectedRace);
         Assert.Equal(BotRaceSelectionPolicy.Custom, result.Policy);
         Assert.Equal(selector.Id, result.SelectorId);
-        Assert.Equal(Race.Protoss, selector.ObservedOpponentRace);
+        Assert.Equal(Race.Zerg, selector.ObservedOpponentRace);
     }
 
     [Fact]

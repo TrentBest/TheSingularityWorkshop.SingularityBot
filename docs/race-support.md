@@ -17,6 +17,16 @@ Race configuration is a property of the bot/match composition. It must select th
 
 The default Random request must not silently fall through to the Terran Marine strategy when SC2 assigns Protoss or Zerg. The current default BotDefinition is Terran Marine; selecting a different race requires a matching definition/mode and an executable opener. Match startup must resolve actual race and a compatible executable composition; if none exists, it must fail closed without issuing cross-race commands. Forge v1 currently keeps its visual race selector disabled and Terran-only, even though the runtime schema/catalogue contain additional race identities. Until that authoring path and the chosen race's end-to-end behavior are verified, do not describe Random as three-race gameplay parity.
 
+## Deterministic local baseline run
+
+The runner now accepts an explicit Terran baseline mode so the first controlled match does not depend on SC2's Random race assignment:
+
+```powershell
+dotnet run --project src/SingularityBot -- --mode=terran.marine.v1
+```
+
+This requests Terran and uses the existing Adaptive Marine strategy on the configured local map/opponent settings. Omitting `--mode` intentionally retains the Random request; because the compiled default definition is Terran Marine, a non-Terran actual race must still fail closed. The experimental Zergling opener remains separately selectable with `--mode=zerg.zergling.v1`, but it is not the recommended first gameplay proof and does not represent full Zerg support.
+
 ## Strategic objective: fast first-tier pressure, intelligently
 
 The first shared strategic objective is to establish the fastest sustainable first-tier combat force that the selected race can support, then project pressure toward the opponent without blind movement.

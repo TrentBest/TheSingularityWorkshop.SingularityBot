@@ -21,7 +21,7 @@ public sealed class BotModeCatalogTests
         Assert.True(_catalog.TryResolve(id, out var mode));
         Assert.Equal(race, mode.Race);
         Assert.Equal(primaryUnit, mode.PrimaryUnit);
-        Assert.Equal(id == "terran.marine.v1", mode.CanIssueGameplayActions);
+        Assert.Equal(id is "terran.marine.v1" or "zerg.zergling.v1", mode.CanIssueGameplayActions);
     }
 
     [Theory]

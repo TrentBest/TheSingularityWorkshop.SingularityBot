@@ -7,22 +7,22 @@ namespace SingularityBot.Tests;
 public sealed class BotMatchConfigurationTests
 {
     [Fact]
-    public void DefaultMatchConfigurationRequestsRandomRaceWithoutHardCodingItInRunner()
+    public void DefaultMatchConfigurationPinsTheOnlyFullyExecutableRace()
     {
         var configuration = BotMatchConfiguration.Default;
 
-        Assert.Equal(Race.Random, configuration.RequestedRace);
+        Assert.Equal(Race.Terran, configuration.RequestedRace);
         Assert.Equal("AcolyteLE.SC2Map", configuration.MapName);
         Assert.Equal(Race.Random, configuration.OpponentRace);
     }
 
     [Fact]
-    public void RacePreferenceIsIndependentFromTheCompiledTerranStrategyDefinition()
+    public void DefaultMatchConfigurationMatchesTheCompiledTerranStrategyDefinition()
     {
         var configuration = BotMatchConfiguration.Default;
         var strategy = new AdaptiveMarineStrategy();
 
-        Assert.Equal(Race.Random, configuration.RequestedRace);
+        Assert.Equal(Race.Terran, configuration.RequestedRace);
         Assert.Equal("Terran", strategy.Definition.Race);
     }
 

@@ -101,7 +101,7 @@ public sealed class BotRaceSelectionResolver
                 break;
 
             case BotRaceSelectionPolicy.Random:
-                var index = (chooseIndex ?? Random.Shared.Next)(eligible.Length);
+                var index = chooseIndex is null ? Random.Shared.Next(eligible.Length) : chooseIndex(eligible.Length);
                 if ((uint)index >= (uint)eligible.Length)
                     throw new InvalidOperationException($"Random selector returned out-of-range index {index}.");
                 selected = eligible[index];

@@ -95,6 +95,8 @@ public static class BotDefinitionValidator
             errors.Add("$.raceSelection: a race-selection definition is required.");
         else
         {
+            if (!Enum.IsDefined(raceSelection.Policy))
+                errors.Add("$.raceSelection.policy: is not a supported policy (Random, Fixed, Custom).");
             var declaredRaces = raceSelection.EligibleRaces ?? Array.Empty<SC2APIProtocol.Race>();
             var playableRaces = new[] { SC2APIProtocol.Race.Terran, SC2APIProtocol.Race.Protoss, SC2APIProtocol.Race.Zerg };
             if (declaredRaces.Count == 0 || declaredRaces.Any(race => !playableRaces.Contains(race)) ||

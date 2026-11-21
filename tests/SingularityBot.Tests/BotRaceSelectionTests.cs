@@ -68,7 +68,7 @@ public sealed class BotRaceSelectionTests
         };
 
         var result = new BotRaceSelectionResolver(new[] { selector }).Resolve(
-            definition, definition.EligibleRaces, Context);
+            definition, RaceModuleCatalog.CreateDefault().ExecutableRaces, Context);
 
         Assert.Equal(Race.Zerg, result.SelectedRace);
         Assert.Equal(BotRaceSelectionPolicy.Custom, result.Policy);

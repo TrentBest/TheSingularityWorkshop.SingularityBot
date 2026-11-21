@@ -25,4 +25,34 @@ public sealed class BotMatchConfigurationTests
         Assert.Equal(Race.Random, configuration.RequestedRace);
         Assert.Equal("Terran", strategy.Definition.Race);
     }
+
+    [Fact]
+    public void ExplicitTerranMarineModeRequestsTerranForDeterministicBaselineRuns()
+    {
+        var configuration = BotMatchConfiguration.ForMode("terran.marine.v1");
+
+        Assert.Equal(Race.Terran, configuration.RequestedRace);
+        Assert.Equal("AcolyteLE.SC2Map", configuration.MapName);
+        Assert.Equal(Race.Random, configuration.OpponentRace);
+    }
+
+    [Fact]
+    public void ExperimentalZerglingModeRequestsZergWithoutClaimingGeneralZergSupport()
+    {
+        var configuration = BotMatchConfiguration.ForMode("zerg.zergling.v1");
+
+        Assert.Equal(Race.Zerg, configuration.RequestedRace);
+    }
+
+    [Theory]
+    [InlineData("protoss.zealot.v1")]
+    [InlineData("zerg.queen.v1")]
+    [InlineData("terran.marauder.v1")]
+    [InlineData("")]
+    public void UnsupportedModesAreRejectedBeforeStartingAMatch(string modeId)
+    {
+        var exception = Assert.Throws<ArgumentException>(() => BotMatchConfiguration.ForMode(modeId));
+
+        Assert.Contains("Currently selectable", exception.Message);
+    }
 }

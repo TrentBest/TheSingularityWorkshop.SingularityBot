@@ -9,7 +9,7 @@ public sealed class RaceModuleCatalogTests
     [Theory]
     [InlineData(Race.Terran, "sc2.race.terran.v1", RaceModuleExecutionMode.LegacyTerranRuntime, true)]
     [InlineData(Race.Protoss, "sc2.race.protoss.scaffold.v1", RaceModuleExecutionMode.LoggingOnly, false)]
-    [InlineData(Race.Zerg, "sc2.race.zerg.scaffold.v1", RaceModuleExecutionMode.LoggingOnly, false)]
+    [InlineData(Race.Zerg, "sc2.race.zerg.experimental-opener.v1", RaceModuleExecutionMode.ExperimentalOpener, true)]
     public void DefaultCatalog_RegistersEveryPlayableRaceWithExplicitExecutionMode(
         Race race, string expectedId, RaceModuleExecutionMode expectedMode, bool canIssueActions)
     {
@@ -24,6 +24,14 @@ public sealed class RaceModuleCatalogTests
     }
 
     [Fact]
+    public void ExecutableRaces_ContainsOnlyRacesWithLiveGameplayPaths()
+    {
+        var catalog = RaceModuleCatalog.CreateDefault();
+
+        Assert.Equal(new[] { Race.Terran, Race.Zerg }, catalog.ExecutableRaces);
+    }
+
+    [Fact]
     public void DefaultCatalog_DoesNotPretendRandomRaceIsAPlayableModule()
     {
         var catalog = RaceModuleCatalog.CreateDefault();
@@ -32,16 +40,23 @@ public sealed class RaceModuleCatalogTests
     }
 
     [Fact]
-    public void ProtossAndZergScaffoldsDeclareRaceSpecificCapabilityNamespaces()
+    public void ProtossScaffoldDeclaresRaceSpecificCapabilityNamespaces()
     {
         var catalog = RaceModuleCatalog.CreateDefault();
 
         Assert.True(catalog.TryResolve(Race.Protoss, out var protoss));
         Assert.Contains("units.protoss", protoss.Capabilities);
         Assert.Contains("production.protoss", protoss.Capabilities);
+    }
+
+    [Fact]
+    public void ZergExperimentalOpenerDoesNotClaimFullRaceSupport()
+    {
+        var catalog = RaceModuleCatalog.CreateDefault();
 
         Assert.True(catalog.TryResolve(Race.Zerg, out var zerg));
-        Assert.Contains("units.zerg", zerg.Capabilities);
-        Assert.Contains("production.zerg", zerg.Capabilities);
+        Assert.Contains("opening.zergling-pair", zerg.Capabilities);
+        Assert.DoesNotContain("economy.zerg", zerg.Capabilities);
+        Assert.Contains("sustainable Zerg economy", zerg.Status);
     }
 }

@@ -154,6 +154,12 @@ public static class BotDefinitionCatalog
         root["id"] = "singularitybot.zerg.zergling-opening";
         root["name"] = "SingularityBot — Zergling Opening";
         root["race"] = "Zerg";
+        root["raceSelection"] = JsonSerializer.SerializeToNode(new BotRaceSelectionDefinition
+        {
+            Policy = BotRaceSelectionPolicy.Fixed,
+            FixedRace = SC2APIProtocol.Race.Zerg,
+            EligibleRaces = new[] { SC2APIProtocol.Race.Zerg }
+        });
         root["modeId"] = "zerg.zergling.v1";
         root["strategyProfile"] = strategyProfile;
 

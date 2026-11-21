@@ -9,13 +9,15 @@
 
 [![Sith Policy](https://raw.githubusercontent.com/TrentBest/TheSingularityWorkshop.SingularityBot/master/assets/sith-policy.svg)](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/workflows/sith-policy.yml)
 
-**An FSM-driven StarCraft II bot, built on The Singularity Workshop.**
+**A Random-race StarCraft II agent with explicit race-configured strategy modes, built on The Singularity Workshop.**
 
-SingularityBot observes StarCraft II, maintains persistent entity contexts, evaluates hierarchical finite-state machines, arbitrates intents, validates commands against current observations and game data, and submits actions through the SC2 protocol adapter. The first product goal is a disciplined, measurable Terran player—not a generalized strategy editor, a neural-policy experiment, or a ladder framework.
+SingularityBot observes StarCraft II, maintains persistent entity contexts, evaluates hierarchical finite-state machines, arbitrates intents, validates commands against current observations and game data, and submits actions through the SC2 protocol adapter. The default runner requests Random from SC2. Race-specific strategy modes are being built behind one shared decision system; Random assignment is not yet equivalent to complete Terran, Protoss, and Zerg gameplay support. See the [race support and first-tier pressure guide](docs/race-support.md) for the verified capability boundary.
 
 ## Current objective
 
-Prove a sustainable Terran economy and production loop, then prove its tactical behavior in repeatable local matches:
+Build one reusable decision system with explicit Terran, Protoss, and Zerg compositions. The immediate gameplay target is rapid, sustainable first-tier production followed by scouting-led, capability-aware pressure—not blind movement or a race-agnostic fixed build order. Preserve the working Terran baseline while completing and verifying the other race compositions. See [race support and first-tier pressure](docs/race-support.md) and [the three-race implementation checklist](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/issues/14).
+
+The current Terran baseline still needs its complete live-match proof:
 
 1. Reconcile observations into stable player, worker, resource, structure, order, and game-loop facts.
 2. Assign workers to persistent mineral routes using deterministic, saturation-aware allocation and SC2 pathing distances where available.
@@ -61,7 +63,8 @@ The live bot is a self-contained compiled DLL. The Runner selects a statically l
 - [GrammarAi optional authoring/interchange boundary](https://github.com/TrentBest/TheSingularityWorkshop.GrammarAi/blob/development/docs/INTEGRATION_SINGULARITYBOT.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)
-- [Race support and first-tier pressure](docs/race-support.md)\n- [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)
+- [Race support and first-tier pressure](docs/race-support.md)\n- [Race support and first-tier pressure](docs/race-support.md)
+- [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)
 - [Terran opening and worker logistics](docs/opening-economy-logistics.md)
 - [Development diagnostics and trace format](docs/diagnostics.md)
 - [CiAi evidence observation and acceptance boundaries](docs/ciai-evidence.md)

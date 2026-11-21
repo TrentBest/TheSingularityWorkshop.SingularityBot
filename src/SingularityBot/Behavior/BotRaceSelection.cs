@@ -86,7 +86,7 @@ public sealed class BotRaceSelectionResolver
         if (executable.Any(race => !PlayableRaces.Contains(race)))
             throw new InvalidOperationException("The host executable-race catalogue contains a non-playable race value.");
 
-        var eligible = declared.Where(executable.Contains).OrderBy(race => race).ToArray();
+        var eligible = declared.Where(executable.Contains).ToArray();
         if (eligible.Length == 0)
             throw new InvalidOperationException("The definition declares no race with an executable gameplay adapter.");
 

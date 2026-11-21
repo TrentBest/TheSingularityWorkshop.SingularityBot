@@ -19,4 +19,16 @@ public sealed record BotMatchConfiguration(
         MapName: "AcolyteLE.SC2Map",
         OpponentRace: Race.Random,
         OpponentDifficulty: Difficulty.VeryEasy);
+
+    /// <summary>
+    /// Creates a deterministic match request for an explicitly selected,
+    /// currently selectable strategy. Random remains the default when no mode
+    /// is supplied; it is not silently coerced to a race-specific strategy.
+    /// </summary>
+    public static BotMatchConfiguration ForMode(string modeId) => modeId switch
+    {
+        "terran.marine.v1" => Default with { RequestedRace = Race.Terran },
+        "zerg.zergling.v1" => Default with { RequestedRace = Race.Zerg },
+        _ => throw new ArgumentException($"Unsupported runner mode '{modeId}'. Currently selectable: terran.marine.v1, zerg.zergling.v1.", nameof(modeId))
+    };
 }

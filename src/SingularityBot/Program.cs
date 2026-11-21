@@ -38,14 +38,18 @@ public static class Program
         // Local matches capture by default. Ladder hosts remain file-silent unless
         // the operator explicitly opts in, since host filesystem persistence varies.
         var writeDiagnostics = diagnostics && (localRun || diagnosticsRequested);
+        var selectedConfiguration = string.IsNullOrWhiteSpace(selectedModeId)
+            ? MatchConfiguration
+            : BotMatchConfiguration.ForMode(selectedModeId);
+        var requestedRace = selectedConfiguration.RequestedRace;
 
         SingularityBot bot;
-        var requestedRace = MatchConfiguration.RequestedRace;
-        if (string.IsNullOrWhiteSpace(selectedModeId))
+        if (string.IsNullOrWhiteSpace(selectedModeId) ||
+            string.Equals(selectedModeId, "terran.marine.v1", StringComparison.Ordinal))
         {
             var strategy = new AdaptiveMarineStrategy();
             var definition = strategy.Definition;
-            Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}.");
+            Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}, mode={definition.ModeId}.");
             bot = new SingularityBot(
                 passiveBaseline: passiveBaseline,
                 writeDiagnostics: writeDiagnostics,
@@ -54,7 +58,6 @@ public static class Program
         else if (string.Equals(selectedModeId, "zerg.zergling.v1", StringComparison.Ordinal))
         {
             var definition = BotDefinitionCatalog.CreateZerglingOpening();
-            requestedRace = Race.Zerg;
             Console.WriteLine($"[BotStrategy] Using experimental '{definition.Id}' ({definition.Name}), mode={definition.ModeId}.");
             bot = new SingularityBot(
                 passiveBaseline: passiveBaseline,
@@ -63,7 +66,8 @@ public static class Program
         }
         else
         {
-            throw new ArgumentException($"Unsupported runner mode '{selectedModeId}'. Currently selectable: zerg.zergling.v1.");
+            // ForMode is the single allow-list and normally rejects before this point.
+            throw new ArgumentException($"Unsupported runner mode '{selectedModeId}'.");
         }
         Console.WriteLine($"[MatchConfiguration] Requested race={requestedRace}.");
 
@@ -84,8 +88,8 @@ public static class Program
 
         var connection = new GameConnection();
         if (localRun)
-            connection.RunSinglePlayer(bot, MatchConfiguration.MapName, requestedRace,
-                MatchConfiguration.OpponentRace, MatchConfiguration.OpponentDifficulty).GetAwaiter().GetResult();
+            connection.RunSinglePlayer(bot, selectedConfiguration.MapName, requestedRace,
+                selectedConfiguration.OpponentRace, selectedConfiguration.OpponentDifficulty).GetAwaiter().GetResult();
         else
             connection.RunLadder(bot, requestedRace, connectionArgs).GetAwaiter().GetResult();
     }

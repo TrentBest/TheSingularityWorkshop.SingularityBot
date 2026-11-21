@@ -22,8 +22,8 @@ public sealed record BotMatchConfiguration(
 
     /// <summary>
     /// Creates a deterministic match request for an explicitly selected,
-    /// currently selectable strategy. Random remains the default when no mode
-    /// is supplied; it is not silently coerced to a race-specific strategy.
+    /// currently selectable mode. The selected race does not imply that the
+    /// race has a complete economy or sustainable composition adapter.
     /// </summary>
     public static BotMatchConfiguration ForMode(string modeId) => modeId switch
     {

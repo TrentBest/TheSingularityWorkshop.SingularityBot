@@ -61,7 +61,7 @@ The live bot is a self-contained compiled DLL. The Runner selects a statically l
 - [GrammarAi optional authoring/interchange boundary](https://github.com/TrentBest/TheSingularityWorkshop.GrammarAi/blob/development/docs/INTEGRATION_SINGULARITYBOT.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)
-- [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)
+- [Race support and first-tier pressure](docs/race-support.md)\n- [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)
 - [Terran opening and worker logistics](docs/opening-economy-logistics.md)
 - [Development diagnostics and trace format](docs/diagnostics.md)
 - [CiAi evidence observation and acceptance boundaries](docs/ciai-evidence.md)

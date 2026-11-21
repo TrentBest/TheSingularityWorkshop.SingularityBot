@@ -29,6 +29,7 @@ public sealed class RaceModuleCatalogTests
         var catalog = RaceModuleCatalog.CreateDefault();
 
         Assert.Equal(new[] { Race.Terran, Race.Zerg }, catalog.ExecutableRaces);
+        Assert.Equal(new[] { Race.Terran }, catalog.RaceSelectionEligibleRaces);
     }
 
     [Fact]

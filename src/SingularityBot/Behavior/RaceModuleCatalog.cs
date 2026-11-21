@@ -2,11 +2,11 @@ using SC2APIProtocol;
 
 namespace SingularityBot.Behavior;
 
-/// <summary>Describes whether a race module is connected to executable gameplay
-/// or is currently a diagnostic-only scaffold.</summary>
+/// <summary>Describes which race-specific gameplay path is currently executable.</summary>
 public enum RaceModuleExecutionMode
 {
     LegacyTerranRuntime,
+    ExperimentalOpener,
     LoggingOnly
 }
 
@@ -20,13 +20,12 @@ public sealed record RaceModuleDescriptor(
     string Status)
 {
     public bool CanIssueGameplayActions =>
-        ExecutionMode == RaceModuleExecutionMode.LegacyTerranRuntime;
+        ExecutionMode is RaceModuleExecutionMode.LegacyTerranRuntime or RaceModuleExecutionMode.ExperimentalOpener;
 }
 
 /// <summary>
-/// Trusted in-process catalogue. Protoss and Zerg are deliberately registered
-/// now so race selection is explicit and diagnosable, while their gameplay
-/// adapters are built. No race silently falls back to Terran.
+/// Trusted in-process catalogue. Only races with a live gameplay path are
+/// exposed as executable candidates; diagnostic scaffolds remain unavailable.
 /// </summary>
 public sealed class RaceModuleCatalog
 {
@@ -39,6 +38,13 @@ public sealed class RaceModuleCatalog
     }
 
     public IReadOnlyCollection<RaceModuleDescriptor> Modules => _modules.Values.ToArray();
+
+    /// <summary>Race adapters that can currently issue at least one audited gameplay action.</summary>
+    public IReadOnlyList<Race> ExecutableRaces => Modules
+        .Where(module => module.CanIssueGameplayActions)
+        .Select(module => module.Race)
+        .OrderBy(race => race)
+        .ToArray();
 
     public bool TryResolve(Race actualRace, out RaceModuleDescriptor module) =>
         _modules.TryGetValue(actualRace, out module);
@@ -59,9 +65,9 @@ public sealed class RaceModuleCatalog
             "Registered scaffold only. Capability catalogue and gameplay adapter are not implemented."),
         new RaceModuleDescriptor(
             Race.Zerg,
-            "sc2.race.zerg.scaffold.v1",
-            RaceModuleExecutionMode.LoggingOnly,
-            new[] { "units.zerg", "structures.zerg", "production.zerg", "abilities.zerg" },
-            "Registered scaffold only. Capability catalogue and gameplay adapter are not implemented.")
+            "sc2.race.zerg.experimental-opener.v1",
+            RaceModuleExecutionMode.ExperimentalOpener,
+            new[] { "units.zergling", "production.zergling", "opening.zergling-pair" },
+            "Experimental bounded opener: initializes and issues the first Zergling-pair production action; sustainable Zerg economy and follow-on composition are not implemented.")
     });
 }

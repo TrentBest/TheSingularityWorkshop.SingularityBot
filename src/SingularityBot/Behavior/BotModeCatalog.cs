@@ -89,7 +89,7 @@ public sealed class BotModeCatalog
         new BotModeDescriptor("protoss.stalker.v1", "Stalker Mode", Race.Protoss,
             "Stalker", "protoss.stalker-control.v1", false, "Mode selection registered; production and tactics are pending."),
         new BotModeDescriptor("zerg.zergling.v1", "Zergling Mode", Race.Zerg,
-            "Zergling", "zerg.zergling-pressure.v1", false, "Mode selection registered; production and tactics are pending."),
+            "Zergling", "zerg.zergling-pressure.v1", true, "Experimental bounded opener: produces the first Zergling pair; sustainable economy and follow-on composition are pending."),
         new BotModeDescriptor("zerg.queen.v1", "Queen Mode", Race.Zerg,
             "Queen", "zerg.queen-control.v1", false, "Mode selection registered; production and tactics are pending.")
     });

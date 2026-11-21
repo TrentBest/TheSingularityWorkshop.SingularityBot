@@ -18,6 +18,8 @@ public sealed class BotDefinitionTests
 
         Assert.Equal(definition.Id, parsed.Id);
         Assert.Equal(definition.ModeId, parsed.ModeId);
+        Assert.Equal(definition.RaceSelection.Policy, parsed.RaceSelection.Policy);
+        Assert.Equal(definition.RaceSelection.EligibleRaces, parsed.RaceSelection.EligibleRaces);
         Assert.Equal(definition.Opening.Id, parsed.Opening.Id);
         Assert.Equal(1, parsed.Ai.MaxOnStartCalls);
         Assert.Equal(3, parsed.Ai.MaxInMatchCalls);
@@ -31,6 +33,8 @@ public sealed class BotDefinitionTests
         Assert.Empty(definition.Validate());
         Assert.Equal(BotDefinitionCatalog.DefaultDefinitionId, definition.Id);
         Assert.Equal("terran.marine.v1", definition.ModeId);
+        Assert.Equal(BotRaceSelectionPolicy.Fixed, definition.RaceSelection.Policy);
+        Assert.Equal(SC2APIProtocol.Race.Terran, definition.RaceSelection.FixedRace);
         Assert.Equal(60, definition.Opening.Steps
             .Where(step => step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))
             .Max(step => step.DesiredCount));
@@ -56,6 +60,7 @@ public sealed class BotDefinitionTests
 
         Assert.Empty(definition.Validate());
         Assert.Equal("Zerg", definition.Race);
+        Assert.Equal(SC2APIProtocol.Race.Zerg, definition.RaceSelection.FixedRace);
         Assert.Equal("zerg.zergling.v1", definition.ModeId);
         Assert.Equal("Zergling", Assert.Single(definition.Opening.Steps).Target);
 

@@ -19,6 +19,9 @@ public sealed record RaceModuleDescriptor(
     IReadOnlyList<string> Capabilities,
     string Status)
 {
+    /// <summary>True only after the race opener passes deterministic and controlled-match acceptance.</summary>
+    public bool IsRaceSelectionEligible { get; init; }
+
     public bool CanIssueGameplayActions =>
         ExecutionMode is RaceModuleExecutionMode.LegacyTerranRuntime or RaceModuleExecutionMode.ExperimentalOpener;
 }
@@ -46,6 +49,13 @@ public sealed class RaceModuleCatalog
         .OrderBy(race => race)
         .ToArray();
 
+    /// <summary>Race adapters that have passed the stronger gate for Random/Custom selection.</summary>
+    public IReadOnlyList<Race> RaceSelectionEligibleRaces => Modules
+        .Where(module => module.IsRaceSelectionEligible && module.CanIssueGameplayActions)
+        .Select(module => module.Race)
+        .OrderBy(race => race)
+        .ToArray();
+
     public bool TryResolve(Race actualRace, out RaceModuleDescriptor module) =>
         _modules.TryGetValue(actualRace, out module);
 
@@ -56,7 +66,8 @@ public sealed class RaceModuleCatalog
             "sc2.race.terran.v1",
             RaceModuleExecutionMode.LegacyTerranRuntime,
             new[] { "units.terran", "structures.terran", "production.terran", "abilities.terran" },
-            "Existing Terran runtime; migration behind the race-module boundary is in progress."),
+            "Existing Terran runtime; migration behind the race-module boundary is in progress.")
+        { IsRaceSelectionEligible = true },
         new RaceModuleDescriptor(
             Race.Protoss,
             "sc2.race.protoss.scaffold.v1",

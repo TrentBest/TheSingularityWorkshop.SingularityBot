@@ -1,10 +1,10 @@
 # Race support and first-tier pressure
 
-## Identity: one bot, three playable race configurations
+## Identity: one Random-race bot, race-specific strategy configurations
 
-SingularityBot is a **race-configurable StarCraft II agent**, not a Terran-only product. The SC2 runner requests the Random race by default, and the runtime has an explicit race/mode catalogue checked against the authoritative in-game `RaceActual`. A requested race is never treated as proof of the race actually assigned by the match.
+SingularityBot is a **Random-race StarCraft II participant with an architecture for explicit race-specific strategy configurations**, not a claim that three complete strategies are already playable. The SC2 runner requests the Random race by default, and the runtime resolves the authoritative in-game `RaceActual` against a trusted race/mode catalogue. A requested race is never treated as proof of the race actually assigned by the match.
 
-Race configuration is a property of the bot/match composition. It selects the race-specific economy, worker construction rules, production profile, unit capabilities, and strategy mode. The shared decision system—observation reconciliation, persistent contexts, scouting, threat assessment, task arbitration, spatial reasoning, and evidence-gated action submission—should be reused wherever the domain contracts genuinely match.
+Race configuration is a property of the bot/match composition. It must select the race-specific economy, worker construction rules, production profile, unit capabilities, and strategy mode. The shared decision system—observation reconciliation, persistent contexts, scouting, threat assessment, task arbitration, spatial reasoning, and evidence-gated action submission—is intended to be reused wherever the domain contracts genuinely match. The current default Terran definition is not a universal definition that can be run unchanged under any Random result.
 
 **Important capability distinction (current source state):**
 

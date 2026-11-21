@@ -15,6 +15,8 @@ public sealed class BotDefinition
     public string Id { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string Race { get; init; } = "Terran";
+    /// <summary>Declarative race allow-list and match-time selection policy.</summary>
+    public BotRaceSelectionDefinition RaceSelection { get; init; } = new();
     /// <summary>Map-selected strategy mode; validated against Race and authoritative RaceActual.</summary>
     public string ModeId { get; init; } = "terran.marine.v1";
     public string StrategyProfile { get; init; } = string.Empty;
@@ -88,6 +90,24 @@ public static class BotDefinitionValidator
             errors.Add("$.id: a stable bot id of 1 to 128 characters is required.");
         if (string.IsNullOrWhiteSpace(definition.Name) || definition.Name.Length > 160)
             errors.Add("$.name: a display name of 1 to 160 characters is required.");
+        var raceSelection = definition.RaceSelection;
+        if (raceSelection is null)
+            errors.Add("$.raceSelection: a race-selection definition is required.");
+        else
+        {
+            var declaredRaces = raceSelection.EligibleRaces ?? Array.Empty<SC2APIProtocol.Race>();
+            var playableRaces = new[] { SC2APIProtocol.Race.Terran, SC2APIProtocol.Race.Protoss, SC2APIProtocol.Race.Zerg };
+            if (declaredRaces.Count == 0 || declaredRaces.Any(race => !playableRaces.Contains(race)) ||
+                declaredRaces.Distinct().Count() != declaredRaces.Count)
+                errors.Add("$.raceSelection.eligibleRaces: must contain unique playable races and cannot be empty.");
+            if (raceSelection.Policy == BotRaceSelectionPolicy.Fixed && !declaredRaces.Contains(raceSelection.FixedRace))
+                errors.Add("$.raceSelection.fixedRace: must be included in eligibleRaces.");
+            if (raceSelection.Policy == BotRaceSelectionPolicy.Custom &&
+                (string.IsNullOrWhiteSpace(raceSelection.SelectorId) || raceSelection.SelectorId.Length > 128))
+                errors.Add("$.raceSelection.selectorId: a stable selector id of 1 to 128 characters is required for Custom policy.");
+            if (raceSelection.Policy != BotRaceSelectionPolicy.Custom && !string.IsNullOrEmpty(raceSelection.SelectorId))
+                errors.Add("$.raceSelection.selectorId: is only valid for Custom policy.");
+        }
         if (!Enum.TryParse<SC2APIProtocol.Race>(definition.Race, ignoreCase: false, out var configuredRace) ||
             configuredRace is not (SC2APIProtocol.Race.Terran or SC2APIProtocol.Race.Protoss or SC2APIProtocol.Race.Zerg))
             errors.Add("$.race: must be one of the supported playable races (Terran, Protoss, Zerg).");

@@ -59,6 +59,24 @@ public sealed class BotRaceSelectionTests
     }
 
     [Fact]
+    public void FixedSelection_AllowsExplicitExperimentalRaceWithoutAddingItToRandomPool()
+    {
+        var definition = new BotRaceSelectionDefinition
+        {
+            Policy = BotRaceSelectionPolicy.Fixed,
+            FixedRace = Race.Zerg,
+            EligibleRaces = new[] { Race.Zerg }
+        };
+        var catalog = RaceModuleCatalog.CreateDefault();
+
+        var result = new BotRaceSelectionResolver().Resolve(
+            definition, catalog.ExecutableRaces, Context);
+
+        Assert.Equal(Race.Zerg, result.SelectedRace);
+        Assert.DoesNotContain(Race.Zerg, catalog.RaceSelectionEligibleRaces);
+    }
+
+    [Fact]
     public void CustomSelection_ReceivesBoundedOpponentContextAndExecutableAllowList()
     {
         var selector = new OpponentAwareSelector();

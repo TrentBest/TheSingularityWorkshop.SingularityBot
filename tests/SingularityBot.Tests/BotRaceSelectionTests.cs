@@ -18,17 +18,18 @@ public sealed class BotRaceSelectionTests
             EligibleRaces = new[] { Race.Terran, Race.Protoss, Race.Zerg }
         };
 
+        var catalog = RaceModuleCatalog.CreateDefault();
         var result = new BotRaceSelectionResolver().Resolve(
-            definition, RaceModuleCatalog.CreateDefault().ExecutableRaces, Context, _ => 0);
+            definition, catalog.RaceSelectionEligibleRaces, Context, _ => 0);
 
         Assert.Equal(Race.Terran, result.SelectedRace);
         Assert.Equal(new[] { Race.Terran }, result.EligibleExecutableRaces);
+        Assert.Contains(Race.Zerg, catalog.ExecutableRaces);
+        Assert.DoesNotContain(Race.Zerg, catalog.RaceSelectionEligibleRaces);
     }
 
-    [Theory]
-    [InlineData(0, Race.Terran)]
-    [InlineData(1, Race.Zerg)]
-    public void RandomSelection_CanSelectEveryExecutableRace(int index, Race expected)
+    [Fact]
+    public void RandomSelection_CanSelectEveryRaceThatPassedTheAcceptanceGate()
     {
         var definition = new BotRaceSelectionDefinition
         {
@@ -37,9 +38,10 @@ public sealed class BotRaceSelectionTests
         };
 
         var result = new BotRaceSelectionResolver().Resolve(
-            definition, RaceModuleCatalog.CreateDefault().ExecutableRaces, Context, _ => index);
+            definition, RaceModuleCatalog.CreateDefault().RaceSelectionEligibleRaces, Context, _ => 0);
 
-        Assert.Equal(expected, result.SelectedRace);
+        Assert.Equal(Race.Terran, result.SelectedRace);
+        Assert.Equal(new[] { Race.Terran }, result.EligibleExecutableRaces);
     }
 
     [Fact]
@@ -68,9 +70,9 @@ public sealed class BotRaceSelectionTests
         };
 
         var result = new BotRaceSelectionResolver(new[] { selector }).Resolve(
-            definition, RaceModuleCatalog.CreateDefault().ExecutableRaces, Context);
+            definition, RaceModuleCatalog.CreateDefault().RaceSelectionEligibleRaces, Context);
 
-        Assert.Equal(Race.Zerg, result.SelectedRace);
+        Assert.Equal(Race.Terran, result.SelectedRace);
         Assert.Equal(BotRaceSelectionPolicy.Custom, result.Policy);
         Assert.Equal(selector.Id, result.SelectorId);
         Assert.Equal(Race.Zerg, selector.ObservedOpponentRace);

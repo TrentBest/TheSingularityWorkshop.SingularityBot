@@ -1,3 +1,4 @@
+using SingularityBot.Behavior;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -7,7 +8,7 @@ public sealed class SingularityBotMilitaryPlanIntegrationTests
     [Fact]
     public void Bot_AcceptsMilitaryPlanAndExplicitForceAssignments()
     {
-        var bot = new global::SingularityBot.SingularityBot(botDefinition: SingularityBot.Behavior.BotDefinitionCatalog.CreateDefault());
+        var bot = new global::SingularityBot.SingularityBot(botDefinition: BotDefinitionCatalog.CreateDefault());
 
         var errors = bot.ConfigureMilitaryPlanJson(ValidPlan("first-plan"));
 
@@ -21,7 +22,7 @@ public sealed class SingularityBotMilitaryPlanIntegrationTests
     [Fact]
     public void Bot_RejectsInvalidReplacementWithoutDiscardingActiveMilitaryPlan()
     {
-        var bot = new global::SingularityBot.SingularityBot(botDefinition: SingularityBot.Behavior.BotDefinitionCatalog.CreateDefault());
+        var bot = new global::SingularityBot.SingularityBot(botDefinition: BotDefinitionCatalog.CreateDefault());
         Assert.Empty(bot.ConfigureMilitaryPlanJson(ValidPlan("active-plan")));
 
         var errors = bot.ConfigureMilitaryPlanJson("""
@@ -45,7 +46,7 @@ public sealed class SingularityBotMilitaryPlanIntegrationTests
     [Fact]
     public void Bot_RejectsConflictingMilitaryUnitOwnershipWithoutPartialMutation()
     {
-        var bot = new global::SingularityBot.SingularityBot(botDefinition: SingularityBot.Behavior.BotDefinitionCatalog.CreateDefault());
+        var bot = new global::SingularityBot.SingularityBot(botDefinition: BotDefinitionCatalog.CreateDefault());
         Assert.Empty(bot.ConfigureMilitaryPlanJson(ValidPlanWithTwoOperations()));
         Assert.Empty(bot.AssignMilitaryOperationUnits("first-bc", new ulong[] { 101, 102 }));
 
@@ -63,7 +64,7 @@ public sealed class SingularityBotMilitaryPlanIntegrationTests
     [Fact]
     public void Bot_ReplacingAndReleasingOperationAssignmentsUpdatesBothIndexes()
     {
-        var bot = new global::SingularityBot.SingularityBot(botDefinition: SingularityBot.Behavior.BotDefinitionCatalog.CreateDefault());
+        var bot = new global::SingularityBot.SingularityBot(botDefinition: BotDefinitionCatalog.CreateDefault());
         Assert.Empty(bot.ConfigureMilitaryPlanJson(ValidPlanWithTwoOperations()));
         Assert.Empty(bot.AssignMilitaryOperationUnits("first-bc", new ulong[] { 101, 102 }));
 

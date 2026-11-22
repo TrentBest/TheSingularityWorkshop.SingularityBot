@@ -31,7 +31,7 @@ public struct UnitObservationMemoryRecord
 /// index provides identity lookup; the actual hot record is fixed-size,
 /// page-aligned unmanaged storage with generation-checked handles.
 /// </summary>
-public sealed class UnitObservationMemoryStore
+public sealed class UnitObservationMemoryStore : IDisposable
 {
     public const int DefaultCapacity = 32768;
     private const uint LiveVisible = 1u << 0;
@@ -121,5 +121,11 @@ public sealed class UnitObservationMemoryStore
         foreach (var handle in _handles.Values)
             _shelf.TryFree(handle);
         _handles.Clear();
+    }
+
+    public void Dispose()
+    {
+        Clear();
+        _warehouse.Dispose();
     }
 }

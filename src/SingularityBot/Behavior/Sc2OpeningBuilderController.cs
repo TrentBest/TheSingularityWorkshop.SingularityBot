@@ -46,6 +46,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private MapPoint? _moveTarget;
     private int _placementQueryAttempts;
     private uint _buildRequestGameLoop;
+    private uint _builderSelectedGameLoop;
+    private uint? _completionGameLoop;
     private readonly BuildJobRuntime _ownedBuildJobs = new();
     private BuildJobContext _buildJob;
     private HashSet<ulong> _preexistingDepotTags;
@@ -71,7 +73,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public bool IsMoveSubmitted => MovementState is MoveSubmitted or Moving;
     public bool IsMoveRetryReady => _moveRetryReady;
     public uint CurrentMovementGameLoop => _currentGameLoop;
+    public uint BuilderSelectedGameLoop => _builderSelectedGameLoop;
     public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
+    public uint BuildRequestGameLoop => _buildRequestGameLoop;
+    public uint? CompletionGameLoop => _completionGameLoop;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
 
     public int Context_ID => throw new NotImplementedException();
@@ -214,6 +219,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         BuildJobRuntime.RegisterDefinition();
         buildJobs ??= _ownedBuildJobs;
         buildJobs.ReconcileSupplyDepotConstruction(observation);
+        if (IsCompleted && _completionGameLoop is null)
+            _completionGameLoop = observation.GameLoop;
         if (ReferenceEquals(buildJobs, _ownedBuildJobs))
             buildJobs.Update();
         _preexistingDepotTags ??= observation.Units
@@ -309,7 +316,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 return null;
 
             _builderTag = selected.Worker.Tag;
+            _builderSelectedGameLoop = observation.GameLoop;
             _firstMoveRequestGameLoop = 0;
+            _buildRequestGameLoop = 0;
+            _completionGameLoop = null;
             _builderReleasedOnCompletion = false;
             assignments.Reserve(_builderTag.Value);
             _placementQueryPending = true;

@@ -21,15 +21,16 @@ public enum ObservationFields
     Energy = 1 << 10,
     VespeneContents = 1 << 11,
     Economy = 1 << 12,
+    Power = 1 << 13,
 
     All = Health | Shields | BuildProgress | Position | Cargo |
           HasOrders | OrderDetails | Mobility | WeaponCooldown |
-          CollisionRadius | Energy | VespeneContents | Economy,
+          CollisionRadius | Energy | VespeneContents | Economy | Power,
 
     UnitFsm = Health | Shields | BuildProgress | Position | Cargo |
              HasOrders | OrderDetails | Mobility | WeaponCooldown,
     WorkerAssignment = Position | Cargo | HasOrders | OrderDetails,
-    Production = BuildProgress | Cargo | HasOrders | OrderDetails | Economy,
+    Production = BuildProgress | Cargo | HasOrders | OrderDetails | Economy | Power,
     Building = BuildProgress | OrderDetails | Mobility | Energy,
     Refinery = Position | Cargo | OrderDetails | BuildProgress | VespeneContents | Economy,
     Combat = Health | Shields | Position | Mobility | WeaponCooldown,

@@ -11,8 +11,8 @@ namespace SingularityBot.Behavior;
 internal static class Sc2Diagnostics
 {
     private static readonly object SessionLogGate = new();
-    private static StreamWriter? _sessionLog;
-    private static string? _sessionLogPath;
+    private static StreamWriter _sessionLog;
+    private static string _sessionLogPath;
 
     /// <summary>
     /// Mirrors all runner stdout/stderr into a timestamped file so IDE-launched
@@ -81,7 +81,7 @@ internal static class Sc2Diagnostics
             lock (_gate) { _primary.Write(value); _file.Write(value); }
         }
 
-        public override void Write(string? value)
+        public override void Write(string value)
         {
             lock (_gate) { _primary.Write(value); _file.Write(value); }
         }
@@ -91,7 +91,7 @@ internal static class Sc2Diagnostics
             lock (_gate) { _primary.Write(buffer, index, count); _file.Write(buffer, index, count); }
         }
 
-        public override void WriteLine(string? value)
+        public override void WriteLine(string value)
         {
             lock (_gate) { _primary.WriteLine(value); _file.WriteLine(value); }
         }

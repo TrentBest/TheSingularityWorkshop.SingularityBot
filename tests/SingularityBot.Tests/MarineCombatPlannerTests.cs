@@ -25,6 +25,7 @@ public sealed class MarineCombatPlannerTests
         var marine = Marine(1, 0, 0, 0);
         var builder = Fact(3, 45, "SCV", UnitAlliance.Enemy, 4, 0) with
         {
+            HasOrders = true,
             Orders = new[] { new UnitOrderObservationFacts(900, null, 8, 0) }
         };
         var barracks = Fact(2, 21, "Barracks", UnitAlliance.Enemy, 5, 0) with

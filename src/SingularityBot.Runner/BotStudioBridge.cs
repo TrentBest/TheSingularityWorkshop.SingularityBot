@@ -45,7 +45,7 @@ public sealed class BotStudioBridge : IAsyncDisposable
 
         app.MapGet("/api/snapshot", (HttpContext context) =>
         {
-            if (context.Connection.RemoteIpAddress is not { } address || !address.IsLoopback())
+            if (context.Connection.RemoteIpAddress is not { } address || !System.Net.IPAddress.IsLoopback(address))
                 return Results.NotFound();
 
             var authorization = context.Request.Headers.Authorization.ToString();

@@ -185,6 +185,42 @@ public static class BotDefinitionCatalog
         return BotDefinition.Parse(root.ToJsonString());
     }
 
+
+    /// <summary>Creates a race-bound Protoss first-unit definition.</summary>
+    public static BotDefinition CreateProtossZealotOpening()
+    {
+        var root = JsonNode.Parse(CreateDefault().Serialize())!.AsObject();
+        const string strategyProfile = "protoss.zealot-pressure.v1";
+        root["id"] = "singularitybot.protoss.zealot-opening";
+        root["name"] = "SingularityBot — Protoss Zealot Opening";
+        root["race"] = "Protoss";
+        root["raceSelection"] = JsonSerializer.SerializeToNode(new BotRaceSelectionDefinition
+        {
+            Policy = BotRaceSelectionPolicy.Fixed,
+            FixedRace = SC2APIProtocol.Race.Protoss,
+            EligibleRaces = new[] { SC2APIProtocol.Race.Protoss }
+        });
+        root["modeId"] = ProtossZealotOpener.Id;
+        root["strategyProfile"] = strategyProfile;
+        var runtimeBot = root["runtime"]!["bot"]!.AsObject();
+        runtimeBot["race"] = "Protoss";
+        runtimeBot["strategyProfile"] = strategyProfile;
+        var opening = root["opening"]!.AsObject();
+        opening["id"] = "protoss.first-zealot";
+        opening["name"] = "Pylon, Gateway, first Zealot";
+        opening["race"] = "Protoss";
+        opening["steps"] = new JsonArray(
+            JsonSerializer.SerializeToNode(new ProductionStepDefinition(
+                "first-zealot", "Zealot", "Gateway", 1, 0, 100,
+                Lane: ProductionLane.Units)));
+        var ai = root["ai"]!.AsObject();
+        ai["enabled"] = false;
+        ai["maxOnStartCalls"] = 0;
+        ai["maxInMatchCalls"] = 0;
+        ai["allowedTriggers"] = new JsonArray();
+        return BotDefinition.Parse(root.ToJsonString());
+    }
+
     private static System.Text.Json.JsonElement Settings<T>(T value) =>
         JsonSerializer.SerializeToElement(value);
 }

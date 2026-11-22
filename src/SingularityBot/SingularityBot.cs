@@ -322,14 +322,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         Terran.Economy.ConfigureJson(json);
 
     /// <summary>Current economy policy exposed to the development GUI.</summary>
-    public EconomyAdvisorSettings EconomySettings => _terranCommander.Economy.Settings;
+    public EconomyAdvisorSettings EconomySettings => Terran.Economy.Settings;
 
     /// <summary>Sets user-authored intelligence policy before or during a match.</summary>
     public IReadOnlyList<string> ConfigureIntelligenceAdvisorJson(string json) =>
-        _terranCommander.Intelligence.ConfigureJson(json);
+        Terran.Intelligence.ConfigureJson(json);
 
     /// <summary>Current intelligence policy exposed to the development GUI.</summary>
-    public IntelligenceAdvisorSettings IntelligenceSettings => _terranCommander.Intelligence.Settings;
+    public IntelligenceAdvisorSettings IntelligenceSettings => Terran.Intelligence.Settings;
 
     /// <summary>Publish or replace an advisor-owned job posting.</summary>
     public StrategicJobPosting PublishAdvisorJob(
@@ -448,7 +448,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             Console.WriteLine($"[BotMode] Selected {_activeMode.Name} ({_activeMode.Id}); primary={_activeMode.PrimaryUnit}; executable={_activeMode.CanIssueGameplayActions}. {_activeMode.Status}");
         if (_actualRace == Race.Terran)
         {
-            _terranCommander.Scouting.Reset(_advisorJobBoard);
+            Terran.Scouting.Reset(_advisorJobBoard);
             _marineRally.Reset();
         }
         _gameData = Sc2GameDataCatalog.Create(data);
@@ -684,7 +684,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         UpdateSpatialIntelligence(observation);
         executive.Advance(ExecutiveStage.SubControllers);
         if (SpatialMap is not null)
-            _terranCommander.Scouting.PublishJobs(normalized, SpatialMap, _combatWeapons, _advisorJobBoard);
+            Terran.Scouting.PublishJobs(normalized, SpatialMap, _combatWeapons, _advisorJobBoard);
         Sc2SpatialTerrainFactory.TryCreateVisibilityGrid(
             observation, SpatialTerrain, out var constructionVisibilityGrid);
         _constructionSiteSafety.Update(normalized, constructionVisibilityGrid, SpatialIntelligence);
@@ -728,7 +728,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         var initialWorkerPathingQuery = _workerAssignments.PrepareInitialPathingQuery(normalized);
         var assignments = _workerAssignments.Reconcile(
-            normalized, _terranCommander.Economy.Settings.MineralSaturation);
+            normalized, Terran.Economy.Settings.MineralSaturation);
         var actions = new List<SC2APIProtocol.Action>();
         IReadOnlyList<StrategicJobDecision> scoutDecisions = Array.Empty<StrategicJobDecision>();
         ulong? plannerReservedScoutTag = null;
@@ -835,7 +835,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             var expansionCommandCenterPending = expansionProductionEnabledForBudget &&
                 (!_expansionCommandCenter.IsStarted || _expansionCommandCenter.IsComplete);
 
-            reservedProductionMinerals = _terranCommander.Economy.GetReservedMinerals(
+            reservedProductionMinerals = Terran.Economy.GetReservedMinerals(
                 new EconomyAdvisorFrame(
                     expansionCommandCenterPending,
                     _secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction,
@@ -882,7 +882,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            orbitalMineralReservation = _terranCommander.Economy.ShouldEnableOrbitalMorph() &&
+            orbitalMineralReservation = Terran.Economy.ShouldEnableOrbitalMorph() &&
                 townHallUpgradeReady && orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
@@ -987,7 +987,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _workerAssignments,
                 constructionCrewTags,
                 _buildJobs,
-                workerPullMinerals: _terranCommander.Economy.Settings.SupplyDepotWorkerPullMinerals);
+                workerPullMinerals: Terran.Economy.Settings.SupplyDepotWorkerPullMinerals);
             _openingBuilderActionSubmitted = builderAction is not null;
             if (builderAction is not null)
             {
@@ -1000,7 +1000,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
             // Refresh after a builder reservation so this frame cannot emit a
             // stale gather intent for the worker now committed to construction.
-            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _terranCommander.Economy.Settings.AllowLongDistanceMining);
+            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
             if (_openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted)
             {
                 // The first Barracks controller remains closed until the Depot
@@ -1011,7 +1011,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // the starting Command Center's Orbital morph (or higher-priority
                 // infrastructure). Releasing this reserve here can spend the exact
                 // 150 minerals before the independent Orbital action is submitted.
-                var marineReservedMinerals = _terranCommander.Economy.GetMarineActionReservedMinerals(
+                var marineReservedMinerals = Terran.Economy.GetMarineActionReservedMinerals(
                     reservedInfrastructureMinerals,
                     firstMarineReady: _openingMarine.BarracksComplete && !_openingMarine.MarineTrainingStarted,
                     firstMarineObserved: _openingMarine.MarineObserved,
@@ -1061,7 +1061,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs,
                     reservedMinerals: reservedInfrastructureMinerals);
                 _secondBarracksActionSubmitted = secondBarracksAction is not null;
-                assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _terranCommander.Economy.Settings.AllowLongDistanceMining);
+                assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
 
                 // Start Depot two as soon as Barracks two is observed under
                 // construction, then start Depot three only after Depot two is
@@ -1071,12 +1071,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _openingMarine.ReleasedBuilderTag, releaseBuilderOnCompletion: true,
-                        workerPullMinerals: _terranCommander.Economy.Settings.SupplyDepotWorkerPullMinerals,
+                        workerPullMinerals: Terran.Economy.Settings.SupplyDepotWorkerPullMinerals,
                         reservedMinerals: depotTwoReservedMinerals);
                     _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
                     // Keep Barracks three gated until both sequential follow-up Depots are observed complete.
                     _thirdSupplyDepotActionSubmitted = false;
-                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _terranCommander.Economy.Settings.AllowLongDistanceMining);
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
                 }
                 else if (_secondBarracks.RequiresSupplyDepot && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted)
                 {
@@ -1088,13 +1088,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     var thirdDepotAction = _thirdSupplyDepot.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _supplyDepotExpansion.BuilderTag, releaseBuilderOnCompletion: true,
-                        workerPullMinerals: _terranCommander.Economy.Settings.SupplyDepotWorkerPullMinerals,
+                        workerPullMinerals: Terran.Economy.Settings.SupplyDepotWorkerPullMinerals,
                         reservedMinerals: depotThreeReservedMinerals);
                     _thirdSupplyDepotActionSubmitted = thirdDepotAction is not null;
                     thirdSupplyDepotPendingAction = thirdDepotAction;
                     if (_thirdSupplyDepot.IsCompleted)
                         _secondBarracks.NotifySupplyDepotCompleted(_thirdSupplyDepot.BuilderTag);
-                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _terranCommander.Economy.Settings.AllowLongDistanceMining);
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
                 }
                 else
                 {
@@ -1122,7 +1122,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
                     if (_expansionCommandCenter.IsStarted)
                         _secondBarracks.NotifyCommandCenterStarted();
-                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _terranCommander.Economy.Settings.AllowLongDistanceMining);
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
                 }
                 else
                 {
@@ -1150,7 +1150,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // verifies the observed Depot/Barracks prerequisites and SCV queue.
             orbitalSupportAction = _orbitalSupport.TryCreateAction(
                 normalized, _gameData,
-                allowOrbitalUpgrade: _terranCommander.Economy.ShouldEnableOrbitalMorph() &&
+                allowOrbitalUpgrade: Terran.Economy.ShouldEnableOrbitalMorph() &&
                     startingTownHall is not null &&
                     startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) &&
                     _buildings.Buildings.Any(building =>
@@ -1158,10 +1158,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         building.TownHallUpgradeState == "UpgradeReady"),
                 permittedCommandCenterTag: startingTownHall?.Tag,
                 reservedOrbitalTags: _buildings.ScanReservedOrbitalTags,
-                reservedEnergyForScan: _terranCommander.Intelligence.GetMuleScanEnergyReserve(
-                    economyAlsoRequestsPreservation: _terranCommander.Economy.Settings.MuleCallDownPolicy.Equals(
+                reservedEnergyForScan: Terran.Intelligence.GetMuleScanEnergyReserve(
+                    economyAlsoRequestsPreservation: Terran.Economy.Settings.MuleCallDownPolicy.Equals(
                         "PreserveScan", StringComparison.OrdinalIgnoreCase)),
-                allowMules: _terranCommander.Economy.Settings.EnableMules);
+                allowMules: Terran.Economy.Settings.EnableMules);
             _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
             if (orbitalSupportAction is not null)
             {
@@ -1200,7 +1200,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 normalized, _gameData, _workerAssignments, constructionCrewTags,
                 allowConstruction: refineryConstructionAllowed,
                 reservedMinerals: orbitalMineralReservation);
-            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: _terranCommander.Economy.Settings.AllowLongDistanceMining);
+            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
 
             // Secondary Barracks produce Marines whenever no higher-priority
             // infrastructure or Orbital action claimed this frame.
@@ -1331,7 +1331,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 if (pg == UnitBehaviorCatalog.StrategyProcessingGroup)
                 {
                     AdvisorWorkScheduler.Advance(_gameState.Phase);
-                    _terranCommander.Economy.CurrentPhase = _gameState.Phase;
+                    Terran.Economy.CurrentPhase = _gameState.Phase;
                 }
             }
             foreach (var buildingEvent in _buildings.DrainEvents())
@@ -2089,7 +2089,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.RemoveAll();
         _strategyEvidenceCollector.Reset();
         _constructionSiteSafety.Reset();
-        _terranCommander.Scouting.Reset(_advisorJobBoard);
+        Terran.Scouting.Reset(_advisorJobBoard);
         _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
         _buildings.Clear();
         _openingProduction.Dispose();

@@ -1,4 +1,5 @@
-using SingularityBot;\nusing SingularityBot.Runner;
+using SingularityBot;
+using SingularityBot.Runner;
 
 if (args.Length == 1 && args[0] is "--help" or "-h")
 {
@@ -10,7 +11,9 @@ if (args.Length == 1 && args[0] is "--help" or "-h")
     Console.WriteLine("--no-diagnostics: disable local diagnostic capture.");
     Console.WriteLine("--cc-area=centerX,centerY,radius: configure the designated Command Center construction zone in map coordinates.");
     Console.WriteLine("Ladder arguments: --GamePort <port> --StartPort <port> --OpponentId <id>.");
-    Console.WriteLine("Designated host: add --CreateGame --Map <trusted-map-path> to create the multiplayer game before joining.");\n    Console.WriteLine("--studio-bridge: expose read-only Bot Studio telemetry on loopback. A bearer token is printed locally.");\n    Console.WriteLine("--studio-bridge-port=43127: choose the loopback bridge port (requires --studio-bridge).");
+    Console.WriteLine("Designated host: add --CreateGame --Map <trusted-map-path> to create the multiplayer game before joining.");
+    Console.WriteLine("--studio-bridge: expose read-only Bot Studio telemetry on loopback. A bearer token is printed locally.");
+    Console.WriteLine("--studio-bridge-port=43127: choose the loopback bridge port (requires --studio-bridge).");
     return;
 }
 

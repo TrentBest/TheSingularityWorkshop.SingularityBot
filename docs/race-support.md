@@ -103,6 +103,6 @@ The protocol-facing bot receives the race implementation from `RaceRuntimeFactor
 
 ## DataWarehouse observation memory
 
-The unit runtime keeps its FSM/entity contexts as managed behavior objects, while the latest compact per-unit observation record is mirrored into a fixed-capacity unmanaged `DataWarehouse` shelf. The shelf currently holds up to 32,768 records and stores unit identity, type, owner, game loop, flags, health/shields, build progress, position, cooldown and energy. A tag-to-generation-checked-handle index resolves records; explicit death frees slots, and match cleanup clears all live slots.
+The unit runtime keeps its FSM/entity contexts as managed behavior objects, while the latest compact per-unit observation record is mirrored into a fixed-capacity unmanaged `DataWarehouse` shelf. The shelf currently holds up to 8,192 records and stores unit identity, type, owner, game loop, flags, health/shields, build progress, position, cooldown and energy. A tag-to-generation-checked-handle index resolves records; explicit death frees slots, and match cleanup clears all live slots.
 
 This is an initial high-volume observation-memory integration, not a claim that every bot allocation has moved into DataWarehouse. The tag index and FSM contexts remain managed, and the memory layout still needs workload-specific benchmarks before any latency or allocation improvement is claimed.

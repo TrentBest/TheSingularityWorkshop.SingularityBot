@@ -14,6 +14,12 @@ namespace SingularityBot.Behavior;
 public sealed class UnitBehaviorRuntime
 {
     private readonly Dictionary<ulong, UnitBehaviorContext> _contexts = new();
+    private readonly UnitObservationMemoryStore _observationMemory = new();
+
+    public int ObservationMemoryCount => _observationMemory.Count;
+    public long ObservationMemoryAllocatedBytes => _observationMemory.AllocatedBytes;
+    public bool TryGetObservationMemory(ulong unitTag, out UnitObservationMemoryRecord record) =>
+        _observationMemory.TryRead(unitTag, out record);
     private Action<ulong, BehaviorCommand>? _activeEmit;
 
     public int Count => _contexts.Count;
@@ -98,6 +104,8 @@ public sealed class UnitBehaviorRuntime
         {
             if (facts.Tag == 0 || observation.DeadUnitTags.Contains(facts.Tag))
                 continue;
+
+            _observationMemory.Upsert(facts);
 
             var exists = _contexts.TryGetValue(facts.Tag, out var context);
             if (!exists)
@@ -188,6 +196,7 @@ public sealed class UnitBehaviorRuntime
         if (!_contexts.Remove(unitTag, out var context)) return false;
         context.Invalidate();
         context.DestroyOwnedHandles();
+        _observationMemory.Remove(unitTag);
         return true;
     }
 
@@ -199,6 +208,7 @@ public sealed class UnitBehaviorRuntime
             context.DestroyOwnedHandles();
         }
         _contexts.Clear();
+        _observationMemory.Clear();
         _activeEmit = null;
     }
 

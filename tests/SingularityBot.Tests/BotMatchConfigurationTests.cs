@@ -44,8 +44,14 @@ public sealed class BotMatchConfigurationTests
         Assert.Equal(Race.Zerg, configuration.RequestedRace);
     }
 
+    [Fact]
+    public void ExperimentalProtossZealotModeRequestsProtoss()
+    {
+        var configuration = BotMatchConfiguration.ForMode("protoss.zealot.v1");
+        Assert.Equal(Race.Protoss, configuration.RequestedRace);
+    }
+
     [Theory]
-    [InlineData("protoss.zealot.v1")]
     [InlineData("zerg.queen.v1")]
     [InlineData("terran.marauder.v1")]
     [InlineData("")]

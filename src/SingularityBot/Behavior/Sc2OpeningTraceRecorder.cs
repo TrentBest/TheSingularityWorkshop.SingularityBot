@@ -21,7 +21,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             Directory.CreateDirectory(directory);
             _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
             _writer = new StreamWriter(_path, false);
-            _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete,thirdSupplyDepotBuilderTag,thirdSupplyDepotX,thirdSupplyDepotY,thirdSupplyDepotMoveSubmitted,thirdSupplyDepotBuildSubmitted,thirdSupplyDepotComplete,builderPullMineralsThreshold,builderSelectedGameLoop,moveRequestGameLoop,buildRequestGameLoop,observedCompletionGameLoop,travelGameLoops,constructionGameLoops");
+            _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete,thirdSupplyDepotBuilderTag,thirdSupplyDepotX,thirdSupplyDepotY,thirdSupplyDepotMoveSubmitted,thirdSupplyDepotBuildSubmitted,thirdSupplyDepotComplete,builderPullMineralsThreshold,builderSelectedGameLoop,moveRequestGameLoop,buildRequestGameLoop,observedCompletionGameLoop,affordableGameLoop,travelGameLoops,affordabilityWaitGameLoops,constructionGameLoops");
             _writer.Flush();
             Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
         }
@@ -112,8 +112,11 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             N(builder.MoveRequestGameLoop),
             N(builder.BuildRequestGameLoop),
             builder.CompletionGameLoop?.ToString(CultureInfo.InvariantCulture) ?? "",
+            builder.AffordableGameLoop?.ToString(CultureInfo.InvariantCulture) ?? "",
             builder.MoveRequestGameLoop > 0 && builder.BuildRequestGameLoop >= builder.MoveRequestGameLoop
                 ? N(builder.BuildRequestGameLoop - builder.MoveRequestGameLoop) : "",
+            builder.AffordableGameLoop is uint affordableLoop && builder.BuildRequestGameLoop >= affordableLoop
+                ? N(builder.BuildRequestGameLoop - affordableLoop) : "",
             builder.CompletionGameLoop is uint completedLoop && completedLoop >= builder.BuildRequestGameLoop && builder.BuildRequestGameLoop > 0
                 ? N(completedLoop - builder.BuildRequestGameLoop) : ""
         };

@@ -17,6 +17,10 @@ SingularityBot observes StarCraft II, maintains persistent entity contexts, eval
 
 Build one reusable decision system with explicit Terran, Protoss, and Zerg compositions. The immediate gameplay target is rapid, sustainable first-tier production followed by scouting-led, capability-aware pressure—not blind movement or a race-agnostic fixed build order. Preserve the working Terran baseline while completing and verifying the other race compositions. See [race support and first-tier pressure](docs/race-support.md) and [the three-race implementation checklist](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/issues/14).
 
+![Terran Marine opening scout and engagement flow](docs/forge/assets/opening-pressure.svg)
+
+The [Forge workbench](docs/forge/) now shows this source-derived opening flow beside its map-and-match authoring preview. It is a visual explanation of implemented code, not live telemetry; the Pages deployment workflow remains manual-only.
+
 The current Terran baseline still needs its complete live-match proof:
 
 1. Reconcile observations into stable player, worker, resource, structure, order, and game-loop facts.
@@ -25,10 +29,10 @@ The current Terran baseline still needs its complete live-match proof:
 4. Expand the opening through follow-up supply, additional Barracks, and a resource-derived friendly expansion.
 5. Establish four Barracks and sustain Marine production without gas while protecting worker production and expansion reserves.
 6. Keep the first Marine on early-warning duty; assemble the next four Marines at the producing Barracks before dispatching the first pressure squad.
-7. Send the first Marine to the farthest safe, non-enemy sector adjacent to our starting sector to watch for cannon rushes, proxies, worker rushes and other cheese; keep it separate from the first four-Marine pressure squad.
+7. Send the first Marine to a terrain/pathing-validated low-ground observation point at the enemy ramp foot; keep it separate from the first four-Marine pressure squad and retreat to connected friendly ground when nearby threats make the observation unsafe.
 8. Measure economy, production, movement, combat and outcomes from game-loop diagnostics; replay and compare controlled matches.
 
-The first worker, construction and production stages have progressed beyond the original single-Depot prototype and have controller regression coverage. The four-Marine rendezvous gate and secondary-Barracks match-lifecycle reset also have regression coverage. The latest implementation checkpoint, `9c65f2199317e30d1fbe4ee075212b5564960714`, passed exact-head [Build #1630](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43699565254) and [Sith Policy #1874](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/43699565258); Build restored, compiled and passed all 459 tests. The prior CommandAi missing-type blocker is resolved in its current `development` source and its own exact-head CI is green. These are implementation and CI facts—not proof that the opening has succeeded in a live match. No live SC2 match/replay has established full-opening success, authoritative match completion, or ladder readiness. See the [documentation home](docs/index.md), [roadmap](docs/roadmap.md), and [CiAi evidence workflow](docs/ciai-evidence.md) for the current proof boundaries.
+The first worker, construction and production stages have progressed beyond the original single-Depot prototype and have controller regression coverage. The four-Marine rendezvous gate, terrain-aware enemy-ramp scout dispatch, threat-aware scout retreat, and first engagement target priorities now have regression coverage. The source checkpoint `8151eec24db4dbc2f030df3ced9cf8f89b6f345c` passed exact-head [Build #1864](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45009704034) with 527 tests and [Sith Policy #2125](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45009704037). The follow-up visual/documentation checkpoint `721a92e9fb24722c9f55fa6bc88959e9a9c810cc` passed [Build #1865](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45009970765) and [Sith Policy #2126](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45009970757). These are implementation and CI facts—not proof that the opening has succeeded in a live match. No live SC2 match/replay has established full-opening success, authoritative match completion, or ladder readiness. Zerg's opener still stops at its first Zergling pair; Protoss still has no executable opener. See the [documentation home](docs/index.md), [roadmap](docs/roadmap.md), and [CiAi evidence workflow](docs/ciai-evidence.md) for the current proof boundaries.
 
 ## Architecture at a glance
 
@@ -63,7 +67,7 @@ The live bot is a self-contained compiled DLL. The Runner selects a statically l
 - [GrammarAi optional authoring/interchange boundary](https://github.com/TrentBest/TheSingularityWorkshop.GrammarAi/blob/development/docs/INTEGRATION_SINGULARITYBOT.md)
 - [Architecture](docs/architecture.md)
 - [Behavior and FSM model](docs/behavior-model.md)
-- [Race support and first-tier pressure](docs/race-support.md)\n- [Race support and first-tier pressure](docs/race-support.md)
+- [Race support and first-tier pressure](docs/race-support.md)
 - [Terran FSM catalog and processing pipeline](docs/terran-fsm-catalog.md)
 - [Terran opening and worker logistics](docs/opening-economy-logistics.md)
 - [Development diagnostics and trace format](docs/diagnostics.md)

@@ -1,3 +1,4 @@
+using SingularityBot.Behavior;
 using SingularityBot.Runner;
 using Xunit;
 
@@ -8,7 +9,7 @@ public sealed class BotStudioBridgeTests
     [Fact]
     public async Task Bridge_IsLoopbackOnlyAndRequiresBearerTokenForSnapshot()
     {
-        await using var bridge = await BotStudioBridge.StartAsync(new global::SingularityBot.SingularityBot(botDefinition: SingularityBot.Behavior.BotDefinitionCatalog.CreateDefault()), 0);
+        await using var bridge = await BotStudioBridge.StartAsync(new global::SingularityBot.SingularityBot(botDefinition: BotDefinitionCatalog.CreateDefault()), 0);
         using var client = new HttpClient { BaseAddress = new Uri(bridge.Address) };
 
         using var health = await client.GetAsync("/api/health");
@@ -31,7 +32,7 @@ public sealed class BotStudioBridgeTests
     [Fact]
     public async Task ClientDisconnect_DoesNotStopBridgeAndNoCommandEndpointExists()
     {
-        await using var bridge = await BotStudioBridge.StartAsync(new global::SingularityBot.SingularityBot(botDefinition: SingularityBot.Behavior.BotDefinitionCatalog.CreateDefault()), 0);
+        await using var bridge = await BotStudioBridge.StartAsync(new global::SingularityBot.SingularityBot(botDefinition: BotDefinitionCatalog.CreateDefault()), 0);
         using (var firstClient = new HttpClient { BaseAddress = new Uri(bridge.Address) })
         {
             using var health = await firstClient.GetAsync("/api/health");

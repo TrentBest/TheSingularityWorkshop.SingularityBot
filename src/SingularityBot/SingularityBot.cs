@@ -64,8 +64,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         if (botDefinition is not null && compiledStrategy is not null)
             throw new ArgumentException("Supply either a compiled strategy or a definition, not both.");
 
-        var selectedStrategy = compiledStrategy ?? new DefinitionBackedBotStrategy(
-            botDefinition ?? new AdaptiveMarineStrategy().Definition);
+        if (botDefinition is null && compiledStrategy is null)
+            throw new ArgumentException("The host must select a race-specific bot definition before constructing SingularityBot.", nameof(botDefinition));
+
+        var selectedStrategy = compiledStrategy ?? new DefinitionBackedBotStrategy(botDefinition);
         var selectedDefinition = selectedStrategy.Definition
             ?? throw new ArgumentException("The compiled strategy must supply a definition.", nameof(compiledStrategy));
         _compiledStrategy = selectedStrategy;

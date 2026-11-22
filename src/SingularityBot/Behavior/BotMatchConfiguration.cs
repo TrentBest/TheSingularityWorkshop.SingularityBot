@@ -30,6 +30,15 @@ public sealed record BotMatchConfiguration(
         "terran.marine.v1" => Default with { RequestedRace = Race.Terran },
         "zerg.zergling.v1" => Default with { RequestedRace = Race.Zerg },
         "protoss.zealot.v1" => Default with { RequestedRace = Race.Protoss },
-        _ => throw new ArgumentException($"Unsupported runner mode '{modeId}'. Currently selectable: terran.marine.v1, zerg.zergling.v1.", nameof(modeId))
+        _ => throw new ArgumentException($"Unsupported runner mode '{modeId}'. Currently selectable: terran.marine.v1, zerg.zergling.v1, protoss.zealot.v1.", nameof(modeId))
+    };
+
+    /// <summary>Maps an explicit host race choice to its bounded executable opening.</summary>
+    public static BotMatchConfiguration ForRace(Race race) => race switch
+    {
+        Race.Terran => ForMode("terran.marine.v1"),
+        Race.Zerg => ForMode("zerg.zergling.v1"),
+        Race.Protoss => ForMode("protoss.zealot.v1"),
+        _ => throw new ArgumentException($"Race '{race}' does not have an explicit executable opening.", nameof(race))
     };
 }

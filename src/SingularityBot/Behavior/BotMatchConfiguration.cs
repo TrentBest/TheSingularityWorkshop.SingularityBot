@@ -29,6 +29,7 @@ public sealed record BotMatchConfiguration(
     {
         "terran.marine.v1" => Default with { RequestedRace = Race.Terran },
         "zerg.zergling.v1" => Default with { RequestedRace = Race.Zerg },
+        "protoss.zealot.v1" => Default with { RequestedRace = Race.Protoss },
         _ => throw new ArgumentException($"Unsupported runner mode '{modeId}'. Currently selectable: terran.marine.v1, zerg.zergling.v1.", nameof(modeId))
     };
 }

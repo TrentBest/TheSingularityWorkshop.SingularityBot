@@ -77,6 +77,7 @@ public sealed record MarineTacticalDecision(
 /// </summary>
 public static class MarineCombatPlanner
 {
+    private static readonly IReadOnlySet<uint> EmptyConstructionAbilityIds = new HashSet<uint>();
     private const float SafetyMargin = 0.85f;
     private const float MaxPursuitBeyondWeaponRange = 6f;
 
@@ -84,7 +85,8 @@ public static class MarineCombatPlanner
         NormalizedObservation observation,
         IReadOnlyDictionary<uint, CombatWeaponProfile> weaponsByUnitType,
         IReadOnlySet<ulong>? destructibleNeutralTags = null,
-        IReadOnlySet<ulong>? excludedUnitTags = null)
+        IReadOnlySet<ulong>? excludedUnitTags = null,
+        IReadOnlySet<uint>? constructionAbilityIds = null)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(weaponsByUnitType);
@@ -114,7 +116,9 @@ public static class MarineCombatPlanner
             .Where(candidate => combatMarines.Any(marine =>
                 weaponsByUnitType.TryGetValue(marine.UnitTypeId, out var profile) &&
                 profile.IsUsable && profile.CanHit(candidate.IsFlying)))
-            .OrderByDescending(candidate =>
+            .OrderByDescending(candidate => Sc2EngagementTargetPriority.Score(
+                candidate, enemyTargets, constructionAbilityIds ?? EmptyConstructionAbilityIds))
+            .ThenByDescending(candidate =>
                 weaponsByUnitType.TryGetValue(candidate.UnitTypeId, out var threatProfile) &&
                 threatProfile.IsUsable && threatProfile.CanHit(false)
                     ? threatProfile.GetDamagePerSecond(false) / MathF.Max(1f, candidate.Health + candidate.Shield)

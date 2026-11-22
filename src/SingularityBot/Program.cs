@@ -19,14 +19,6 @@ public static class Program
         var modeArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--mode=", StringComparison.Ordinal));
         var selectedModeId = modeArgument?["--mode=".Length..];
-        var studioBridgeEnabled = args.Contains("--studio-bridge", StringComparer.Ordinal);
-        var studioPortArgument = args.FirstOrDefault(argument =>
-            argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal));
-        var studioPort = 43127;
-        if (studioPortArgument is not null &&
-            (!studioBridgeEnabled || !int.TryParse(studioPortArgument["--studio-bridge-port=".Length..], NumberStyles.None, CultureInfo.InvariantCulture, out studioPort) || studioPort is < 1024 or > 65535))
-            throw new ArgumentException("--studio-bridge-port requires --studio-bridge and a port from 1024 through 65535.");
-
         var connectionArgs = args.Where((argument, index) =>
             !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
             !argument.StartsWith("--mode=", StringComparison.Ordinal) &&

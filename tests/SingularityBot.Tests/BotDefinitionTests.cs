@@ -41,7 +41,7 @@ public sealed class BotDefinitionTests
         Assert.Equal(GoalActionRole.Engage, definition.DefaultGoals.DefaultRole);
         Assert.Equal(0, definition.DefaultGoals.ScoutCount);
 
-        var bot = new global::SingularityBot.SingularityBot();
+        var bot = new global::SingularityBot.SingularityBot(botDefinition: definition);
         Assert.Equal(definition.Id, bot.Definition.Id);
         Assert.NotNull(bot.Manifest);
         Assert.NotNull(bot.OpeningPlan);

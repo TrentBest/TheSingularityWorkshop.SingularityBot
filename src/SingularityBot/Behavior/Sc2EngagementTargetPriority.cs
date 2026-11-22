@@ -43,7 +43,7 @@ public static class Sc2EngagementTargetPriority
         IReadOnlyList<UnitObservationFacts> visibleEnemyUnits,
         IReadOnlySet<uint> constructionAbilityIds)
     {
-        if (!worker.HasPosition || !worker.HasOrders ||
+        if (!worker.HasPosition ||
             !worker.Orders.Any(order => constructionAbilityIds.Contains(order.AbilityId)))
             return false;
 

@@ -38,7 +38,7 @@ public sealed class BotStudioBridge : IAsyncDisposable
 
         app.MapGet("/api/health", (HttpContext context) =>
         {
-            if (context.Connection.RemoteIpAddress is not { } address || !address.IsLoopback())
+            if (context.Connection.RemoteIpAddress is not { } address || !System.Net.IPAddress.IsLoopback(address))
                 return Results.NotFound();
             return Results.Ok(new { status = "ok", snapshotAvailable = bot.LatestStudioSnapshot is not null });
         });

@@ -609,6 +609,13 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             }
             if (_writeDiagnostics)
                 RecordFailClosedRaceFrame(observation);
+            else
+            {
+                var unsupportedObservation = Sc2ObservationNormalizer.Normalize(
+                    observation, _playerId, _gameData.UnitNames, _gameData.BuffNames);
+                _lastGameLoop = unsupportedObservation.GameLoop;
+                PublishStudioSnapshot(unsupportedObservation, "running");
+            }
             return Array.Empty<SC2APIProtocol.Action>();
         }
 
@@ -2005,9 +2012,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var self = visible.Where(unit => unit.Alliance == UnitAlliance.Self).ToArray();
         var enemy = visible.Count(unit => unit.Alliance == UnitAlliance.Enemy);
         var workers = self.Count(unit =>
-            unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) ||
-            unit.UnitKind.Equals("Drone", StringComparison.OrdinalIgnoreCase) ||
-            unit.UnitKind.Equals("Probe", StringComparison.OrdinalIgnoreCase));
+            string.Equals(unit.UnitKind, "SCV", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(unit.UnitKind, "Drone", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(unit.UnitKind, "Probe", StringComparison.OrdinalIgnoreCase));
 
         var snapshot = new BotStudioSnapshot(
             Sequence: Interlocked.Increment(ref _studioSnapshotSequence),

@@ -295,16 +295,11 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                     EstimatedArrivalDistance = Math.Sqrt(DistanceSquared(
                         worker.PositionX, worker.PositionY,
                         stagingPoint.X, stagingPoint.Y)),
-                    IsConstructionCrew = constructionCrewTags.Contains(worker.Tag),
-                    IsReturningWithMinerals = worker.HasCargo && IsReturningToTownHall(worker, observation),
-                    IsCarryingOtherCargo = worker.HasCargo && !IsReturningToTownHall(worker, observation)
+                    IsConstructionCrew = constructionCrewTags.Contains(worker.Tag)
                 })
-                // Preserve a usable handoff builder. Otherwise prefer a confirmed
-                // mineral returner, not merely any SCV with cargo: gas cargo must not
-                // be mistaken for minerals once Refineries are operating.
-                .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag && !candidate.IsCarryingOtherCargo ? 0 : 1)
-                .ThenBy(candidate => candidate.IsReturningWithMinerals ? 0 : 1)
-                .ThenBy(candidate => candidate.IsCarryingOtherCargo ? 1 : 0)
+                // Preserve a queued handoff worker, then prefer the construction
+                // crew and shortest route. Cargo-bearing workers were excluded.
+                .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag ? 0 : 1)
                 .ThenBy(candidate => candidate.IsConstructionCrew ? 0 : 1)
                 .ThenBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
@@ -321,7 +316,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             Console.WriteLine(
                 $"[Opening] Construction-crew SCV {_builderTag.Value} reserved for the Supply Depot; " +
                 $"estimated staging distance={selected.EstimatedArrivalDistance:F2}. " +
-                "The worker completes its harvest and deposits its load before leaving the mineral line.");
+                "An empty worker is dispatched immediately; other SCVs continue funding the build while it travels.");
         }
 
         var builder = observation.Units.FirstOrDefault(unit =>
@@ -332,10 +327,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         if (builder is null)
             return null;
 
-        // Never sacrifice a carried resource load for construction. The worker
-        // FSM owns the return-to-town-hall command while this builder reservation
-        // is active; wait until a later observation confirms the cargo was
-        // deposited before dispatching the SCV to the accepted Depot site.
+        // Never sacrifice a carried resource load for construction. If the
+        // selected worker acquired cargo while the placement query was pending,
+        // let it complete the return, then interrupt any newly queued gather.
         if (builder.HasCargo)
         {
             if (IsReturningToTownHall(builder, observation))

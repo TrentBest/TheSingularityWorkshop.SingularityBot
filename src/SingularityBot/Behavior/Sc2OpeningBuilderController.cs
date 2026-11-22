@@ -281,8 +281,12 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 return null;
 
             var stagingPoint = _candidatePoints[0];
+            // Select an empty worker so dispatch never discards a carried mineral
+            // or gas load. A worker already gathering may be interrupted now:
+            // the remaining mineral line continues funding the structure while
+            // this SCV travels to the validated site.
             var eligibleWorkers = observation.Units
-                .Where(unit => IsLiveScv(unit) && !assignments.IsReserved(unit.Tag))
+                .Where(unit => IsLiveScv(unit) && !unit.HasCargo && !assignments.IsReserved(unit.Tag))
                 .ToArray();
             var selected = eligibleWorkers
                 .Select(worker => new
@@ -351,11 +355,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             _builderWasReturningMinerals = false;
         }
 
-        // A worker FSM can immediately queue another mineral gather after the
-        // return completes. That new trip must not strand a reserved builder:
-        // preserve an existing trip only when the builder has not just deposited.
-        if (!builderJustDepositedMinerals && IsGatheringMinerals(builder, observation))
-            return null;
+        // Do not wait for a newly queued gather order. The worker is now
+        // reserved for construction; its Move command deliberately interrupts
+        // empty-handed mining so travel overlaps mineral accumulation by peers.
 
         // Do not send the builder to a speculative staging point. SC2's placement
         // response is authoritative; move once, directly to the accepted site.

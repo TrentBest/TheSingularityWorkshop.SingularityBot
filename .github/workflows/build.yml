@@ -71,6 +71,12 @@ jobs:
           repository: TrentBest/TheSingularityWorkshop.FSM_COS
           ref: development
           path: dependencies/FSM_COS
+      - name: Check out DataWarehouse development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.DataWarehouse
+          ref: development
+          path: dependencies/DataWarehouse
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x

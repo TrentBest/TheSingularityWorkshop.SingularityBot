@@ -49,6 +49,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private uint _builderSelectedGameLoop;
     private uint _workerPullMineralsThreshold;
     private uint? _completionGameLoop;
+    private uint? _affordableGameLoop;
     private readonly BuildJobRuntime _ownedBuildJobs = new();
     private BuildJobContext _buildJob;
     private HashSet<ulong> _preexistingDepotTags;
@@ -79,6 +80,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
     public uint BuildRequestGameLoop => _buildRequestGameLoop;
     public uint? CompletionGameLoop => _completionGameLoop;
+    public uint? AffordableGameLoop => _affordableGameLoop;
     public bool IsBuildSubmitted => _buildJob is not null && !_buildJob.IsFailed;
 
     public int Context_ID => throw new NotImplementedException();
@@ -323,6 +325,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             _firstMoveRequestGameLoop = 0;
             _buildRequestGameLoop = 0;
             _completionGameLoop = null;
+            _affordableGameLoop = null;
             _builderReleasedOnCompletion = false;
             assignments.Reserve(_builderTag.Value);
             _placementQueryPending = true;
@@ -413,6 +416,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 return null;
             }
         }
+
+        if (_affordableGameLoop is null &&
+            (ulong)observation.Minerals >= (ulong)gameData.SupplyDepotMineralCost + reservedMinerals)
+            _affordableGameLoop = observation.GameLoop;
 
         var distanceSquared = DistanceSquared(
             builder.PositionX, builder.PositionY, movementTarget.X, movementTarget.Y);

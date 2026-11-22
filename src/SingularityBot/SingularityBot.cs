@@ -49,6 +49,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private uint _lastUnitSnapshotGameLoop;
     private long _studioSnapshotSequence;
     private BotStudioSnapshot _latestStudioSnapshot;
+    private readonly BotStudioEventJournal _studioEvents = new();
     private string _studioMapName = string.Empty;
 
     public SingularityBot(
@@ -160,6 +161,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public GamePhase CurrentGamePhase => _gameState.Phase;
     /// <summary>Latest immutable read-only snapshot published for the optional local Bot Studio bridge.</summary>
     public BotStudioSnapshot LatestStudioSnapshot => Volatile.Read(ref _latestStudioSnapshot);
+    /// <summary>Bounded structured event history for the optional local Bot Studio bridge.</summary>
+    public BotStudioEventJournal StudioEvents => _studioEvents;
     /// <summary>The authoritative in-game race resolved from this player's SC2 game-info entry.</summary>
     public Race ActualRace => _actualRace;
     /// <summary>The map-selected mode after validation against authoritative RaceActual.</summary>
@@ -412,6 +415,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _studioMapName = gameInfo?.MapName ?? string.Empty;
         var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
         _actualRace = playerInfo?.RaceActual ?? Race.Random;
+        _studioEvents.Publish("lifecycle", "match.started", "info", observation?.Observation?.GameLoop ?? 0,
+            $"map={_studioMapName};actualRace={_actualRace};configuredMode={_definition.ModeId}");
         _lastUnitSnapshotGameLoop = 0;
         if (_writeDiagnostics)
         {
@@ -682,7 +687,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _baselineRecorder.Record(normalized);
 
         foreach (var actionError in observation.ActionErrors)
+        {
             Console.WriteLine($"[SC2 API] Action error: unit={actionError.UnitTag}, ability={actionError.AbilityId}, result={actionError.Result}.");
+            _studioEvents.Publish("diagnostic", "action.error", "warning", normalized.GameLoop,
+                $"unit={actionError.UnitTag};ability={actionError.AbilityId};result={actionError.Result}");
+        }
 
         var scvTrainingOrderObserved = _gameData.ScvTrainAbilityId is > 0 && normalized.Units.Any(unit =>
             unit.Alliance == UnitAlliance.Self &&
@@ -1485,6 +1494,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnActionResult(IReadOnlyList<SC2APIProtocol.Action> submittedActions, ResponseAction response)
     {
+        if (response?.Result is { Count: > 0 })
+        {
+            for (var eventIndex = 0; eventIndex < response.Result.Count; eventIndex++)
+            {
+                var command = eventIndex < (submittedActions?.Count ?? 0)
+                    ? submittedActions[eventIndex].ActionRaw?.UnitCommand : null;
+                _studioEvents.Publish("action", "action.result", string.Equals(response.Result[eventIndex].ToString(), "Success", StringComparison.OrdinalIgnoreCase) ? "info" : "warning",
+                    _lastGameLoop, $"index={eventIndex};ability={command?.AbilityId.ToString() ?? "unknown"};result={response.Result[eventIndex]}");
+            }
+        }
+        else
+        {
+            _studioEvents.Publish("action", "action.result.missing", "warning", _lastGameLoop,
+                "SC2 returned no per-action result; acceptance is unknown.");
+        }
         if (_activeOpener is not null)
         {
             if (_writeDiagnostics)
@@ -2040,6 +2064,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     public void OnEnd(ResponseObservation observation, Result result)
     {
+        _studioEvents.Publish("lifecycle", "match.ended", "info", _lastGameLoop, $"result={result}");
         var previous = LatestStudioSnapshot;
         if (previous is not null)
             Volatile.Write(ref _latestStudioSnapshot, previous with { Sequence = Interlocked.Increment(ref _studioSnapshotSequence), Lifecycle = "ended", CapturedAtUtc = DateTimeOffset.UtcNow });

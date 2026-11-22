@@ -47,6 +47,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private int _placementQueryAttempts;
     private uint _buildRequestGameLoop;
     private uint _builderSelectedGameLoop;
+    private uint _workerPullMineralsThreshold;
     private uint? _completionGameLoop;
     private readonly BuildJobRuntime _ownedBuildJobs = new();
     private BuildJobContext _buildJob;
@@ -74,6 +75,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public bool IsMoveRetryReady => _moveRetryReady;
     public uint CurrentMovementGameLoop => _currentGameLoop;
     public uint BuilderSelectedGameLoop => _builderSelectedGameLoop;
+    public uint WorkerPullMineralsThreshold => _workerPullMineralsThreshold;
     public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
     public uint BuildRequestGameLoop => _buildRequestGameLoop;
     public uint? CompletionGameLoop => _completionGameLoop;
@@ -212,6 +214,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         ArgumentNullException.ThrowIfNull(assignments);
 
         _currentGameLoop = observation.GameLoop;
+        _workerPullMineralsThreshold = workerPullMinerals;
         _moveRetryReady = false;
         var previousMineralBank = _lastObservedMinerals;
         _lastObservedMinerals = observation.Minerals;

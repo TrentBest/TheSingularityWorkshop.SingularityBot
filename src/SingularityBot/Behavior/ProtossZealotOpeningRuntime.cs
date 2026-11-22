@@ -67,6 +67,10 @@ public sealed class ProtossZealotOpeningRuntime
         {
             _stage = Stage.NeedGatewayPlacement;
             _builderTag = 0;
+            _placement = null;
+            _placementAttempts = 0;
+            _candidatePoints.Clear();
+            _queryPending = false;
             _buildPending = false;
             Console.WriteLine("[ProtossOpening] Completed Pylon observed; proceeding to Gateway.");
         }
@@ -74,6 +78,10 @@ public sealed class ProtossZealotOpeningRuntime
         {
             _stage = Stage.Producing;
             _builderTag = 0;
+            _placement = null;
+            _placementAttempts = 0;
+            _candidatePoints.Clear();
+            _queryPending = false;
             _buildPending = false;
             Console.WriteLine("[ProtossOpening] Completed Gateway observed; checking power before Zealot production.");
         }

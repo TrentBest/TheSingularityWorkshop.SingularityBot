@@ -47,6 +47,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly Sc2BinaryEventRecorder _binaryTrace = new();
     private uint _lastGameLoop;
     private uint _lastUnitSnapshotGameLoop;
+    private long _studioSnapshotSequence;
+    private BotStudioSnapshot _latestStudioSnapshot;
+    private string _studioMapName = string.Empty;
 
     public SingularityBot(
         bool passiveBaseline = false,
@@ -155,6 +158,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public SpatialTopology PathingTopology { get; private set; }
     public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
     public GamePhase CurrentGamePhase => _gameState.Phase;
+    /// <summary>Latest immutable read-only snapshot published for the optional local Bot Studio bridge.</summary>
+    public BotStudioSnapshot LatestStudioSnapshot => Volatile.Read(ref _latestStudioSnapshot);
     /// <summary>The authoritative in-game race resolved from this player's SC2 game-info entry.</summary>
     public Race ActualRace => _actualRace;
     /// <summary>The map-selected mode after validation against authoritative RaceActual.</summary>
@@ -404,6 +409,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _baselineRecorder.Start();
         _constructionSiteSafety.Reset();
         _playerId = playerId;
+        _studioMapName = gameInfo?.MapName ?? string.Empty;
         var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
         _actualRace = playerInfo?.RaceActual ?? Race.Random;
         _lastUnitSnapshotGameLoop = 0;
@@ -583,6 +589,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _gameData.UnitNames,
                 _gameData.BuffNames);
             _baselineRecorder.Record(baselineObservation);
+            PublishStudioSnapshot(baselineObservation, "running");
             return Array.Empty<SC2APIProtocol.Action>();
         }
 
@@ -645,6 +652,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 foreach (var action in raceActions)
                     _binaryTrace.RecordAction(normalized.GameLoop, action);
             }
+            PublishStudioSnapshot(normalized, "running");
             return raceActions;
         }
         var executive = new ExecutiveController(normalized.GameLoop);
@@ -1464,6 +1472,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _binaryTrace.RecordAction(normalized.GameLoop, action);
         }
 
+        PublishStudioSnapshot(normalized, "running");
         return actions;
     }
 
@@ -1954,6 +1963,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var normalized = Sc2ObservationNormalizer.Normalize(
             observation, _playerId, _gameData.UnitNames, _gameData.BuffNames);
         _lastGameLoop = normalized.GameLoop;
+        PublishStudioSnapshot(normalized, "running");
         var moduleId = _activeRaceModule?.Id ?? "unregistered";
         var modeId = _activeMode?.Id ?? _definition.ModeId;
         var controllerState = $"FailClosed:{moduleId}:{_activeRaceModule?.ExecutionMode.ToString() ?? "NoModule"}";
@@ -1984,8 +1994,48 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         }
     }
 
+
+    private void PublishStudioSnapshot(NormalizedObservation observation, string lifecycle)
+    {
+        if (observation is null)
+            return;
+
+        var units = observation.Units;
+        var visible = units.Where(unit => unit.IsLiveVisible && !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
+        var self = visible.Where(unit => unit.Alliance == UnitAlliance.Self).ToArray();
+        var enemy = visible.Count(unit => unit.Alliance == UnitAlliance.Enemy);
+        var workers = self.Count(unit =>
+            unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) ||
+            unit.UnitKind.Equals("Drone", StringComparison.OrdinalIgnoreCase) ||
+            unit.UnitKind.Equals("Probe", StringComparison.OrdinalIgnoreCase));
+
+        var snapshot = new BotStudioSnapshot(
+            Sequence: Interlocked.Increment(ref _studioSnapshotSequence),
+            CapturedAtUtc: DateTimeOffset.UtcNow,
+            Lifecycle: lifecycle,
+            MapName: _studioMapName,
+            GameLoop: observation.GameLoop,
+            ActualRace: _actualRace.ToString(),
+            ActiveModeId: _activeMode?.Id ?? string.Empty,
+            GamePhase: _gameState.Phase.ToString(),
+            Minerals: observation.Minerals,
+            Vespene: observation.Vespene,
+            FoodUsed: observation.FoodUsed,
+            FoodCap: observation.FoodCap,
+            VisibleFriendlyUnits: self.Length,
+            VisibleEnemyUnits: enemy,
+            VisibleWorkers: workers,
+            BuildJobCount: _buildJobs.Jobs.Count,
+            StrategicJobCount: CurrentStrategicPlan.Count);
+
+        Volatile.Write(ref _latestStudioSnapshot, snapshot);
+    }
+
     public void OnEnd(ResponseObservation observation, Result result)
     {
+        var previous = LatestStudioSnapshot;
+        if (previous is not null)
+            Volatile.Write(ref _latestStudioSnapshot, previous with { Sequence = Interlocked.Increment(ref _studioSnapshotSequence), Lifecycle = "ended", CapturedAtUtc = DateTimeOffset.UtcNow });
         if (_writeDiagnostics)
             _baselineRecorder.Write(
                 Sc2Diagnostics.OutputDirectory,

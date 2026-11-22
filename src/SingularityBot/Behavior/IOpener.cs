@@ -109,3 +109,56 @@ public sealed class ZerglingOpener : IOpener
 
     public void OnActionResult(ResponseAction response) => _runtime?.OnActionResult(response);
 }
+
+ 
+/// <summary>Protoss adapter for the shared Pylon/Gateway/first-unit opening runtime.</summary>
+public sealed class ProtossZealotOpener : IOpener
+{
+    public const string Id = "protoss.zealot.v1";
+    private ProtossZealotOpeningRuntime _runtime;
+    public string ModeId => Id;
+    public string State => _runtime?.State ?? "Uninitialized";
+    public bool IsComplete => _runtime?.IsComplete ?? false;
+
+    public bool Initialize(OpeningContext context, out string error)
+    {
+        _runtime = null;
+        if (context is null || context.Mode is null || context.GameData is null ||
+            context.ActualRace != Race.Protoss || context.Mode.Race != Race.Protoss ||
+            !string.Equals(context.Mode.Id, Id, StringComparison.Ordinal))
+        {
+            error = $"Protoss Zealot opener requires mode '{Id}' and actual race Protoss.";
+            return false;
+        }
+        if (context.ProductionProfile is null ||
+            !context.GameData.TryGetUniqueUnit("Probe", out var probe) ||
+            !context.GameData.TryGetUniqueUnit("Pylon", out var pylon) ||
+            !context.GameData.TryGetUniqueUnit("Gateway", out var gateway) ||
+            !context.GameData.TryGetUniqueUnit("Zealot", out var zealot) ||
+            !context.GameData.TryGetAbility(pylon.AbilityId, out var pylonBuild) || !pylonBuild.IsBuilding ||
+            !context.GameData.TryGetAbility(gateway.AbilityId, out var gatewayBuild) || !gatewayBuild.IsBuilding)
+        {
+            error = "Required Probe, Pylon, Gateway, Zealot or authoritative building abilities are unavailable.";
+            return false;
+        }
+        try
+        {
+            _runtime = new ProtossZealotOpeningRuntime(
+                probe, pylon, gateway, zealot, pylonBuild, gatewayBuild, context.ProductionProfile);
+        }
+        catch (ArgumentException exception)
+        {
+            error = exception.Message;
+            _runtime = null;
+            return false;
+        }
+        error = string.Empty;
+        return true;
+    }
+
+    public IReadOnlyList<SC2APIProtocol.Action> Advance(NormalizedObservation observation) =>
+        _runtime?.OnFrame(observation) ?? Array.Empty<SC2APIProtocol.Action>();
+    public RequestQuery TakeQueryRequest() => _runtime?.TakeQueryRequest();
+    public void OnQueryResult(ResponseQuery response) => _runtime?.OnQueryResult(response);
+    public void OnActionResult(ResponseAction response) => _runtime?.OnActionResult(response);
+}

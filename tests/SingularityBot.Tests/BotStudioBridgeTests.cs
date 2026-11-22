@@ -27,4 +27,22 @@ public sealed class BotStudioBridgeTests
         using var authorizedButNotReady = await client.GetAsync("/api/snapshot");
         Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, authorizedButNotReady.StatusCode);
     }
+
+    [Fact]
+    public async Task ClientDisconnect_DoesNotStopBridgeAndNoCommandEndpointExists()
+    {
+        await using var bridge = await BotStudioBridge.StartAsync(new global::SingularityBot.SingularityBot(), 0);
+        using (var firstClient = new HttpClient { BaseAddress = new Uri(bridge.Address) })
+        {
+            using var health = await firstClient.GetAsync("/api/health");
+            Assert.Equal(System.Net.HttpStatusCode.OK, health.StatusCode);
+        }
+
+        using var reconnectedClient = new HttpClient { BaseAddress = new Uri(bridge.Address) };
+        using var reconnectedHealth = await reconnectedClient.GetAsync("/api/health");
+        Assert.Equal(System.Net.HttpStatusCode.OK, reconnectedHealth.StatusCode);
+
+        using var commandAttempt = await reconnectedClient.GetAsync("/api/commands");
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, commandAttempt.StatusCode);
+    }
 }

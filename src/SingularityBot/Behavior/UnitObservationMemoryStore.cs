@@ -33,7 +33,7 @@ public struct UnitObservationMemoryRecord
 /// </summary>
 public sealed class UnitObservationMemoryStore : IDisposable
 {
-    public const int DefaultCapacity = 32768;
+    public const int DefaultCapacity = 8192;
     private const uint LiveVisible = 1u << 0;
     private const uint HasPosition = 1u << 1;
     private const uint HasCargo = 1u << 2;

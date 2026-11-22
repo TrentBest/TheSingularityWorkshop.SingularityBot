@@ -22,10 +22,30 @@ public static class Program
             argument.StartsWith("--cc-area=", StringComparison.Ordinal));
         var modeArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--mode=", StringComparison.Ordinal));
+        var raceArgument = args.FirstOrDefault(argument =>
+            argument.StartsWith("--race=", StringComparison.Ordinal));
         var selectedModeId = modeArgument?["--mode=".Length..];
+        Race? explicitRace = null;
+        if (raceArgument is not null)
+        {
+            var raceText = raceArgument["--race=".Length..];
+            if (!Enum.TryParse<Race>(raceText, ignoreCase: true, out var parsedRace) ||
+                parsedRace is not (Race.Terran or Race.Zerg or Race.Protoss))
+                throw new ArgumentException("--race must be one of: terran, zerg, protoss.");
+            explicitRace = parsedRace;
+            if (string.IsNullOrWhiteSpace(selectedModeId))
+                selectedModeId = parsedRace switch
+                {
+                    Race.Terran => "terran.marine.v1",
+                    Race.Zerg => "zerg.zergling.v1",
+                    Race.Protoss => ProtossZealotOpener.Id,
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+        }
         var connectionArgs = args.Where((argument, index) =>
             !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
             !argument.StartsWith("--mode=", StringComparison.Ordinal) &&
+            !argument.StartsWith("--race=", StringComparison.Ordinal) &&
             !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
@@ -47,19 +67,20 @@ public static class Program
         var selectedConfiguration = string.IsNullOrWhiteSpace(selectedModeId)
             ? MatchConfiguration
             : BotMatchConfiguration.ForMode(selectedModeId);
+        if (explicitRace is Race race && selectedConfiguration.RequestedRace != race)
+            throw new ArgumentException($"Configured mode '{selectedModeId}' requires {selectedConfiguration.RequestedRace}, but --race selected {race}.");
         var requestedRace = selectedConfiguration.RequestedRace;
 
         SingularityBot bot;
         if (string.IsNullOrWhiteSpace(selectedModeId) ||
             string.Equals(selectedModeId, "terran.marine.v1", StringComparison.Ordinal))
         {
-            var strategy = new AdaptiveMarineStrategy();
-            var definition = strategy.Definition;
+            var definition = BotDefinitionCatalog.CreateDefault();
             Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}, mode={definition.ModeId}.");
             bot = new SingularityBot(
                 passiveBaseline: passiveBaseline,
                 writeDiagnostics: writeDiagnostics,
-                compiledStrategy: strategy);
+                botDefinition: definition);
         }
         else if (string.Equals(selectedModeId, "zerg.zergling.v1", StringComparison.Ordinal))
         {

@@ -121,7 +121,7 @@ public sealed class Sc2RaceProductionActionTranslatorTests
         var observation = Observation(
             200, 0, 10, 20,
             Unit(10, "Gateway"),
-            Unit(11, "Gateway"),
+            Unit(11, "Gateway") with { HasPowerEvidence = true, IsPowered = true },
             Unit(12, "Pylon", buildProgress: 1f));
 
         var result = Sc2RaceProductionActionTranslator.Translate(
@@ -131,7 +131,7 @@ public sealed class Sc2RaceProductionActionTranslatorTests
             observation,
             2,
             new HashSet<ulong>(),
-            gateway => gateway.Tag == 11);
+            gateway => gateway.HasPowerEvidence && gateway.IsPowered);
 
         Assert.False(result.IsBlocked);
         Assert.Single(result.Actions);

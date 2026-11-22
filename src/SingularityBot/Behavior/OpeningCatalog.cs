@@ -30,6 +30,8 @@ public sealed class OpeningCatalog
     public static OpeningCatalog CreateDefault() => new(new[]
     {
         new KeyValuePair<string, Func<IOpener>>(
-            ZerglingOpener.Id, static () => new ZerglingOpener())
+            ZerglingOpener.Id, static () => new ZerglingOpener()),
+        new KeyValuePair<string, Func<IOpener>>(
+            ProtossZealotOpener.Id, static () => new ProtossZealotOpener())
     });
 }

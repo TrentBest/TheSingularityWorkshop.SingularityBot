@@ -306,3 +306,22 @@ The scheduler must never allow optional support production to starve Marine prod
 The first expansion Command Center is now a prerequisite gate before Barracks three. The controller clusters visible neutral mineral fields (and nearby geysers), rejects the occupied main and enemy-side clusters, derives candidate town-hall positions behind the mineral line, and asks SC2 to validate the actual placement. It does not use guessed map coordinates. The selected position is retained after construction so a later Orbital mobility controller can return a base-assigned town hall to that exact resource location.
 
 The current milestone stops at a grounded expansion Command Center. Automatic lift/flight/landing, roaming Orbital behavior, multi-base assignment, Refinery construction, and Engineering Bay construction are follow-on work. The existing Orbital controller continues to upgrade eligible grounded Command Centers and call MULEs on minerals within authoritative cast range. Gas and Engineering Bay timing will be added as separate resource-constrained jobs rather than spending the same minerals twice or delaying Marine production without diagnostic evidence.
+
+
+## Just-in-time first Depot dispatch refinement
+
+The first Depot controller now reserves an empty-handed SCV rather than preferring a mineral-returning or gas-carrying worker. Once SC2 accepts the placement query, the controller sends that worker toward the site even if its current empty-handed order is still gathering minerals. This deliberately interrupts that worker's gather cycle while all other assigned mineral workers continue funding the Depot.
+
+If the selected SCV acquires cargo while the asynchronous placement query is pending, it is not sent away with that load. It completes the return, and the controller dispatches it immediately afterward; it does not wait for another gather order to complete. Construction remains gated by both observed arrival at the accepted site and the authoritative Depot cost after mineral reservations.
+
+The pull threshold remains configurable through `EconomyAdvisorSettings.SupplyDepotWorkerPullMinerals` (current default: 80 minerals). Do not assume that 80 is optimal. Compare threshold values in paired matches while holding map, opponent, game speed and all other policy constant.
+
+The opening trace now records the configured pull threshold, builder selection loop, first move loop, first affordable loop, build-command loop and observed completion loop. Derived game-loop deltas distinguish travel overlap from resource-starvation wait and construction duration. Convert game loops to seconds using the match's actual game-speed convention; do not label a game-loop count as wall-clock seconds without that conversion.
+
+Recommended first-depot experiment matrix:
+- 80 minerals: preserve the existing pull threshold as the reference.
+- 70 minerals: earlier dispatch candidate for testing a 10-second start.
+- 90 minerals: later dispatch comparison.
+- 100 minerals: affordability-bound dispatch comparison.
+
+The 70/90/100 values are experimental inputs, not predicted outcomes. Retain the 11-second run as the current observed baseline until paired traces establish whether any variant is faster without worsening mining uptime, first-depot completion, supply-block time or downstream production.

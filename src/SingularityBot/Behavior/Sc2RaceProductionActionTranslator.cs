@@ -72,7 +72,8 @@ public static class Sc2RaceProductionActionTranslator
                 unit.UnitKind.Equals(producer.Name, StringComparison.OrdinalIgnoreCase) &&
                 !unit.HasOrders && !unit.HasCargo &&
                 !unavailableProducerTags.Contains(unit.Tag) &&
-                (!profile.RequiresPoweredProducer || hasPositivePowerEvidence!(unit)))
+                (!profile.RequiresPoweredProducer ||
+                    (unit.HasPowerEvidence && unit.IsPowered && hasPositivePowerEvidence!(unit))))
             .OrderBy(unit => unit.Tag)
             .Take(maxOrders)
             .ToArray();

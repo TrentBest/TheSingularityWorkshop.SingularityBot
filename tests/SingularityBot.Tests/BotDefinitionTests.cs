@@ -26,6 +26,25 @@ public sealed class BotDefinitionTests
     }
 
     [Fact]
+    public void HostMustSelectRaceBeforeConstructingBot()
+    {
+        Assert.Throws<ArgumentException>(() => new global::SingularityBot.SingularityBot());
+    }
+
+    [Theory]
+    [InlineData("terran.marine.v1", "Terran")]
+    [InlineData("zerg.zergling.v1", "Zerg")]
+    [InlineData("protoss.zealot.v1", "Protoss")]
+    public void DefinitionCatalog_ResolvesEveryExecutableRaceMode(string modeId, string race)
+    {
+        var definition = BotDefinitionCatalog.CreateForMode(modeId);
+
+        Assert.Equal(modeId, definition.ModeId);
+        Assert.Equal(race, definition.Race);
+        Assert.Empty(definition.Validate());
+    }
+
+    [Fact]
     public void CompiledDefaultDefinition_IsValidAndSelectedWithoutExternalInput()
     {
         var definition = BotDefinitionCatalog.CreateDefault();

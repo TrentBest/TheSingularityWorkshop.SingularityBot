@@ -71,40 +71,13 @@ public static class Program
             throw new ArgumentException($"Configured mode '{selectedModeId}' requires {selectedConfiguration.RequestedRace}, but --race selected {race}.");
         var requestedRace = selectedConfiguration.RequestedRace;
 
-        SingularityBot bot;
-        if (string.IsNullOrWhiteSpace(selectedModeId) ||
-            string.Equals(selectedModeId, "terran.marine.v1", StringComparison.Ordinal))
-        {
-            var definition = BotDefinitionCatalog.CreateDefault();
-            Console.WriteLine($"[BotStrategy] Using compiled '{definition.Id}' ({definition.Name}), strategy={definition.StrategyProfile}, mode={definition.ModeId}.");
-            bot = new SingularityBot(
-                passiveBaseline: passiveBaseline,
-                writeDiagnostics: writeDiagnostics,
-                botDefinition: definition);
-        }
-        else if (string.Equals(selectedModeId, "zerg.zergling.v1", StringComparison.Ordinal))
-        {
-            var definition = BotDefinitionCatalog.CreateZerglingOpening();
-            Console.WriteLine($"[BotStrategy] Using experimental '{definition.Id}' ({definition.Name}), mode={definition.ModeId}.");
-            bot = new SingularityBot(
-                passiveBaseline: passiveBaseline,
-                writeDiagnostics: writeDiagnostics,
-                botDefinition: definition);
-        }
-        else if (string.Equals(selectedModeId, ProtossZealotOpener.Id, StringComparison.Ordinal))
-        {
-            var definition = BotDefinitionCatalog.CreateProtossZealotOpening();
-            Console.WriteLine($"[BotStrategy] Using experimental '{definition.Id}' ({definition.Name}), mode={definition.ModeId}.");
-            bot = new SingularityBot(
-                passiveBaseline: passiveBaseline,
-                writeDiagnostics: writeDiagnostics,
-                botDefinition: definition);
-        }
-        else
-        {
-            // ForMode is the single allow-list and normally rejects before this point.
-            throw new ArgumentException($"Unsupported runner mode '{selectedModeId}'.");
-        }
+        var selectedDefinition = BotDefinitionCatalog.CreateForMode(
+            selectedModeId ?? BotDefinitionCatalog.DefaultModeId);
+        Console.WriteLine($"[BotStrategy] Using compiled '{selectedDefinition.Id}' ({selectedDefinition.Name}), race={selectedDefinition.Race}, mode={selectedDefinition.ModeId}.");
+        var bot = new SingularityBot(
+            passiveBaseline: passiveBaseline,
+            writeDiagnostics: writeDiagnostics,
+            botDefinition: selectedDefinition);
         Console.WriteLine($"[MatchConfiguration] Requested race={requestedRace}.");
 
         if (designatedAreaArgument is not null)

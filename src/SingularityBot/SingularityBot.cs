@@ -19,6 +19,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 {
     private readonly BotManifest _manifest;
     private readonly BotDefinition _definition;
+    private ITerran Terran => _raceRuntime as ITerran ?? throw new InvalidOperationException($"Terran-only policy was requested while active race runtime is {_raceRuntime.Race}.");
+    public IRace RaceRuntime => _raceRuntime;
     private readonly BotRuntimeComposition _runtimeComposition;
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly BuildingBehaviorRuntime _buildings = new();
@@ -27,7 +29,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly ConstructionSiteSafety _constructionSiteSafety = new();
     private IReadOnlyList<StrategyEvidence> _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
     private GoalActionPlanDefinition _goalActionPlan;
-    private readonly TerranCommander _terranCommander = new();
+    private readonly IRace _raceRuntime;
     private readonly RaceModuleCatalog _raceModules = RaceModuleCatalog.CreateDefault();
     private IReadOnlySet<uint> _constructionAbilityIds = new HashSet<uint>();
     private readonly BotModeCatalog _botModes = BotModeCatalog.CreateDefault();
@@ -69,6 +71,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _compiledStrategy = selectedStrategy;
         _runtimeComposition = BotRuntimeComposer.Compose(selectedDefinition);
         _definition = _runtimeComposition.Definition;
+        _raceRuntime = RaceRuntimeFactory.Create(_definition.Race);
         _manifest = _definition.Runtime;
         _goalActionPlan = selectedStrategy.CreateInitialGoalPlan()
             ?? throw new ArgumentException("The compiled strategy must supply an initial goal plan.", nameof(compiledStrategy));
@@ -316,7 +319,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
     /// <summary>Sets user-authored economy policy before or during a match.</summary>
     public IReadOnlyList<string> ConfigureEconomyAdvisorJson(string json) =>
-        _terranCommander.Economy.ConfigureJson(json);
+        Terran.Economy.ConfigureJson(json);
 
     /// <summary>Current economy policy exposed to the development GUI.</summary>
     public EconomyAdvisorSettings EconomySettings => _terranCommander.Economy.Settings;

@@ -9,7 +9,7 @@ public static class Program
 {
     private static readonly BotMatchConfiguration MatchConfiguration = BotMatchConfiguration.Default;
 
-    public static void Run(string[] args, Action<SingularityBot> beforeConnect = null, Action afterConnect = null)
+    public static void Run(string[] args, Action<SingularityBot> beforeConnect = null, System.Action afterConnect = null)
     {
         var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);

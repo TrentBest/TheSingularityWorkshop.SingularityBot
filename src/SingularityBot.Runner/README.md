@@ -20,6 +20,9 @@ The bridge:
 - Generates a fresh 256-bit bearer token for each process and prints it to the local console.
 - Exposes `GET /api/health` for local process/telemetry readiness.
 - Exposes `GET /api/snapshot` only when the caller supplies `Authorization: Bearer <token>`.
+- Exposes `GET /api/events?afterSequence=N&limit=100` with the same bearer-token requirement. The cursor returns ordered structured events after `N`; `limit` is 1–256.
+- Keeps a fixed-capacity 256-event journal; older entries are evicted. Events currently cover match lifecycle, observed SC2 action results, missing action results, and action errors. A submitted action is not reported as accepted until SC2 returns its per-action result.
+- Returns `400 Bad Request` when the event `limit` is outside the supported range.
 - Returns `503 Service Unavailable` for an authenticated snapshot request until the bot publishes its first observation.
 - Serves read-only telemetry. There are no match-start, action, script, reflection, or arbitrary-command endpoints.
 - Runs beside the existing SC2 connection. Stopping or disconnecting a client does not stop or pause the bot.

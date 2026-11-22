@@ -739,8 +739,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 decision.IsAccepted && decision.Posting.Kind == StrategicJobKind.Scout);
             plannerReservedScoutTag = acceptedScout?.Reservation?.UnitTag;
 
+            var delegatedScoutTags = plannerReservedScoutTag is ulong delegatedScoutTag
+                ? new HashSet<ulong> { delegatedScoutTag }
+                : null;
             var scoutExecution = StrategicScoutActionExecutor.Execute(
-                scoutDecisions, normalized, SpatialMap, _gameData, SpatialTerrain, PathingTopology);
+                scoutDecisions, normalized, SpatialMap, _gameData, SpatialTerrain, PathingTopology,
+                delegatedUnitTags: delegatedScoutTags);
             actions.AddRange(scoutExecution.Actions);
             if (_writeDiagnostics)
                 foreach (var rejected in scoutExecution.Decisions.Where(decision => !decision.IsAccepted))
@@ -1431,7 +1435,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
                 SpatialTerrain, PathingTopology, visibilityGrid,
                 advanceToEnemyStart: _compiledStrategy.ShouldAdvanceToEnemyStart(_goalActionPlan),
-                executeDedicatedScout: false,
+                executeDedicatedScout: true,
                 weaponsByUnitType: _combatWeapons,
                 plannerReservedScoutTag: plannerReservedScoutTag,
                 usePlannerReservation: usePlannerScoutReservation);

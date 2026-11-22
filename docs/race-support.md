@@ -106,3 +106,6 @@ The protocol-facing bot receives the race implementation from `RaceRuntimeFactor
 The unit runtime keeps its FSM/entity contexts as managed behavior objects, while the latest compact per-unit observation record is mirrored into a fixed-capacity unmanaged `DataWarehouse` shelf. The shelf currently holds up to 8,192 records and stores unit identity, type, owner, game loop, flags, health/shields, build progress, position, cooldown and energy. A tag-to-generation-checked-handle index resolves records; explicit death frees slots, and match cleanup clears all live slots.
 
 This is an initial high-volume observation-memory integration, not a claim that every bot allocation has moved into DataWarehouse. The tag index and FSM contexts remain managed, and the memory layout still needs workload-specific benchmarks before any latency or allocation improvement is claimed.
+
+
+The boundary is an incremental refactor, not yet the final extraction: Terran construction, Orbital and Marine controllers are still fields on the protocol-facing `SingularityBot` shell. The next migration step is to move those controllers and their frame orchestration behind `ITerran`, then give `IZerg` and `IProtoss` equivalent race-owned compositions. Until that work is complete, the shell's Terran gameplay path remains guarded by the authoritative active-race/mode gates.

@@ -11,6 +11,9 @@ public static class Program
 
     public static void Run(string[] args, Action<SingularityBot> beforeConnect = null, System.Action afterConnect = null)
     {
+        args ??= Array.Empty<string>();
+        Sc2Diagnostics.StartSessionLog();
+
         var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
         var diagnosticsRequested = args.Contains("--diagnostics", StringComparer.Ordinal);
@@ -36,8 +39,9 @@ public static class Program
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
             throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.");
 
-        // Local matches capture by default. Ladder hosts remain file-silent unless
-        // the operator explicitly opts in, since host filesystem persistence varies.
+        // Diagnostic capture is the default for every launch path, including
+        // IDE Play. Ladder operators may opt in explicitly; only an explicit
+        // --no-diagnostics disables local capture.
         var writeDiagnostics = diagnostics && (localRun || diagnosticsRequested);
         var selectedConfiguration = string.IsNullOrWhiteSpace(selectedModeId)
             ? MatchConfiguration

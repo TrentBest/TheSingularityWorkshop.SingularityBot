@@ -2089,7 +2089,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _unitBehaviors.RemoveAll();
         _strategyEvidenceCollector.Reset();
         _constructionSiteSafety.Reset();
-        Terran.Scouting.Reset(_advisorJobBoard);
+        if (_raceRuntime is ITerran terranRuntime)
+            terranRuntime.Scouting.Reset(_advisorJobBoard);
         _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
         _buildings.Clear();
         _openingProduction.Dispose();

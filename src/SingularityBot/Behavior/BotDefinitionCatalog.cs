@@ -13,6 +13,15 @@ public static class BotDefinitionCatalog
     public const string DefaultDefinitionId = "singularitybot.terran.adaptive-marine";
     public const string DefaultModeId = "terran.marine.v1";
 
+    /// <summary>Resolves the compiled definition for a runner-selected race mode.</summary>
+    public static BotDefinition CreateForMode(string modeId) => modeId switch
+    {
+        "terran.marine.v1" => CreateDefault(),
+        "zerg.zergling.v1" => CreateZerglingOpening(),
+        "protoss.zealot.v1" => CreateProtossZealotOpening(),
+        _ => throw new ArgumentException($"No compiled bot definition is registered for mode '{modeId}'.", nameof(modeId))
+    };
+
     public static BotDefinition CreateDefault()
     {
         const string strategyProfile = "terran.marine-economy.v1";

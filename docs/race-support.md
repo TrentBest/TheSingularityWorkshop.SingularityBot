@@ -45,6 +45,19 @@ The intended decision loop is:
 
 The goal is **rapid, informed pressure**, not maximum unit count at any cost. A force that arrives piecemeal into a prepared defense is not a successful rush.
 
+## Newly wired opening-pressure behavior
+
+The current Terran Marine path now connects the reserved Intelligence scout to the terrain-aware ramp-scout controller instead of sending a second, competing movement command through the generic Scout executor. With valid terrain and pathing layers, the first Marine approaches a connected low-ground observation point at the enemy ramp and reports ramp visibility and enemy town-hall visibility. Nearby threats can trigger a retreat to a connected friendly waypoint. When the required terrain evidence is unavailable, the controller retains its conservative fallback behavior; it does not invent a ramp location.
+
+The combat group now ranks an observed enemy worker constructing an unfinished production structure above other visible targets. Builder identification requires an observed order whose ability is marked as a building ability in the match's authoritative SC2 game data, plus proximity to the unfinished structure. If no such builder is observed, a visible Probe is prioritized; otherwise the existing weapon, threat, range, and kill-time ranking remains in effect. The dedicated scout remains excluded from combat targeting.
+
+This is a **Terran Marine implementation slice**, not three-race parity. Zerg's opener still ends at its first Zergling pair, and Protoss still has no executable opener. The target rules are regression-tested and CI-verified, but no new controlled SC2 match or replay has yet verified the behavior in live gameplay.
+
+Exact development evidence for this slice:
+- [Build #1864 — all build and test steps passed](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45009704034)
+- [Sith Policy #2125 — passed](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45009704037)
+- Candidate SHA: `8151eec24db4dbc2f030df3ced9cf8f89b6f345c`
+
 ## Shared and race-specific ownership
 
 | Concern | Shared decision system | Race-specific composition |

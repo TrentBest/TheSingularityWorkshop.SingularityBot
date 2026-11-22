@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" role="img" aria-labelledby="title desc">
+<title id="title">SingularityBot opening pressure and engagement doctrine</title>
+<desc id="desc">A code-derived diagram of the Terran Marine path: a dedicated scout approaches the enemy ramp foot while the combat group prioritizes builders of unfinished production structures, then Probes, then existing threat and weapon assessment.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#101d28"/><stop offset="1" stop-color="#0a1219"/></linearGradient>
+  <linearGradient id="scout" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#153c43"/><stop offset="1" stop-color="#102a35"/></linearGradient>
+  <linearGradient id="combat" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#392a22"/><stop offset="1" stop-color="#2b2020"/></linearGradient>
+  <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#78d8d0"/></marker>
+  <marker id="redArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#ef8d87"/></marker>
+  <style>
+    .bg{fill:url(#bg);stroke:#2a3947;stroke-width:2}.eyebrow{font:700 15px ui-monospace,monospace;letter-spacing:3px;fill:#75d9d0}.title{font:700 28px system-ui,sans-serif;fill:#edf3f8}.lane{font:700 16px ui-monospace,monospace;letter-spacing:2px;fill:#9fb0c1}.node{fill:#13222e;stroke:#466171;stroke-width:2}.scoutNode{fill:url(#scout);stroke:#58bdb8;stroke-width:2}.combatNode{fill:url(#combat);stroke:#c28b67;stroke-width:2}.decision{fill:#172431;stroke:#d7b77b;stroke-width:2}.nodeTitle{font:700 17px system-ui,sans-serif;fill:#f1f5f8}.nodeText{font:14px system-ui,sans-serif;fill:#b8c6d2}.small{font:12px ui-monospace,monospace;fill:#92a5b5}.yes{font:700 12px ui-monospace,monospace;fill:#75d9d0}.no{font:700 12px ui-monospace,monospace;fill:#ef8d87}.arrow{fill:none;stroke:#75d9d0;stroke-width:3;marker-end:url(#arrow)}.red{fill:none;stroke:#ef8d87;stroke-width:3;marker-end:url(#redArrow)}.divider{stroke:#2c3c49;stroke-width:2;stroke-dasharray:6 8}.note{font:13px system-ui,sans-serif;fill:#aab8c6}
+  </style>
+</defs>
+<rect class="bg" x="1" y="1" width="1198" height="818" rx="18"/>
+<text class="eyebrow" x="42" y="48">SINGULARITYBOT / OPENING PRESSURE</text>
+<text class="title" x="42" y="88">Scout with intent. Engage with evidence.</text>
+<text class="small" x="42" y="116">CURRENT TERRAN MARINE PATH · SOURCE-DERIVED · NOT LIVE MATCH TELEMETRY</text>
+<line class="divider" x1="600" y1="145" x2="600" y2="730"/>
+<text class="lane" x="42" y="165">01 / DEDICATED SCOUT</text>
+<text class="lane" x="638" y="165">02 / COMBAT GROUP TARGETING</text>
+
+<rect class="scoutNode" x="42" y="190" width="500" height="82" rx="12"/>
+<text class="nodeTitle" x="66" y="222">Reserve the first Marine</text>
+<text class="nodeText" x="66" y="248">Intelligence job owns the scout; combat planner excludes it</text>
+<path class="arrow" d="M292 272V306"/>
+<rect class="scoutNode" x="42" y="310" width="500" height="90" rx="12"/>
+<text class="nodeTitle" x="66" y="344">Read map terrain + pathing</text>
+<text class="nodeText" x="66" y="370">Find a connected, pathable low-ground point at the enemy ramp foot</text>
+<path class="arrow" d="M292 400V434"/>
+<rect class="decision" x="150" y="438" width="284" height="82" rx="12"/>
+<text class="nodeTitle" x="292" y="471" text-anchor="middle">Nearby threat detected?</text>
+<text class="small" x="292" y="496" text-anchor="middle">within the scout's local threat radius</text>
+<path class="red" d="M150 479H82V566"/>
+<text class="no" x="96" y="465">YES</text>
+<rect class="node" x="42" y="570" width="250" height="100" rx="12"/>
+<text class="nodeTitle" x="62" y="606">Retreat</text>
+<text class="nodeText" x="62" y="632">Choose connected</text><text class="nodeText" x="62" y="652">friendly ground</text>
+<path class="arrow" d="M434 479H500V566"/>
+<text class="yes" x="454" y="465">NO</text>
+<rect class="node" x="312" y="570" width="230" height="100" rx="12"/>
+<text class="nodeTitle" x="332" y="606">Observe</text>
+<text class="nodeText" x="332" y="632">Ramp visibility +</text><text class="nodeText" x="332" y="652">enemy town hall</text>
+<text class="small" x="42" y="706">Scout does not receive combat targets or blindly cross the ramp.</text>
+
+<rect class="combatNode" x="638" y="190" width="520" height="72" rx="12"/>
+<text class="nodeTitle" x="662" y="222">Visible enemy contacts</text>
+<text class="nodeText" x="662" y="245">Current observation only; dead and hidden units are excluded</text>
+<path class="arrow" d="M898 262V291"/>
+<rect class="decision" x="728" y="295" width="340" height="82" rx="12"/>
+<text class="nodeTitle" x="898" y="328" text-anchor="middle">Active builder of unfinished</text>
+<text class="nodeTitle" x="898" y="350" text-anchor="middle">production structure?</text>
+<path class="arrow" d="M728 336H670V410"/>
+<text class="yes" x="686" y="322">YES</text>
+<rect class="combatNode" x="638" y="414" width="250" height="86" rx="12"/>
+<text class="nodeTitle" x="658" y="448">Target the builder</text>
+<text class="nodeText" x="658" y="475">SCV / Probe / Drone</text>
+<path class="arrow" d="M1068 336H1124V410"/>
+<text class="no" x="1082" y="322">NO</text>
+<rect class="decision" x="948" y="414" width="210" height="86" rx="12"/>
+<text class="nodeTitle" x="1053" y="448" text-anchor="middle">Probe visible?</text>
+<text class="small" x="1053" y="474" text-anchor="middle">fallback priority</text>
+<path class="arrow" d="M1053 500V534"/>
+<rect class="combatNode" x="948" y="538" width="210" height="68" rx="12"/>
+<text class="nodeTitle" x="1053" y="579" text-anchor="middle">Target Probe</text>
+<path class="red" d="M948 457H918V642H898"/>
+<text class="no" x="922" y="443">NO</text>
+<rect class="node" x="638" y="642" width="520" height="70" rx="12"/>
+<text class="nodeTitle" x="898" y="672" text-anchor="middle">Otherwise: existing threat, range &amp; kill-time assessment</text>
+<text class="small" x="898" y="695" text-anchor="middle">Weapon facts + local force balance still gate each attack</text>
+<text class="note" x="42" y="770">The target-priority slice is implemented in the Terran Marine planner. Zerg and Protoss own-race gameplay remain incomplete.</text>
+</svg>

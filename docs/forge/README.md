@@ -15,6 +15,7 @@ When GitHub Pages is published, open the `/forge/` route from the documentation 
 - Performs browser-side parsing and core contract checks.
 - Loads a versioned static MapDocument fixture and overlays two versioned MatchSnapshot fixtures.
 - Scrubs deterministic frames using the map document's full-map world-coordinate transform, preserving remembered contacts and displaying only authoritative destruction tags.
+- Displays a source-derived diagram of the current Terran Marine scout and engagement path; it is explanatory, not live telemetry or a match simulation.
 
 The browser checks are intentionally not represented as the authoritative runtime validator. SingularityBot's `BotDefinition.Parse` / `BotDefinition.Validate` and compiled capability resolution remain authoritative.
 

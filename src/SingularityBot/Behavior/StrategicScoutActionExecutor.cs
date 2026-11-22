@@ -11,7 +11,8 @@ public static class StrategicScoutActionExecutor
 {
     public static StrategicScoutExecutionResult Execute(
         IReadOnlyList<StrategicJobDecision> decisions, NormalizedObservation observation,
-        SpatialMap map, Sc2GameDataCatalog gameData, SpatialTerrain terrain, SpatialTopology topology)
+        SpatialMap map, Sc2GameDataCatalog gameData, SpatialTerrain terrain, SpatialTopology topology,
+        IReadOnlySet<ulong>? delegatedUnitTags = null)
     {
         ArgumentNullException.ThrowIfNull(decisions);
         ArgumentNullException.ThrowIfNull(observation);
@@ -31,6 +32,13 @@ public static class StrategicScoutActionExecutor
             { results.Add(Reject(decision, "Accepted Scout decision is missing its typed unit and target reservation.")); continue; }
             if (issuedUnits.Contains(tag))
             { results.Add(Reject(decision, $"Scout unit {tag} already has an action in this frame.")); continue; }
+            if (delegatedUnitTags?.Contains(tag) == true)
+            {
+                issuedUnits.Add(tag);
+                results.Add(new StrategicJobDecision(posting, true,
+                    "Scout movement delegated to the dedicated terrain-aware ramp-scout controller."));
+                continue;
+            }
             var translation = translator.TranslateScoutMove(tag, target, observation, map, gameData, terrain, topology);
             if (translation.IsBlocked)
             { results.Add(Reject(decision, translation.Reason)); continue; }

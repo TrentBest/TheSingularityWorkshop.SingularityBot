@@ -6,7 +6,7 @@
 ## 1. Install the development prerequisites
 
 1. Finish installing StarCraft II through the official Battle.net client.
-2. Install the **.NET 8 SDK** (not only the runtime). The runner targets `.NET 8`.
+2. Install the **.NET 10 SDK** (not only the runtime). The bot and runner target `.NET 10`; Studio targets `.NET 10 for Windows`.
 3. Install Git for Windows.
 4. Visual Studio Community 2022 with the **.NET desktop development** workload.
 
@@ -17,7 +17,7 @@ dotnet --info
 git --version
 ```
 
-The SDK list should include an `8.0.x` SDK.
+The SDK list should include a `10.0.x` SDK.
 
 ## 2. Initialize the StarCraft II local API files
 
@@ -65,6 +65,7 @@ New-Item -ItemType Directory -Force .\\dependencies | Out-Null
 
 $repositories = @(
     @{ Name = "CommandAi"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.CommandAi.git"; Project = ".\\dependencies\\CommandAi\\TheSingularityWorkshop.CommandAi.csproj" },
+    @{ Name = "DataWarehouse"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.DataWarehouse.git"; Project = ".\\dependencies\\DataWarehouse\\src\\TheSingularityWorkshop.DataWarehouse\\TheSingularityWorkshop.DataWarehouse.csproj" },
     @{ Name = "FSM_API"; Url = "https://github.com/TrentBest/FSM_API.git"; Project = ".\\dependencies\\FSM_API\\FSM_API\\FSM_API.csproj" },
     @{ Name = "FSM_COS"; Url = "https://github.com/TrentBest/TheSingularityWorkshop.FSM_COS.git"; Project = ".\\dependencies\\FSM_COS\\src\\FSM_COS\\FSM_COS.csproj" },
     @{ Name = "FSM_UserIO"; Url = "https://github.com/TrentBest/FSM_UserIO.git"; Project = ".\\dependencies\\FSM_UserIO\\TheSingularityWorkshop.FSM_UserIO.csproj" },
@@ -89,7 +90,7 @@ foreach ($repository in $repositories) {
 }
 ```
 
-This checks out the following repositories from `development`: CommandAi, FSM_API, FSM_COS, FSM_UserIO, FSM_Serialization, HeadlessAi, and TheSingularityWorkshop.MicroBundleDomain. Existing checkouts are switched to `development` and fast-forwarded; inspect local changes first if Git refuses.
+This checks out the following repositories from `development`: CommandAi, DataWarehouse, FSM_API, FSM_COS, FSM_UserIO, FSM_Serialization, HeadlessAi, and TheSingularityWorkshop.MicroBundleDomain. Existing checkouts are switched to `development` and fast-forwarded; inspect local changes first if Git refuses.
 
 Verify all project files:
 
@@ -105,6 +106,20 @@ dotnet build .\\src\\SingularityBot.Runner\\SingularityBot.Runner.csproj --confi
 ```
 
 If any project is still missing, stop and report the exact path rather than substituting a NuGet package. CI performs the same development-branch checkouts.
+
+### Studio-only GUI source dependency
+
+`SingularityBot.Studio` additionally references the GUI repository. The project file prefers the sibling checkout at `..\\TheSingularityWorkshop.GUI` (the `Source\\TheSingularityWorkshop.GUI` layout) and falls back to `dependencies\\GUI` only when the sibling project files are absent. If you use Studio, ensure the sibling checkout is on `development` and update it:
+
+```powershell
+git -C ..\\TheSingularityWorkshop.GUI status --short
+git -C ..\\TheSingularityWorkshop.GUI switch development
+git -C ..\\TheSingularityWorkshop.GUI pull --ff-only origin development
+dotnet restore ..\\TheSingularityWorkshop.GUI\\src\\Core\\TheSingularityWorkshop.GUI.Core.csproj
+dotnet restore ..\\TheSingularityWorkshop.GUI\\src\\WPF\\TheSingularityWorkshop.GUI.WPF.csproj
+```
+
+If either standalone GUI restore fails, capture its first underlying error; the `NU1105` messages in Studio may be secondary to that project-level restore failure. The command-line Runner does not require the GUI repository.
 
 ## 5. Open the solution in Visual Studio Community
 
@@ -122,7 +137,7 @@ dotnet restore .\src\SingularityBot.Runner\SingularityBot.Runner.csproj
 dotnet build .\src\SingularityBot.Runner\SingularityBot.Runner.csproj --configuration Release
 ```
 
-This builds the .NET 8 runner, bot, protocol adapter and referenced projects. It does not start StarCraft II.
+This builds the .NET 10 runner, bot, protocol adapter and referenced projects. It does not start StarCraft II.
 
 ## 7. Check the configured local map
 
@@ -163,7 +178,7 @@ Run the first match as a systems and behavior smoke test. Compare subsequent mat
 
 | Symptom | First check |
 |---|---|
-| `dotnet` is not recognized | Install the .NET 8 SDK and open a new PowerShell window |
+| `dotnet` is not recognized | Install the .NET 10 SDK and open a new PowerShell window |
 | `ExecuteInfo.txt` is missing | Launch StarCraft II once through Battle.net, reach the main menu, then exit |
 | Game executable cannot start | Check that the game installation/update completed and inspect the executable path recorded in `ExecuteInfo.txt` |
 | Map not found | Confirm the configured map exists under the installation's `Maps` directory; report the available map names |

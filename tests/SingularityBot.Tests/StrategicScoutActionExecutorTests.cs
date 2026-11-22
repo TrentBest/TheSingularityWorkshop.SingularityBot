@@ -31,6 +31,26 @@ public sealed class StrategicScoutActionExecutorTests
     }
 
     [Fact]
+    public void Execute_DelegatesReservedUnitToDedicatedRampScoutWithoutIssuingDuplicateMove()
+    {
+        var map = Map();
+        var terrain = OpenTerrain();
+        var posting = ScoutPosting("scout:unit:10", 10, "8,8");
+
+        var result = StrategicScoutActionExecutor.Execute(
+            [new StrategicJobDecision(posting, true, "accepted",
+                new StrategicJobReservation(UnitTag: 10, TargetPoint: new MapPoint(8, 8)))],
+            Snapshot(Unit(10, 1, 1)),
+            map, MoveCatalog(), terrain, SpatialTopology.Build(terrain),
+            delegatedUnitTags: new HashSet<ulong> { 10 });
+
+        Assert.Empty(result.Actions);
+        var decision = Assert.Single(result.Decisions);
+        Assert.True(decision.IsAccepted);
+        Assert.Contains("ramp-scout controller", decision.Reason);
+    }
+
+    [Fact]
     public void Execute_RejectsDisconnectedTargetAndEmitsNoAction()
     {
         var map = Map();

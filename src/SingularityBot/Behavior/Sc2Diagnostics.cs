@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text;
 using Google.Protobuf;
 using SC2APIProtocol;
 
@@ -9,6 +10,97 @@ namespace SingularityBot.Behavior;
 /// <summary>Local destination and writers for captured SC2 diagnostic files.</summary>
 internal static class Sc2Diagnostics
 {
+    private static readonly object SessionLogGate = new();
+    private static StreamWriter? _sessionLog;
+    private static string? _sessionLogPath;
+
+    /// <summary>
+    /// Mirrors all runner stdout/stderr into a timestamped file so IDE-launched
+    /// matches retain the same diagnostics visible in the IDE output window.
+    /// </summary>
+    public static void StartSessionLog()
+    {
+        lock (SessionLogGate)
+        {
+            if (_sessionLog is not null)
+                return;
+
+            var originalOut = Console.Out;
+            var originalError = Console.Error;
+            try
+            {
+                Directory.CreateDirectory(OutputDirectory);
+                _sessionLogPath = Path.Combine(OutputDirectory,
+                    $"singularitybot-session-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.log");
+                _sessionLog = new StreamWriter(new FileStream(
+                    _sessionLogPath, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite))
+                {
+                    AutoFlush = true
+                };
+                Console.SetOut(new TeeTextWriter(originalOut, _sessionLog));
+                Console.SetError(new TeeTextWriter(originalError, _sessionLog));
+                Console.WriteLine($"[Diagnostics] Session log: {_sessionLogPath}");
+                Console.WriteLine($"[Diagnostics] Structured capture directory: {OutputDirectory}");
+                AppDomain.CurrentDomain.ProcessExit += (_, _) => FlushSessionLog();
+            }
+            catch (Exception exception)
+            {
+                _sessionLog?.Dispose();
+                _sessionLog = null;
+                Console.WriteLine($"[Diagnostics] Could not start session log: {exception}");
+            }
+        }
+    }
+
+    private static void FlushSessionLog()
+    {
+        lock (SessionLogGate)
+        {
+            try { _sessionLog?.Flush(); } catch { }
+            try { _sessionLog?.Dispose(); } catch { }
+            _sessionLog = null;
+        }
+    }
+
+    private sealed class TeeTextWriter : TextWriter
+    {
+        private readonly TextWriter _primary;
+        private readonly TextWriter _file;
+        private readonly object _gate = new();
+
+        public TeeTextWriter(TextWriter primary, TextWriter file)
+        {
+            _primary = primary;
+            _file = file;
+        }
+
+        public override Encoding Encoding => _primary.Encoding;
+
+        public override void Write(char value)
+        {
+            lock (_gate) { _primary.Write(value); _file.Write(value); }
+        }
+
+        public override void Write(string? value)
+        {
+            lock (_gate) { _primary.Write(value); _file.Write(value); }
+        }
+
+        public override void Write(char[] buffer, int index, int count)
+        {
+            lock (_gate) { _primary.Write(buffer, index, count); _file.Write(buffer, index, count); }
+        }
+
+        public override void WriteLine(string? value)
+        {
+            lock (_gate) { _primary.WriteLine(value); _file.WriteLine(value); }
+        }
+
+        public override void Flush()
+        {
+            lock (_gate) { _primary.Flush(); _file.Flush(); }
+        }
+    }
     // Prefer an explicit host-provided location; otherwise keep captures beside the bot executable.
     // This avoids binding diagnostics to one developer's checkout path.
     public static string OutputDirectory
@@ -17,9 +109,26 @@ internal static class Sc2Diagnostics
         {
             var configured = Environment.GetEnvironmentVariable("SINGULARITYBOT_DIAGNOSTICS_DIR");
             return Path.GetFullPath(string.IsNullOrWhiteSpace(configured)
-                ? Path.Combine(AppContext.BaseDirectory, "extracted")
+                ? Path.Combine(FindRepositoryRoot(), "extracted")
                 : configured);
         }
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        foreach (var start in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
+        {
+            var directory = new DirectoryInfo(start);
+            while (directory is not null)
+            {
+                if (Directory.Exists(Path.Combine(directory.FullName, ".git")) ||
+                    File.Exists(Path.Combine(directory.FullName, "TheSingularityWorkshop.SingularityBot.sln")))
+                    return directory.FullName;
+                directory = directory.Parent;
+            }
+        }
+
+        return AppContext.BaseDirectory;
     }
 
     /// <summary>

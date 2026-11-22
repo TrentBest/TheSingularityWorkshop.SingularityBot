@@ -42,6 +42,12 @@ public sealed record UnitObservationFacts(
     bool IsHallucination,
     uint GameLoop)
 {
+    /// <summary>Whether the SC2 observation actually captured the unit's powered flag.</summary>
+    public bool HasPowerEvidence { get; init; }
+
+    /// <summary>SC2-reported power state; meaningful only when HasPowerEvidence is true.</summary>
+    public bool IsPowered { get; init; }
+
     /// <summary>Remaining weapon cooldown in game-loop units, as reported by SC2.</summary>
     public float WeaponCooldownRemaining { get; init; }
 

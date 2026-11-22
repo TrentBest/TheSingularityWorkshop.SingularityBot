@@ -18,6 +18,13 @@
     <ProjectReference
       Include="../../../TheSingularityWorkshop.FSM_COS/src/FSM_COS/FSM_COS.csproj"
       Condition="Exists('../../../TheSingularityWorkshop.FSM_COS/src/FSM_COS/FSM_COS.csproj')" />
+
+    <ProjectReference
+      Include="../../../TheSingularityWorkshop.DataWarehouse/src/TheSingularityWorkshop.DataWarehouse/TheSingularityWorkshop.DataWarehouse.csproj"
+      Condition="Exists('../../../TheSingularityWorkshop.DataWarehouse/src/TheSingularityWorkshop.DataWarehouse/TheSingularityWorkshop.DataWarehouse.csproj')" />
+    <ProjectReference
+      Include="../../dependencies/DataWarehouse/src/TheSingularityWorkshop.DataWarehouse/TheSingularityWorkshop.DataWarehouse.csproj"
+      Condition="!Exists('../../../TheSingularityWorkshop.DataWarehouse/src/TheSingularityWorkshop.DataWarehouse/TheSingularityWorkshop.DataWarehouse.csproj')" />
     <ProjectReference
       Include="../../dependencies/FSM_COS/src/FSM_COS/FSM_COS.csproj"
       Condition="!Exists('../../../TheSingularityWorkshop.FSM_COS/src/FSM_COS/FSM_COS.csproj')" />

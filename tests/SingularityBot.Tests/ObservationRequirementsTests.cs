@@ -25,6 +25,7 @@ public sealed class ObservationRequirementsTests
         Assert.True(requirements.Includes(ObservationFields.WeaponCooldown));
         Assert.True(requirements.Includes(ObservationFields.OrderDetails));
         Assert.True(requirements.Includes(ObservationFields.Economy));
+        Assert.True(requirements.Includes(ObservationFields.Power));
         Assert.True(requirements.Includes(ObservationFields.Position));
         Assert.False(requirements.Includes(ObservationFields.CollisionRadius));
     }
@@ -80,6 +81,7 @@ public sealed class ObservationRequirementsTests
             ObservationFields.Health | ObservationFields.Shields |
             ObservationFields.Mobility | ObservationFields.WeaponCooldown |
             ObservationFields.Energy | ObservationFields.VespeneContents));
+        Assert.True(requirements.Includes(ObservationFields.Power));
     }
 
     [Fact]

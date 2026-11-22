@@ -12,7 +12,8 @@ public static class Program
     public static void Run(string[] args, Action<SingularityBot> beforeConnect = null, System.Action afterConnect = null)
     {
         args ??= Array.Empty<string>();
-        Sc2Diagnostics.StartSessionLog();
+        if (!args.Contains("--no-diagnostics", StringComparer.Ordinal))
+            Sc2Diagnostics.StartSessionLog();
 
         var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);

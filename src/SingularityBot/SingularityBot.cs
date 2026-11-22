@@ -29,6 +29,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private GoalActionPlanDefinition _goalActionPlan;
     private readonly TerranCommander _terranCommander = new();
     private readonly RaceModuleCatalog _raceModules = RaceModuleCatalog.CreateDefault();
+    private IReadOnlySet<uint> _constructionAbilityIds = new HashSet<uint>();
     private readonly BotModeCatalog _botModes = BotModeCatalog.CreateDefault();
     private readonly Sc2RaceProductionProfileCatalog _raceProductionProfiles = Sc2RaceProductionProfileCatalog.CreateDefault();
     private Sc2RaceProductionProfile _activeProductionProfile;
@@ -448,6 +449,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _marineRally.Reset();
         }
         _gameData = Sc2GameDataCatalog.Create(data);
+        _constructionAbilityIds = _gameData.AbilitiesById.Values
+            .Where(ability => ability.IsBuilding)
+            .Select(ability => ability.AbilityId)
+            .ToHashSet();
         _activeProductionProfile = null;
         _activeOpener = null;
         if (_activeMode is not null && _raceProductionProfiles.TryResolveGameData(
@@ -1404,7 +1409,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 ? new HashSet<ulong> { dedicatedScoutTag }
                 : null;
             var combatDecisions = MarineCombatPlanner.Plan(
-                normalized, _combatWeapons, excludedUnitTags: excludedScoutTags);
+                normalized, _combatWeapons,
+                excludedUnitTags: excludedScoutTags,
+                constructionAbilityIds: _constructionAbilityIds);
             actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
                 combatDecisions, normalized, _gameData, _combatWeapons));
             var liveMarineCount = normalized.Units.Count(unit =>

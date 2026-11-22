@@ -15,7 +15,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/SingularityBot/SingularityBot.csproj" />\n    <ProjectReference Include="../../src/SingularityBot.Runner/SingularityBot.Runner.csproj" />
+    <ProjectReference Include="../../src/SingularityBot/SingularityBot.csproj" />
+    <ProjectReference Include="../../src/SingularityBot.Runner/SingularityBot.Runner.csproj" />
     <None Include="../../examples/map-documents/**/*.json"
           Link="Fixtures/MapDocuments/%(RecursiveDir)%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />

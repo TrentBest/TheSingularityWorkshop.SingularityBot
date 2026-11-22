@@ -59,6 +59,32 @@ public sealed class BotStudioBridge : IAsyncDisposable
             return snapshot is null ? Results.StatusCode(StatusCodes.Status503ServiceUnavailable) : Results.Json(snapshot);
         });
 
+        app.MapGet("/api/events", (HttpContext context) =>
+        {
+            if (context.Connection.RemoteIpAddress is not { } address || !System.Net.IPAddress.IsLoopback(address))
+                return Results.NotFound();
+
+            var authorization = context.Request.Headers.Authorization.ToString();
+            var supplied = authorization.StartsWith("Bearer ", StringComparison.Ordinal)
+                ? authorization["Bearer ".Length..]
+                : string.Empty;
+            if (!IsAuthorized(supplied, token))
+                return Results.Unauthorized();
+
+            if (!long.TryParse(context.Request.Query["afterSequence"], out var afterSequence) || afterSequence < 0)
+                afterSequence = 0;
+            if (!int.TryParse(context.Request.Query["limit"], out var limit))
+                limit = 100;
+            if (limit is < 1 or > 256)
+                return Results.BadRequest(new { error = "limit must be between 1 and 256." });
+
+            return Results.Json(new
+            {
+                latestSequence = bot.StudioEvents.LatestSequence,
+                events = bot.StudioEvents.ReadAfter(afterSequence, limit)
+            });
+        });
+
         try
         {
             await app.StartAsync(cancellationToken).ConfigureAwait(false);

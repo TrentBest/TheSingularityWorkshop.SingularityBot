@@ -141,6 +141,30 @@ public sealed class Sc2RaceProductionActionTranslatorTests
     }
 
     [Fact]
+    public void ZealotTranslation_RejectsExplicitlyUnpoweredGatewayEvenWhenPylonIsCompleted()
+    {
+        var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "protoss.zealot.v1");
+        var observation = Observation(
+            200, 0, 10, 20,
+            Unit(10, "Gateway") with { HasPowerEvidence = true, IsPowered = false },
+            Unit(11, "Pylon", buildProgress: 1f));
+
+        var result = Sc2RaceProductionActionTranslator.Translate(
+            profile,
+            new Sc2UnitFacts(73, "Zealot", 916, 100, 0, 2, 0),
+            new Sc2UnitFacts(62, "Gateway", 0, 0, 0, 0, 0),
+            observation,
+            1,
+            new HashSet<ulong>(),
+            gateway => gateway.HasPowerEvidence && gateway.IsPowered);
+
+        Assert.True(result.IsBlocked);
+        Assert.Contains("power", result.BlockReason.ToLowerInvariant());
+        Assert.Empty(result.ProducerTags);
+    }
+
+    [Fact]
     public void ZerglingTranslation_DoesNotOverspendWhenResourcesCannotCoverOnePair()
     {
         var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles

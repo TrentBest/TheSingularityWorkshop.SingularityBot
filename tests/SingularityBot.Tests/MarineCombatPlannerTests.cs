@@ -20,6 +20,40 @@ public sealed class MarineCombatPlannerTests
     private const uint ArmedEnemyType = 101;
 
     [Fact]
+    public void PrioritizesWorkerConstructingAnIncompleteProductionBuilding()
+    {
+        var marine = Marine(1, 0, 0, 0);
+        var builder = Fact(3, 45, "SCV", UnitAlliance.Enemy, 4, 0) with
+        {
+            Orders = new[] { new UnitOrderObservationFacts(900, null, 8, 0) }
+        };
+        var barracks = Fact(2, 21, "Barracks", UnitAlliance.Enemy, 5, 0) with
+        {
+            BuildProgress = 0.35f
+        };
+        var probe = Fact(4, 84, "Probe", UnitAlliance.Enemy, 3, 1);
+        var observation = Snapshot(marine, barracks, builder, probe);
+
+        var decisions = MarineCombatPlanner.Plan(
+            observation, Weapons, constructionAbilityIds: new HashSet<uint> { 900 });
+
+        Assert.All(decisions, decision => Assert.Equal(3UL, decision.TargetTag));
+    }
+
+    [Fact]
+    public void PrioritizesProtossProbesWhenNoProductionBuilderIsObserved()
+    {
+        var marine = Marine(1, 0, 0, 0);
+        var probe = Fact(4, 84, "Probe", UnitAlliance.Enemy, 3, 1);
+        var armedEnemy = ArmedEnemy(2, 4, 0);
+
+        var decisions = MarineCombatPlanner.Plan(
+            Snapshot(marine, armedEnemy, probe), Weapons);
+
+        Assert.All(decisions, decision => Assert.Equal(4UL, decision.TargetTag));
+    }
+
+    [Fact]
     public void FiresImmediatelyWhenReadyAndInsideAuthoritativeRange()
     {
         var result = Plan(Marine(1, 0, 0, 0), Enemy(2, 4, 0));

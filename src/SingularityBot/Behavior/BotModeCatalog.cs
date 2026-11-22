@@ -85,7 +85,7 @@ public sealed class BotModeCatalog
         new BotModeDescriptor("terran.marauder.v1", "Marauder Mode", Race.Terran,
             "Marauder", "terran.marauder-pressure.v1", false, "Mode selection registered; dedicated production and tactics are pending."),
         new BotModeDescriptor("protoss.zealot.v1", "Zealot Mode", Race.Protoss,
-            "Zealot", "protoss.zealot-pressure.v1", false, "Mode selection registered; production and tactics are pending."),
+            "Zealot", "protoss.zealot-pressure.v1", true, "Bounded Pylon → Gateway → powered Gateway → first Zealot opener; sustainable composition pending."),
         new BotModeDescriptor("protoss.stalker.v1", "Stalker Mode", Race.Protoss,
             "Stalker", "protoss.stalker-control.v1", false, "Mode selection registered; production and tactics are pending."),
         new BotModeDescriptor("zerg.zergling.v1", "Zergling Mode", Race.Zerg,

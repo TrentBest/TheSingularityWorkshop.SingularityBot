@@ -91,3 +91,18 @@ A green build is not match evidence. A race should be reported separately as **c
 ## Current implementation record
 
 The durable implementation checklist is [issue #14 — Three-race upgrade](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/issues/14). Preserve the working Terran baseline while progressing the Zerg and Protoss compositions. Do not change ServerSC2, promote branches, publish packages, release, deploy, or delete branches as part of this work without explicit authorization.
+
+
+## Race-owned runtime composition
+
+The runner selects a concrete mode before constructing the bot. Use `--race=terran`, `--race=zerg`, or `--race=protoss`; an explicit `--mode=` may be supplied instead. If both are supplied, the runner rejects a mismatch. The selected mode is resolved through `BotDefinitionCatalog.CreateForMode`, and the resulting definition is passed into `SingularityBot`. The bot shell no longer creates a default Terran strategy when no definition is supplied: the host must select the race.
+
+Race identity and policy ownership are represented by `IRace`, with race-specific contracts `IZerg`, `ITerran`, and `IProtoss`. The current implementations are `SingularityZerg`, `SingularityTerran`, and `SingularityProtoss`. `SingularityTerran` owns the Terran economy, intelligence and scouting advisors. The Zerg and Protoss openers remain bounded mode adapters; their full race economies and composition controllers have not yet been migrated into their race implementations.
+
+The protocol-facing bot receives the race implementation from `RaceRuntimeFactory` using the selected definition. Terran-only policy access is explicit through `ITerran`; it fails rather than silently substituting Terran policy when another race is active. Race-specific openers still receive the authoritative `RaceActual` and fail closed on a mismatch.
+
+## DataWarehouse observation memory
+
+The unit runtime keeps its FSM/entity contexts as managed behavior objects, while the latest compact per-unit observation record is mirrored into a fixed-capacity unmanaged `DataWarehouse` shelf. The shelf currently holds up to 32,768 records and stores unit identity, type, owner, game loop, flags, health/shields, build progress, position, cooldown and energy. A tag-to-generation-checked-handle index resolves records; explicit death frees slots, and match cleanup clears all live slots.
+
+This is an initial high-volume observation-memory integration, not a claim that every bot allocation has moved into DataWarehouse. The tag index and FSM contexts remain managed, and the memory layout still needs workload-specific benchmarks before any latency or allocation improvement is claimed.

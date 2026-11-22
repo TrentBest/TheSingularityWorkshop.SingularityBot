@@ -9,7 +9,7 @@ public static class Program
 {
     private static readonly BotMatchConfiguration MatchConfiguration = BotMatchConfiguration.Default;
 
-    public static void Run(string[] args)
+    public static void Run(string[] args, Action<SingularityBot> beforeConnect = null, Action afterConnect = null)
     {
         var passiveBaseline = args.Contains("--passive-baseline", StringComparer.Ordinal);
         var diagnostics = !args.Contains("--no-diagnostics", StringComparer.Ordinal);
@@ -22,7 +22,7 @@ public static class Program
 
         var connectionArgs = args.Where((argument, index) =>
             !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
-            !argument.StartsWith("--mode=", StringComparison.Ordinal) &&\n            !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&\n            !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&
+            !argument.StartsWith("--mode=", StringComparison.Ordinal) &&\n            !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&\n            !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&\n            !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&\n            !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
             !string.Equals(argument, "--Map", StringComparison.Ordinal) &&
             !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal) &&
@@ -87,10 +87,18 @@ public static class Program
         }
 
         var connection = new GameConnection();
-        if (localRun)
-            connection.RunSinglePlayer(bot, selectedConfiguration.MapName, requestedRace,
-                selectedConfiguration.OpponentRace, selectedConfiguration.OpponentDifficulty).GetAwaiter().GetResult();
-        else
-            connection.RunLadder(bot, requestedRace, connectionArgs).GetAwaiter().GetResult();
+        beforeConnect?.Invoke(bot);
+        try
+        {
+            if (localRun)
+                connection.RunSinglePlayer(bot, selectedConfiguration.MapName, requestedRace,
+                    selectedConfiguration.OpponentRace, selectedConfiguration.OpponentDifficulty).GetAwaiter().GetResult();
+            else
+                connection.RunLadder(bot, requestedRace, connectionArgs).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            afterConnect?.Invoke();
+        }
     }
 }

@@ -70,15 +70,17 @@ public sealed class RaceModuleCatalog
         { IsRaceSelectionEligible = true },
         new RaceModuleDescriptor(
             Race.Protoss,
-            "sc2.race.protoss.scaffold.v1",
-            RaceModuleExecutionMode.LoggingOnly,
+            "sc2.race.protoss.zealot-opener.v1",
+            RaceModuleExecutionMode.ExperimentalOpener,
             new[] { "units.protoss", "structures.protoss", "production.protoss", "abilities.protoss" },
-            "Registered scaffold only. Capability catalogue and gameplay adapter are not implemented."),
+            "Bounded Protoss opener: Probe builds Pylon and Gateway, then a positively powered Gateway trains the first Zealot; sustainable economy and follow-on composition remain pending.")
+        { IsRaceSelectionEligible = false },
         new RaceModuleDescriptor(
             Race.Zerg,
             "sc2.race.zerg.experimental-opener.v1",
             RaceModuleExecutionMode.ExperimentalOpener,
             new[] { "units.zergling", "production.zergling", "opening.zergling-pair" },
-            "Experimental bounded opener: initializes and issues the first Zergling-pair production action; sustainable Zerg economy and follow-on composition are not implemented.")
+            "Experimental bounded opener: builds Spawning Pool and produces the first Zergling pair; sustainable Zerg economy and follow-on composition remain pending.")
+        { IsRaceSelectionEligible = false }
     });
 }

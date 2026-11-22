@@ -64,6 +64,12 @@ jobs:
           repository: TrentBest/TheSingularityWorkshop.FSM_COS
           ref: development
           path: dependencies/FSM_COS
+      - name: Check out DataWarehouse development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.DataWarehouse
+          ref: development
+          path: dependencies/DataWarehouse
       - name: Check out Workshop GUI development source
         uses: actions/checkout@v4
         with:

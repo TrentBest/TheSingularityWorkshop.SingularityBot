@@ -112,4 +112,37 @@ public sealed class SelectiveObservationNormalizerTests
         Assert.Empty(unit.Orders);
         Assert.Equal(ObservationFields.None, unit.CapturedFields);
     }
+
+    [Fact]
+    public void Normalizer_CapturesAuthoritativePowerOnlyWhenRequested()
+    {
+        var raw = new ObservationRaw();
+        raw.Units.Add(new Unit
+        {
+            Tag = 77,
+            UnitType = 62,
+            Owner = 1,
+            Alliance = Alliance.Self,
+            DisplayType = DisplayType.Visible,
+            IsPowered = true
+        });
+        var response = new ResponseObservation
+        {
+            Observation = new SC2APIProtocol.Observation { RawData = raw }
+        };
+
+        var captured = Sc2ObservationNormalizer.Normalize(
+            response, 1, new Dictionary<uint, string>(), new Dictionary<uint, string>(),
+            new ObservationRequirements(ObservationFields.Power));
+        var unit = Assert.Single(captured.Units);
+        Assert.True(unit.HasPowerEvidence);
+        Assert.True(unit.IsPowered);
+
+        var omitted = Sc2ObservationNormalizer.Normalize(
+            response, 1, new Dictionary<uint, string>(), new Dictionary<uint, string>(),
+            ObservationRequirements.None);
+        unit = Assert.Single(omitted.Units);
+        Assert.False(unit.HasPowerEvidence);
+        Assert.False(unit.IsPowered);
+    }
 }

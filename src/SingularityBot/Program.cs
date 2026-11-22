@@ -70,6 +70,15 @@ public static class Program
                 writeDiagnostics: writeDiagnostics,
                 botDefinition: definition);
         }
+        else if (string.Equals(selectedModeId, ProtossZealotOpener.Id, StringComparison.Ordinal))
+        {
+            var definition = BotDefinitionCatalog.CreateProtossZealotOpening();
+            Console.WriteLine($"[BotStrategy] Using experimental '{definition.Id}' ({definition.Name}), mode={definition.ModeId}.");
+            bot = new SingularityBot(
+                passiveBaseline: passiveBaseline,
+                writeDiagnostics: writeDiagnostics,
+                botDefinition: definition);
+        }
         else
         {
             // ForMode is the single allow-list and normally rejects before this point.

@@ -46,6 +46,7 @@ public static class Sc2ObservationNormalizer
                 var capturePosition = Has(ObservationFields.Position);
                 var captureCargo = Has(ObservationFields.Cargo);
                 var captureOrderDetails = Has(ObservationFields.OrderDetails);
+                var capturePower = Has(ObservationFields.Power);
                 var position = capturePosition ? unit.Pos : null;
                 var orders = captureOrderDetails
                     ? unit.Orders.Select(order => new UnitOrderObservationFacts(
@@ -78,6 +79,8 @@ public static class Sc2ObservationNormalizer
                     Has(ObservationFields.Mobility) && unit.IsHallucination,
                     observation.GameLoop)
                 {
+                    HasPowerEvidence = capturePower,
+                    IsPowered = capturePower && unit.IsPowered,
                     WeaponCooldownRemaining = Has(ObservationFields.WeaponCooldown) ? unit.WeaponCooldown : 0,
                     CollisionRadius = Has(ObservationFields.CollisionRadius) ? unit.Radius : 0,
                     Energy = Has(ObservationFields.Energy) ? unit.Energy : 0,

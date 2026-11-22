@@ -88,9 +88,9 @@ public static class Program
         }
 
         var connection = new GameConnection();
-        beforeConnect?.Invoke(bot);
         try
         {
+            beforeConnect?.Invoke(bot);
             if (localRun)
                 connection.RunSinglePlayer(bot, selectedConfiguration.MapName, requestedRace,
                     selectedConfiguration.OpponentRace, selectedConfiguration.OpponentDifficulty).GetAwaiter().GetResult();

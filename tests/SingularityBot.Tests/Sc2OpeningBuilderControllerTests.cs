@@ -89,62 +89,43 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void WaitsForLoadedBuilderToDepositMineralsBeforeDispatchingToDepot()
+    public void SelectsEmptyWorkerAndDispatchesWhileMineralLineContinuesMining()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
 
-        // Select a loaded mineral worker. The first call reserves the worker and
-        // requests an authoritative placement; it must not send a speculative move.
-        var selected = controller.TryCreateAction(Snapshot(100, 12, 15,
+        var selection = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
-            Fact(11, "SCV", 9, 9),
+            Fact(11, "SCV", 9, 9, orders: new[] { new UnitOrderObservationFacts(295, 20, null, null) }),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
-        Assert.Null(selected);
-        Assert.Equal(10UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(10));
-        Assert.False(assignments.IsReserved(11));
+        Assert.Null(selection);
+        Assert.Equal(11UL, controller.BuilderTag);
+        Assert.False(assignments.IsReserved(10));
+        Assert.True(assignments.IsReserved(11));
         Assert.NotNull(controller.TakePlacementQuery(gameData));
         SetValidPlacement(controller);
 
-        // Even with an accepted placement, the loaded SCV must finish its
-        // return to the Command Center. Construction cannot consume this load.
-        var stillReturning = controller.TryCreateAction(Snapshot(100, 12, 15,
+        // The selected worker is empty-handed. Its gather order is interrupted
+        // immediately so it can travel while the remaining workers keep mining.
+        var move = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
-            Fact(11, "SCV", 9, 9),
+            Fact(11, "SCV", 9, 9, orders: new[] { new UnitOrderObservationFacts(295, 20, null, null) }),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
-        Assert.Null(stillReturning);
 
-        // A later observation confirms the deposit (cargo is gone). Only now
-        // may the reserved builder leave the mineral line for the Depot site.
-        // The worker FSM may already have queued the next mineral gather by
-        // the time the empty-cargo observation arrives. The completed deposit
-        // takes precedence; otherwise the reserved builder would mine forever.
-        var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
-        var nextGatherOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
-        var dispatch = controller.TryCreateAction(Snapshot(150, 12, 15,
-            Fact(10, "SCV", 5, 5, orders: nextGatherOrder),
-            Fact(11, "SCV", 9, 9),
-            Fact(1, "CommandCenter", 10, 10),
-            mineral), map, gameData,
-            assignments, Crew(10, 11));
-
-        Assert.NotNull(dispatch);
-        Assert.Equal(16, dispatch.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(10UL, dispatch.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.Equal(controller.Placement!.Value.X, dispatch.ActionRaw.UnitCommand.TargetWorldSpacePos.X);
-        Assert.Equal(controller.Placement!.Value.Y, dispatch.ActionRaw.UnitCommand.TargetWorldSpacePos.Y);
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(11UL, move.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]
-    public void WaitsForSelectedMinerToFinishItsCurrentTripEvenWhenDepotIsAffordable()
+    public void DispatchesEmptyMiningWorkerImmediatelyAndBuildsWhenResourcesAndArrivalConverge()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -153,39 +134,37 @@ public sealed class Sc2OpeningBuilderControllerTests
         var miningOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
         var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
 
+        var selection = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            assignments, Crew(10, 11));
+
+        Assert.Null(selection);
+        Assert.NotNull(controller.BuilderTag);
+        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        SetValidPlacement(controller);
+
+        var builderTag = controller.BuilderTag!.Value;
         var move = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5),
             Fact(11, "SCV", 6, 5, orders: miningOrder),
             Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 
-        // Reaching the mineral threshold is not permission to interrupt an active
-        // harvest. The builder remains reserved, but its gather order is allowed to finish.
-        Assert.Null(move);
-        Assert.Equal(11UL, controller.BuilderTag);
-        Assert.True(assignments.IsReserved(11));
-        Assert.NotNull(controller.TakePlacementQuery(gameData));
-        SetValidPlacement(controller);
+        Assert.NotNull(move);
+        Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(builderTag, move.ActionRaw.UnitCommand.UnitTags[0]);
 
-        // Once loaded, the selected miner must first return its resources.
-        var loadedReturn = controller.TryCreateAction(Snapshot(100, 12, 15,
-            Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5, hasCargo: true,
-                orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
-            Fact(1, "CommandCenter", 10, 10),
-            mineral), map, gameData, assignments, Crew(10, 11));
+        var site = controller.Placement!.Value;
+        var build = controller.TryCreateAction(Snapshot(150, 12, 15,
+            Fact(builderTag, "SCV", site.X, site.Y),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            assignments, Crew(10, 11));
 
-        Assert.Null(loadedReturn);
-
-        var depositedDispatch = controller.TryCreateAction(Snapshot(150, 12, 15,
-            Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5, orders: miningOrder),
-            Fact(1, "CommandCenter", 10, 10),
-            mineral), map, gameData, assignments, Crew(10, 11));
-
-        Assert.NotNull(depositedDispatch);
-        Assert.Equal(16, depositedDispatch.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(11UL, depositedDispatch.ActionRaw.UnitCommand.UnitTags[0]);
+        Assert.NotNull(build);
+        Assert.Equal(319, build.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(builderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
     }
 
     [Fact]
@@ -445,7 +424,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         };
 
         var action = controller.TryCreateAction(Snapshot(100, 12, 15,
-            Fact(10, "SCV", 12, 12, hasCargo: true),
+            Fact(10, "SCV", 12, 12),
             Fact(1, "CommandCenter", 10, 10), minerals[0], minerals[1], minerals[2], minerals[3]),
             Map(), gameData, assignments, Crew(10));
 

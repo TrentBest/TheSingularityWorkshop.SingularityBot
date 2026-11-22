@@ -8,7 +8,7 @@ public sealed class BotStudioBridgeTests
     [Fact]
     public async Task Bridge_IsLoopbackOnlyAndRequiresBearerTokenForSnapshot()
     {
-        await using var bridge = await BotStudioBridge.StartAsync(new SingularityBot.SingularityBot(), 0);
+        await using var bridge = await BotStudioBridge.StartAsync(new global::SingularityBot.SingularityBot(), 0);
         using var client = new HttpClient { BaseAddress = new Uri(bridge.Address) };
 
         using var health = await client.GetAsync("/api/health");

@@ -8,7 +8,7 @@
 1. Finish installing StarCraft II through the official Battle.net client.
 2. Install the **.NET 10 SDK** (not only the runtime). The bot and runner target `.NET 10`; Studio targets `.NET 10 for Windows`.
 3. Install Git for Windows.
-4. Visual Studio Community 2022 with the **.NET desktop development** workload.
+4. Visual Studio Community 2026 with the **.NET desktop development** workload.
 
 Open a new PowerShell window after installing the SDK and verify:
 

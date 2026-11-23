@@ -56,7 +56,7 @@ public static class BotFsmApi
         }
     }
 
-    private static void RegisterStateNames(int fsmId, Dictionary<int, string> names)
+    internal static void RegisterStateNames(int fsmId, Dictionary<int, string> names)
     {
         lock (Sync)
             StateNames[fsmId] = new Dictionary<int, string>(names);

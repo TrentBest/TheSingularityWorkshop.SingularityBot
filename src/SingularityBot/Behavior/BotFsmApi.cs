@@ -1,3 +1,4 @@
+#nullable enable annotations
 using System;
 using System.Collections.Generic;
 using TheSingularityWorkshop.FSM_API;
@@ -229,7 +230,6 @@ public sealed class BotFsmHandle
     public int Id => Inner.Id;
     public int CurrentStateID => Inner.CurrentStateID;
     public bool IsValid => Inner.IsValid;
-    public bool IsDestroyed => Inner.IsDestroyed;
     public IStateContext Context => Inner.Context;
 
     public void TransitionTo(string stateName)

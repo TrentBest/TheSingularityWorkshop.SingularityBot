@@ -145,7 +145,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
     private static bool HasMoveRetryElapsed(IStateContext context) =>
         context is Sc2OpeningBuilderController builder &&
-        builder._currentGameLoop > builder._moveRequestGameLoop + 22;
+        builder._currentGameLoop > builder._moveRequestGameLoop + 67;
 
     private void UpdateMovementFsm()
     {
@@ -447,7 +447,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         if (distanceSquared > 2.25f)
         {
             // An accepted Move is not proof that the SCV reached the site.
-            // Retry after a bounded travel window so pathing interruptions cannot stall the opening.
+            // Retry after a three-second travel window so ordinary pathing does not trigger repeated Move commands.
             if (IsMoveSubmitted)
                 return null;
 

@@ -879,18 +879,27 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     building.TownHallUpgradeState == "UpgradeReady");
             var orbitalReservedCommandCenter = townHallUpgradeReady
                 ? _orbitalSupport.GetCommandCenterReservedForUpgrade(normalized, _gameData)
-                : null;
+                : _openingMarine.IsBuildSubmitted &&
+                  startingTownHall is not null &&
+                  startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase)
+                    ? startingTownHall.Tag
+                    : null;
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
                 unit.IsLiveVisible &&
                 (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
+            // Reserve the Orbital and its producer as soon as the first Barracks
+            // build order is accepted. The morph itself still waits for the
+            // completed Barracks FSM gate, but SCV production cannot refill the
+            // Command Center queue and delay the upgrade.
             orbitalMineralReservation = Terran.Economy.ShouldEnableOrbitalMorph() &&
-                townHallUpgradeReady && orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
+                orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
             var orbitalReservationReason = orbitalReservedCommandCenter is null ? "orbital-tech-or-starting-command-center-not-ready" :
+                !townHallUpgradeReady ? "reserving-orbital-during-barracks-construction" :
                 orbitalAbility is not > 0 ? "orbital-ability-unavailable-or-ambiguous" :
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :

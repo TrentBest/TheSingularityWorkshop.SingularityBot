@@ -64,11 +64,11 @@ public sealed class EconomyAdvisorTests
         Assert.Equal("Immediate", advisor.Settings.MuleCallDownPolicy);
 
         var valid = advisor.ConfigureJson(
-            "{\"version\":1,\"enableMules\":false,\"muleCallDownPolicy\":\"Immediate\"}");
+            "{\"version\":1,\"enableMules\":false,\"muleCallDownPolicy\":\"PreserveScan\"}");
 
         Assert.Empty(valid);
         Assert.False(advisor.Settings.EnableMules);
-        Assert.Equal("Immediate", advisor.Settings.MuleCallDownPolicy);
+        Assert.Equal("PreserveScan", advisor.Settings.MuleCallDownPolicy);
     }
 
     [Fact]

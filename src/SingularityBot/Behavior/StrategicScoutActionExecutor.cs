@@ -1,3 +1,4 @@
+#nullable enable annotations
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
 

@@ -1,3 +1,4 @@
+#nullable enable annotations
 using SingularityBot.Observation;
 
 namespace SingularityBot.Behavior;

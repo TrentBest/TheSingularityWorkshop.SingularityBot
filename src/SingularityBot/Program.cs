@@ -31,7 +31,7 @@ public static class Program
             var raceText = raceArgument["--race=".Length..];
             if (!Enum.TryParse<Race>(raceText, ignoreCase: true, out var parsedRace) ||
                 parsedRace is not (Race.Terran or Race.Zerg or Race.Protoss))
-                throw new ArgumentException("--race must be one of: terran, zerg, protoss.");
+                throw new ArgumentException("--race must be one of: terran, zerg, protoss.", nameof(args));
             explicitRace = parsedRace;
             if (string.IsNullOrWhiteSpace(selectedModeId))
                 selectedModeId = parsedRace switch

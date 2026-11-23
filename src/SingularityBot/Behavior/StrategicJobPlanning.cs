@@ -1,3 +1,4 @@
+#nullable enable annotations
 using System.Globalization;
 using SingularityBot.Observation;
 using SingularityBot.Spatial;

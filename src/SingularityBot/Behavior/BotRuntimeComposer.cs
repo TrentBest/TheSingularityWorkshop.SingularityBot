@@ -1,3 +1,4 @@
+#nullable enable annotations
 using TheSingularityWorkshop.FSM_COS;
 using TheSingularityWorkshop.MicroBundleDomain;
 

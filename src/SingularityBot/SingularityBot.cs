@@ -844,7 +844,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     expansionCommandCenterPending,
                     _secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction,
                     !_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null,
-                    _openingBuilder.IsBuildSubmitted && !_openingMarine.BarracksComplete,
+                    _openingBuilder.IsBuildSubmitted && !_openingMarine.IsBuildSubmitted,
                     _openingMarine.BarracksComplete && normalized.Units.Any(unit =>
                         unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                         unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
@@ -1017,11 +1017,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // infrastructure). Releasing this reserve here can spend the exact
                 // 150 minerals before the independent Orbital action is submitted.
                 // The advisor reserves the first Barracks as soon as the
-                // Depot build starts, so SCV production cannot consume its 150 minerals.
+                // Depot build starts until the Barracks order is submitted, so SCV production cannot consume its 150 minerals.
                 // The reservation includes the Barracks' own cost. The controller separately
                 // checks that cost before submitting the build, so exclude that
                 // self-reservation while preserving the Orbital commitment.
-                var firstBarracksBuildPending = _openingBuilder.IsBuildSubmitted && !_openingMarine.BarracksComplete;
+                var firstBarracksBuildPending = _openingBuilder.IsBuildSubmitted && !_openingMarine.IsBuildSubmitted;
                 var barracksActionReservedMinerals = firstBarracksBuildPending
                     ? reservedInfrastructureMinerals > _gameData.BarracksMineralCost
                         ? reservedInfrastructureMinerals - _gameData.BarracksMineralCost

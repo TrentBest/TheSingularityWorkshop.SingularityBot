@@ -74,7 +74,7 @@ The SC2 Runner is the host/execution driver: it owns the SC2 connection, callbac
 
 FSM_COS currently composes a BotDefinition microbundle and the CommandAi vocabulary microbundle at startup, and verifies that they load. This is startup composition, not execution of the bot's strategy; it does not own the match loop or become a second execution model. FSM_API supplies persistent contexts and hierarchical behavior mechanics; the bot decides how those mechanics are used. The existing action pipeline remains the only authority for validating and submitting SC2 commands.
 
-FSM_Foundry is not part of live SC2 execution. Its workflow-executor contract may be useful later for bounded external scenario/replay evaluation, but it must not be inserted between the Runner's frame callbacks and the bot's decisions or unit actions.
+FSM_Execution is not part of live SC2 execution. Its workflow-executor contract may be useful later for bounded external scenario/replay evaluation, but it must not be inserted between the Runner's frame callbacks and the bot's decisions or unit actions.
 
 ## Runtime boundary
 
@@ -100,7 +100,7 @@ Intent arbitration -> legality validation -> SC2 action adapter
     |
     +---- compiled definition + capability metadata -> Forge GUI
 
-FSM_Foundry: not part of the live SC2 execution path.
+FSM_Execution: not part of the live SC2 execution path.
 ```
 
 The adapter owns protocol DTOs and protocol-specific details. The rest of the bot consumes stable domain facts and emits domain intents. An intent is a request, not authorization to issue an action.
@@ -171,7 +171,7 @@ Supply Depot passage is an explicit event request through the bot API. Movement/
 
 ## Workshop integration
 
-- **SC2 Runner** is the live host and frame driver for this bot; no separate Foundry execution layer is needed.
+- **SC2 Runner** is the live host and frame driver for this bot; no separate FSM_Execution layer is needed.
 - **FSM_API** supplies reusable context/handle lifecycle and hierarchical behavior mechanics.
 - **FSM_COS** currently composes the compiled BotDefinition and CommandAi vocabulary at startup; this is not yet a compiled strategy implementation and does not drive the live match.
 - **Compiled personality refactor** is in progress: move user-specific strategy behavior behind a statically compiled strategy contract while retaining the shared bot engine and validated action pipeline.

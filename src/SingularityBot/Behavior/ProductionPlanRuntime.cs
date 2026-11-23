@@ -84,8 +84,9 @@ public sealed class ProductionPlanRuntime : IDisposable
         return false;
     }
 
-    public void Update() =>
-        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+    // Processing is owned by UnitBehaviorCatalog.ProcessGroupsThisFrame and
+    // advanced once by SingularityBot.OnFrame. This runtime intentionally has
+    // no Update method so callers cannot accidentally tick the group twice.
 
     public void Dispose()
     {

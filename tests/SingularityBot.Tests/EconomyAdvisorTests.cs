@@ -53,7 +53,7 @@ public sealed class EconomyAdvisorTests
             "{\"version\":1,\"supplyDepotWorkerPullMinerals\":1001}");
 
         Assert.NotEmpty(errors);
-        Assert.Equal(80u, advisor.Settings.SupplyDepotWorkerPullMinerals);
+        Assert.Equal(60u, advisor.Settings.SupplyDepotWorkerPullMinerals);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed class EconomyAdvisorTests
     {
         var advisor = new EconomyAdvisor();
         Assert.True(advisor.Settings.EnableMules);
-        Assert.Equal("PreserveScan", advisor.Settings.MuleCallDownPolicy);
+        Assert.Equal("Immediate", advisor.Settings.MuleCallDownPolicy);
 
         var valid = advisor.ConfigureJson(
             "{\"version\":1,\"enableMules\":false,\"muleCallDownPolicy\":\"Immediate\"}");
@@ -106,7 +106,7 @@ public sealed class EconomyAdvisorTests
             "{\"version\":1,\"muleCallDownPolicy\":\"SpendEverything\"}");
 
         Assert.NotEmpty(errors);
-        Assert.Equal("PreserveScan", advisor.Settings.MuleCallDownPolicy);
+        Assert.Equal("Immediate", advisor.Settings.MuleCallDownPolicy);
     }
 
     [Fact]

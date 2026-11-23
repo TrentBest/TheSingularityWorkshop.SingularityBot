@@ -1033,7 +1033,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         reservedMinerals: marineReservedMinerals,
                         excludedBuilderTag: _openingBuilder.BuilderTag,
                         allowConstruction: _openingBuilder.IsCompleted,
-                        allowMarineTraining: true)
+                        allowMarineTraining: orbitalMorphingObserved)
                     : null;
                 _openingMarineActionSubmitted = marineAction is not null;
             }
@@ -1207,8 +1207,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 reservedMinerals: orbitalMineralReservation);
             assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
 
-            // Secondary Barracks produce Marines whenever no higher-priority
-            // infrastructure or Orbital action claimed this frame.
+            // Secondary Barracks remain idle until the starting Orbital morph is
+            // observed; the opening objective is early Orbital energy, not Marines.
             if (orbitalSupportAction is null && secondBarracksAction is null &&
                 expansionCommandCenterAction is null && builderAction is null &&
                 marineAction is null && sprayAction is null)

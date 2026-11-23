@@ -212,7 +212,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         BuildJobRuntime buildJobs = null,
         ulong? preferredBuilderTag = null,
         bool releaseBuilderOnCompletion = false,
-        uint workerPullMinerals = 60,
+        uint workerPullMinerals = 80,
         uint reservedMinerals = 0,
         uint minimumBuilderPullGameLoop = 0)
     {

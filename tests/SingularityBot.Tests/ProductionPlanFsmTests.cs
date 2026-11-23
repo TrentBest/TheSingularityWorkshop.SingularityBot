@@ -1,4 +1,5 @@
 using SingularityBot.Behavior;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
 using Xunit;
 
 namespace SingularityBot.Tests;
@@ -14,13 +15,13 @@ public sealed class ProductionPlanFsmTests
             "marine-rush", "Marine", "Barracks", 6, 0, 90));
 
         step.ApplyObservation(100, 0, 0, true, true, false);
-        runtime.Update();
-        runtime.Update();
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
         Assert.Empty(emitted);
 
         step.ApplyObservation(101, 0, 0, true, true, true);
-        runtime.Update();
-        runtime.Update();
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
 
         var intent = Assert.Single(emitted);
         Assert.Equal("marine-rush", intent.StepId);
@@ -38,14 +39,14 @@ public sealed class ProductionPlanFsmTests
             "worker", "SCV", "CommandCenter", 13, 0, 100));
 
         step.ApplyObservation(10, 12, 0, true, true, true);
-        runtime.Update();
-        runtime.Update();
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
         Assert.Single(emitted);
 
         step.MarkSubmitted();
         step.ApplyObservation(11, 12, 0, true, true, true);
-        runtime.Update();
-        runtime.Update();
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
+        FsmApi.Interaction.Update(UnitBehaviorCatalog.ProductionProcessingGroup);
         Assert.Single(emitted);
     }
 

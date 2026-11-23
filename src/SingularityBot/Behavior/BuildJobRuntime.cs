@@ -2,6 +2,8 @@
 
 using System.Diagnostics.CodeAnalysis;
 using TheSingularityWorkshop.FSM_API;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
+using FSMHandle = SingularityBot.Behavior.BotFsmHandle;
 
 namespace SingularityBot.Behavior;
 

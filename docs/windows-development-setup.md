@@ -107,6 +107,20 @@ dotnet build .\\src\\SingularityBot.Runner\\SingularityBot.Runner.csproj --confi
 
 If any project is still missing, stop and report the exact path rather than substituting a NuGet package. CI performs the same development-branch checkouts.
 
+### Sibling FSM_API source checkout takes precedence
+
+The bot project resolves the sibling checkout at `..\\FSM_API\\FSM_API\\FSM_API.csproj` before the fallback under `dependencies\\FSM_API`. If the sibling exists, it is the source MSBuild will compile. Keep that exact checkout on `development`; cloning a second copy under `dependencies` does not override the sibling reference.
+
+From the SingularityBot repository root, inspect it and select the active branch:
+
+```powershell
+git -C ..\\FSM_API status --short
+git -C ..\\FSM_API switch development
+git -C ..\\FSM_API pull --ff-only origin development
+```
+
+If Git reports local changes or refuses the switch, stop and inspect them before proceeding. The active FSM_API development project targets `.NET 10`; its published `master` snapshot may still target an earlier framework. Never use `master` as the dependency source for ecosystem development.
+
 ### Studio-only GUI source dependency
 
 `SingularityBot.Studio` additionally references the GUI repository. The project file prefers the sibling checkout at `..\\TheSingularityWorkshop.GUI` (the `Source\\TheSingularityWorkshop.GUI` layout) and falls back to `dependencies\\GUI` only when the sibling project files are absent. If you use Studio, ensure the sibling checkout is on `development` and update it:
@@ -187,14 +201,14 @@ Run the first match as a systems and behavior smoke test. Compare subsequent mat
 
 ## FSM_API integration rule
 
-SingularityBot development builds consume the `development` source checkout of FSM_API through a project reference. They do **not** consume the released `TheSingularityWorkshop.FSM_API` 1.0.13 package. Keep the source checkout and all other Workshop dependencies initialized by section 4.
+SingularityBot development builds consume the active `development` source checkout of FSM_API through a project reference. They do **not** consume the published NuGet package or the `master` snapshot. Keep the selected sibling/fallback source checkout on `development`.
 
-Use the current FSM_API facade for operations:
+SingularityBot uses the native integer-backed API in `TheSingularityWorkshop.FSM_API.IntegerBacked`, in preparation for FSM_API 2.0:
 
-- Add `using FSM_API;` and call `FsmApi.Create.CreateFiniteStateMachine(...)` to build shared behavior definitions.
-- Use `FsmApi.Create` for instance creation and other creation operations.
-- Perform one explicit `FsmApi.Interact.Update(processingGroup)` pass per game observation, and use `FsmApi.Interact` for interaction/lifecycle operations.
-- Retain `using TheSingularityWorkshop.FSM_API;` where implementation/runtime types such as `FSMHandle` and `IStateContext` are needed. The facade namespace does not replace the implementation namespace for those types.
-- Keep SC2 protocol types outside the domain contexts. When an entity disappears, invalidate its context and explicitly retire its handle; invalid-context behavior is a safety net, not a substitute for clear ownership.
+- FSM definition IDs, state IDs, processing-group IDs, transitions, handles, and update dispatch are integers in the runtime.
+- The bot-side `BotFsmApi` authoring adapter translates readable FSM/state/group labels into compact process-local integer IDs when definitions are authored or instances are created. Those labels are retained for diagnostics; the FSM_API execution path does not perform string-state lookup.
+- Build definitions through the integer-backed builder and register them with the integer-backed runtime. Do not add new dependencies on the string-backed `TheSingularityWorkshop.FSM_API.FsmApi` surface.
+- Keep SC2 protocol types outside the domain contexts. When an entity disappears, invalidate its caller-owned context and explicitly retire its handle; invalid-context behavior is a safety net, not a substitute for clear ownership.
+- Keep one explicit processing-group update pass per game observation. Do not create a second custom FSM scheduler beside FSM_API.
 
-Do not create a second custom FSM scheduler beside FSM_API. Keep strategy decisions in FSM definitions and domain contexts; keep SC2 observation normalization and action serialization in the adapter. The released 1.x package API remains a separate compatibility surface; do not mix it with this development-source integration.
+The published 1.x package remains a separate compatibility surface. SingularityBot development is aligned to the integer-backed development source in anticipation of FSM_API 2.0; no package is published by this work.

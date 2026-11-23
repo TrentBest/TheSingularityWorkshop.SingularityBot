@@ -1,5 +1,6 @@
  
 using TheSingularityWorkshop.FSM_API;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
 
 namespace SingularityBot.Behavior;
 

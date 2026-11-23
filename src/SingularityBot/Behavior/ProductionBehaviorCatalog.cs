@@ -1,5 +1,6 @@
  
 using TheSingularityWorkshop.FSM_API;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
 
 namespace SingularityBot.Behavior;
 
@@ -36,7 +37,7 @@ public static class ProductionBehaviorCatalog
                 ctx => ctx is ProductionStepContext step && step.CanIssue)
             .Transition("Completed", "Waiting",
                 ctx => ctx is ProductionStepContext step && !step.IsComplete)
-            .Transition(FSM.AnyStateIdentifier, "Completed",
+            .Transition(BotFsmApi.AnyStateIdentifier, "Completed",
                 ctx => ctx is ProductionStepContext step && step.IsComplete)
             .BuildDefinition();
 

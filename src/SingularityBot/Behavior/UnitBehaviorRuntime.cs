@@ -3,6 +3,8 @@
 
 using SingularityBot.Observation;
 using TheSingularityWorkshop.FSM_API;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
+using FSMHandle = SingularityBot.Behavior.BotFsmHandle;
 
 namespace SingularityBot.Behavior;
 

@@ -1016,8 +1016,18 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // the starting Command Center's Orbital morph (or higher-priority
                 // infrastructure). Releasing this reserve here can spend the exact
                 // 150 minerals before the independent Orbital action is submitted.
+                // The advisor's first-Barracks reservation includes the
+                // Barracks' own 150-mineral cost. The controller separately
+                // checks that cost before submitting the build, so exclude that
+                // self-reservation while preserving the Orbital commitment.
+                var firstBarracksBuildPending = _openingBuilder.IsCompleted && !_openingMarine.BarracksComplete;
+                var barracksActionReservedMinerals = firstBarracksBuildPending
+                    ? reservedInfrastructureMinerals > _gameData.BarracksMineralCost
+                        ? reservedInfrastructureMinerals - _gameData.BarracksMineralCost
+                        : 0u
+                    : reservedInfrastructureMinerals;
                 var marineReservedMinerals = Terran.Economy.GetMarineActionReservedMinerals(
-                    reservedInfrastructureMinerals,
+                    barracksActionReservedMinerals,
                     firstMarineReady: _openingMarine.BarracksComplete && !_openingMarine.MarineTrainingStarted,
                     firstMarineObserved: _openingMarine.MarineObserved,
                     marineMineralCost: _gameData.MarineMineralCost);

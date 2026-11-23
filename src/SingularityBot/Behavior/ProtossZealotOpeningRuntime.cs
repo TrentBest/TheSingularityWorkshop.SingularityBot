@@ -1,3 +1,4 @@
+#nullable enable annotations
 using SC2APIProtocol;
 using SingularityBot.Observation;
 
@@ -31,7 +32,6 @@ public sealed class ProtossZealotOpeningRuntime
     private bool _buildPending;
     private bool _productionPending;
     private int _placementAttempts;
-    private int _completedZealots;
     private bool _failureLogged;
 
     public ProtossZealotOpeningRuntime(

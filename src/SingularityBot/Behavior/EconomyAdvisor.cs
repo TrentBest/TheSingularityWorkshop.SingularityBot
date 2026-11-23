@@ -15,7 +15,7 @@ public sealed class EconomyAdvisorSettings
     public bool HoldWorkerProductionForFirstDepot { get; init; } = true;
     public bool AllowLongDistanceMining { get; init; }
     /// <summary>Mineral bank at which a Supply Depot builder is reserved and dispatched; build legality still uses live game data.</summary>
-    public uint SupplyDepotWorkerPullMinerals { get; init; } = 60;
+    public uint SupplyDepotWorkerPullMinerals { get; init; } = 95;
     /// <summary>Enables the opening Orbital morph and subsequent MULE call-down policy.</summary>
     public bool EnableMules { get; init; } = true;
     /// <summary>Immediate spends each available 50 energy on a MULE; PreserveScan is an optional scan-preservation policy.</summary>

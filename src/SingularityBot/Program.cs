@@ -1,3 +1,4 @@
+#nullable enable annotations
 using SC2API_CSharp;
 using SC2APIProtocol;
 using System.Globalization;
@@ -56,9 +57,9 @@ public static class Program
             !(index > 0 && args[index - 1] == "--Map")).ToArray();
         var localRun = connectionArgs.Length == 0;
         if (passiveBaseline && !localRun)
-            throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.");
+            throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.", nameof(args));
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
-            throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.");
+            throw new ArgumentException("--no-diagnostics is a local-run option, not a ladder argument.", nameof(args));
 
         // Diagnostic capture is the default for every launch path, including
         // IDE Play. Ladder operators may opt in explicitly; only an explicit
@@ -68,7 +69,7 @@ public static class Program
             ? MatchConfiguration
             : BotMatchConfiguration.ForMode(selectedModeId);
         if (explicitRace is Race race && selectedConfiguration.RequestedRace != race)
-            throw new ArgumentException($"Configured mode '{selectedModeId}' requires {selectedConfiguration.RequestedRace}, but --race selected {race}.");
+            throw new ArgumentException($"Configured mode '{selectedModeId}' requires {selectedConfiguration.RequestedRace}, but --race selected {race}.", nameof(args));
         var requestedRace = selectedConfiguration.RequestedRace;
 
         var selectedDefinition = BotDefinitionCatalog.CreateForMode(
@@ -90,7 +91,7 @@ public static class Program
                 !float.TryParse(coordinates[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var radius) ||
                 !float.IsFinite(centerX) || !float.IsFinite(centerY) ||
                 !float.IsFinite(radius) || radius <= 0)
-                throw new ArgumentException("--cc-area must be supplied as --cc-area=centerX,centerY,radius using finite map coordinates and a positive radius.");
+                throw new ArgumentException("--cc-area must be supplied as --cc-area=centerX,centerY,radius using finite map coordinates and a positive radius.", nameof(args));
 
             bot.ConfigureDesignatedCommandCenterConstructionArea(centerX, centerY, radius);
         }

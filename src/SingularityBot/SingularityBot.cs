@@ -1183,10 +1183,14 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         building.UnitTag == startingTownHall.Tag &&
                         building.TownHallUpgradeState == "UpgradeReady"),
                 permittedCommandCenterTag: startingTownHall?.Tag,
-                reservedOrbitalTags: _buildings.ScanReservedOrbitalTags,
-                reservedEnergyForScan: Terran.Intelligence.GetMuleScanEnergyReserve(
-                    economyAlsoRequestsPreservation: Terran.Economy.Settings.MuleCallDownPolicy.Equals(
-                        "PreserveScan", StringComparison.OrdinalIgnoreCase)),
+                reservedOrbitalTags: Terran.Economy.Settings.MuleCallDownPolicy.Equals(
+                    "PreserveScan", StringComparison.OrdinalIgnoreCase)
+                        ? _buildings.ScanReservedOrbitalTags
+                        : null,
+                reservedEnergyForScan: Terran.Economy.Settings.MuleCallDownPolicy.Equals(
+                    "PreserveScan", StringComparison.OrdinalIgnoreCase)
+                        ? Terran.Intelligence.GetMuleScanEnergyReserve(economyAlsoRequestsPreservation: true)
+                        : 0u,
                 allowMules: Terran.Economy.Settings.EnableMules);
             _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
             if (orbitalSupportAction is not null)

@@ -54,6 +54,7 @@ public sealed class Sc2OpeningMarineController
         uint reservedMinerals = 0,
         ulong? excludedBuilderTag = null,
         bool allowConstruction = true,
+        bool allowBuilderStaging = false,
         bool allowMarineTraining = true,
         ConstructionSiteSafety siteSafety = null)
     {
@@ -113,17 +114,17 @@ public sealed class Sc2OpeningMarineController
             if (inProgress)
                 return null;
 
-            // Do not reserve, stage, or move a Barracks SCV until the Supply Depot
-            // is observed complete. This preserves the opening worker economy.
-            if (!allowConstruction)
+            // Reserve and stage a second SCV while the Depot is still building.
+            // The build command itself remains gated on the observed Depot completion
+            // and the full 150-mineral cost after strategic reservations.
+            if (!allowConstruction && !allowBuilderStaging)
                 return null;
 
-            // Do not pull the Barracks SCV as soon as the Depot completes.
-            // Keep that worker mining until the 150-mineral build is fundable
-            // after strategic reservations; then its travel time overlaps the
-            // final resource accumulation instead of leaving it idle at site.
-            if (observation.Minerals < gameData.BarracksMineralCost ||
-                observation.Minerals - gameData.BarracksMineralCost < reservedMinerals)
+            // Callers that do not opt into early staging retain the conservative
+            // pull threshold. The opening path opts in so travel overlaps Depot time.
+            if (!allowBuilderStaging &&
+                (observation.Minerals < gameData.BarracksMineralCost ||
+                 observation.Minerals - gameData.BarracksMineralCost < reservedMinerals))
                 return null;
 
             if (_builderTag is ulong existing &&
@@ -142,6 +143,16 @@ public sealed class Sc2OpeningMarineController
 
             if (_builderTag is null)
             {
+                var townHall = observation.Units.FirstOrDefault(unit =>
+                    unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                    IsTownHall(unit.UnitKind) && unit.HasPosition);
+                if (townHall is null)
+                    return null;
+
+                var candidatePoints = CreateCandidates(townHall, map);
+                if (candidatePoints.Count == 0)
+                    return null;
+
                 UnitObservationFacts? builder = null;
                 if (preferredBuilderTag is ulong preferredTag)
                 {
@@ -161,24 +172,21 @@ public sealed class Sc2OpeningMarineController
                     }
                 }
 
+                var stagingPoint = candidatePoints[0];
                 builder ??= observation.Units
                     .Where(IsLiveScv)
                     .Where(unit => unit.Tag != excludedBuilderTag)
                     .Where(unit => !unit.HasCargo && !assignments.IsReserved(unit.Tag))
-                    .OrderBy(unit => unit.Tag)
+                    .OrderBy(unit => DistanceSquared(
+                        unit.PositionX, unit.PositionY, stagingPoint.X, stagingPoint.Y))
+                    .ThenBy(unit => unit.Tag)
                     .FirstOrDefault();
                 if (builder is null)
                     return null;
 
-                var townHall = observation.Units.FirstOrDefault(unit =>
-                    unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-                    IsTownHall(unit.UnitKind) && unit.HasPosition);
-                if (townHall is null)
-                    return null;
-
                 _builderTag = builder.Tag;
                 assignments.Reserve(builder.Tag);
-                _candidatePoints.AddRange(CreateCandidates(townHall, map));
+                _candidatePoints.AddRange(candidatePoints);
                 _placementQueryPending = _candidatePoints.Count > 0;
                 Console.WriteLine(preferredBuilderTag == builder.Tag
                     ? $"[Opening] Construction-crew SCV {_builderTag} continues from the Supply Depot to the Barracks."

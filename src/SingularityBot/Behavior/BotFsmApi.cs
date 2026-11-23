@@ -21,6 +21,7 @@ public static class BotFsmApi
     private static readonly Dictionary<string, int> FsmIds = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, int> ProcessingGroupIds = new(StringComparer.Ordinal);
     private static readonly Dictionary<int, IReadOnlyDictionary<int, string>> StateNames = new();
+    private static readonly Dictionary<int, IReadOnlyDictionary<string, int>> StateIds = new();
     private static int _nextFsmId;
     private static int _nextProcessingGroupId;
 
@@ -56,10 +57,13 @@ public static class BotFsmApi
         }
     }
 
-    internal static void RegisterStateNames(int fsmId, Dictionary<int, string> names)
+    internal static void RegisterStateNames(int fsmId, Dictionary<int, string> names, Dictionary<string, int> ids)
     {
         lock (Sync)
+        {
             StateNames[fsmId] = new Dictionary<int, string>(names);
+            StateIds[fsmId] = new Dictionary<string, int>(ids, StringComparer.Ordinal);
+        }
     }
 
     private static IReadOnlyDictionary<int, string> GetStateNames(int fsmId)
@@ -69,6 +73,16 @@ public static class BotFsmApi
             return StateNames.TryGetValue(fsmId, out var names)
                 ? new Dictionary<int, string>(names)
                 : new Dictionary<int, string>();
+        }
+    }
+
+    private static IReadOnlyDictionary<string, int> GetStateIds(int fsmId)
+    {
+        lock (Sync)
+        {
+            return StateIds.TryGetValue(fsmId, out var ids)
+                ? new Dictionary<string, int>(ids, StringComparer.Ordinal)
+                : new Dictionary<string, int>(StringComparer.Ordinal);
         }
     }
 
@@ -103,7 +117,7 @@ public static class BotFsmApi
                     $"FSM definition '{fsmName}' belongs to processing group ID {definition.ProcessingGroupID}, not '{processingGroup}'.");
 
             var handle = IntegerFsmApi.Create.CreateInstance(fsmId, context);
-            return new BotFsmHandle(handle, GetStateNames(fsmId));
+            return new BotFsmHandle(handle, GetStateNames(fsmId), GetStateIds(fsmId));
         }
     }
 
@@ -178,7 +192,7 @@ public sealed class BotFsmBuilder
     {
         var definition = _builder.BuildDefinition();
         IntegerFsmApi.Create.RegisterDefinition(definition);
-        BotFsmApi.RegisterStateNames(_fsmId, _stateNames);
+        BotFsmApi.RegisterStateNames(_fsmId, _stateNames, _stateIds);
     }
 
     private int GetStateId(string name)
@@ -198,13 +212,18 @@ public sealed class BotFsmBuilder
 public sealed class BotFsmHandle
 {
     private readonly IReadOnlyDictionary<int, string> _stateNames;
+    private readonly IReadOnlyDictionary<string, int> _stateIds;
 
     internal IntegerFsmHandle Inner { get; }
 
-    internal BotFsmHandle(IntegerFsmHandle inner, IReadOnlyDictionary<int, string> stateNames)
+    internal BotFsmHandle(
+        IntegerFsmHandle inner,
+        IReadOnlyDictionary<int, string> stateNames,
+        IReadOnlyDictionary<string, int> stateIds)
     {
         Inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _stateNames = stateNames ?? throw new ArgumentNullException(nameof(stateNames));
+        _stateIds = stateIds ?? throw new ArgumentNullException(nameof(stateIds));
     }
 
     public int Id => Inner.Id;
@@ -212,6 +231,17 @@ public sealed class BotFsmHandle
     public bool IsValid => Inner.IsValid;
     public bool IsDestroyed => Inner.IsDestroyed;
     public IStateContext Context => Inner.Context;
+
+    public void TransitionTo(string stateName)
+    {
+        if (string.IsNullOrWhiteSpace(stateName))
+            throw new ArgumentException("A state name is required.", nameof(stateName));
+        if (!_stateIds.TryGetValue(stateName, out var stateId))
+            throw new ArgumentException($"State '{stateName}' is not defined for FSM {Inner.FSM_ID}.", nameof(stateName));
+        Inner.TransitionTo(stateId);
+    }
+
+    public void TransitionTo(int stateId) => Inner.TransitionTo(stateId);
 
     public string CurrentState =>
         _stateNames.TryGetValue(Inner.CurrentStateID, out var name)

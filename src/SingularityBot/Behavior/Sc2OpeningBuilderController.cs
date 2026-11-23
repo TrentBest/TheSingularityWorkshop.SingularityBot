@@ -16,6 +16,7 @@ namespace SingularityBot.Behavior;
 public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 {
     public const string MovementFsmName = "SingularityBot.OpeningBuilderMovement";
+    public const uint InitialBuilderPullGameLoop = 202; // Approximately 9 seconds at StarCraft II Faster speed.
     public const string MovementProcessingGroup = "SingularityBot.OpeningBuilderMovement";
     private static long _nextMovementGroupId;
     private readonly string _movementProcessingGroup;
@@ -79,6 +80,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public uint CurrentMovementGameLoop => _currentGameLoop;
     public uint BuilderSelectedGameLoop => _builderSelectedGameLoop;
     public uint WorkerPullMineralsThreshold => _workerPullMineralsThreshold;
+    public string BuilderCandidateSummary { get; private set; } = string.Empty;
     public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
     public uint BuildRequestGameLoop => _buildRequestGameLoop;
     public uint? CompletionGameLoop => _completionGameLoop;
@@ -210,8 +212,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         BuildJobRuntime buildJobs = null,
         ulong? preferredBuilderTag = null,
         bool releaseBuilderOnCompletion = false,
-        uint workerPullMinerals = 80,
-        uint reservedMinerals = 0)
+        uint workerPullMinerals = 60,
+        uint reservedMinerals = 0,
+        uint minimumBuilderPullGameLoop = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -276,6 +279,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         // Pull the builder before the structure is affordable so it can travel
         // while the bank accumulates. The threshold is policy data; the authoritative
         // game-data cost still gates the actual Build command below.
+        if (_builderTag is null && observation.GameLoop < minimumBuilderPullGameLoop)
+            return null;
+
         var builderPullThreshold = Math.Min(workerPullMinerals, gameData.SupplyDepotMineralCost);
         var builderPullBudget = (uint)Math.Min(
             uint.MaxValue, (ulong)reservedMinerals + builderPullThreshold);
@@ -302,23 +308,31 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             var eligibleWorkers = observation.Units
                 .Where(unit => IsLiveScv(unit) && !unit.HasCargo && !assignments.IsReserved(unit.Tag))
                 .ToArray();
-            var selected = eligibleWorkers
+            var rankedWorkers = eligibleWorkers
                 .Select(worker => new
                 {
                     Worker = worker,
                     EstimatedArrivalDistance = Math.Sqrt(DistanceSquared(
                         worker.PositionX, worker.PositionY,
                         stagingPoint.X, stagingPoint.Y)),
+                    IsPreferred = worker.Tag == preferredBuilderTag,
                     IsConstructionCrew = constructionCrewTags.Contains(worker.Tag)
                 })
                 // Preserve a queued handoff worker, then prefer the construction
                 // crew and shortest route. Cargo-bearing workers were excluded.
-                .OrderBy(candidate => candidate.Worker.Tag == preferredBuilderTag ? 0 : 1)
+                .OrderBy(candidate => candidate.IsPreferred ? 0 : 1)
                 .ThenBy(candidate => candidate.IsConstructionCrew ? 0 : 1)
                 .ThenBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
-                .FirstOrDefault();
+                .ToArray();
 
+            BuilderCandidateSummary = string.Join(";", rankedWorkers.Select(candidate =>
+                $"{candidate.Worker.Tag}|preferred={(candidate.IsPreferred ? 1 : 0)}|" +
+                $"crew={(candidate.IsConstructionCrew ? 1 : 0)}|" +
+                $"distance={candidate.EstimatedArrivalDistance:F2}|" +
+                $"x={candidate.Worker.PositionX:F2}|y={candidate.Worker.PositionY:F2}"));
+
+            var selected = rankedWorkers.FirstOrDefault();
             if (selected is null)
                 return null;
 

@@ -1,3 +1,4 @@
+#nullable enable annotations
  
 using System.Collections.Generic;
 using Google.Protobuf;

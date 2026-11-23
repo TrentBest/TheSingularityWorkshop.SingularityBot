@@ -10,10 +10,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SingularityBot", "src\Singu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SingularityBot.Runner", "src\SingularityBot.Runner\SingularityBot.Runner.csproj", "{A1E9E7C4-6F54-4D42-8D6D-5A4D8E91A104}"
 	ProjectSection(ProjectDependencies) = postProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SingularityBot.Studio", "src\SingularityBot.Studio\SingularityBot.Studio.csproj", "{B1D4F3C2-91E7-4A6B-8D2F-7C5E0A9B3146}"
-EndProject
 		{A1E9E7C4-6F54-4D42-8D6D-5A4D8E91A103} = {A1E9E7C4-6F54-4D42-8D6D-5A4D8E91A103}
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SingularityBot.Studio", "src\SingularityBot.Studio\SingularityBot.Studio.csproj", "{B1D4F3C2-91E7-4A6B-8D2F-7C5E0A9B3146}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

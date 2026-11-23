@@ -844,12 +844,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     expansionCommandCenterPending,
                     _secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction,
                     !_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null,
-                    _openingBuilder.IsCompleted && !_openingMarine.BarracksComplete,
+                    _openingBuilder.IsBuildSubmitted && !_openingMarine.BarracksComplete,
                     _openingMarine.BarracksComplete && normalized.Units.Any(unit =>
                         unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                         unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
                         !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)),
-                    _initialScvProductionObserved && !_openingBuilder.IsBuildSubmitted && !_openingBuilder.IsCompleted),
+                    !_openingBuilder.IsBuildSubmitted && !_openingBuilder.IsCompleted),
                 new EconomyAdvisorCosts(
                     _gameData.CommandCenterMineralCost,
                     _gameData.SupplyDepotMineralCost,
@@ -1016,11 +1016,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 // the starting Command Center's Orbital morph (or higher-priority
                 // infrastructure). Releasing this reserve here can spend the exact
                 // 150 minerals before the independent Orbital action is submitted.
-                // The advisor's first-Barracks reservation includes the
-                // Barracks' own 150-mineral cost. The controller separately
+                // The advisor reserves the first Barracks as soon as the
+                // Depot build starts, so SCV production cannot consume its 150 minerals.
+                // The reservation includes the Barracks' own cost. The controller separately
                 // checks that cost before submitting the build, so exclude that
                 // self-reservation while preserving the Orbital commitment.
-                var firstBarracksBuildPending = _openingBuilder.IsCompleted && !_openingMarine.BarracksComplete;
+                var firstBarracksBuildPending = _openingBuilder.IsBuildSubmitted && !_openingMarine.BarracksComplete;
                 var barracksActionReservedMinerals = firstBarracksBuildPending
                     ? reservedInfrastructureMinerals > _gameData.BarracksMineralCost
                         ? reservedInfrastructureMinerals - _gameData.BarracksMineralCost

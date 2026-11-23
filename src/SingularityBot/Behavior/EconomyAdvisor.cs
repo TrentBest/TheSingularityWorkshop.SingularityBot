@@ -18,8 +18,8 @@ public sealed class EconomyAdvisorSettings
     public uint SupplyDepotWorkerPullMinerals { get; init; } = 60;
     /// <summary>Enables the opening Orbital morph and subsequent MULE call-down policy.</summary>
     public bool EnableMules { get; init; } = true;
-    /// <summary>Immediate spends at 50 energy; PreserveScan defers MULEs while the Intelligence reserve is unmet.</summary>
-    public string MuleCallDownPolicy { get; init; } = "PreserveScan";
+    /// <summary>Immediate spends each available 50 energy on a MULE; PreserveScan is an optional scan-preservation policy.</summary>
+    public string MuleCallDownPolicy { get; init; } = "Immediate";
 
     public IReadOnlyList<string> Validate()
     {

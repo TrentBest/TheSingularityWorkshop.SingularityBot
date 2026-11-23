@@ -37,7 +37,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         var assignments = new WorkerResourceAssignmentPlanner();
         var gameData = GameData();
 
-        var early = controller.TryCreateAction(Snapshot(94, 12, 15,
+        var early = controller.TryCreateAction(SnapshotAt(202, 94, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
             assignments, Crew(10, 11), workerPullMinerals: 95,
@@ -48,7 +48,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.False(assignments.IsReserved(10));
         Assert.False(assignments.IsReserved(11));
 
-        var atThreshold = controller.TryCreateAction(Snapshot(95, 12, 15,
+        var atThreshold = controller.TryCreateAction(SnapshotAt(202, 95, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
             assignments, Crew(10, 11), workerPullMinerals: 95,

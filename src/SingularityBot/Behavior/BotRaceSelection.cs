@@ -1,3 +1,4 @@
+#nullable enable annotations
 using SC2APIProtocol;
 
 namespace SingularityBot.Behavior;

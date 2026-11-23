@@ -11,7 +11,7 @@ public static class Program
 
     public static void Run(string[] args, Action<SingularityBot> beforeConnect = null, System.Action afterConnect = null)
     {
-        args ??= Array.Empty<string>();
+        args ??= [];
         if (!args.Contains("--no-diagnostics", StringComparer.Ordinal))
             Sc2Diagnostics.StartSessionLog();
 
@@ -39,7 +39,7 @@ public static class Program
                     Race.Terran => "terran.marine.v1",
                     Race.Zerg => "zerg.zergling.v1",
                     Race.Protoss => ProtossZealotOpener.Id,
-                    _ => throw new ArgumentOutOfRangeException()
+                    _ => throw new ArgumentOutOfRangeException(nameof(parsedRace), parsedRace, "Unsupported StarCraft II race.")
                 };
         }
         var connectionArgs = args.Where((argument, index) =>

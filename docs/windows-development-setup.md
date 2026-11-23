@@ -107,19 +107,54 @@ dotnet build .\\src\\SingularityBot.Runner\\SingularityBot.Runner.csproj --confi
 
 If any project is still missing, stop and report the exact path rather than substituting a NuGet package. CI performs the same development-branch checkouts.
 
-### Sibling FSM_API source checkout takes precedence
+### Sibling source checkouts take precedence
 
-The bot project resolves the sibling checkout at `..\\FSM_API\\FSM_API\\FSM_API.csproj` before the fallback under `dependencies\\FSM_API`. If the sibling exists, it is the source MSBuild will compile. Keep that exact checkout on `development`; cloning a second copy under `dependencies` does not override the sibling reference.
+The project files prefer sibling source checkouts whenever those project files exist; only otherwise do they use the copies under `dependencies`. A dependency clone under `dependencies` does not override an existing sibling checkout. Every selected Workshop source checkout must be on `development`.
 
-From the SingularityBot repository root, inspect it and select the active branch:
+SingularityBot can resolve these sibling repositories:
+
+- `..\\FSM_API`
+- `..\\TheSingularityWorkshop.FSM_COS`
+- `..\\TheSingularityWorkshop.DataWarehouse`
+- `..\\FSM_UserIO`
+- `..\\TheSingularityWorkshop.MicroBundleDomain`
+- `..\\TheSingularityWorkshop.CommandAi`
+- `..\\TheSingularityWorkshop.HeadlessAi`
+- `..\\TheSingularityWorkshop.FSM_Serialization`
+- `..\\TheSingularityWorkshop.GUI` (Studio only)
+
+From the SingularityBot repository root, this safe updater skips absent sibling checkouts and refuses to switch or pull any checkout with local changes:
 
 ```powershell
-git -C ..\\FSM_API status --short
-git -C ..\\FSM_API switch development
-git -C ..\\FSM_API pull --ff-only origin development
+$siblingRepositories = @(
+    "..\\FSM_API",
+    "..\\TheSingularityWorkshop.FSM_COS",
+    "..\\TheSingularityWorkshop.DataWarehouse",
+    "..\\FSM_UserIO",
+    "..\\TheSingularityWorkshop.MicroBundleDomain",
+    "..\\TheSingularityWorkshop.CommandAi",
+    "..\\TheSingularityWorkshop.HeadlessAi",
+    "..\\TheSingularityWorkshop.FSM_Serialization",
+    "..\\TheSingularityWorkshop.GUI"
+)
+
+foreach ($directory in $siblingRepositories) {
+    if (-not (Test-Path (Join-Path $directory ".git"))) { continue }
+
+    $changes = git -C $directory status --porcelain
+    if ($changes) {
+        throw "Inspect local changes before updating $directory"
+    }
+
+    git -C $directory switch development
+    if ($LASTEXITCODE -ne 0) { throw "Could not select development in $directory" }
+
+    git -C $directory pull --ff-only origin development
+    if ($LASTEXITCODE -ne 0) { throw "Could not fast-forward development in $directory" }
+}
 ```
 
-If Git reports local changes or refuses the switch, stop and inspect them before proceeding. The active FSM_API development project targets `.NET 10`; its published `master` snapshot may still target an earlier framework. Never use `master` as the dependency source for ecosystem development.
+If a checkout is dirty or Git refuses the update, stop and inspect it rather than discarding work. In this ecosystem, `development` is Current. `master` is the published/release snapshot and may legitimately lag or be empty until the first publication. Never use `master` as the dependency source for ecosystem development.
 
 ### Studio-only GUI source dependency
 

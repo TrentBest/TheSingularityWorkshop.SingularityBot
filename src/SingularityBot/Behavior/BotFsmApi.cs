@@ -71,7 +71,7 @@ public static class BotFsmApi
         lock (Sync)
         {
             return StateNames.TryGetValue(fsmId, out var names)
-                ? new Dictionary<int, string>(names)
+                ? names
                 : new Dictionary<int, string>();
         }
     }
@@ -81,7 +81,7 @@ public static class BotFsmApi
         lock (Sync)
         {
             return StateIds.TryGetValue(fsmId, out var ids)
-                ? new Dictionary<string, int>(ids, StringComparer.Ordinal)
+                ? ids
                 : new Dictionary<string, int>(StringComparer.Ordinal);
         }
     }

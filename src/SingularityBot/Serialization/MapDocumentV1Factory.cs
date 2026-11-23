@@ -1,3 +1,4 @@
+#nullable enable annotations
 using System.Security.Cryptography;
 using SingularityBot.Spatial;
 

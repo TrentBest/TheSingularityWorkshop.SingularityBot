@@ -206,7 +206,7 @@ public sealed class Sc2OpeningMarineController
                 _placement.Value.X, _placement.Value.Y);
             if (distanceSquared > 2.25f)
             {
-                if (_builderMoveSubmitted && observation.GameLoop <= _builderMoveRequestGameLoop + 22)
+                if (_builderMoveSubmitted && observation.GameLoop <= _builderMoveRequestGameLoop + 67)
                     return null;
                 _builderMoveSubmitted = true;
                 _builderMoveRequestGameLoop = observation.GameLoop;

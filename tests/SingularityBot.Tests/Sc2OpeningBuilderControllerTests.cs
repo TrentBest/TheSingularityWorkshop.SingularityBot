@@ -484,6 +484,37 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.Equal(319, build.ActionRaw.UnitCommand.AbilityId);
     }
 
+    [Fact]
+    public void WaitsUntilNineSecondOpeningMarkBeforeSelectingDepotBuilder()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var map = Map();
+        var gameData = GameData();
+        var units = new[]
+        {
+            Fact(10, "SCV", 5, 5),
+            Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)
+        };
+
+        Assert.Null(controller.TryCreateAction(
+            SnapshotAt(201, 60, 12, 15, units), map, gameData,
+            assignments, Crew(10, 11),
+            workerPullMinerals: 60,
+            minimumBuilderPullGameLoop: Sc2OpeningBuilderController.InitialBuilderPullGameLoop));
+        Assert.Null(controller.BuilderTag);
+
+        Assert.Null(controller.TryCreateAction(
+            SnapshotAt(202, 60, 12, 15, units), map, gameData,
+            assignments, Crew(10, 11),
+            workerPullMinerals: 60,
+            minimumBuilderPullGameLoop: Sc2OpeningBuilderController.InitialBuilderPullGameLoop));
+        Assert.NotNull(controller.BuilderTag);
+        Assert.Equal(202u, controller.BuilderSelectedGameLoop);
+        Assert.NotEmpty(controller.BuilderCandidateSummary);
+    }
+
     private static void SelectBuilder(
         Sc2OpeningBuilderController controller,
         WorkerResourceAssignmentPlanner assignments,

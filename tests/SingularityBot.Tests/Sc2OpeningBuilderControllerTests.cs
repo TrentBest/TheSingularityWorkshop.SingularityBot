@@ -31,6 +31,35 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
+    public void WaitsUntilFiveMineralsBelowDepotCostBeforePullingBuilder()
+    {
+        var controller = new Sc2OpeningBuilderController();
+        var assignments = new WorkerResourceAssignmentPlanner();
+        var gameData = GameData();
+
+        var early = controller.TryCreateAction(Snapshot(94, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
+            assignments, Crew(10, 11), workerPullMinerals: 95,
+            minimumBuilderPullGameLoop: 202);
+
+        Assert.Null(early);
+        Assert.Null(controller.BuilderTag);
+        Assert.False(assignments.IsReserved(10));
+        Assert.False(assignments.IsReserved(11));
+
+        var atThreshold = controller.TryCreateAction(Snapshot(95, 12, 15,
+            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
+            Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
+            assignments, Crew(10, 11), workerPullMinerals: 95,
+            minimumBuilderPullGameLoop: 202);
+
+        Assert.Null(atThreshold);
+        Assert.NotNull(controller.BuilderTag);
+        Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
+    }
+
+    [Fact]
     public void ReservesBuilderAtEightyMineralsBeforeDepotIsAffordable()
     {
         var controller = new Sc2OpeningBuilderController();

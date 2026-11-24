@@ -579,8 +579,8 @@ public sealed class Sc2OpeningBuilderControllerTests
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();
-        data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1 });
-        data.Units.Add(new UnitTypeData { UnitId = 19, Name = "SupplyDepot", AbilityId = 319, MineralCost = 100 });
+        data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1, BuildTime = 12f, MovementSpeed = 3f });
+        data.Units.Add(new UnitTypeData { UnitId = 19, Name = "SupplyDepot", AbilityId = 319, MineralCost = 100, BuildTime = 30f });
         data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "Move" });
         return Sc2GameDataCatalog.Create(data);
     }

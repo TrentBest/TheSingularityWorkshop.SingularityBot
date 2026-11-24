@@ -369,6 +369,12 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             return null;
         }
 
+        // An empty worker can still be travelling out to a mineral patch. Do not
+        // mistake "no cargo" for "safe to pull": let the current mining order
+        // complete its harvest-and-return cycle before interrupting it.
+        if (!_builderWasReturningMinerals && IsGatheringMinerals(builder, observation))
+            return null;
+
         var builderJustDepositedMinerals = _builderWasReturningMinerals;
         if (builderJustDepositedMinerals)
         {

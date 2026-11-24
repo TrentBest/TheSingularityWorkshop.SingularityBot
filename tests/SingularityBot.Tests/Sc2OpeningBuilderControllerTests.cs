@@ -499,7 +499,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)), map, data, assignments, Crew());
         controller.TryCreateAction(SnapshotAt(22, 55, 12, 15,
             Fact(1, "CommandCenter", 10, 10)), map, data, assignments, Crew());
-        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 330, 12, 15, units),
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 300, 12, 15, units),
             map, data, assignments, Crew(10, 11), reservedMinerals: 250));
         Assert.Null(controller.BuilderTag);
 

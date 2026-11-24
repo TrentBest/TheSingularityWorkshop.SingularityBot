@@ -31,30 +31,33 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void WaitsUntilFiveMineralsBelowDepotCostBeforePullingBuilder()
+    public void PullsAtPredictedArrivalAffordabilityRatherThanAStaticMineralThreshold()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var gameData = GameData();
+        var map = Map();
 
-        var early = controller.TryCreateAction(SnapshotAt(202, 94, 12, 15,
-            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
-            Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
-            assignments, Crew(10, 11), workerPullMinerals: 95,
-            minimumBuilderPullGameLoop: 202);
+        // Seed a conservative measured income rate without making workers eligible.
+        controller.TryCreateAction(SnapshotAt(0, 50, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, Crew());
+        controller.TryCreateAction(SnapshotAt(22, 55, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, Crew());
 
-        Assert.Null(early);
+        var workers = new[]
+        {
+            Fact(10, "SCV", 15, 15),
+            Fact(11, "SCV", 16, 15),
+            Fact(1, "CommandCenter", 10, 10)
+        };
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 80, 12, 15, workers),
+            map, gameData, assignments, Crew(10, 11)));
         Assert.Null(controller.BuilderTag);
-        Assert.False(assignments.IsReserved(10));
-        Assert.False(assignments.IsReserved(11));
 
-        var atThreshold = controller.TryCreateAction(SnapshotAt(202, 95, 12, 15,
-            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
-            Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
-            assignments, Crew(10, 11), workerPullMinerals: 95,
-            minimumBuilderPullGameLoop: 202);
-
-        Assert.Null(atThreshold);
+        // Near-site travel time is short, so the worker is pulled only when
+        // the measured income forecast reaches the 100-mineral Depot cost.
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 97, 12, 15, workers),
+            map, gameData, assignments, Crew(10, 11)));
         Assert.NotNull(controller.BuilderTag);
         Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
     }
@@ -86,7 +89,7 @@ public sealed class Sc2OpeningBuilderControllerTests
 
         // SCV 10 is loaded but returning to a Refinery; SCV 11 is empty.
         // Generic HasCargo must not make the gas worker the Depot builder.
-        controller.TryCreateAction(Snapshot(80, 12, 15,
+        controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 30, null, null) }),
             Fact(11, "SCV", 9, 9),
@@ -242,7 +245,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         SetValidPlacement(controller);
 
         var site = controller.Placement.Value;
-        var move = controller.TryCreateAction(SnapshotAt(123, 50, 12, 15,
+        var move = controller.TryCreateAction(SnapshotAt(123, 100, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
@@ -280,7 +283,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         controller.OnPlacementQueryResult(placement);
 
         var site = controller.Placement.Value;
-        var retarget = controller.TryCreateAction(SnapshotAt(101, 50, 12, 15,
+        var retarget = controller.TryCreateAction(SnapshotAt(101, 100, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 13.18f, 13.18f),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));

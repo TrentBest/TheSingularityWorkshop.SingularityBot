@@ -78,10 +78,37 @@ public static class Program
             if (string.IsNullOrWhiteSpace(definitionPath) || !File.Exists(definitionPath))
                 throw new FileNotFoundException("The supplied BotDefinition JSON file does not exist.", definitionPath);
             selectedDefinition = BotDefinition.Parse(File.ReadAllText(definitionPath));
-            selectedConfiguration = BotMatchConfiguration.ForMode(selectedDefinition.ModeId);
-            if (!Enum.TryParse<Race>(selectedDefinition.Race, ignoreCase: false, out var definitionRace) ||
-                definitionRace != selectedConfiguration.RequestedRace)
-                throw new InvalidOperationException($"BotDefinition race {selectedDefinition.Race} does not match mode {selectedDefinition.ModeId}.");
+            selectedConfiguration = BotMatchConfiguration.Default;
+            switch (selectedDefinition.RaceSelection.Policy)
+            {
+                case BotRaceSelectionPolicy.Fixed:
+                    selectedConfiguration = BotMatchConfiguration.ForMode(selectedDefinition.ModeId);
+                    if (!Enum.TryParse<Race>(selectedDefinition.Race, ignoreCase: false, out var definitionRace) ||
+                        definitionRace != selectedConfiguration.RequestedRace ||
+                        selectedDefinition.RaceSelection.FixedRace != definitionRace)
+                        throw new InvalidOperationException($"BotDefinition race {selectedDefinition.Race}, fixed race {selectedDefinition.RaceSelection.FixedRace}, and mode {selectedDefinition.ModeId} must agree.");
+                    break;
+
+                case BotRaceSelectionPolicy.Random:
+                    var selectionContext = new BotRaceSelectionContext(
+                        selectedConfiguration.OpponentRace,
+                        selectedConfiguration.OpponentDifficulty,
+                        selectedConfiguration.MapName);
+                    var selection = new BotRaceSelectionResolver().Resolve(
+                        selectedDefinition.RaceSelection,
+                        RaceModuleCatalog.CreateDefault().ExecutableRaces,
+                        selectionContext);
+                    selectedDefinition = BotDefinitionCatalog.RebindRace(selectedDefinition, selection.SelectedRace);
+                    selectedConfiguration = BotMatchConfiguration.ForMode(selectedDefinition.ModeId);
+                    Console.WriteLine($"[RaceSelection] Randomly selected {selection.SelectedRace} from executable modes: {string.Join(", ", selection.EligibleExecutableRaces)}.");
+                    break;
+
+                case BotRaceSelectionPolicy.Custom:
+                    throw new InvalidOperationException("Custom race selection requires a trusted selector registration in the Runner host; no custom selector is registered.");
+
+                default:
+                    throw new InvalidOperationException($"Unsupported race-selection policy {selectedDefinition.RaceSelection.Policy}.");
+            }
         }
         else
         {

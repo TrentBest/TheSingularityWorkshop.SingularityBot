@@ -50,7 +50,6 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private int _placementQueryAttempts;
     private uint _buildRequestGameLoop;
     private uint _builderSelectedGameLoop;
-    private uint _workerPullMineralsThreshold;
     private uint? _completionGameLoop;
     private uint? _affordableGameLoop;
     private readonly BuildJobRuntime _ownedBuildJobs = new();
@@ -80,7 +79,6 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public bool IsMoveRetryReady => _moveRetryReady;
     public uint CurrentMovementGameLoop => _currentGameLoop;
     public uint BuilderSelectedGameLoop => _builderSelectedGameLoop;
-    public uint WorkerPullMineralsThreshold => _workerPullMineralsThreshold;
     public double MineralIncomePerGameLoop => _mineralIncomeEstimator.MineralsPerGameLoop;
     public uint EstimatedTravelGameLoops { get; private set; }
     public uint? PredictedAffordableGameLoop { get; private set; }
@@ -217,19 +215,14 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         BuildJobRuntime buildJobs = null,
         ulong? preferredBuilderTag = null,
         bool releaseBuilderOnCompletion = false,
-        uint workerPullMinerals = 80,
-        uint reservedMinerals = 0,
-        uint minimumBuilderPullGameLoop = 0)
+        uint reservedMinerals = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
         ArgumentNullException.ThrowIfNull(assignments);
 
         _currentGameLoop = observation.GameLoop;
-        // Keep the old argument for BotDefinition v1 compatibility, but it is
-        // no longer the dispatch authority. The worker is scheduled by forecast
-        // arrival against the authoritative Depot cost.
-        _workerPullMineralsThreshold = gameData.SupplyDepotMineralCost;
+        // No fixed mineral threshold or fixed game-loop delay is used here.
         _moveRetryReady = false;
         var previousMineralBank = _lastObservedMinerals;
         _mineralIncomeEstimator.Observe(observation.GameLoop, observation.Minerals);

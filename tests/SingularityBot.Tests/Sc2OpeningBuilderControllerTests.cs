@@ -31,7 +31,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void PullsAtPredictedArrivalAffordabilityRatherThanAStaticMineralThreshold()
+    public void HoldsAtEightyThenPullsWhenFullDepotCostIsAvailable()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -524,7 +524,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void PredictiveDispatchDoesNotWaitForTheFormerNineSecondGate()
+    public void PullDoesNotWaitForTheFormerNineSecondGateWhenDepotIsAffordable()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();

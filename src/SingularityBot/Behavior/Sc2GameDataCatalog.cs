@@ -407,6 +407,12 @@ public sealed record Sc2UnitFacts(
     float FoodRequired,
     float FoodProvided)
 {
+    /// <summary>Authoritative SC2 unit build/train duration in game seconds.</summary>
+    public float BuildTimeSeconds { get; init; }
+
+    /// <summary>Authoritative SC2 movement speed in world units per game second.</summary>
+    public float MovementSpeed { get; init; }
+
     internal static Sc2UnitFacts From(UnitTypeData unit) => new(
         unit.UnitId,
         unit.Name ?? string.Empty,
@@ -414,5 +420,9 @@ public sealed record Sc2UnitFacts(
         unit.MineralCost,
         unit.VespeneCost,
         unit.FoodRequired,
-        unit.FoodProvided);
+        unit.FoodProvided)
+    {
+        BuildTimeSeconds = unit.BuildTime,
+        MovementSpeed = unit.MovementSpeed
+    };
 }

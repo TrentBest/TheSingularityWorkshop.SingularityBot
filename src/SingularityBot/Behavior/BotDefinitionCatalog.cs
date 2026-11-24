@@ -22,6 +22,34 @@ public static class BotDefinitionCatalog
         _ => throw new ArgumentException($"No compiled bot definition is registered for mode '{modeId}'.", nameof(modeId))
     };
 
+    /// <summary>
+    /// Applies a trusted race adapter to an authored definition while preserving
+    /// its identity, advisor settings, goals and AI policy. The race-specific
+    /// opening and strategy identity come from the registered compiled mode.
+    /// </summary>
+    public static BotDefinition RebindRace(BotDefinition template, SC2APIProtocol.Race race)
+    {
+        ArgumentNullException.ThrowIfNull(template);
+        var modeId = race switch
+        {
+            SC2APIProtocol.Race.Terran => "terran.marine.v1",
+            SC2APIProtocol.Race.Zerg => "zerg.zergling.v1",
+            SC2APIProtocol.Race.Protoss => "protoss.zealot.v1",
+            _ => throw new ArgumentOutOfRangeException(nameof(race), race, "Only Terran, Zerg and Protoss have registered executable modes.")
+        };
+
+        var raceDefinition = CreateForMode(modeId);
+        var root = JsonNode.Parse(template.Serialize())!.AsObject();
+        var raceRoot = JsonNode.Parse(raceDefinition.Serialize())!.AsObject();
+        root["race"] = race.ToString();
+        root["modeId"] = modeId;
+        root["strategyProfile"] = raceDefinition.StrategyProfile;
+        root["runtime"]!["bot"]!["race"] = race.ToString();
+        root["runtime"]!["bot"]!["strategyProfile"] = raceDefinition.StrategyProfile;
+        root["opening"] = raceRoot["opening"]!.DeepClone();
+        return BotDefinition.Parse(root.ToJsonString());
+    }
+
     public static BotDefinition CreateDefault()
     {
         const string strategyProfile = "terran.marine-economy.v1";

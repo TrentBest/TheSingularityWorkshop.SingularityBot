@@ -15,7 +15,7 @@
   function validateDefinition(bot) {
     const errors = [];
     if (!bot || typeof bot !== "object" || Array.isArray(bot)) return ["$ must be a JSON object."];
-    const required = ["schemaVersion","id","name","race","strategyProfile","runtime","opening","defaultGoals","strategyTransitions","ai"];
+    const required = ["schemaVersion","id","name","race","modeId","raceSelection","strategyProfile","runtime","opening","defaultGoals","strategyTransitions","ai"];
     for (const key of required) if (!(key in bot)) errors.push("$." + key + " is required.");
     for (const key of Object.keys(bot)) if (!required.includes(key)) errors.push("$." + key + " is not part of the v1 authoring contract.");
     if (bot.schemaVersion !== 1) errors.push("$.schemaVersion must be 1.");
@@ -171,6 +171,8 @@
       if (!response.ok) throw new Error("HTTP " + response.status);
       editor.value = JSON.stringify(await response.json(), null, 2);
       const parsed = parse();
+      applyRace(parsed.value, parsed.value.race || "Terran");
+      editor.value = JSON.stringify(parsed.value, null, 2);
       syncFields(parsed.value);
       markDirty();
       validate();

@@ -313,11 +313,11 @@ public sealed class Sc2OpeningBuilderControllerTests
         controller.OnActionResult(ActionResult.Success);
         Assert.Equal("Moving", controller.MovementState);
 
-        var retryMove = controller.TryCreateAction(SnapshotAt(146, 150, 12, 15,
+        var retryMove = controller.TryCreateAction(SnapshotAt(191, 150, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
-        Assert.Equal(146u, controller.CurrentMovementGameLoop);
+        Assert.Equal(191u, controller.CurrentMovementGameLoop);
         Assert.Equal(123u, controller.MoveRequestGameLoop);
         Assert.True(controller.IsMoveRetryReady);
         Assert.Equal("MoveSubmitted", controller.MovementState);
@@ -514,7 +514,7 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void WaitsUntilGameLoop300BeforeSelectingDepotBuilder()
+    public void WaitsUntilNineSecondOpeningMarkBeforeSelectingDepotBuilder()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
@@ -528,19 +528,19 @@ public sealed class Sc2OpeningBuilderControllerTests
         };
 
         Assert.Null(controller.TryCreateAction(
-            SnapshotAt(299, 60, 12, 15, units), map, gameData,
+            SnapshotAt(201, 60, 12, 15, units), map, gameData,
             assignments, Crew(10, 11),
             workerPullMinerals: 60,
             minimumBuilderPullGameLoop: Sc2OpeningBuilderController.InitialBuilderPullGameLoop));
         Assert.Null(controller.BuilderTag);
 
         Assert.Null(controller.TryCreateAction(
-            SnapshotAt(300, 60, 12, 15, units), map, gameData,
+            SnapshotAt(202, 60, 12, 15, units), map, gameData,
             assignments, Crew(10, 11),
             workerPullMinerals: 60,
             minimumBuilderPullGameLoop: Sc2OpeningBuilderController.InitialBuilderPullGameLoop));
         Assert.NotNull(controller.BuilderTag);
-        Assert.Equal(300u, controller.BuilderSelectedGameLoop);
+        Assert.Equal(202u, controller.BuilderSelectedGameLoop);
         Assert.NotEmpty(controller.BuilderCandidateSummary);
     }
 

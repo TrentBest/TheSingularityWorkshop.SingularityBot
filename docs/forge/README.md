@@ -8,12 +8,14 @@ When GitHub Pages is published, open the `/forge/` route from the documentation 
 
 ## Current slice
 
-- Loads the checked-in Terran adaptive Marine example.
+- Loads the checked-in adaptive Marine example and exposes Terran, Zerg and Protoss as first-class race choices.
+- A race change updates `BotDefinition.race`, `modeId`, `strategyProfile`, the runtime race declaration, the opening plan and the fixed race-selection allow-list; the export is no longer just a visual preview.
+- Zerg and Protoss selections map to the currently registered bounded Zergling and Zealot openers. They are experimental openings, not claims of complete ladder-ready economies.
 - Provides an interactive three-tier command-authority preview with Zerg (Overmind/Cerebrates), Terran (Admiral/command staff), and Protoss (Enclave/conclaves) editorial profiles. Coordinator groupings can be edited in the browser.
 - The command-authority preview is not yet part of BotDefinition v1 and is not included in exported JSON; runtime hierarchy serialization and dispatch remain planned.
 - Edits bot identity, strategy profile, default goal posture and bounded AI consultation enablement.
 - Exposes the complete definition as JSON for advanced authoring.
-- Imports and exports JSON files without sending them to a server.
+- Imports and exports JSON files without sending them to a server. The exported artifact can be consumed by the Runner with `--definition=path-to-file.json`.
 - Performs browser-side parsing and core contract checks.
 - Loads a versioned static MapDocument fixture and overlays two versioned MatchSnapshot fixtures.
 - Scrubs deterministic frames using the map document's full-map world-coordinate transform, preserving remembered contacts and displaying only authoritative destruction tags.

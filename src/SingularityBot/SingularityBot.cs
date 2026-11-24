@@ -877,11 +877,41 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _buildings.Buildings.Any(building =>
                     building.UnitTag == startingTownHall.Tag &&
                     building.TownHallUpgradeState == "UpgradeReady");
-            var orbitalReservedCommandCenter = townHallUpgradeReady
-                ? _orbitalSupport.GetCommandCenterReservedForUpgrade(normalized, _gameData)
-                : _openingMarine.IsBuildSubmitted &&
-                  startingTownHall is not null &&
-                  startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase)
+            var firstBarracks = observedBarracks.FirstOrDefault();
+            var barracksBuildTimeSeconds = _gameData.TryGetUniqueUnit("Barracks", out var barracksFacts)
+                ? barracksFacts.BuildTimeSeconds
+                : 0f;
+            var scvBuildTimeSeconds = _gameData.TryGetUniqueUnit("SCV", out var scvFacts)
+                ? scvFacts.BuildTimeSeconds
+                : 0f;
+            float? barracksRemainingSeconds = null;
+            if (firstBarracks is not null)
+            {
+                barracksRemainingSeconds = firstBarracks.BuildProgress >= 1f
+                    ? 0f
+                    : barracksBuildTimeSeconds > 0
+                        ? barracksBuildTimeSeconds * Math.Clamp(1f - firstBarracks.BuildProgress, 0f, 1f)
+                        : null;
+            }
+            else if (_openingMarine.BarracksBuildRequestGameLoop is uint barracksRequestLoop &&
+                     barracksBuildTimeSeconds > 0)
+            {
+                // Until the structure first appears in an observation, estimate
+                // its remaining duration from the accepted build-request loop.
+                var elapsedSeconds = (normalized.GameLoop - barracksRequestLoop) /
+                    (float)OpeningConstructionSchedule.GameLoopsPerSecond;
+                barracksRemainingSeconds = Math.Max(0f, barracksBuildTimeSeconds - elapsedSeconds);
+            }
+
+            var firstBarracksCommitted = _openingMarine.IsBuildSubmitted || orbitalBarracksReady;
+            var scvQueueMustDrainForOrbital = firstBarracksCommitted &&
+                (townHallUpgradeReady ||
+                 barracksRemainingSeconds is null ||
+                 scvBuildTimeSeconds <= 0 ||
+                 barracksRemainingSeconds <= scvBuildTimeSeconds + 0.5f);
+            var orbitalReservedCommandCenter = scvQueueMustDrainForOrbital &&
+                startingTownHall is not null &&
+                startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase)
                     ? startingTownHall.Tag
                     : null;
             var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
@@ -890,16 +920,17 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                  unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
                 unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
-            // Reserve the Orbital and its producer as soon as the first Barracks
-            // build order is accepted. The morph itself still waits for the
-            // completed Barracks FSM gate, but SCV production cannot refill the
-            // Command Center queue and delay the upgrade.
+            // Save the Orbital's 150 minerals as soon as the Barracks build is
+            // committed, but keep the Command Center producing SCVs while each
+            // SCV can finish before the Barracks. Close the queue only at the
+            // calculated handoff window so Orbital can start on the completion frame.
             orbitalMineralReservation = Terran.Economy.ShouldEnableOrbitalMorph() &&
-                orbitalReservedCommandCenter is not null && orbitalAbility is > 0 && orbitalUpgradeCost > 0
+                firstBarracksCommitted && orbitalAbility is > 0 && orbitalUpgradeCost > 0
                     ? orbitalUpgradeCost
                     : 0u;
-            var orbitalReservationReason = orbitalReservedCommandCenter is null ? "orbital-tech-or-starting-command-center-not-ready" :
-                !townHallUpgradeReady ? "reserving-orbital-during-barracks-construction" :
+            var orbitalReservationReason = !firstBarracksCommitted ? "first-barracks-not-committed" :
+                orbitalReservedCommandCenter is null ? "scv-production-window-open" :
+                !townHallUpgradeReady ? "draining-command-center-for-orbital-handoff" :
                 orbitalAbility is not > 0 ? "orbital-ability-unavailable-or-ambiguous" :
                 orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
                 normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
@@ -942,7 +973,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _lastOrbitalDiagnostic = orbitalDiagnostic;
             }
             var productionAction = _openingProduction.TryCreateScvTrainingAction(
-                normalized, _gameData, reservedScvMinerals, orbitalReservedCommandCenter);
+                normalized, _gameData, reservedScvMinerals, orbitalReservedCommandCenter,
+                barracksRemainingSeconds: firstBarracksCommitted
+                    ? barracksRemainingSeconds ?? 0f
+                    : null,
+                scvBuildTimeSeconds: scvBuildTimeSeconds);
             _openingProductionActionSubmitted = productionAction is not null;
             if (productionAction is not null)
             {
@@ -1045,6 +1080,29 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                     unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
                     !normalized.DeadUnitTags.Contains(unit.Tag));
+                uint? depotDesiredArrivalLoop = null;
+                var firstDepot = _openingBuilder.Placement is MapPoint depotSite
+                    ? normalized.Units
+                        .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                            (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                             unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+                            !normalized.DeadUnitTags.Contains(unit.Tag))
+                        .OrderBy(unit => Math.Pow(unit.PositionX - depotSite.X, 2) + Math.Pow(unit.PositionY - depotSite.Y, 2))
+                        .FirstOrDefault()
+                    : null;
+                if (_openingBuilder.IsCompleted)
+                {
+                    depotDesiredArrivalLoop = normalized.GameLoop;
+                }
+                else if (firstDepot is not null &&
+                         _gameData.TryGetUniqueUnit("SupplyDepot", out var depotFacts) &&
+                         depotFacts.BuildTimeSeconds > 0)
+                {
+                    depotDesiredArrivalLoop = normalized.GameLoop +
+                        OpeningConstructionSchedule.EstimateRemainingBuildGameLoops(
+                            depotFacts.BuildTimeSeconds, firstDepot.BuildProgress);
+                }
+
                 marineAction = observedMarineCount < _desiredMarineCount
                     ? _openingMarine.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments,
@@ -1053,8 +1111,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         reservedMinerals: marineReservedMinerals,
                         excludedBuilderTag: _openingBuilder.BuilderTag,
                         allowConstruction: _openingBuilder.IsCompleted,
-                        allowBuilderStaging: _openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted,
-                        allowMarineTraining: orbitalMorphingObserved)
+                        allowBuilderStaging: depotDesiredArrivalLoop.HasValue,
+                        allowMarineTraining: orbitalMorphingObserved,
+                        desiredBuilderArrivalGameLoop: depotDesiredArrivalLoop,
+                        mineralIncomePerGameLoop: _openingBuilder.MineralIncomePerGameLoop)
                     : null;
                 _openingMarineActionSubmitted = marineAction is not null;
             }
@@ -1179,9 +1239,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 allowOrbitalUpgrade: Terran.Economy.ShouldEnableOrbitalMorph() &&
                     startingTownHall is not null &&
                     startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) &&
-                    _buildings.Buildings.Any(building =>
-                        building.UnitTag == startingTownHall.Tag &&
-                        building.TownHallUpgradeState == "UpgradeReady"),
+                    orbitalDepotReady && orbitalBarracksReady,
                 permittedCommandCenterTag: startingTownHall?.Tag,
                 reservedOrbitalTags: Terran.Economy.Settings.MuleCallDownPolicy.Equals(
                     "PreserveScan", StringComparison.OrdinalIgnoreCase)

@@ -9,7 +9,8 @@ When GitHub Pages is published, open the `/forge/` route from the documentation 
 ## Current slice
 
 - Loads the checked-in adaptive Marine example and exposes Terran, Zerg and Protoss as first-class race choices.
-- A race change updates `BotDefinition.race`, `modeId`, `strategyProfile`, the runtime race declaration, the opening plan and the fixed race-selection allow-list; the export is no longer just a visual preview.
+- A race change updates `BotDefinition.race`, `modeId`, `strategyProfile`, the runtime race declaration and the opening plan; the export is no longer just a visual preview.
+- Fixed race selection pins a definition to one race. Random race selection is resolved by the Runner at launch across the three currently executable race adapters, then rebinds the definition to that race's registered mode and opening.
 - Zerg and Protoss selections map to the currently registered bounded Zergling and Zealot openers. They are experimental openings, not claims of complete ladder-ready economies.
 - Provides an interactive three-tier command-authority preview with Zerg (Overmind/Cerebrates), Terran (Admiral/command staff), and Protoss (Enclave/conclaves) editorial profiles. Coordinator groupings can be edited in the browser.
 - The command-authority preview is not yet part of BotDefinition v1 and is not included in exported JSON; runtime hierarchy serialization and dispatch remain planned.

@@ -242,6 +242,8 @@ public sealed class Sc2OpeningMarineController
                     if (!OpeningConstructionSchedule.ShouldDispatchForArrival(
                         observation.GameLoop, travelLoops, desiredArrivalLoop))
                         return null;
+                    if (!_builderMoveSubmitted)
+                        Console.WriteLine($"[Opening] Dispatching Barracks builder SCV {_builderTag}: travelLoops={travelLoops}, targetArrivalLoop={desiredArrivalLoop}, predictedArrivalLoop={observation.GameLoop + travelLoops}, minerals={observation.Minerals}, incomePerLoop={mineralIncomePerGameLoop:F4}.");
                 }
                 if (_builderMoveSubmitted && observation.GameLoop <= _builderMoveRequestGameLoop + 67)
                     return null;

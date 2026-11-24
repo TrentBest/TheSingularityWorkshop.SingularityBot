@@ -13,7 +13,7 @@ namespace SingularityBot.Behavior;
 /// Persistent, protocol-independent facts for one game entity. The context owns
 /// all FSM handles attached to that entity and survives temporary observation loss.
 /// </summary>
-public sealed class UnitBehaviorContext : IStateContext
+public sealed class UnitBehaviorContext : IStateContext, IController
 {
     private readonly Action<BehaviorCommand> _emit;
     private readonly Dictionary<string, FSMHandle> _ownedHandles = new(StringComparer.Ordinal);

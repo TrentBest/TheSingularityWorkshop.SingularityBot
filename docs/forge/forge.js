@@ -144,7 +144,30 @@
     $("json-state").textContent = "Exported · " + link.download;
   }
 
-  const mapPreview = { map: null, frames: [], index: 0 };
+
+  const commandProfiles = {
+    Zerg: { strategy: "The Overmind", caption: "A distributed intelligence directing the swarm through its Cerebrates", coordinators: ["Mining Brood", "Spawning Brood", "Evolution Brood", "Defense Brood", "Swarm Command"] },
+    Terran: { strategy: "Fleet Admiral", caption: "Strategic command delegated to specialist operational commanders", coordinators: ["Mining Operations", "Construction Corps", "Production Command", "Reconnaissance", "Fleet Command"] },
+    Protoss: { strategy: "The Enclave", caption: "A strategic council expressing doctrine through appointed authorities", coordinators: ["Resource Stewardship", "Construction & Warp-In", "Production", "Judgment & Defense", "Reconnaissance"] }
+  };
+  function renderCommandPreview() {
+    const race = $("command-race").value;
+    const profile = commandProfiles[race];
+    const custom = $("command-coordinators").value.split(",").map(x => x.trim()).filter(Boolean);
+    $("command-strategy").value = profile.strategy;
+    $("strategy-caption").textContent = profile.caption;
+    $("command-preview").innerHTML = custom.map((name, index) =>
+      '<div class="coordinator-card"><span>COORDINATOR ' + String(index + 1).padStart(2, "0") + '</span><strong>' + escapeHtml(name) + '</strong></div>'
+    ).join("") + '<div class="controller-foot">↓ Each coordinator delegates assignments to persistent IController unit contexts and their FSM_API state machines.</div>';
+  }
+  $("command-race").addEventListener("change", () => {
+    const profile = commandProfiles[$("command-race").value];
+    $("command-coordinators").value = profile.coordinators.join(", ");
+    renderCommandPreview();
+  });
+  $("command-coordinators").addEventListener("input", renderCommandPreview);
+  renderCommandPreview();
+\n  const mapPreview = { map: null, frames: [], index: 0 };
   const svgNamespace = "http://www.w3.org/2000/svg";
   function svgElement(name, attributes, parent) {
     const node = document.createElementNS(svgNamespace, name);

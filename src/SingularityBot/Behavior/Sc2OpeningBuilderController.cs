@@ -59,6 +59,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private bool _builderWasReturningMinerals;
     private bool _builderReleasedOnCompletion;
     private uint? _lastObservedMinerals;
+    private readonly MineralIncomeRateEstimator _mineralIncomeEstimator = new();
 
     public Sc2OpeningBuilderController()
     {
@@ -80,6 +81,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public uint CurrentMovementGameLoop => _currentGameLoop;
     public uint BuilderSelectedGameLoop => _builderSelectedGameLoop;
     public uint WorkerPullMineralsThreshold => _workerPullMineralsThreshold;
+    public double MineralIncomePerGameLoop => _mineralIncomeEstimator.MineralsPerGameLoop;
     public string BuilderCandidateSummary { get; private set; } = string.Empty;
     public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
     public uint BuildRequestGameLoop => _buildRequestGameLoop;
@@ -221,9 +223,13 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         ArgumentNullException.ThrowIfNull(assignments);
 
         _currentGameLoop = observation.GameLoop;
-        _workerPullMineralsThreshold = workerPullMinerals;
+        // Keep the old argument for BotDefinition v1 compatibility, but it is
+        // no longer the dispatch authority. The worker is scheduled by forecast
+        // arrival against the authoritative Depot cost.
+        _workerPullMineralsThreshold = gameData.SupplyDepotMineralCost;
         _moveRetryReady = false;
         var previousMineralBank = _lastObservedMinerals;
+        _mineralIncomeEstimator.Observe(observation.GameLoop, observation.Minerals);
         _lastObservedMinerals = observation.Minerals;
 
         BuildJobRuntime.RegisterDefinition();
@@ -276,18 +282,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
-        // Pull the builder before the structure is affordable so it can travel
-        // while the bank accumulates. The threshold is policy data; the authoritative
-        // game-data cost still gates the actual Build command below.
-        if (_builderTag is null && observation.GameLoop < minimumBuilderPullGameLoop)
-            return null;
-
-        var builderPullThreshold = Math.Min(workerPullMinerals, gameData.SupplyDepotMineralCost);
-        var builderPullBudget = (uint)Math.Min(
-            uint.MaxValue, (ulong)reservedMinerals + builderPullThreshold);
-        if (_builderTag is null && observation.Minerals < builderPullBudget)
-            return null;
-
+        // No fixed mineral threshold or fixed game-loop delay decides the pull.
+        // Estimate when the selected worker would reach the candidate site and
+        // dispatch only when the measured mineral-income forecast says the full
+        // Depot cost will be available at arrival.
         if (_builderTag is null)
         {
             var townHall = observation.Units.FirstOrDefault(unit =>
@@ -335,6 +333,24 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             if (selected is null)
                 return null;
 
+            var scvMovementSpeed = gameData.TryGetUniqueUnit("SCV", out var scvFacts)
+                ? scvFacts.MovementSpeed
+                : 0f;
+            var requiredDepotMinerals = (uint)Math.Min(
+                uint.MaxValue, (ulong)gameData.SupplyDepotMineralCost + reservedMinerals);
+            var estimatedTravelLoops = OpeningConstructionSchedule.EstimateTravelGameLoops(
+                selected.EstimatedArrivalDistance, scvMovementSpeed);
+            var affordableArrivalLoop = OpeningConstructionSchedule.EstimateAffordableGameLoop(
+                observation.GameLoop, observation.Minerals, requiredDepotMinerals,
+                MineralIncomePerGameLoop);
+            if (affordableArrivalLoop is not uint expectedAffordableLoop ||
+                !OpeningConstructionSchedule.ShouldDispatchForArrival(
+                    observation.GameLoop, estimatedTravelLoops, expectedAffordableLoop))
+            {
+                BuilderCandidateSummary += $";schedule=hold|travelLoops={estimatedTravelLoops}|incomePerLoop={MineralIncomePerGameLoop:F4}|requiredMinerals={requiredDepotMinerals}";
+                return null;
+            }
+
             _builderTag = selected.Worker.Tag;
             _builderSelectedGameLoop = observation.GameLoop;
             _firstMoveRequestGameLoop = 0;
@@ -368,12 +384,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             return null;
         }
 
-        // An empty worker can still be travelling out to a mineral patch. Do not
-        // mistake "no cargo" for "safe to pull": let the current mining order
-        // complete its harvest-and-return cycle before interrupting it.
-        if (!_builderWasReturningMinerals && IsGatheringMinerals(builder, observation))
-            return null;
-
+        // Empty-handed mining orders are interruptible: dispatching now is the
+        // point of the just-in-time schedule. Cargo is still protected above.
         var builderJustDepositedMinerals = _builderWasReturningMinerals;
         if (builderJustDepositedMinerals)
         {
@@ -444,6 +456,21 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
         var distanceSquared = DistanceSquared(
             builder.PositionX, builder.PositionY, movementTarget.X, movementTarget.Y);
+        var movementSpeed = gameData.TryGetUniqueUnit("SCV", out var currentScvFacts)
+            ? currentScvFacts.MovementSpeed
+            : 0f;
+        var requiredMineralsAtArrival = (uint)Math.Min(
+            uint.MaxValue, (ulong)gameData.SupplyDepotMineralCost + reservedMinerals);
+        var travelGameLoops = OpeningConstructionSchedule.EstimateTravelGameLoops(
+            Math.Sqrt(distanceSquared), movementSpeed);
+        var predictedAffordableLoop = OpeningConstructionSchedule.EstimateAffordableGameLoop(
+            observation.GameLoop, observation.Minerals, requiredMineralsAtArrival,
+            MineralIncomePerGameLoop);
+        if (predictedAffordableLoop is not uint affordableLoop ||
+            !OpeningConstructionSchedule.ShouldDispatchForArrival(
+                observation.GameLoop, travelGameLoops, affordableLoop))
+            return null;
+
         _movementDistanceSquared = distanceSquared;
         _hasMovementTarget = true;
         var stateBeforeMovementUpdate = MovementState;

@@ -1,4 +1,5 @@
 using SC2APIProtocol;
+using System.Text.Json.Nodes;
 using SingularityBot.Behavior;
 using Xunit;
 
@@ -31,9 +32,10 @@ public sealed class BotRaceSelectionTests
     public void RandomDefinitionPolicy_CanSelectAnyExecutableRaceAndRebindsTheDefinition()
     {
         var template = BotDefinitionCatalog.CreateDefault();
-        var randomDefinition = BotDefinition.Parse(template.Serialize().Replace(
-            "\"raceSelection\": {",
-            "\"raceSelection\": {\"policy\": \"random\", \"eligibleRaces\": [\"terran\", \"zerg\", \"protoss\"],"));
+        var json = JsonNode.Parse(template.Serialize())!.AsObject();
+        json["raceSelection"]!["policy"] = "random";
+        json["raceSelection"]!["eligibleRaces"] = new JsonArray("terran", "zerg", "protoss");
+        var randomDefinition = BotDefinition.Parse(json.ToJsonString());
         var selected = new BotRaceSelectionResolver().Resolve(
             randomDefinition.RaceSelection,
             RaceModuleCatalog.CreateDefault().ExecutableRaces,

@@ -59,20 +59,6 @@ public static class OpeningConstructionSchedule
         uint desiredArrivalGameLoop) =>
         (ulong)currentGameLoop + travelGameLoops >= desiredArrivalGameLoop;
 
-    public static uint? LatestSafeScvProductionStartLoop(
-        uint barracksCompletionGameLoop,
-        float scvBuildTimeSeconds,
-        float safetyMarginSeconds = 0.5f)
-    {
-        if (!float.IsFinite(scvBuildTimeSeconds) || scvBuildTimeSeconds <= 0 ||
-            !float.IsFinite(safetyMarginSeconds) || safetyMarginSeconds < 0)
-            return null;
-
-        var productionLoops = Math.Ceiling((scvBuildTimeSeconds + safetyMarginSeconds) * GameLoopsPerSecond);
-        if (productionLoops > barracksCompletionGameLoop)
-            return 0;
-        return barracksCompletionGameLoop - (uint)productionLoops;
-    }
 }
 
 /// <summary>

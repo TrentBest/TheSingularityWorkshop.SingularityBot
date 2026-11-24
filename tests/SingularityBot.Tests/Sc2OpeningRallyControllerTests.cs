@@ -9,110 +9,66 @@ namespace SingularityBot.Tests;
 public sealed class Sc2OpeningRallyControllerTests
 {
     [Fact]
-    public void ProductionRallyIsIssuedAgainstCommandCenterAndMustSucceedBeforeUnlocking()
+    public void LeavesNativeMineralRallyUntouchedUntilBuilderIsDispatched()
     {
         var controller = new Sc2OpeningRallyController();
-        var observation = Snapshot(
-            Fact(1, "CommandCenter", 10, 10, UnitAlliance.Self));
-        var map = Map();
-        var gameData = GameData();
-
-        var action = controller.TryCreateAction(observation, map, gameData,
-            new Dictionary<ulong, WorkerResourceAssignment>(), builderDispatched: false);
-
-        Assert.NotNull(action);
-        Assert.Equal(3690, action.ActionRaw.UnitCommand.AbilityId);
-        Assert.Equal(1UL, action.ActionRaw.UnitCommand.UnitTags[0]);
-        Assert.NotNull(action.ActionRaw.UnitCommand.TargetWorldSpacePos);
-        Assert.False(controller.IsTemporaryRallyAccepted);
-
-        Assert.Null(controller.TryCreateAction(observation, map, gameData,
-            new Dictionary<ulong, WorkerResourceAssignment>(), builderDispatched: false));
-        Assert.False(controller.IsTemporaryRallyAccepted);
-
-        controller.OnActionResult(ActionResult.Success);
-        Assert.True(controller.IsTemporaryRallyAccepted);
-    }
-
-    [Fact]
-    public void FailedTemporaryRallyRetriesAndDoesNotUnlockProduction()
-    {
-        var controller = new Sc2OpeningRallyController();
-        var observation = Snapshot(Fact(1, "CommandCenter", 10, 10, UnitAlliance.Self));
-        var gameData = GameData();
-
-        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData,
-            new Dictionary<ulong, WorkerResourceAssignment>(), false));
-        controller.OnActionResult((ActionResult)2);
-
-        Assert.False(controller.IsTemporaryRallyAccepted);
-        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData,
-            new Dictionary<ulong, WorkerResourceAssignment>(), false));
-    }
-
-    [Fact]
-    public void RestoresObservedMineralTargetOnlyAfterBuilderMoveIsAccepted()
-    {
-        var controller = new Sc2OpeningRallyController();
-        var assignment = new WorkerResourceAssignment(
-            WorkerTag: 10,
-            MineralTag: 200,
-            TownHallTag: 1,
-            Generation: 1,
-            AssignedAtGameLoop: 1,
-            WorkerX: 8,
-            WorkerY: 8,
-            MineralX: 6,
-            MineralY: 12,
-            TownHallX: 10,
-            TownHallY: 10);
+        var assignment = Assignment();
         var assignments = new Dictionary<ulong, WorkerResourceAssignment> { [10] = assignment };
         var observation = Snapshot(
             Fact(1, "CommandCenter", 10, 10, UnitAlliance.Self),
             Fact(200, "MineralField750", 6, 12, UnitAlliance.Neutral));
         var gameData = GameData();
 
-        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData, assignments, false));
-        controller.OnActionResult(ActionResult.Success);
-
-        Assert.Null(controller.TryCreateAction(observation, Map(), gameData, assignments, false));
+        Assert.Null(controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: false));
         Assert.False(controller.IsRestoreAccepted);
 
-        var restore = controller.TryCreateAction(observation, Map(), gameData, assignments, true);
+        var restore = controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: true);
         Assert.NotNull(restore);
         Assert.Equal(3690, restore.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(1UL, restore.ActionRaw.UnitCommand.UnitTags[0]);
         Assert.Equal(200UL, restore.ActionRaw.UnitCommand.TargetUnitTag);
-
-        controller.OnActionResult(ActionResult.Success);
-        Assert.True(controller.IsRestoreAccepted);
-        Assert.Null(controller.TryCreateAction(observation, Map(), gameData, assignments, true));
     }
 
-
     [Fact]
-    public void RejectedRallyRestorationRetriesWithoutMarkingItComplete()
+    public void RejectedMineralRallyRestorationRetriesWithoutMarkingItComplete()
     {
         var controller = new Sc2OpeningRallyController();
-        var assignment = new WorkerResourceAssignment(
-            10, 200, 1, 1, 1, 8, 8, 6, 12, 10, 10);
-        var assignments = new Dictionary<ulong, WorkerResourceAssignment> { [10] = assignment };
+        var assignments = new Dictionary<ulong, WorkerResourceAssignment> { [10] = Assignment() };
         var observation = Snapshot(
             Fact(1, "CommandCenter", 10, 10, UnitAlliance.Self),
             Fact(200, "MineralField750", 6, 12, UnitAlliance.Neutral));
         var gameData = GameData();
 
-        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData, assignments, false));
-        controller.OnActionResult(ActionResult.Success);
-
-        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData, assignments, true));
+        Assert.Null(controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: false));
+        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: true));
         controller.OnActionResult((ActionResult)2);
 
         Assert.False(controller.IsRestoreAccepted);
-        var retry = controller.TryCreateAction(observation, Map(), gameData, assignments, true);
+        var retry = controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: true);
         Assert.NotNull(retry);
         Assert.Equal(200UL, retry.ActionRaw.UnitCommand.TargetUnitTag);
     }
+
+    [Fact]
+    public void SuccessfulMineralRallyRestorationIsNotRepeated()
+    {
+        var controller = new Sc2OpeningRallyController();
+        var assignments = new Dictionary<ulong, WorkerResourceAssignment> { [10] = Assignment() };
+        var observation = Snapshot(
+            Fact(1, "CommandCenter", 10, 10, UnitAlliance.Self),
+            Fact(200, "MineralField750", 6, 12, UnitAlliance.Neutral));
+        var gameData = GameData();
+
+        Assert.Null(controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: false));
+        Assert.NotNull(controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: true));
+        controller.OnActionResult(ActionResult.Success);
+
+        Assert.True(controller.IsRestoreAccepted);
+        Assert.Null(controller.TryCreateAction(observation, Map(), gameData, assignments, builderDispatched: true));
+    }
+
+    private static WorkerResourceAssignment Assignment() =>
+        new(10, 200, 1, 1, 1, 8, 8, 6, 12, 10, 10);
 
     private static Sc2GameDataCatalog GameData()
     {

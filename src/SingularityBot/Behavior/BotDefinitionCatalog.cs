@@ -47,6 +47,15 @@ public static class BotDefinitionCatalog
         root["runtime"]!["bot"]!["race"] = race.ToString();
         root["runtime"]!["bot"]!["strategyProfile"] = raceDefinition.StrategyProfile;
         root["opening"] = raceRoot["opening"]!.DeepClone();
+        if (template.RaceSelection.Policy == BotRaceSelectionPolicy.Fixed)
+        {
+            root["raceSelection"] = JsonSerializer.SerializeToNode(new BotRaceSelectionDefinition
+            {
+                Policy = BotRaceSelectionPolicy.Fixed,
+                FixedRace = race,
+                EligibleRaces = new[] { race }
+            });
+        }
         return BotDefinition.Parse(root.ToJsonString());
     }
 

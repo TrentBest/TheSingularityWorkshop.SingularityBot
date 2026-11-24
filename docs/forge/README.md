@@ -9,6 +9,8 @@ When GitHub Pages is published, open the `/forge/` route from the documentation 
 ## Current slice
 
 - Loads the checked-in Terran adaptive Marine example.
+- Provides an interactive three-tier command-authority preview with Zerg (Overmind/Cerebrates), Terran (Admiral/command staff), and Protoss (Enclave/conclaves) editorial profiles. Coordinator groupings can be edited in the browser.
+- The command-authority preview is not yet part of BotDefinition v1 and is not included in exported JSON; runtime hierarchy serialization and dispatch remain planned.
 - Edits bot identity, strategy profile, default goal posture and bounded AI consultation enablement.
 - Exposes the complete definition as JSON for advanced authoring.
 - Imports and exports JSON files without sending them to a server.

@@ -1155,7 +1155,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _openingMarine.ReleasedBuilderTag, releaseBuilderOnCompletion: true,
-                        workerPullMinerals: Terran.Economy.Settings.SupplyDepotWorkerPullMinerals,
                         reservedMinerals: depotTwoReservedMinerals);
                     _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
                     // Keep Barracks three gated until both sequential follow-up Depots are observed complete.
@@ -1172,7 +1171,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     var thirdDepotAction = _thirdSupplyDepot.TryCreateAction(
                         normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
                         _buildJobs, _supplyDepotExpansion.BuilderTag, releaseBuilderOnCompletion: true,
-                        workerPullMinerals: Terran.Economy.Settings.SupplyDepotWorkerPullMinerals,
                         reservedMinerals: depotThreeReservedMinerals);
                     _thirdSupplyDepotActionSubmitted = thirdDepotAction is not null;
                     thirdSupplyDepotPendingAction = thirdDepotAction;

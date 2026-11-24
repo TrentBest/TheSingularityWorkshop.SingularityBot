@@ -296,8 +296,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 
             var stagingPoint = _candidatePoints[0];
             // Select an empty worker so dispatch never discards a carried load.
-            // If its current order is an outbound mineral trip, the handoff below
-            // waits for the harvest and return/deposit before issuing Move.
+            // Empty-handed mining orders are interrupted at the forecast departure
+            // window so travel overlaps mineral accumulation.
             var eligibleWorkers = observation.Units
                 .Where(unit => IsLiveScv(unit) && !unit.HasCargo && !assignments.IsReserved(unit.Tag))
                 .ToArray();
@@ -599,18 +599,6 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 _buildJob.Fail("SC2 rejected the opening Supply Depot construction command.", _buildJob.LastObservedGameLoop);
             _buildJob = null;
         }
-    }
-
-    private static bool IsGatheringMinerals(
-        UnitObservationFacts worker,
-        NormalizedObservation observation)
-    {
-        var targetTag = worker.Orders.FirstOrDefault()?.TargetUnitTag;
-        return targetTag is ulong tag && observation.Units.Any(unit =>
-            unit.Tag == tag && unit.IsLiveVisible &&
-            unit.Alliance == UnitAlliance.Neutral &&
-            (unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase) ||
-             unit.UnitKind.Contains("RichMineralField", StringComparison.OrdinalIgnoreCase)));
     }
 
     private static bool IsReturningToTownHall(

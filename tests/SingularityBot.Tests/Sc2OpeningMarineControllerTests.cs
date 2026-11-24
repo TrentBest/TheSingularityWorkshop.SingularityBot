@@ -131,7 +131,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         // Stage a separate worker before the Depot completes and before the
         // Barracks cost is available. The Depot builder remains reserved.
-        Assert.Null(controller.TryCreateAction(Snapshot(60, 12, 15,
+        Assert.Null(controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),
@@ -151,7 +151,7 @@ public sealed class Sc2OpeningMarineControllerTests
         controller.OnPlacementQueryResult(placementResult);
         var site = new MapPoint(query.Placements[0].TargetPos.X, query.Placements[0].TargetPos.Y);
 
-        var move = controller.TryCreateAction(Snapshot(60, 12, 15,
+        var move = controller.TryCreateAction(SnapshotAt(250, 100, 12, 15,
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", 11, 10),
             Fact(1, "CommandCenter", 10, 10),
@@ -159,7 +159,9 @@ public sealed class Sc2OpeningMarineControllerTests
             map, gameData, assignments, jobs,
             excludedBuilderTag: depotBuilderTag,
             allowConstruction: false,
-            allowBuilderStaging: true);
+            allowBuilderStaging: true,
+            desiredBuilderArrivalGameLoop: 300,
+            mineralIncomePerGameLoop: 1.0);
         Assert.NotNull(move);
         Assert.Equal(16, move.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(barracksBuilderTag, move.ActionRaw.UnitCommand.UnitTags[0]);
@@ -167,7 +169,7 @@ public sealed class Sc2OpeningMarineControllerTests
 
         // When the Depot completion becomes observable, the staged worker is
         // already at the site. The first legal frame issues the Barracks build.
-        var build = controller.TryCreateAction(Snapshot(150, 12, 15,
+        var build = controller.TryCreateAction(SnapshotAt(300, 150, 12, 15,
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", site.X, site.Y),
             Fact(1, "CommandCenter", 10, 10),
@@ -175,7 +177,9 @@ public sealed class Sc2OpeningMarineControllerTests
             map, gameData, assignments, jobs,
             excludedBuilderTag: depotBuilderTag,
             allowConstruction: true,
-            allowBuilderStaging: true);
+            allowBuilderStaging: true,
+            desiredBuilderArrivalGameLoop: 300,
+            mineralIncomePerGameLoop: 1.0);
         Assert.NotNull(build);
         Assert.Equal(321, build.ActionRaw.UnitCommand.AbilityId);
         Assert.Equal(barracksBuilderTag, build.ActionRaw.UnitCommand.UnitTags[0]);
@@ -224,8 +228,8 @@ public sealed class Sc2OpeningMarineControllerTests
     private static Sc2GameDataCatalog GameData()
     {
         var data = new ResponseData();
-        data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1 });
-        data.Units.Add(new UnitTypeData { UnitId = 21, Name = "Barracks", AbilityId = 321, MineralCost = 150 });
+        data.Units.Add(new UnitTypeData { UnitId = 45, Name = "SCV", AbilityId = 524, MineralCost = 50, FoodRequired = 1, BuildTime = 12f, MovementSpeed = 3f });
+        data.Units.Add(new UnitTypeData { UnitId = 21, Name = "Barracks", AbilityId = 321, MineralCost = 150, BuildTime = 46f });
         data.Units.Add(new UnitTypeData { UnitId = 48, Name = "Marine", AbilityId = 560, MineralCost = 50, FoodRequired = 1 });
         data.Abilities.Add(new AbilityData { AbilityId = 16, LinkName = "Move" });
         return Sc2GameDataCatalog.Create(data);

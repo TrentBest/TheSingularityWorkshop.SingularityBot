@@ -363,7 +363,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             Console.WriteLine(
                 $"[Opening] Construction-crew SCV {_builderTag.Value} reserved for the Supply Depot; " +
                 $"estimated staging distance={selected.EstimatedArrivalDistance:F2}. " +
-                "Any active mineral trip is allowed to complete before the worker is dispatched.");
+                "Empty-handed mining orders are interruptible at the scheduled departure; cargo-bearing workers finish their return.");
         }
 
         var builder = observation.Units.FirstOrDefault(unit =>

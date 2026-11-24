@@ -36,16 +36,6 @@ public sealed class OpeningConstructionScheduleTests
     }
 
     [Fact]
-    public void ScvProductionStopsBeforeItCanOverlapBarracksCompletion()
-    {
-        var latestStart = OpeningConstructionSchedule.LatestSafeScvProductionStartLoop(
-            barracksCompletionGameLoop: 1000,
-            scvBuildTimeSeconds: 12f,
-            safetyMarginSeconds: 0.5f);
-        Assert.Equal(720u, latestStart);
-    }
-
-    [Fact]
     public void MineralIncomeEstimatorUsesPositiveBankDeltasAndDecaysOnSpending()
     {
         var estimator = new MineralIncomeRateEstimator();

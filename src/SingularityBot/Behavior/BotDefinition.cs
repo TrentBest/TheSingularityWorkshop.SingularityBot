@@ -113,9 +113,15 @@ public static class BotDefinitionValidator
         if (!Enum.TryParse<SC2APIProtocol.Race>(definition.Race, ignoreCase: false, out var configuredRace) ||
             configuredRace is not (SC2APIProtocol.Race.Terran or SC2APIProtocol.Race.Protoss or SC2APIProtocol.Race.Zerg))
             errors.Add("$.race: must be one of the supported playable races (Terran, Protoss, Zerg).");
-        else if (!BotModeCatalog.CreateDefault().TryResolveForMatch(
-            new BotModeSelection(definition.ModeId), configuredRace, out _, out var modeError))
-            errors.Add("$.modeId: " + modeError);
+        else
+        {
+            if (raceSelection?.Policy == BotRaceSelectionPolicy.Fixed &&
+                raceSelection.FixedRace != configuredRace)
+                errors.Add("$.raceSelection.fixedRace: must match $.race when policy is Fixed.");
+            if (!BotModeCatalog.CreateDefault().TryResolveForMatch(
+                new BotModeSelection(definition.ModeId), configuredRace, out _, out var modeError))
+                errors.Add("$.modeId: " + modeError);
+        }
         if (string.IsNullOrWhiteSpace(definition.StrategyProfile))
             errors.Add("$.strategyProfile: a strategy profile is required.");
 

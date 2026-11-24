@@ -56,7 +56,9 @@ public sealed class Sc2OpeningMarineController
         bool allowConstruction = true,
         bool allowBuilderStaging = false,
         bool allowMarineTraining = true,
-        ConstructionSiteSafety siteSafety = null)
+        ConstructionSiteSafety siteSafety = null,
+        uint? desiredBuilderArrivalGameLoop = null,
+        double mineralIncomePerGameLoop = 0)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -214,6 +216,30 @@ public sealed class Sc2OpeningMarineController
                 _placement.Value.X, _placement.Value.Y);
             if (distanceSquared > 2.25f)
             {
+                // The second SCV is timed to reach the Barracks site at the later
+                // of Depot completion or predicted 150-mineral affordability.
+                // If the forecast is unavailable, hold rather than send it early.
+                if (allowBuilderStaging && !allowConstruction)
+                {
+                    if (desiredBuilderArrivalGameLoop is not uint depotReadyLoop)
+                        return null;
+                    var movementSpeed = gameData.TryGetUniqueUnit("SCV", out var scvFacts)
+                        ? scvFacts.MovementSpeed
+                        : 0f;
+                    var travelLoops = OpeningConstructionSchedule.EstimateTravelGameLoops(
+                        Math.Sqrt(distanceSquared), movementSpeed);
+                    var requiredMinerals = (uint)Math.Min(
+                        uint.MaxValue, (ulong)gameData.BarracksMineralCost + reservedMinerals);
+                    var affordableLoop = OpeningConstructionSchedule.EstimateAffordableGameLoop(
+                        observation.GameLoop, observation.Minerals, requiredMinerals,
+                        mineralIncomePerGameLoop);
+                    if (affordableLoop is not uint resourceReadyLoop)
+                        return null;
+                    var desiredArrivalLoop = Math.Max(depotReadyLoop, resourceReadyLoop);
+                    if (!OpeningConstructionSchedule.ShouldDispatchForArrival(
+                        observation.GameLoop, travelLoops, desiredArrivalLoop))
+                        return null;
+                }
                 if (_builderMoveSubmitted && observation.GameLoop <= _builderMoveRequestGameLoop + 67)
                     return null;
                 _builderMoveSubmitted = true;

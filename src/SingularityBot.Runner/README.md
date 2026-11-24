@@ -6,6 +6,18 @@ The Runner is the local process entry point for SingularityBot. Its ordinary lau
 dotnet run --project src/SingularityBot.Runner/SingularityBot.Runner.csproj
 ```
 
+## Run an exported Forge definition
+
+Forge exports a portable `BotDefinition` JSON artifact. The Runner can load that exact file rather than silently substituting the compiled default:
+
+```powershell
+dotnet run --project src/SingularityBot.Runner/SingularityBot.Runner.csproj -- --definition="C:\\Bots\\my-bot.json"
+```
+
+The selected definition supplies its race and mode to the match host. The mode must be one of the registered executable modes and must match the definition's race. `--definition` cannot be combined with `--mode` or `--race`; change the artifact in Forge instead. The Runner applies strict `BotDefinition.Parse` and semantic validation before connecting to SC2.
+
+The currently registered Zergling and Protoss Zealot definitions are bounded experimental openers. Their selection does not imply a complete sustainable economy or ladder-ready strategy.
+
 ## Optional Bot Studio bridge
 
 Add `--studio-bridge` to expose the bot's latest immutable telemetry snapshot over HTTP:

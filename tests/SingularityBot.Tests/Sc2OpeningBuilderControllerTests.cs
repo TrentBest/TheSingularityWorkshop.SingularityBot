@@ -503,7 +503,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             map, data, assignments, Crew(10, 11), reservedMinerals: 250));
         Assert.Null(controller.BuilderTag);
 
-        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 350, 12, 15, units),
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 349, 12, 15, units),
             map, data, assignments, Crew(10, 11), reservedMinerals: 250));
         Assert.NotNull(controller.BuilderTag);
         var query = controller.TakePlacementQuery(data);

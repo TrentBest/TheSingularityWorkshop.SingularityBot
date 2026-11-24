@@ -804,6 +804,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         var orbitalBarracksReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
             unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
             unit.BuildProgress >= 1f);
+        var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible &&
+            (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+            unit.BuildProgress >= 1f);
         uint orbitalMineralReservation = 0;
         uint reservedStrategicMinerals = 0;
         uint depotTwoReservedMinerals = 0;
@@ -909,16 +914,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                  barracksRemainingSeconds is null ||
                  scvBuildTimeSeconds <= 0 ||
                  barracksRemainingSeconds <= scvBuildTimeSeconds + 0.5f);
-            var orbitalReservedCommandCenter = scvQueueMustDrainForOrbital &&
+            ulong? orbitalReservedCommandCenter = scvQueueMustDrainForOrbital &&
                 startingTownHall is not null &&
                 startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase)
                     ? startingTownHall.Tag
                     : null;
-            var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
-                unit.IsLiveVisible &&
-                (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
-                 unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
-                unit.BuildProgress >= 1f);
             var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
             // Save the Orbital's 150 minerals as soon as the Barracks build is
             // committed, but keep the Command Center producing SCVs while each

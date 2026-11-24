@@ -346,8 +346,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             var affordableArrivalLoop = OpeningConstructionSchedule.EstimateAffordableGameLoop(
                 observation.GameLoop, observation.Minerals, requiredDepotMinerals,
                 MineralIncomePerGameLoop);
-            UpdateArrivalForecast(observation.GameLoop, observation.Minerals, estimatedTravelLoops,
-                requiredDepotMinerals, affordableArrivalLoop);
+            UpdateArrivalForecast(observation.Minerals, estimatedTravelLoops, affordableArrivalLoop);
             if (affordableArrivalLoop is not uint expectedAffordableLoop ||
                 !OpeningConstructionSchedule.ShouldDispatchForArrival(
                     observation.GameLoop, estimatedTravelLoops, expectedAffordableLoop))
@@ -472,8 +471,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         var predictedAffordableLoop = OpeningConstructionSchedule.EstimateAffordableGameLoop(
             observation.GameLoop, observation.Minerals, requiredMineralsAtArrival,
             MineralIncomePerGameLoop);
-        UpdateArrivalForecast(observation.GameLoop, observation.Minerals, travelGameLoops,
-            requiredMineralsAtArrival, predictedAffordableLoop);
+        UpdateArrivalForecast(observation.Minerals, travelGameLoops, predictedAffordableLoop);
         if (predictedAffordableLoop is not uint affordableLoop ||
             !OpeningConstructionSchedule.ShouldDispatchForArrival(
                 observation.GameLoop, travelGameLoops, affordableLoop))
@@ -705,10 +703,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         };
 
     private void UpdateArrivalForecast(
-        uint gameLoop,
         uint minerals,
         uint travelGameLoops,
-        uint requiredMinerals,
         uint? affordableGameLoop)
     {
         EstimatedTravelGameLoops = travelGameLoops;

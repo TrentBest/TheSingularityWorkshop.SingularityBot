@@ -153,6 +153,33 @@ public sealed class Sc2GameDataCatalogTests
     }
 
     [Fact]
+    public void Create_ExposesAuthoritativeBuildTimeAndMovementSpeedForScheduling()
+    {
+        var data = new ResponseData();
+        data.Units.Add(new UnitTypeData
+        {
+            UnitId = 45,
+            Name = "SCV",
+            BuildTime = 12f,
+            MovementSpeed = 3.15f
+        });
+        data.Units.Add(new UnitTypeData
+        {
+            UnitId = 19,
+            Name = "SupplyDepot",
+            BuildTime = 30f
+        });
+
+        var catalog = Sc2GameDataCatalog.Create(data);
+
+        Assert.True(catalog.TryGetUniqueUnit("SCV", out var scv));
+        Assert.Equal(12f, scv.BuildTimeSeconds);
+        Assert.Equal(3.15f, scv.MovementSpeed);
+        Assert.True(catalog.TryGetUniqueUnit("SupplyDepot", out var depot));
+        Assert.Equal(30f, depot.BuildTimeSeconds);
+    }
+
+    [Fact]
     public void Create_ResolvesOrbitalUpgradeAndMuleAbilitiesWithoutGuessingIds()
     {
         var data = new ResponseData();

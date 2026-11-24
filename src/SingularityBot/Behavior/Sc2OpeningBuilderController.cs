@@ -16,7 +16,6 @@ namespace SingularityBot.Behavior;
 public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 {
     public const string MovementFsmName = "SingularityBot.OpeningBuilderMovement";
-    public const uint InitialBuilderPullGameLoop = 202; // Approximately nine seconds at the standard 22.4 game loops per second.
     public const string MovementProcessingGroup = "SingularityBot.OpeningBuilderMovement";
     private static long _nextMovementGroupId;
     private readonly string _movementProcessingGroup;

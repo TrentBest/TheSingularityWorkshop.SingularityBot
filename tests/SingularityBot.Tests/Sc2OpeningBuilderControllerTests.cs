@@ -118,18 +118,20 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void SelectsEmptyWorkerAndDispatchesWhileMineralLineContinuesMining()
+    public void WaitsForSelectedMineralWorkerToCompleteItsReturnBeforeDispatch()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
+        var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
+        var miningOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
 
         var selection = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
-            Fact(11, "SCV", 9, 9, orders: new[] { new UnitOrderObservationFacts(295, 20, null, null) }),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData,
+            Fact(11, "SCV", 9, 9, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 
         Assert.Null(selection);
@@ -139,13 +141,26 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.NotNull(controller.TakePlacementQuery(gameData));
         SetValidPlacement(controller);
 
-        // The selected worker is empty-handed. Its gather order is interrupted
-        // immediately so it can travel while the remaining workers keep mining.
-        var move = controller.TryCreateAction(Snapshot(100, 12, 15,
-            Fact(10, "SCV", 5, 5, hasCargo: true,
-                orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
-            Fact(11, "SCV", 9, 9, orders: new[] { new UnitOrderObservationFacts(295, 20, null, null) }),
-            Fact(1, "CommandCenter", 10, 10)), map, gameData,
+        // No cargo does not mean the worker is safe to interrupt: it is still
+        // executing its trip to the mineral patch.
+        var travellingToMinerals = controller.TryCreateAction(Snapshot(100, 12, 15,
+            Fact(11, "SCV", 9, 9, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            assignments, Crew(10, 11));
+        Assert.Null(travellingToMinerals);
+
+        // Once loaded, the controller observes the return to the Command Center.
+        var returning = controller.TryCreateAction(Snapshot(101, 12, 15,
+            Fact(11, "SCV", 9, 9, hasCargo: true,
+                orders: new[] { new UnitOrderObservationFacts(296, 1, null, null) }),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            assignments, Crew(10, 11));
+        Assert.Null(returning);
+
+        // The first empty observation after that return is the safe handoff point.
+        var move = controller.TryCreateAction(Snapshot(102, 12, 15,
+            Fact(11, "SCV", 9, 9, orders: miningOrder),
+            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 
         Assert.NotNull(move);
@@ -165,7 +180,7 @@ public sealed class Sc2OpeningBuilderControllerTests
 
         var selection = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5, orders: miningOrder),
+            Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 
@@ -177,7 +192,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         var builderTag = controller.BuilderTag!.Value;
         var move = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5, orders: miningOrder),
+            Fact(11, "SCV", 6, 5),
             Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
             assignments, Crew(10, 11));
 

@@ -24,12 +24,22 @@
     const raceModes = { Terran: "terran.marine.v1", Zerg: "zerg.zergling.v1", Protoss: "protoss.zealot.v1" };
     if (!Object.prototype.hasOwnProperty.call(raceModes, bot.race)) errors.push("$.race must be Terran, Zerg, or Protoss.");
     if (bot.modeId && raceModes[bot.race] !== bot.modeId) errors.push("$.modeId must match the selected race (" + (raceModes[bot.race] || "no registered mode") + ").");
-    if (bot.raceSelection && (bot.raceSelection.policy !== "fixed" ||
-        bot.raceSelection.fixedRace !== String(bot.race).toLowerCase() ||
-        !Array.isArray(bot.raceSelection.eligibleRaces) ||
-        bot.raceSelection.eligibleRaces.length !== 1 ||
-        bot.raceSelection.eligibleRaces[0] !== String(bot.race).toLowerCase())) {
-      errors.push("$.raceSelection must declare the selected race as a fixed, single-race allow-list.");
+    if (bot.raceSelection) {
+      const eligible = bot.raceSelection.eligibleRaces;
+      if (!Array.isArray(eligible) || eligible.length === 0 ||
+          new Set(eligible).size !== eligible.length ||
+          eligible.some(value => !["terran", "zerg", "protoss"].includes(value))) {
+        errors.push("$.raceSelection.eligibleRaces must be a non-empty unique list of playable races.");
+      } else if (bot.raceSelection.policy === "fixed") {
+        if (bot.raceSelection.fixedRace !== String(bot.race).toLowerCase() ||
+            eligible.length !== 1 || eligible[0] !== String(bot.race).toLowerCase())
+          errors.push("$.raceSelection must declare the selected race as a fixed, single-race allow-list.");
+      } else if (bot.raceSelection.policy === "random") {
+        if (!["terran", "zerg", "protoss"].every(value => eligible.includes(value)))
+          errors.push("$.raceSelection random policy must include all three currently executable race adapters.");
+      } else {
+        errors.push("$.raceSelection.policy must be fixed or random in Forge.");
+      }
     }
     if (typeof bot.strategyProfile !== "string" || !bot.strategyProfile.trim()) errors.push("$.strategyProfile is required.");
     const runtime = bot.runtime;
@@ -87,13 +97,15 @@
         steps: [{ id: "first-zealot", target: "Zealot", producer: "Gateway", desiredCount: 1, earliestGameLoop: 0, priority: 100, lane: "units" }] }
     }
   };
-  function applyRace(bot, race) {
+  function applyRace(bot, race, policy = $("bot-race-policy").value || "fixed") {
     const profile = raceProfiles[race];
     if (!profile) return;
     bot.race = race;
     bot.modeId = profile.modeId;
     bot.strategyProfile = profile.strategyProfile;
-    bot.raceSelection = { policy: "fixed", fixedRace: race.toLowerCase(), eligibleRaces: [race.toLowerCase()] };
+    bot.raceSelection = policy === "random"
+      ? { policy: "random", fixedRace: race.toLowerCase(), eligibleRaces: ["terran", "zerg", "protoss"] }
+      : { policy: "fixed", fixedRace: race.toLowerCase(), eligibleRaces: [race.toLowerCase()] };
     if (bot.runtime?.bot) {
       bot.runtime.bot.race = race;
       bot.runtime.bot.strategyProfile = profile.strategyProfile;
@@ -112,6 +124,7 @@
     $("bot-id").value = bot.id || "";
     $("strategy-profile").value = bot.strategyProfile || "";
     $("bot-race").value = bot.race || "Terran";
+    $("bot-race-policy").value = bot.raceSelection?.policy || "fixed";
     $("command-race").value = bot.race || "Terran";
     $("default-role").value = bot.defaultGoals?.defaultRole || "engage";
     $("ai-enabled").checked = !!bot.ai?.enabled;
@@ -123,7 +136,7 @@
     const bot = parsed.value;
     bot.name = $("bot-name").value;
     bot.id = $("bot-id").value;
-    applyRace(bot, $("bot-race").value);
+    applyRace(bot, $("bot-race").value, $("bot-race-policy").value);
     $("strategy-profile").value = bot.strategyProfile;
     if (bot.defaultGoals) bot.defaultGoals.defaultRole = $("default-role").value;
     if (bot.ai) {
@@ -171,7 +184,7 @@
       if (!response.ok) throw new Error("HTTP " + response.status);
       editor.value = JSON.stringify(await response.json(), null, 2);
       const parsed = parse();
-      applyRace(parsed.value, parsed.value.race || "Terran");
+      applyRace(parsed.value, parsed.value.race || "Terran", parsed.value.raceSelection?.policy || "fixed");
       editor.value = JSON.stringify(parsed.value, null, 2);
       syncFields(parsed.value);
       markDirty();
@@ -340,7 +353,7 @@
   $("format-json").addEventListener("click", () => { const parsed = parse(); if (!parsed.error) editor.value = JSON.stringify(parsed.value, null, 2); else validate(); });
   $("reset-sample").addEventListener("click", loadSample);
   editor.addEventListener("input", markDirty);
-  ["bot-name","bot-id","strategy-profile","default-role","ai-enabled","bot-race"].forEach(id => $(id).addEventListener("change", syncJsonFromFields));
+  ["bot-name","bot-id","strategy-profile","default-role","ai-enabled","bot-race","bot-race-policy"].forEach(id => $(id).addEventListener("change", syncJsonFromFields));
   $("import-file").addEventListener("change", async event => {
     const file = event.target.files?.[0];
     if (!file) return;

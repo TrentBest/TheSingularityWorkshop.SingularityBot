@@ -33,7 +33,19 @@
           <label class="toggle-row">Optional AI consultation <input id="ai-enabled" type="checkbox"><small>Bounded strategic advice; never direct unit-command authority.</small></label>
         </div>
 
-        <div class="section-heading subhead"><div><span class="eyebrow">02 / AUTHORING ARTIFACT</span><h2>Definition JSON</h2></div><div class="button-row"><button id="format-json" class="quiet">Format</button><button id="reset-sample" class="quiet">Load example</button></div></div>
+
+        <div class="section-heading subhead"><div><span class="eyebrow">02 / COMMAND AUTHORITY</span><h2>Build the chain of command</h2></div><span class="tag">THREE TIERS</span></div>
+        <section class="panel command-authority">
+          <div class="authority-intro"><div><span class="authority-index">01</span><strong>Strategy</strong><small id="strategy-caption">The strategic will of the bot</small></div><span class="authority-arrow">↓</span><div><span class="authority-index">02</span><strong>Coordinators</strong><small>Operational commanders, each with a domain</small></div><span class="authority-arrow">↓</span><div><span class="authority-index">03</span><strong>Controllers</strong><small>Unit contexts and their FSM capabilities</small></div></div>
+          <div class="command-config">
+            <label>Race doctrine preview<select id="command-race"><option value="Zerg">Zerg · The Swarm</option><option value="Terran" selected>Terran · Dominion Command</option><option value="Protoss">Protoss · The Enclave</option></select></label>
+            <label>Strategic authority<input id="command-strategy" maxlength="100" value="Fleet Admiral"></label>
+            <label>Operational coordinators<input id="command-coordinators" value="Mining Operations, Construction Corps, Production Command, Reconnaissance, Fleet Command"><small>Comma-separated operational domains. Each coordinator can own its own policy and assigned unit controllers.</small></label>
+          </div>
+          <div id="command-preview" class="command-preview" aria-live="polite"></div>
+          <p class="fine-print">This is the first visual authoring prototype for the three-tier hierarchy. It previews race-specific terminology and operational groupings; it is not yet serialized into BotDefinition v1 or executable as a runtime composition.</p>
+        </section>
+\n        <div class="section-heading subhead"><div><span class="eyebrow">03 / AUTHORING ARTIFACT</span><h2>Definition JSON</h2></div><div class="button-row"><button id="format-json" class="quiet">Format</button><button id="reset-sample" class="quiet">Load example</button></div></div>
         <div class="panel code-panel">
           <div class="code-toolbar"><span><i></i> bot-definition.v1.json</span><span id="json-state">Unsaved edits stay in this browser</span></div>
           <textarea id="definition-json" spellcheck="false" aria-label="Bot definition JSON" autocapitalize="off" autocomplete="off"></textarea>
@@ -48,7 +60,7 @@
       </div>
 
       <aside class="side-column">
-        <section class="section-heading"><div><span class="eyebrow">03 / MAP-FIRST PREVIEW</span><h2>Map &amp; match</h2></div><span class="tag">READ ONLY</span></section>
+        <section class="section-heading"><div><span class="eyebrow">04 / MAP-FIRST PREVIEW</span><h2>Map &amp; match</h2></div><span class="tag">READ ONLY</span></section>
         <section class="panel map-panel">
           <div class="map-toolbar"><strong id="map-title">Loading canonical map…</strong><span id="map-status">Fixture</span></div>
           <svg id="map-canvas" class="map-canvas" viewBox="0 0 1000 700" role="img" aria-label="Static map with selected match frame overlay">
@@ -69,12 +81,12 @@
           <div class="frame-meta"><span id="frame-label">No match frames loaded</span><span id="destroyed-label"></span></div>
           <p class="fine-print">Static map and synthetic snapshots are loaded without a live SC2 process. This preview uses the map document’s world-coordinate transform; raster interpretation and live match streaming are not enabled yet.</p>
         </section>
-        <section class="section-heading"><div><span class="eyebrow">04 / OPENING PRESSURE</span><h2>Scout &amp; engagement doctrine</h2></div><span class="tag">CODE-DERIVED</span></section>
+        <section class="section-heading"><div><span class="eyebrow">05 / OPENING PRESSURE</span><h2>Scout &amp; engagement doctrine</h2></div><span class="tag">CODE-DERIVED</span></section>
         <section class="panel pressure-panel">
           <img class="pressure-graphic" src="assets/opening-pressure.svg" alt="Terran Marine opening flow: a dedicated scout approaches the enemy ramp foot, while the combat group prioritizes observed builders of unfinished production structures, then Probes, then the existing combat assessment.">
           <p class="fine-print">This is a source-derived view of the current Terran Marine path, not a live match or a simulation. The dedicated scout stops at a terrain-validated ramp observation point; the combat group retains separate engagement authority.</p>
         </section>
-        <section class="section-heading"><div><span class="eyebrow">05 / MATCH HOST</span><h2>Test Arena</h2></div><span class="tag muted">HOST GATED</span></section>
+        <section class="section-heading"><div><span class="eyebrow">06 / MATCH HOST</span><h2>Test Arena</h2></div><span class="tag muted">HOST GATED</span></section>
         <div class="panel arena-panel">
           <div class="arena-visual">
             <div class="arena-grid"></div>

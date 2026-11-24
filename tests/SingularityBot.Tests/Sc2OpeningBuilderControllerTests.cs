@@ -175,7 +175,6 @@ public sealed class Sc2OpeningBuilderControllerTests
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
-        var miningOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
         var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
 
         var selection = controller.TryCreateAction(Snapshot(100, 12, 15,

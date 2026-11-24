@@ -40,7 +40,7 @@ public sealed class BotRaceSelectionTests
             randomDefinition.RaceSelection,
             RaceModuleCatalog.CreateDefault().ExecutableRaces,
             Context,
-            index => index == 0 ? 1 : 0);
+            count => count > 1 ? 1 : 0);
         var rebound = BotDefinitionCatalog.RebindRace(randomDefinition, selected.SelectedRace);
 
         Assert.Equal(Race.Zerg, selected.SelectedRace);

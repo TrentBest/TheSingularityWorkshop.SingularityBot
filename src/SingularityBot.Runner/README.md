@@ -14,9 +14,9 @@ Forge exports a portable `BotDefinition` JSON artifact. The Runner can load that
 dotnet run --project src/SingularityBot.Runner/SingularityBot.Runner.csproj -- --definition="C:\\Bots\\my-bot.json"
 ```
 
-The selected definition supplies its race and mode to the match host. The mode must be one of the registered executable modes and must match the definition's race. `--definition` cannot be combined with `--mode` or `--race`; change the artifact in Forge instead. The Runner applies strict `BotDefinition.Parse` and semantic validation before connecting to SC2.
+The selected definition supplies its race policy and mode to the match host. Fixed policy pins the definition to its selected race. Random policy chooses at launch from the three currently executable race adapters (Terran, Zerg and Protoss), then binds the authored definition to that race's registered mode and bounded opening. `--definition` cannot be combined with `--mode` or `--race`; change the artifact in Forge instead. The Runner applies strict `BotDefinition.Parse` and semantic validation before connecting to SC2.
 
-The currently registered Zergling and Protoss Zealot definitions are bounded experimental openers. Their selection does not imply a complete sustainable economy or ladder-ready strategy.
+The currently registered Zergling and Protoss Zealot definitions are bounded experimental openers. Random selection therefore means random selection among available race adapters, not a claim that all three currently have complete sustainable economies or equivalent ladder-ready strategies.
 
 ## Optional Bot Studio bridge
 

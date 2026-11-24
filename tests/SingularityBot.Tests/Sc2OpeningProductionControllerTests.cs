@@ -82,6 +82,40 @@ public sealed class Sc2OpeningProductionControllerTests
             GameData(), reservedMinerals: uint.MaxValue));
     }
 
+    [Theory]
+    [InlineData(20f, true)]
+    [InlineData(12f, false)]
+    [InlineData(0f, false)]
+    public void TrainsScvOnlyWhenItCanFinishBeforeFirstBarracks(float barracksRemainingSeconds, bool expected)
+    {
+        var controller = new Sc2OpeningProductionController();
+        var action = controller.TryCreateScvTrainingAction(
+            Snapshot(200, 12, 15, Fact(100, "CommandCenter")),
+            GameData(),
+            reservedMinerals: 150,
+            barracksRemainingSeconds: barracksRemainingSeconds,
+            scvBuildTimeSeconds: 12f,
+            productionHandoffBufferSeconds: 0.5f);
+
+        Assert.Equal(expected, action is not null);
+        if (!expected)
+            Assert.Contains("Barracks completes", controller.LastScheduleBlockReason);
+    }
+
+    [Fact]
+    public void HoldsScvProductionWhenBarracksTimeIsKnownButScvBuildTimeIsUnavailable()
+    {
+        var controller = new Sc2OpeningProductionController();
+        var action = controller.TryCreateScvTrainingAction(
+            Snapshot(500, 12, 15, Fact(100, "CommandCenter")),
+            GameData(),
+            barracksRemainingSeconds: 30f,
+            scvBuildTimeSeconds: 0);
+
+        Assert.Null(action);
+        Assert.Contains("SCV build time is unavailable", controller.LastScheduleBlockReason);
+    }
+
     [Fact]
     public void DoesNotTrainWithoutMineralsOrFreeSupply()
     {
@@ -210,7 +244,8 @@ public sealed class Sc2OpeningProductionControllerTests
             Name = "SCV",
             AbilityId = 524,
             MineralCost = 50,
-            FoodRequired = 1
+            FoodRequired = 1,
+            BuildTime = 12f
         });
         return Sc2GameDataCatalog.Create(data);
     }

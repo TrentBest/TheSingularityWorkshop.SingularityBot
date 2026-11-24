@@ -28,7 +28,8 @@
           <label>Display name<input id="bot-name" maxlength="160" autocomplete="off"></label>
           <label>Stable ID<input id="bot-id" maxlength="128" autocomplete="off"></label>
           <label>Strategy profile<input id="strategy-profile" autocomplete="off"></label>
-          <label>Race<select id="bot-race"><option value="Terran">Terran</option><option value="Zerg">Zerg</option><option value="Protoss">Protoss</option></select><small>The selected race and its mode are exported in BotDefinition. Zerg and Protoss currently use bounded experimental openers.</small></label>
+          <label>Race selection<select id="bot-race-policy"><option value="fixed">Fixed race</option><option value="random">Random each match</option></select><small>Random selects among the enabled executable race adapters.</small></label>
+          <label>Race / default doctrine<select id="bot-race"><option value="Terran">Terran</option><option value="Zerg">Zerg</option><option value="Protoss">Protoss</option></select><small>Fixed uses this race. Random uses it as the editor's default doctrine; the runner chooses a race at launch.</small></label>
           <label>Default unit posture<select id="default-role"><option value="none">None</option><option value="rally">Rally</option><option value="scout">Scout</option><option value="contain">Contain</option><option value="engage">Engage</option><option value="fallback">Fallback</option></select></label>
           <label class="toggle-row">Optional AI consultation <input id="ai-enabled" type="checkbox"><small>Bounded strategic advice; never direct unit-command authority.</small></label>
         </div>

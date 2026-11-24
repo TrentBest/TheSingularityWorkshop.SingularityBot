@@ -876,8 +876,9 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             // or Marine controller receives its mineral budget.
             // The Orbital is the first post-Barracks mineral commitment. Do not let
             // optional Marine or follow-on infrastructure reservations starve it.
-            // The Town Hall FSM is authoritative: reserve for Orbital only
-            // after its exact-one-Barracks/no-SCV-production gate is satisfied.
+            // Reserve the Orbital from the first Barracks commitment. The
+            // Command Center queue remains available only while a new SCV can
+            // finish before the observed/estimated Barracks completion window.
             var townHallUpgradeReady = startingTownHall is not null &&
                 _buildings.Buildings.Any(building =>
                     building.UnitTag == startingTownHall.Tag &&

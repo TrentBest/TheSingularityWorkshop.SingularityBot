@@ -82,6 +82,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     public uint BuilderSelectedGameLoop => _builderSelectedGameLoop;
     public uint WorkerPullMineralsThreshold => _workerPullMineralsThreshold;
     public double MineralIncomePerGameLoop => _mineralIncomeEstimator.MineralsPerGameLoop;
+    public uint EstimatedTravelGameLoops { get; private set; }
+    public uint? PredictedAffordableGameLoop { get; private set; }
+    public uint PredictedMineralsAtArrival { get; private set; }
     public string BuilderCandidateSummary { get; private set; } = string.Empty;
     public uint MoveRequestGameLoop => _firstMoveRequestGameLoop;
     public uint BuildRequestGameLoop => _buildRequestGameLoop;
@@ -343,6 +346,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             var affordableArrivalLoop = OpeningConstructionSchedule.EstimateAffordableGameLoop(
                 observation.GameLoop, observation.Minerals, requiredDepotMinerals,
                 MineralIncomePerGameLoop);
+            UpdateArrivalForecast(observation.GameLoop, observation.Minerals, estimatedTravelLoops,
+                requiredDepotMinerals, affordableArrivalLoop);
             if (affordableArrivalLoop is not uint expectedAffordableLoop ||
                 !OpeningConstructionSchedule.ShouldDispatchForArrival(
                     observation.GameLoop, estimatedTravelLoops, expectedAffordableLoop))
@@ -362,7 +367,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             _placementQueryPending = true;
             Console.WriteLine(
                 $"[Opening] Construction-crew SCV {_builderTag.Value} reserved for the Supply Depot; " +
-                $"estimated staging distance={selected.EstimatedArrivalDistance:F2}. " +
+                $"estimated staging distance={selected.EstimatedArrivalDistance:F2}, travelLoops={EstimatedTravelGameLoops}, " +
+                $"predictedMineralsAtArrival={PredictedMineralsAtArrival}, affordableLoop={PredictedAffordableGameLoop?.ToString() ?? "unknown"}. " +
                 "Empty-handed mining orders are interruptible at the scheduled departure; cargo-bearing workers finish their return.");
         }
 
@@ -466,6 +472,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         var predictedAffordableLoop = OpeningConstructionSchedule.EstimateAffordableGameLoop(
             observation.GameLoop, observation.Minerals, requiredMineralsAtArrival,
             MineralIncomePerGameLoop);
+        UpdateArrivalForecast(observation.GameLoop, observation.Minerals, travelGameLoops,
+            requiredMineralsAtArrival, predictedAffordableLoop);
         if (predictedAffordableLoop is not uint affordableLoop ||
             !OpeningConstructionSchedule.ShouldDispatchForArrival(
                 observation.GameLoop, travelGameLoops, affordableLoop))
@@ -695,6 +703,22 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 }
             }
         };
+
+    private void UpdateArrivalForecast(
+        uint gameLoop,
+        uint minerals,
+        uint travelGameLoops,
+        uint requiredMinerals,
+        uint? affordableGameLoop)
+    {
+        EstimatedTravelGameLoops = travelGameLoops;
+        PredictedAffordableGameLoop = affordableGameLoop;
+        var projectedIncome = MineralIncomePerGameLoop > 0
+            ? Math.Floor(MineralIncomePerGameLoop * travelGameLoops)
+            : 0d;
+        var projectedBank = Math.Min(uint.MaxValue, minerals + Math.Max(0d, projectedIncome));
+        PredictedMineralsAtArrival = (uint)projectedBank;
+    }
 
     private static bool IsTownHall(string kind) =>
         kind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||

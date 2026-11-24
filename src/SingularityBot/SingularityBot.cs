@@ -1034,9 +1034,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _gameData,
                 _workerAssignments,
                 constructionCrewTags,
-                _buildJobs,
-                workerPullMinerals: Terran.Economy.Settings.SupplyDepotWorkerPullMinerals,
-                minimumBuilderPullGameLoop: Sc2OpeningBuilderController.InitialBuilderPullGameLoop);
+                _buildJobs);
             _openingBuilderActionSubmitted = builderAction is not null;
             if (builderAction is not null)
             {

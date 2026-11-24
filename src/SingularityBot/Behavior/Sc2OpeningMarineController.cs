@@ -219,7 +219,7 @@ public sealed class Sc2OpeningMarineController
                 // The second SCV is timed to reach the Barracks site at the later
                 // of Depot completion or predicted 150-mineral affordability.
                 // If the forecast is unavailable, hold rather than send it early.
-                if (allowBuilderStaging && !allowConstruction)
+                if (allowBuilderStaging)
                 {
                     if (desiredBuilderArrivalGameLoop is not uint depotReadyLoop)
                         return null;

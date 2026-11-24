@@ -63,21 +63,26 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void ReservesBuilderAtEightyMineralsBeforeDepotIsAffordable()
+    public void DoesNotPullAtEightyMineralsWhenPredictedArrivalWouldStillBeShort()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var gameData = GameData();
+        var map = Map();
+        controller.TryCreateAction(SnapshotAt(0, 50, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, Crew());
+        controller.TryCreateAction(SnapshotAt(22, 55, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, Crew());
 
-        var action = controller.TryCreateAction(Snapshot(80, 12, 15,
-            Fact(10, "SCV", 5, 5), Fact(11, "SCV", 6, 5),
-            Fact(1, "CommandCenter", 10, 10)), Map(), gameData,
+        var action = controller.TryCreateAction(SnapshotAt(22, 80, 12, 15,
+            Fact(10, "SCV", 15, 15), Fact(11, "SCV", 16, 15),
+            Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
         Assert.Null(action);
-        Assert.NotNull(controller.BuilderTag);
-        Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
-        Assert.NotNull(controller.TakePlacementQuery(gameData));
+        Assert.Null(controller.BuilderTag);
+        Assert.False(assignments.IsReserved(10));
+        Assert.False(assignments.IsReserved(11));
     }
 
     [Fact]
@@ -121,20 +126,19 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void WaitsForSelectedMineralWorkerToCompleteItsReturnBeforeDispatch()
+    public void DispatchesEmptyHandedMineralWorkerImmediatelyWhenArrivalForecastIsReady()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
-        var mineral = Fact(20, "MineralField", 12, 12) with { Alliance = UnitAlliance.Neutral };
         var miningOrder = new[] { new UnitOrderObservationFacts(295, 20, null, null) };
 
         var selection = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(10, "SCV", 5, 5, hasCargo: true,
                 orders: new[] { new UnitOrderObservationFacts(295, 1, null, null) }),
             Fact(11, "SCV", 9, 9, orders: miningOrder),
-            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
         Assert.Null(selection);
@@ -144,26 +148,11 @@ public sealed class Sc2OpeningBuilderControllerTests
         Assert.NotNull(controller.TakePlacementQuery(gameData));
         SetValidPlacement(controller);
 
-        // No cargo does not mean the worker is safe to interrupt: it is still
-        // executing its trip to the mineral patch.
-        var travellingToMinerals = controller.TryCreateAction(Snapshot(100, 12, 15,
+        // Empty-handed mining is interruptible once the predicted arrival window
+        // is reached; we no longer wait through another complete mineral trip.
+        var move = controller.TryCreateAction(Snapshot(100, 12, 15,
             Fact(11, "SCV", 9, 9, orders: miningOrder),
-            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
-            assignments, Crew(10, 11));
-        Assert.Null(travellingToMinerals);
-
-        // Once loaded, the controller observes the return to the Command Center.
-        var returning = controller.TryCreateAction(Snapshot(101, 12, 15,
-            Fact(11, "SCV", 9, 9, hasCargo: true,
-                orders: new[] { new UnitOrderObservationFacts(296, 1, null, null) }),
-            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
-            assignments, Crew(10, 11));
-        Assert.Null(returning);
-
-        // The first empty observation after that return is the safe handoff point.
-        var move = controller.TryCreateAction(Snapshot(102, 12, 15,
-            Fact(11, "SCV", 9, 9, orders: miningOrder),
-            Fact(1, "CommandCenter", 10, 10), mineral), map, gameData,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
 
         Assert.NotNull(move);
@@ -504,13 +493,17 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)
         };
 
-        // Do not pull a worker until the strategic reserve plus the configured
-        // worker-pull threshold is available.
-        Assert.Null(controller.TryCreateAction(Snapshot(329, 12, 15, units),
+        // The reserve is 250 and the Depot costs 100. Forecast arrival, not a
+        // fixed threshold, decides when to pull the worker.
+        controller.TryCreateAction(SnapshotAt(0, 50, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, data, assignments, Crew());
+        controller.TryCreateAction(SnapshotAt(22, 55, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, data, assignments, Crew());
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 330, 12, 15, units),
             map, data, assignments, Crew(10, 11), reservedMinerals: 250));
         Assert.Null(controller.BuilderTag);
 
-        Assert.Null(controller.TryCreateAction(Snapshot(330, 12, 15, units),
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 338, 12, 15, units),
             map, data, assignments, Crew(10, 11), reservedMinerals: 250));
         Assert.NotNull(controller.BuilderTag);
         var query = controller.TakePlacementQuery(data);
@@ -531,33 +524,28 @@ public sealed class Sc2OpeningBuilderControllerTests
     }
 
     [Fact]
-    public void WaitsUntilNineSecondOpeningMarkBeforeSelectingDepotBuilder()
+    public void PredictiveDispatchDoesNotWaitForTheFormerNineSecondGate()
     {
         var controller = new Sc2OpeningBuilderController();
         var assignments = new WorkerResourceAssignmentPlanner();
         var map = Map();
         var gameData = GameData();
+        controller.TryCreateAction(SnapshotAt(0, 50, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, Crew());
+        controller.TryCreateAction(SnapshotAt(22, 55, 12, 15,
+            Fact(1, "CommandCenter", 10, 10)), map, gameData, assignments, Crew());
+
         var units = new[]
         {
-            Fact(10, "SCV", 5, 5),
-            Fact(11, "SCV", 6, 5),
+            Fact(10, "SCV", 15, 15),
+            Fact(11, "SCV", 16, 15),
             Fact(1, "CommandCenter", 10, 10)
         };
-
         Assert.Null(controller.TryCreateAction(
-            SnapshotAt(201, 60, 12, 15, units), map, gameData,
-            assignments, Crew(10, 11),
-            workerPullMinerals: 60,
-            minimumBuilderPullGameLoop: Sc2OpeningBuilderController.InitialBuilderPullGameLoop));
-        Assert.Null(controller.BuilderTag);
-
-        Assert.Null(controller.TryCreateAction(
-            SnapshotAt(202, 60, 12, 15, units), map, gameData,
-            assignments, Crew(10, 11),
-            workerPullMinerals: 60,
-            minimumBuilderPullGameLoop: Sc2OpeningBuilderController.InitialBuilderPullGameLoop));
+            SnapshotAt(100, 97, 12, 15, units), map, gameData,
+            assignments, Crew(10, 11)));
         Assert.NotNull(controller.BuilderTag);
-        Assert.Equal(202u, controller.BuilderSelectedGameLoop);
+        Assert.Equal(100u, controller.BuilderSelectedGameLoop);
         Assert.NotEmpty(controller.BuilderCandidateSummary);
     }
 

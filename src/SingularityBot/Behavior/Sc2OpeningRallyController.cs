@@ -14,18 +14,13 @@ public sealed class Sc2OpeningRallyController
     private enum PendingAction
     {
         None,
-        Temporary,
         Restore
     }
 
     private PendingAction _pendingAction;
-    private ulong? _townHallTag;
-    private MapPoint? _temporaryTarget;
-    private bool _temporaryAccepted;
     private bool _restoreAccepted;
     private bool _configurationFailureReported;
 
-    public bool IsTemporaryRallyAccepted => _temporaryAccepted;
     public bool IsRestoreAccepted => _restoreAccepted;
 
     public SC2APIProtocol.Action TryCreateAction(
@@ -43,76 +38,42 @@ public sealed class Sc2OpeningRallyController
         {
             if (!_configurationFailureReported)
             {
-                Console.WriteLine("[Opening] Cannot begin SCV production: SC2 game data did not expose an unambiguous Rally_Workers ability.");
+                Console.WriteLine("[Opening] Cannot restore the Command Center worker rally: SC2 game data did not expose an unambiguous Rally_Workers ability.");
                 _configurationFailureReported = true;
             }
             return null;
         }
 
-        if (!_temporaryAccepted)
-        {
-            if (_pendingAction != PendingAction.None)
-                return null;
-
-            var townHall = observation.Units
-                .Where(unit => unit.Alliance == UnitAlliance.Self &&
-                               unit.IsLiveVisible && unit.HasPosition &&
-                               !observation.DeadUnitTags.Contains(unit.Tag) &&
-                               (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
-                                unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase)))
-                .OrderBy(unit => unit.Tag)
-                .FirstOrDefault();
-            if (townHall is null || spatialMap is null)
-            {
-                if (!_configurationFailureReported)
-                {
-                    Console.WriteLine("[Opening] Cannot set the temporary worker rally: a visible Command Center and valid map geometry are required.");
-                    _configurationFailureReported = true;
-                }
-                return null;
-            }
-
-            var origin = new MapPoint(townHall.PositionX, townHall.PositionY);
-            var forward = (spatialMap.Center - origin).Normalize();
-            var target = origin + forward * 4.5f;
-            if (!spatialMap.Bounds.Contains(target))
-                return null;
-
-            _townHallTag = townHall.Tag;
-            _temporaryTarget = target;
-            _pendingAction = PendingAction.Temporary;
-            Console.WriteLine($"[Opening] Setting Command Center {_townHallTag} worker rally to Supply Depot staging point ({target.X:F1},{target.Y:F1}) before first SCV production.");
-
-            return CreatePositionCommand(
-                townHall.Tag,
-                checked((int)gameData.RallyWorkersAbilityId.Value),
-                target);
-        }
-
-        if (!builderDispatched || _restoreAccepted || _pendingAction != PendingAction.None ||
-            _townHallTag is null)
+        // Never redirect newly produced SCVs toward the Depot before the
+        // dedicated builder has actually been dispatched. The Command Center's
+        // native mineral rally remains untouched during the opening delay.
+        if (!builderDispatched || _restoreAccepted || _pendingAction != PendingAction.None)
             return null;
 
-        // Use an observed starting worker assignment, not a guessed mineral patch.
         var originalMineral = assignments.Values
-            .Where(assignment => assignment.TownHallTag == _townHallTag.Value)
             .OrderBy(assignment => assignment.WorkerTag)
             .FirstOrDefault();
         if (originalMineral is null)
             return null;
 
+        var townHallVisible = observation.Units.Any(unit =>
+            unit.Tag == originalMineral.TownHallTag &&
+            unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible &&
+            (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase)));
         var mineralStillVisible = observation.Units.Any(unit =>
             unit.Tag == originalMineral.MineralTag &&
             unit.Alliance == UnitAlliance.Neutral &&
             unit.IsLiveVisible &&
             unit.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase));
-        if (!mineralStillVisible)
+        if (!townHallVisible || !mineralStillVisible)
             return null;
 
         _pendingAction = PendingAction.Restore;
-        Console.WriteLine($"[Opening] Restoring Command Center {_townHallTag} worker rally to observed mineral {originalMineral.MineralTag} after builder dispatch.");
+        Console.WriteLine($"[Opening] Restoring Command Center {originalMineral.TownHallTag} worker rally to observed mineral {originalMineral.MineralTag} after builder dispatch.");
         return CreateUnitTargetCommand(
-            _townHallTag.Value,
+            originalMineral.TownHallTag,
             checked((int)gameData.RallyWorkersAbilityId.Value),
             originalMineral.MineralTag);
     }
@@ -122,13 +83,8 @@ public sealed class Sc2OpeningRallyController
         if (_pendingAction == PendingAction.None)
             return;
 
-        if (result == ActionResult.Success)
-        {
-            if (_pendingAction == PendingAction.Temporary)
-                _temporaryAccepted = true;
-            else if (_pendingAction == PendingAction.Restore)
-                _restoreAccepted = true;
-        }
+        if (result == ActionResult.Success && _pendingAction == PendingAction.Restore)
+            _restoreAccepted = true;
 
         _pendingAction = PendingAction.None;
     }

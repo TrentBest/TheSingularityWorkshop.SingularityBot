@@ -25,6 +25,8 @@ public static class Program
             argument.StartsWith("--mode=", StringComparison.Ordinal));
         var raceArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--race=", StringComparison.Ordinal));
+        var definitionArgument = args.FirstOrDefault(argument =>
+            argument.StartsWith("--definition=", StringComparison.Ordinal));
         var selectedModeId = modeArgument?["--mode=".Length..];
         Race? explicitRace = null;
         if (raceArgument is not null)
@@ -47,6 +49,7 @@ public static class Program
             !argument.StartsWith("--cc-area=", StringComparison.Ordinal) &&
             !argument.StartsWith("--mode=", StringComparison.Ordinal) &&
             !argument.StartsWith("--race=", StringComparison.Ordinal) &&
+            !argument.StartsWith("--definition=", StringComparison.Ordinal) &&
             !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
@@ -65,15 +68,32 @@ public static class Program
         // IDE Play. Ladder operators may opt in explicitly; only an explicit
         // --no-diagnostics disables local capture.
         var writeDiagnostics = diagnostics && (localRun || diagnosticsRequested);
-        var selectedConfiguration = string.IsNullOrWhiteSpace(selectedModeId)
-            ? MatchConfiguration
-            : BotMatchConfiguration.ForMode(selectedModeId);
-        if (explicitRace is Race race && selectedConfiguration.RequestedRace != race)
-            throw new ArgumentException($"Configured mode '{selectedModeId}' requires {selectedConfiguration.RequestedRace}, but --race selected {race}.", nameof(args));
+        BotDefinition selectedDefinition;
+        BotMatchConfiguration selectedConfiguration;
+        if (definitionArgument is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(selectedModeId) || explicitRace is not null)
+                throw new ArgumentException("--definition cannot be combined with --mode or --race; edit the definition artifact instead.", nameof(args));
+            var definitionPath = definitionArgument["--definition=".Length..];
+            if (string.IsNullOrWhiteSpace(definitionPath) || !File.Exists(definitionPath))
+                throw new FileNotFoundException("The supplied BotDefinition JSON file does not exist.", definitionPath);
+            selectedDefinition = BotDefinition.Parse(File.ReadAllText(definitionPath));
+            selectedConfiguration = BotMatchConfiguration.ForMode(selectedDefinition.ModeId);
+            if (!Enum.TryParse<Race>(selectedDefinition.Race, ignoreCase: false, out var definitionRace) ||
+                definitionRace != selectedConfiguration.RequestedRace)
+                throw new InvalidOperationException($"BotDefinition race {selectedDefinition.Race} does not match mode {selectedDefinition.ModeId}.");
+        }
+        else
+        {
+            selectedConfiguration = string.IsNullOrWhiteSpace(selectedModeId)
+                ? MatchConfiguration
+                : BotMatchConfiguration.ForMode(selectedModeId);
+            if (explicitRace is Race race && selectedConfiguration.RequestedRace != race)
+                throw new ArgumentException($"Configured mode '{selectedModeId}' requires {selectedConfiguration.RequestedRace}, but --race selected {race}.", nameof(args));
+            selectedDefinition = BotDefinitionCatalog.CreateForMode(
+                selectedModeId ?? BotDefinitionCatalog.DefaultModeId);
+        }
         var requestedRace = selectedConfiguration.RequestedRace;
-
-        var selectedDefinition = BotDefinitionCatalog.CreateForMode(
-            selectedModeId ?? BotDefinitionCatalog.DefaultModeId);
         Console.WriteLine($"[BotStrategy] Using compiled '{selectedDefinition.Id}' ({selectedDefinition.Name}), race={selectedDefinition.Race}, mode={selectedDefinition.ModeId}.");
         var bot = new SingularityBot(
             passiveBaseline: passiveBaseline,

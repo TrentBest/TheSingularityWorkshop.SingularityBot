@@ -32,12 +32,16 @@ public sealed class Sc2OpeningProductionController : IDisposable
     public string CurrentState => _handle.CurrentState;
     public bool IsAwaitingObservedOrder => _handle.CurrentState == AwaitingEvidence;
     public bool HasObservedTrainingOrder => _context.HasObservedTrainingOrder;
+    public string LastScheduleBlockReason { get; private set; } = string.Empty;
 
     public SC2APIProtocol.Action TryCreateScvTrainingAction(
         NormalizedObservation observation,
         Sc2GameDataCatalog gameData,
         uint reservedMinerals = 0,
-        ulong? reservedCommandCenterTag = null)
+        ulong? reservedCommandCenterTag = null,
+        float? barracksRemainingSeconds = null,
+        float scvBuildTimeSeconds = 0,
+        float productionHandoffBufferSeconds = 0.5f)
     {
         ArgumentNullException.ThrowIfNull(observation);
         ArgumentNullException.ThrowIfNull(gameData);
@@ -64,6 +68,26 @@ public sealed class Sc2OpeningProductionController : IDisposable
             gameData.ScvMineralCost == 0 ||
             commandCenters.Length == 0)
             return null;
+
+        // Do not start an SCV that will still occupy the Command Center when
+        // the first Barracks completes. That queue must be free for the Orbital
+        // morph on the first eligible observation frame.
+        if (barracksRemainingSeconds is float remainingBarracksSeconds)
+        {
+            if (!float.IsFinite(scvBuildTimeSeconds) || scvBuildTimeSeconds <= 0 ||
+                !float.IsFinite(remainingBarracksSeconds) ||
+                remainingBarracksSeconds <= scvBuildTimeSeconds + productionHandoffBufferSeconds)
+            {
+                var reason = !float.IsFinite(scvBuildTimeSeconds) || scvBuildTimeSeconds <= 0
+                    ? "SCV build time is unavailable; holding production until the Orbital handoff."
+                    : $"Barracks completes in {Math.Max(0, remainingBarracksSeconds):F2}s; SCV production needs {scvBuildTimeSeconds:F2}s plus {productionHandoffBufferSeconds:F2}s handoff margin.";
+                if (!string.Equals(LastScheduleBlockReason, reason, StringComparison.Ordinal))
+                    Console.WriteLine("[Production] HOLD SCV: " + reason);
+                LastScheduleBlockReason = reason;
+                return null;
+            }
+        }
+        LastScheduleBlockReason = string.Empty;
 
         if (observation.Minerals < gameData.ScvMineralCost ||
             observation.Minerals - gameData.ScvMineralCost < reservedMinerals ||

@@ -21,7 +21,16 @@
     if (bot.schemaVersion !== 1) errors.push("$.schemaVersion must be 1.");
     if (typeof bot.id !== "string" || !bot.id.trim() || bot.id.length > 128) errors.push("$.id must contain 1–128 characters.");
     if (typeof bot.name !== "string" || !bot.name.trim() || bot.name.length > 160) errors.push("$.name must contain 1–160 characters.");
-    if (bot.race !== "Terran") errors.push("$.race must be Terran for the current v1 schema/runtime.");
+    const raceModes = { Terran: "terran.marine.v1", Zerg: "zerg.zergling.v1", Protoss: "protoss.zealot.v1" };
+    if (!Object.prototype.hasOwnProperty.call(raceModes, bot.race)) errors.push("$.race must be Terran, Zerg, or Protoss.");
+    if (bot.modeId && raceModes[bot.race] !== bot.modeId) errors.push("$.modeId must match the selected race (" + (raceModes[bot.race] || "no registered mode") + ").");
+    if (bot.raceSelection && (bot.raceSelection.policy !== "fixed" ||
+        bot.raceSelection.fixedRace !== String(bot.race).toLowerCase() ||
+        !Array.isArray(bot.raceSelection.eligibleRaces) ||
+        bot.raceSelection.eligibleRaces.length !== 1 ||
+        bot.raceSelection.eligibleRaces[0] !== String(bot.race).toLowerCase())) {
+      errors.push("$.raceSelection must declare the selected race as a fixed, single-race allow-list.");
+    }
     if (typeof bot.strategyProfile !== "string" || !bot.strategyProfile.trim()) errors.push("$.strategyProfile is required.");
     const runtime = bot.runtime;
     if (!runtime || runtime.schemaVersion !== 1 || !runtime.bot || !Array.isArray(runtime.advisors)) errors.push("$.runtime must contain schemaVersion 1, bot settings, and advisors.");
@@ -60,13 +69,53 @@
     }
     return errors;
   }
+  const raceProfiles = {
+    Terran: {
+      modeId: "terran.marine.v1",
+      strategyProfile: "terran.marine-economy.v1"
+    },
+    Zerg: {
+      modeId: "zerg.zergling.v1",
+      strategyProfile: "zerg.zergling-pressure.v1",
+      opening: { id: "zerg.first-zergling", name: "First Zergling pair",
+        steps: [{ id: "zergling-pair", target: "Zergling", producer: "Larva", desiredCount: 2, earliestGameLoop: 0, priority: 100, lane: "units" }] }
+    },
+    Protoss: {
+      modeId: "protoss.zealot.v1",
+      strategyProfile: "protoss.zealot-pressure.v1",
+      opening: { id: "protoss.first-zealot", name: "Pylon, Gateway, first Zealot",
+        steps: [{ id: "first-zealot", target: "Zealot", producer: "Gateway", desiredCount: 1, earliestGameLoop: 0, priority: 100, lane: "units" }] }
+    }
+  };
+  function applyRace(bot, race) {
+    const profile = raceProfiles[race];
+    if (!profile) return;
+    bot.race = race;
+    bot.modeId = profile.modeId;
+    bot.strategyProfile = profile.strategyProfile;
+    bot.raceSelection = { policy: "fixed", fixedRace: race.toLowerCase(), eligibleRaces: [race.toLowerCase()] };
+    if (bot.runtime?.bot) {
+      bot.runtime.bot.race = race;
+      bot.runtime.bot.strategyProfile = profile.strategyProfile;
+    }
+    if (bot.opening) {
+      bot.opening.race = race;
+      if (profile.opening) {
+        bot.opening.id = profile.opening.id;
+        bot.opening.name = profile.opening.name;
+        bot.opening.steps = profile.opening.steps;
+      }
+    }
+  }
   function syncFields(bot) {
     $("bot-name").value = bot.name || "";
     $("bot-id").value = bot.id || "";
     $("strategy-profile").value = bot.strategyProfile || "";
     $("bot-race").value = bot.race || "Terran";
+    $("command-race").value = bot.race || "Terran";
     $("default-role").value = bot.defaultGoals?.defaultRole || "engage";
     $("ai-enabled").checked = !!bot.ai?.enabled;
+    renderCommandPreview();
   }
   function syncJsonFromFields() {
     const parsed = parse();
@@ -74,13 +123,8 @@
     const bot = parsed.value;
     bot.name = $("bot-name").value;
     bot.id = $("bot-id").value;
-    bot.strategyProfile = $("strategy-profile").value;
-    bot.race = "Terran";
-    if (bot.runtime?.bot) {
-      bot.runtime.bot.race = "Terran";
-      bot.runtime.bot.strategyProfile = bot.strategyProfile;
-    }
-    if (bot.opening) bot.opening.race = "Terran";
+    applyRace(bot, $("bot-race").value);
+    $("strategy-profile").value = bot.strategyProfile;
     if (bot.defaultGoals) bot.defaultGoals.defaultRole = $("default-role").value;
     if (bot.ai) {
       bot.ai.enabled = $("ai-enabled").checked;
@@ -93,6 +137,7 @@
     }
     editor.value = JSON.stringify(bot, null, 2);
     markDirty();
+    renderCommandPreview();
   }
   function markDirty() {
     state.dirty = true;
@@ -161,9 +206,11 @@
     ).join("") + '<div class="controller-foot">↓ Each coordinator delegates assignments to persistent IController unit contexts and their FSM_API state machines.</div>';
   }
   $("command-race").addEventListener("change", () => {
-    const profile = commandProfiles[$("command-race").value];
+    const race = $("command-race").value;
+    const profile = commandProfiles[race];
     $("command-coordinators").value = profile.coordinators.join(", ");
-    renderCommandPreview();
+    $("bot-race").value = race;
+    syncJsonFromFields();
   });
   $("command-coordinators").addEventListener("input", renderCommandPreview);
   renderCommandPreview();
@@ -291,7 +338,7 @@
   $("format-json").addEventListener("click", () => { const parsed = parse(); if (!parsed.error) editor.value = JSON.stringify(parsed.value, null, 2); else validate(); });
   $("reset-sample").addEventListener("click", loadSample);
   editor.addEventListener("input", markDirty);
-  ["bot-name","bot-id","strategy-profile","default-role","ai-enabled"].forEach(id => $(id).addEventListener("change", syncJsonFromFields));
+  ["bot-name","bot-id","strategy-profile","default-role","ai-enabled","bot-race"].forEach(id => $(id).addEventListener("change", syncJsonFromFields));
   $("import-file").addEventListener("change", async event => {
     const file = event.target.files?.[0];
     if (!file) return;

@@ -14,7 +14,11 @@ public sealed class EconomyAdvisorSettings
     public bool PrioritizeOpeningInfrastructure { get; init; } = true;
     public bool HoldWorkerProductionForFirstDepot { get; init; } = true;
     public bool AllowLongDistanceMining { get; init; }
-    /// <summary>Mineral bank at which a Supply Depot builder is reserved and dispatched; build legality still uses live game data.</summary>
+    /// <summary>
+    /// Legacy BotDefinition v1 compatibility field. The active opening no longer
+    /// uses a fixed mineral threshold; dispatch is predicted from measured income,
+    /// SCV movement speed, travel distance and authoritative Depot cost.
+    /// </summary>
     public uint SupplyDepotWorkerPullMinerals { get; init; } = 95;
     /// <summary>Enables the opening Orbital morph and subsequent MULE call-down policy.</summary>
     public bool EnableMules { get; init; } = true;

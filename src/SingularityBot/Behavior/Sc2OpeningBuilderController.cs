@@ -301,10 +301,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 return null;
 
             var stagingPoint = _candidatePoints[0];
-            // Select an empty worker so dispatch never discards a carried mineral
-            // or gas load. A worker already gathering may be interrupted now:
-            // the remaining mineral line continues funding the structure while
-            // this SCV travels to the validated site.
+            // Select an empty worker so dispatch never discards a carried load.
+            // If its current order is an outbound mineral trip, the handoff below
+            // waits for the harvest and return/deposit before issuing Move.
             var eligibleWorkers = observation.Units
                 .Where(unit => IsLiveScv(unit) && !unit.HasCargo && !assignments.IsReserved(unit.Tag))
                 .ToArray();
@@ -348,7 +347,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             Console.WriteLine(
                 $"[Opening] Construction-crew SCV {_builderTag.Value} reserved for the Supply Depot; " +
                 $"estimated staging distance={selected.EstimatedArrivalDistance:F2}. " +
-                "An empty worker is dispatched immediately; other SCVs continue funding the build while it travels.");
+                "Any active mineral trip is allowed to complete before the worker is dispatched.");
         }
 
         var builder = observation.Units.FirstOrDefault(unit =>

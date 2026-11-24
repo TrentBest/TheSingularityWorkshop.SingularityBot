@@ -56,7 +56,7 @@ public sealed class Sc2OpeningBuilderControllerTests
 
         // Near-site travel time is short, so the worker is pulled only when
         // the measured income forecast reaches the 100-mineral Depot cost.
-        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 97, 12, 15, workers),
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 100, 12, 15, workers),
             map, gameData, assignments, Crew(10, 11)));
         Assert.NotNull(controller.BuilderTag);
         Assert.True(assignments.IsReserved(controller.BuilderTag!.Value));
@@ -343,7 +343,7 @@ public sealed class Sc2OpeningBuilderControllerTests
         SetValidPlacement(controller);
         var site = controller.Placement.Value;
 
-        var move = controller.TryCreateAction(SnapshotAt(123, 50, 12, 15,
+        var move = controller.TryCreateAction(SnapshotAt(123, 100, 12, 15,
             Fact(10, "SCV", 5, 5), Fact(11, "SCV", 7, 5),
             Fact(1, "CommandCenter", 10, 10)), map, gameData,
             assignments, Crew(10, 11));
@@ -503,7 +503,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             map, data, assignments, Crew(10, 11), reservedMinerals: 250));
         Assert.Null(controller.BuilderTag);
 
-        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 338, 12, 15, units),
+        Assert.Null(controller.TryCreateAction(SnapshotAt(22, 350, 12, 15, units),
             map, data, assignments, Crew(10, 11), reservedMinerals: 250));
         Assert.NotNull(controller.BuilderTag);
         var query = controller.TakePlacementQuery(data);
@@ -542,7 +542,7 @@ public sealed class Sc2OpeningBuilderControllerTests
             Fact(1, "CommandCenter", 10, 10)
         };
         Assert.Null(controller.TryCreateAction(
-            SnapshotAt(100, 97, 12, 15, units), map, gameData,
+            SnapshotAt(100, 100, 12, 15, units), map, gameData,
             assignments, Crew(10, 11)));
         Assert.NotNull(controller.BuilderTag);
         Assert.Equal(100u, controller.BuilderSelectedGameLoop);

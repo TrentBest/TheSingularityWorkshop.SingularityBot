@@ -5,9 +5,9 @@ using SingularityBot.Spatial;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Gates the first SCV on a Command Center worker-rally command, then restores
-/// the Command Center's rally to an actually observed starting mineral target
-/// after the dedicated builder's Move command has been accepted.
+/// Leaves the Command Center's native mineral rally untouched while the opening
+/// builder is delayed, then explicitly restores it to an observed starting
+/// mineral target after the dedicated builder has been dispatched.
 /// </summary>
 public sealed class Sc2OpeningRallyController
 {
@@ -88,21 +88,6 @@ public sealed class Sc2OpeningRallyController
 
         _pendingAction = PendingAction.None;
     }
-
-    private static SC2APIProtocol.Action CreatePositionCommand(ulong unitTag, int abilityId, MapPoint target) =>
-        new()
-        {
-            ActionRaw = new ActionRaw
-            {
-                UnitCommand = new ActionRawUnitCommand
-                {
-                    AbilityId = abilityId,
-                    UnitTags = { unitTag },
-                    TargetWorldSpacePos = new Point2D { X = target.X, Y = target.Y },
-                    QueueCommand = false
-                }
-            }
-        };
 
     private static SC2APIProtocol.Action CreateUnitTargetCommand(ulong unitTag, int abilityId, ulong targetTag) =>
         new()

@@ -42,7 +42,11 @@ Each layer should declare:
 
 This makes a layer composable because its neighbors depend on contracts, not its concrete class or visual theme.
 
-## Initial command hierarchy
+## Existing tactical composition slots
+
+The author-facing authority hierarchy is IStrategy -> ICoordinator -> IController; see [Three-tier command authority](command-authority-three-tier.md). The following optional tactical slots remain available beneath operational coordinators when a doctrine needs them.
+
+## Optional tactical composition slots
 
 | Layer | Responsibility | Example translation |
 |---|---|---|

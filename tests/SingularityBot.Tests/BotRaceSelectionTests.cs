@@ -9,6 +9,44 @@ public sealed class BotRaceSelectionTests
     private static readonly BotRaceSelectionContext Context =
         new(Race.Zerg, Difficulty.Hard, "AcolyteLE.SC2Map");
 
+    [Theory]
+    [InlineData(Race.Terran, "terran.marine.v1")]
+    [InlineData(Race.Zerg, "zerg.zergling.v1")]
+    [InlineData(Race.Protoss, "protoss.zealot.v1")]
+    public void RaceRebinding_UsesRegisteredModeAndPreservesAuthoredIdentity(Race race, string modeId)
+    {
+        var template = BotDefinitionCatalog.CreateDefault();
+        var rebound = BotDefinitionCatalog.RebindRace(template, race);
+
+        Assert.Equal(race.ToString(), rebound.Race);
+        Assert.Equal(modeId, rebound.ModeId);
+        Assert.Equal(template.Id, rebound.Id);
+        Assert.Equal(template.Name, rebound.Name);
+        Assert.Equal(race, rebound.RaceSelection.FixedRace);
+        Assert.Equal(new[] { race }, rebound.RaceSelection.EligibleRaces);
+        Assert.Empty(rebound.Validate());
+    }
+
+    [Fact]
+    public void RandomDefinitionPolicy_CanSelectAnyExecutableRaceAndRebindsTheDefinition()
+    {
+        var template = BotDefinitionCatalog.CreateDefault();
+        var randomDefinition = BotDefinition.Parse(template.Serialize().Replace(
+            "\"raceSelection\": {",
+            "\"raceSelection\": {\"policy\": \"random\", \"eligibleRaces\": [\"terran\", \"zerg\", \"protoss\"],"));
+        var selected = new BotRaceSelectionResolver().Resolve(
+            randomDefinition.RaceSelection,
+            RaceModuleCatalog.CreateDefault().ExecutableRaces,
+            Context,
+            index => index == 0 ? 1 : 0);
+        var rebound = BotDefinitionCatalog.RebindRace(randomDefinition, selected.SelectedRace);
+
+        Assert.Equal(Race.Zerg, selected.SelectedRace);
+        Assert.Equal("zerg.zergling.v1", rebound.ModeId);
+        Assert.Equal(BotRaceSelectionPolicy.Random, rebound.RaceSelection.Policy);
+        Assert.Empty(rebound.Validate());
+    }
+
     [Fact]
     public void RandomSelection_UsesOnlyDeclaredRacesWithExecutableAdapters()
     {

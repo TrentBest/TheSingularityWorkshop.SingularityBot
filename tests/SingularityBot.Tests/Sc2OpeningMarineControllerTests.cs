@@ -151,6 +151,19 @@ public sealed class Sc2OpeningMarineControllerTests
         controller.OnPlacementQueryResult(placementResult);
         var site = new MapPoint(query.Placements[0].TargetPos.X, query.Placements[0].TargetPos.Y);
 
+        var tooEarly = controller.TryCreateAction(SnapshotAt(200, 100, 12, 15,
+            Fact(depotBuilderTag, "SCV", 10, 10),
+            Fact(barracksBuilderTag, "SCV", 11, 10),
+            Fact(1, "CommandCenter", 10, 10),
+            Fact(300, "SupplyDepot", 20, 20, 0.5f)),
+            map, gameData, assignments, jobs,
+            excludedBuilderTag: depotBuilderTag,
+            allowConstruction: false,
+            allowBuilderStaging: true,
+            desiredBuilderArrivalGameLoop: 300,
+            mineralIncomePerGameLoop: 1.0);
+        Assert.Null(tooEarly);
+
         var move = controller.TryCreateAction(SnapshotAt(280, 130, 12, 15,
             Fact(depotBuilderTag, "SCV", 10, 10),
             Fact(barracksBuilderTag, "SCV", 11, 10),

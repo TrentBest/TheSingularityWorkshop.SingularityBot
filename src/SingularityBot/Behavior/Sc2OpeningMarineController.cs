@@ -42,6 +42,9 @@ public sealed class Sc2OpeningMarineController
     public bool MarineDeployed => MarineObserved;
     public bool IsBuildSubmitted => _barracksBuildJob is not null &&
         !_barracksBuildJob.IsFailed && !_barracksBuildJob.HasFailureEvidence;
+    public uint? BarracksBuildRequestGameLoop => IsBuildSubmitted
+        ? _barracksBuildJob.CreatedAtGameLoop
+        : null;
     public int CandidateCount => _candidatePoints.Count;
 
     public SC2APIProtocol.Action TryCreateAction(

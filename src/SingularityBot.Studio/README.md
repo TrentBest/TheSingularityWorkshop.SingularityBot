@@ -9,6 +9,8 @@ The Bot Definition tab is now an editable versioned JSON authoring surface:
 - **Open** loads a saved definition and parses it before replacing the current editor contents.
 - **Validate** uses the same `BotDefinition.Parse` parser and semantic validator used by the Runner.
 - **Build Production Plan…** opens a guided table editor for the opening plan: add/remove steps, edit target and producer, desired count, earliest game loop, priority, dependency IDs, and the Buildings/Units lane. The plan is validated before it is applied to the open BotDefinition.
+- **Edit Goals…** exposes the current strategic goal policy as typed controls: default role, scout count, fallback-health threshold, enemy-start exclusion, stutter-step, and visible-threat engagement. Explicit scout-sector selections are preserved.
+- **Ctrl+S** saves the current definition; **F5** validates, saves, and launches a fresh local training session. Opening another file or closing Studio prompts before discarding unsaved edits.
 - The production-plan race is displayed as a parent-definition constraint; the builder cannot silently change the bot's race independently of its mode and runtime manifest.
 - **Save / Save As** writes the validated, normalized JSON artifact to disk.
 - **Launch Local Match** saves and validates the current definition, then starts the existing Runner with the selected map.

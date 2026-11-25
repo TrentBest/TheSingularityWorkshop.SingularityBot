@@ -169,6 +169,7 @@ internal static class StudioWindow
         toolbar.Children.Add(CreateButton("Open…", (_, _) => OpenDocument()));
         toolbar.Children.Add(CreateButton("Validate", (_, _) => ValidateDocument()));
         toolbar.Children.Add(CreateButton("Build Production Plan…", (_, _) => EditProductionPlan()));
+        toolbar.Children.Add(CreateButton("Edit Goals…", (_, _) => EditGoals()));
         toolbar.Children.Add(CreateButton("Save", (_, _) => SaveDocument(saveAs: false)));
         toolbar.Children.Add(CreateButton("Save As…", (_, _) => SaveDocument(saveAs: true)));
         toolbar.Children.Add(new TextBlock
@@ -639,6 +640,139 @@ internal static class StudioWindow
         public int Priority { get; set; } = 50;
         public string DependsOn { get; set; } = string.Empty;
         public string Lane { get; set; } = "Units";
+    }
+
+    private static void EditGoals()
+    {
+        if (!TryGetDefinition(out var definition) || definition is null)
+            return;
+
+        var plan = definition.DefaultGoals;
+        var id = new TextBox { Text = plan.Id, Margin = new Thickness(4), MinWidth = 220 };
+        var name = new TextBox { Text = plan.Name, Margin = new Thickness(4), MinWidth = 280 };
+        var role = new ComboBox
+        {
+            ItemsSource = Enum.GetNames<GoalActionRole>(),
+            SelectedItem = plan.DefaultRole.ToString(),
+            Margin = new Thickness(4),
+            MinWidth = 150
+        };
+        var scoutCount = new TextBox { Text = plan.ScoutCount.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(4), MinWidth = 100 };
+        var fallback = new TextBox { Text = plan.FallbackHealthFraction.ToString(CultureInfo.InvariantCulture), Margin = new Thickness(4), MinWidth = 100 };
+        var excludeEnemyStart = new CheckBox { Content = "Exclude enemy start sector from scouting", IsChecked = plan.ExcludeEnemyStartSector, Margin = new Thickness(4) };
+        var stutterStep = new CheckBox { Content = "Enable stutter-step behavior", IsChecked = plan.StutterStepEnabled, Margin = new Thickness(4) };
+        var engageThreats = new CheckBox { Content = "Engage visible threats", IsChecked = plan.EngageVisibleThreats, Margin = new Thickness(4) };
+
+        var layout = new StackPanel { Margin = new Thickness(12) };
+        void AddField(string label, Control control)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
+            var caption = new TextBlock
+            {
+                Text = label,
+                Width = 190,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            DockPanel.SetDock(caption, Dock.Left);
+            row.Children.Add(caption);
+            row.Children.Add(control);
+            layout.Children.Add(row);
+        }
+
+        AddField("Goal plan ID", id);
+        AddField("Display name", name);
+        AddField("Default role", role);
+        AddField("Scout count", scoutCount);
+        AddField("Fallback health fraction (0–1)", fallback);
+        layout.Children.Add(excludeEnemyStart);
+        layout.Children.Add(stutterStep);
+        layout.Children.Add(engageThreats);
+        layout.Children.Add(new TextBlock
+        {
+            Text = "Existing explicit scout sectors are preserved. The parent BotDefinition remains the source of race/mode identity.",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(4, 12, 4, 8),
+            Opacity = 0.8
+        });
+
+        var apply = CreateButton("Apply Goals", (_, _) => { });
+        var cancel = CreateButton("Cancel", (_, _) => { });
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(4, 12, 4, 4)
+        };
+        actions.Children.Add(apply);
+        actions.Children.Add(cancel);
+        layout.Children.Add(actions);
+
+        var dialog = new Window
+        {
+            Title = "Strategic Goals · authoring",
+            Width = 680,
+            Height = 500,
+            MinWidth = 560,
+            Owner = Application.Current.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = layout,
+            SizeToContent = SizeToContent.Height
+        };
+
+        apply.Click += (_, _) =>
+        {
+            if (role.SelectedItem is not string selectedRole ||
+                !Enum.TryParse<GoalActionRole>(selectedRole, out var parsedRole) ||
+                !int.TryParse(scoutCount.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedScoutCount) ||
+                !float.TryParse(fallback.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedFallback) ||
+                !float.IsFinite(parsedFallback))
+            {
+                MessageBox.Show("Enter a valid role, whole-number scout count, and finite fallback health fraction.",
+                    "Goal validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var updatedGoals = new GoalActionPlanDefinition
+            {
+                Version = plan.Version,
+                Id = id.Text.Trim(),
+                Name = name.Text.Trim(),
+                DefaultRole = parsedRole,
+                ScoutCount = parsedScoutCount,
+                ScoutSectors = plan.ScoutSectors.ToList(),
+                ExcludeEnemyStartSector = excludeEnemyStart.IsChecked == true,
+                StutterStepEnabled = stutterStep.IsChecked == true,
+                FallbackHealthFraction = parsedFallback,
+                EngageVisibleThreats = engageThreats.IsChecked == true
+            };
+            var errors = updatedGoals.Validate();
+            if (errors.Count != 0)
+            {
+                MessageBox.Show(string.Join(Environment.NewLine, errors), "Goal validation failed",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var root = JsonNode.Parse(_documentEditor.Text)!.AsObject();
+                var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+                options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+                root["defaultGoals"] = JsonSerializer.SerializeToNode(updatedGoals, options);
+                var updatedDefinition = BotDefinition.Parse(root.ToJsonString());
+                _documentEditor.Text = updatedDefinition.Serialize();
+                UpdateStatus($"GOALS UPDATED · {updatedGoals.Name} · {updatedGoals.DefaultRole} · validate and save the definition");
+                dialog.DialogResult = true;
+            }
+            catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException)
+            {
+                MessageBox.Show(exception.Message, "Unable to apply goals",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        };
+
+        cancel.Click += (_, _) => dialog.Close();
+        dialog.ShowDialog();
     }
 
     private static void ValidateDocument()

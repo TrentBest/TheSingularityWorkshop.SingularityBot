@@ -25,6 +25,10 @@ public sealed class WorkerResourceAssignmentPlanner
 
     public int Count => _assignments.Count;
 
+    /// <summary>Returns an SC2-measured pathing distance captured for a worker or town-hall to mineral pair.</summary>
+    public bool TryGetPathingDistance(ulong startTag, ulong mineralTag, out double distance) =>
+        _pathingDistances.TryGetValue((startTag, mineralTag), out distance);
+
     /// <summary>
     /// Requests SC2's own pathing distance for every initial worker/mineral pair.
     /// The result is used for the one-time global opening assignment; later

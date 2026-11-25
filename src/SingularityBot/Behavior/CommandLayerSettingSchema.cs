@@ -184,7 +184,7 @@ public static class CommandLayerSettingSchema
         if (setting.Minimum.HasValue && !double.IsFinite(setting.Minimum.Value) ||
             setting.Maximum.HasValue && !double.IsFinite(setting.Maximum.Value))
             errors.Add(path + ": numeric bounds must be finite.");
-        if (setting.Minimum.HasValue && setting.Maximum.HasValue && setting.Minimum > setting.Maximum)
+        if (setting.Minimum.HasValue && setting.Maximum.HasValue && setting.Minimum.Value > setting.Maximum.Value)
             errors.Add(path + ": minimum cannot exceed maximum.");
         if (setting.Precision is < 0 or > 12)
             errors.Add(path + ": precision must be between 0 and 12.");
@@ -214,16 +214,16 @@ public static class CommandLayerSettingSchema
                 errors.Add(path + ": default value is not in allowedValues.");
             if (setting.ValueKind == CommandLayerSettingValueKind.Integer && value.ValueKind == System.Text.Json.JsonValueKind.Number &&
                 value.TryGetInt64(out var integer) &&
-                (setting.Minimum.HasValue && integer < setting.Minimum || setting.Maximum.HasValue && integer > setting.Maximum))
+                (setting.Minimum.HasValue && integer < setting.Minimum.Value || setting.Maximum.HasValue && integer > setting.Maximum.Value))
                 errors.Add(path + ": default integer is outside its declared range.");
             if (setting.ValueKind == CommandLayerSettingValueKind.Number && value.ValueKind == System.Text.Json.JsonValueKind.Number &&
                 value.TryGetDouble(out var number) &&
-                (setting.Minimum.HasValue && number < setting.Minimum || setting.Maximum.HasValue && number > setting.Maximum))
+                (setting.Minimum.HasValue && number < setting.Minimum.Value || setting.Maximum.HasValue && number > setting.Maximum.Value))
                 errors.Add(path + ": default number is outside its declared range.");
             if (setting.ValueKind == CommandLayerSettingValueKind.StringList && value.ValueKind == System.Text.Json.JsonValueKind.Array)
             {
                 var items = value.EnumerateArray().ToArray();
-                if (items.Length > setting.MaximumItems)
+                if (items.Length > setting.MaximumItems.Value)
                     errors.Add(path + ": default list exceeds maximumItems.");
                 if (items.Any(item => item.ValueKind != System.Text.Json.JsonValueKind.String))
                     errors.Add(path + ": string-list defaults must contain only strings.");

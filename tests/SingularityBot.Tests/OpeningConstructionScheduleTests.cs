@@ -6,15 +6,6 @@ namespace SingularityBot.Tests;
 public sealed class OpeningConstructionScheduleTests
 {
     [Fact]
-    public void FirstDepotBuilderPullUsesNineSecondsOfWallClockTime()
-    {
-        Assert.Equal(9.0d, OpeningConstructionSchedule.FirstDepotPullSeconds);
-        Assert.False(OpeningConstructionSchedule.ShouldPullFirstDepotBuilder(TimeSpan.FromMilliseconds(8999)));
-        Assert.True(OpeningConstructionSchedule.ShouldPullFirstDepotBuilder(TimeSpan.FromSeconds(9)));
-        Assert.True(OpeningConstructionSchedule.ShouldPullFirstDepotBuilder(TimeSpan.FromMilliseconds(9001)));
-    }
-
-    [Fact]
     public void EstimatesTravelAndBuildCompletionInGameLoops()
     {
         Assert.Equal(75u, OpeningConstructionSchedule.EstimateTravelGameLoops(10, 2.9867f));

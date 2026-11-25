@@ -118,6 +118,9 @@ A layer may propose an intent; it cannot manufacture permission. Lower layers ma
 
 ## Existing code and migration path
 
+The versioned, trusted setting metadata contract is documented in [Command-layer setting schemas](command-layer-setting-schemas.md). It defines the control metadata and validation boundary; it does not imply that every registered implementation already publishes a complete settings schema.
+
+
 The repository already has useful foundations:
 - `BotDefinition` is the portable authoring artifact.
 - `ICompiledBotStrategy` is a compiled personality boundary.
@@ -134,7 +137,7 @@ The first contract implementation lives in `Behavior/CommandLayerComposition.cs`
 ## Implementation sequence
 
 1. **Composition contract** — stable layer slots, implementation IDs, presentation IDs, intent contracts, capability declarations, five-layer ceiling, and validation. (Implemented with tests.)
-2. **Registry and descriptors** — trusted compiled implementation catalogue with race compatibility and capability declarations. (Initial resolver and tests implemented; settings-schema metadata and runtime factories remain.)
+2. **Registry and descriptors** — trusted compiled implementation catalogue with race compatibility and capability declarations. (Initial resolver and tests implemented; the versioned setting-schema metadata contract is implemented, while per-implementation schemas and runtime factories remain.)
 3. **Runtime adapter boundary** — each layer receives a narrow context and emits typed intents; no layer bypasses shared planners or action validation.
 4. **Squad vertical slice** — first real formation layer, stable identity, membership lifecycle, role/objective, and single-owner unit reservations.
 5. **Army Commander extraction** — translate accepted military intent into named operations and subordinate assignments.

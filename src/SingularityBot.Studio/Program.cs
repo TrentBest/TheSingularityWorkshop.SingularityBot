@@ -402,6 +402,7 @@ internal static class StudioWindow
         var race = new ComboBox { MinWidth = 120, Margin = new Thickness(4), IsEditable = false };
         race.ItemsSource = new[] { "Terran", "Protoss", "Zerg" };
         race.SelectedItem = plan.Race;
+        race.IsEnabled = false; // Race selection belongs to the parent BotDefinition, not an isolated opening plan.
 
         var metadata = new WrapPanel { Margin = new Thickness(8) };
         metadata.Children.Add(new TextBlock { Text = "Plan ID", VerticalAlignment = VerticalAlignment.Center });
@@ -565,7 +566,6 @@ internal static class StudioWindow
                 _documentEditor.Text = updatedDefinition.Serialize();
                 UpdateStatus($"PRODUCTION PLAN UPDATED · {updatedPlan.Name} · {updatedPlan.Steps.Count} steps · validate and save the definition");
                 dialog.DialogResult = true;
-                dialog.Close();
             }
             catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException)
             {

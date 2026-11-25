@@ -61,6 +61,7 @@ Start with the [SingularityBot documentation home](docs/index.md) for current st
 
 - [BotDefinition v1: portable bot DNA and bounded AI strategy consultations](docs/bot-definition-v1.md)
 - [ServerSC2 integration To Do — comprehensive implementation and proof checklist](docs/server-sc2-integration-todo.md)
+- [Immutable bot-build packaging — trusted ServerSC2 handoff](docs/bot-build-packaging.md)
 
 The live bot is a self-contained compiled DLL. The Runner selects a statically linked `AdaptiveMarineStrategy` through `ICompiledBotStrategy`; the shared engine obtains its validated definition, initial-goal composition, goal-assignment policy and Marine rally decision through that contract. Two compiled strategies are regression-tested through the same engine and action vocabulary. Objective/transition composition and most macro/tactical policy still need to move behind the contract. FSM_COS composes the definition and CommandAi vocabulary at startup. JSON remains an authoring/import/export representation, not a live runtime file. The SC2 Runner drives the bot lifecycle and frame callbacks; it is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
 - [CommandAi integration v1: bot-owned command vocabulary and validation boundary](docs/commandai-integration-v1.md)

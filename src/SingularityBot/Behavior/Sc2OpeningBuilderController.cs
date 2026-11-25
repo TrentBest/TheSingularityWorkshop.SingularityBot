@@ -1,4 +1,5 @@
  
+using System.Diagnostics;
 using SC2APIProtocol;
 using SingularityBot.Observation;
 using SingularityBot.Spatial;
@@ -9,7 +10,7 @@ using FSMHandle = SingularityBot.Behavior.BotFsmHandle;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Pulls the first Supply Depot builder at the configured game-time trigger.
+/// Pulls the first Supply Depot builder after nine seconds of measured wall-clock match time.
 /// A selected cargo-bearing worker completes its return to the Command Center before
 /// being dispatched; mineral forecasts are diagnostic only and do not gate the pull.
 /// </summary>
@@ -32,6 +33,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private bool _moveTargetChanged;
     private bool _moveRetryReady;
     private uint _currentGameLoop;
+    private long? _firstObservationTimestamp;
     private float _movementDistanceSquared;
     private bool _hasMovementTarget;
 
@@ -221,7 +223,9 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         ArgumentNullException.ThrowIfNull(assignments);
 
         _currentGameLoop = observation.GameLoop;
-        // The first Depot pull is controlled by an explicit game-time trigger below.
+        _firstObservationTimestamp ??= Stopwatch.GetTimestamp();
+        var elapsedMatchTime = Stopwatch.GetElapsedTime(_firstObservationTimestamp.Value);
+        // The first Depot pull is controlled by monotonic wall-clock elapsed time.
         _moveRetryReady = false;
         var previousMineralBank = _lastObservedMinerals;
         _mineralIncomeEstimator.Observe(observation.GameLoop, observation.Minerals);
@@ -277,14 +281,14 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
-        // Pull on the nine-second game-time trigger. Travel and affordability
-        // estimates are retained for diagnostics only; neither can delay the pull.
+        // Pull on nine seconds of real elapsed time since this controller's first
+        // match observation. SC2 gameLoop advances at a speed-dependent rate and
+        // must never be used as a substitute for a wall-clock timer.
         if (_builderTag is null)
         {
-            // The first Depot worker pull is deliberately time-based: select and
-            // dispatch on the first observation at or after 9.0 game seconds.
-            // Mineral forecasts remain diagnostics only; they never move this trigger.
-            if (!OpeningConstructionSchedule.ShouldPullFirstDepotBuilder(observation.GameLoop))
+            // Select on the first bot update at or after 9.0 actual elapsed seconds.
+            // Mineral forecasts and SC2 game-loop speed cannot move this trigger.
+            if (!OpeningConstructionSchedule.ShouldPullFirstDepotBuilder(elapsedMatchTime))
                 return null;
 
             var townHall = observation.Units.FirstOrDefault(unit =>
@@ -346,7 +350,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 MineralIncomePerGameLoop);
             UpdateArrivalForecast(observation.Minerals, estimatedTravelLoops, affordableArrivalLoop);
             BuilderCandidateSummary +=
-                $";schedule=time|pullTargetLoop={OpeningConstructionSchedule.FirstDepotPullGameLoop}|" +
+                $";schedule=wall-clock|pullTargetSeconds={OpeningConstructionSchedule.FirstDepotPullSeconds:F1}|" +
                 $"travelLoops={estimatedTravelLoops}|incomePerLoop={MineralIncomePerGameLoop:F4}|" +
                 $"predictedAffordableLoop={affordableArrivalLoop?.ToString() ?? "unknown"}|" +
                 $"requiredMinerals={requiredDepotMinerals}";
@@ -362,7 +366,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             _placementQueryPending = true;
             Console.WriteLine(
                 $"[Opening] Construction-crew SCV {_builderTag.Value} reserved for the Supply Depot; " +
-                $"estimated staging distance={selected.EstimatedArrivalDistance:F2}, travelLoops={EstimatedTravelGameLoops}, " +
+                $"elapsedMatchSeconds={elapsedMatchTime.TotalSeconds:F3}, estimated staging distance={selected.EstimatedArrivalDistance:F2}, travelLoops={EstimatedTravelGameLoops}, " +
                 $"predictedMineralsAtArrival={PredictedMineralsAtArrival}, affordableLoop={PredictedAffordableGameLoop?.ToString() ?? "unknown"}. " +
                 "Empty-handed mining orders are interruptible at the scheduled departure; cargo-bearing workers finish their return.");
         }

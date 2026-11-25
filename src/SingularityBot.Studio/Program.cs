@@ -1,3 +1,5 @@
+using System.IO;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -309,7 +311,7 @@ internal static class StudioWindow
         AddLine(body, "command.description",
             "The registered vocabulary is the bot's low-level proposal bridge, not yet the final fluent capability language.");
         foreach (var action in BotCommandVocabulary.All)
-            AddLine(body, "command." + SafeId(action.Id),
+            AddLine(body, "command." + SafeId(action.Id.ToString(CultureInfo.InvariantCulture)),
                 $"{action.Name} · id {action.Id} · {action.Description}");
     }
 

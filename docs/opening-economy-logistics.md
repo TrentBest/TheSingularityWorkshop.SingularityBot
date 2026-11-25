@@ -54,6 +54,20 @@ Phases are driven by observed facts: assigned, travelling, gathering, returning 
 
 Cache route geometry and stable positions. Recompute only when the worker route, mineral/town-hall position, map/pathing identity or measured route error makes the cache stale. Use game-loop deltas for low-cost timers; never assume sub-loop precision.
 
+## Pathing and interaction calibration
+
+The worker-route diagnostic trace is the evidence source for the next mining experiments. It records the match/map and bot mode, game-loop observations, resource banks, worker identity and assignment generation, route phase and phase age, mineral identity and remaining contents, town-hall identity, worker position/cargo/current order, and SC2 pathing distances when those query results are available.
+
+Use the trace to separate three quantities that must not be conflated:
+
+1. **Pathing distance:** SC2's queried route distance between the sampled start and destination positions. It is not elapsed travel time.
+2. **Observed travel duration:** game-loop delta between confirmed route-phase observations. Compare this with pathing distance and SC2-reported movement speed; do not infer an exact travel duration from Euclidean distance alone.
+3. **Interaction envelope:** the effective position/range at which a gather or return interaction succeeds. Infer this only from repeated observations that correlate command acceptance, worker movement, order/target changes, cargo transitions, mineral-content changes and resource-bank changes. A command being submitted is not proof that gathering or unloading occurred.
+
+For each map and bot-definition version, retain a passive or otherwise unchanged baseline, then change one scheduling variable per comparison. Compare worker-cycle time in travel, gathering, return, queue/wait and idle phases; minerals delivered per game loop; mineral depletion; worker reassignment and wasted travel; resource starvation; and production uptime. Use repeated paired runs where practical. Keep raw traces and report sample counts and variation, not only the best run.
+
+Do not convert a single observed stop position into a universal mineral or town-hall radius. Terrain, pathing, unit collision, resource-node geometry and approach direction can change the result. Store observed facts separately from inferred boundaries, include the map and game-data context, and retain a confidence/sample count for any calibrated value. The first safe optimization target is to improve route-time estimates; interaction-boundary scheduling should follow only after repeatable evidence exists.
+
 ## Scheduling and measurement
 
 Record:

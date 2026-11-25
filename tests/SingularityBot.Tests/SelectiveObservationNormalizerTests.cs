@@ -7,6 +7,36 @@ namespace SingularityBot.Tests;
 public sealed class SelectiveObservationNormalizerTests
 {
     [Fact]
+    public void Normalizer_CapturesMineralContentsOnlyWhenRequested()
+    {
+        var raw = new ObservationRaw();
+        raw.Units.Add(new Unit
+        {
+            Tag = 99,
+            UnitType = 341,
+            Owner = 0,
+            Alliance = Alliance.Neutral,
+            DisplayType = DisplayType.Visible,
+            MineralContents = 1250
+        });
+        var response = new ResponseObservation
+        {
+            Observation = new SC2APIProtocol.Observation { RawData = raw }
+        };
+
+        var captured = Sc2ObservationNormalizer.Normalize(
+            response, 1, new Dictionary<uint, string> { [341] = "MineralField750" },
+            new Dictionary<uint, string>(),
+            new ObservationRequirements(ObservationFields.MineralContents));
+        Assert.Equal(1250u, Assert.Single(captured.Units).MineralContents);
+
+        var omitted = Sc2ObservationNormalizer.Normalize(
+            response, 1, new Dictionary<uint, string>(), new Dictionary<uint, string>(),
+            ObservationRequirements.None);
+        Assert.Equal(0u, Assert.Single(omitted.Units).MineralContents);
+    }
+
+    [Fact]
     public void Normalizer_CapturesOnlyRequestedScalarAndOrderFields()
     {
         var raw = new ObservationRaw();

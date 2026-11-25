@@ -34,6 +34,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     private bool _moveRetryReady;
     private uint _currentGameLoop;
     private long? _firstObservationTimestamp;
+    private double? _builderSelectedElapsedMatchSeconds;
     private float _movementDistanceSquared;
     private bool _hasMovementTarget;
 
@@ -69,9 +70,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     }
 
     public ulong? BuilderTag => _builderTag;
-    public double ElapsedMatchSeconds => _firstObservationTimestamp is long started
-        ? Stopwatch.GetElapsedTime(started).TotalSeconds
-        : 0d;
+    public double? BuilderSelectedElapsedMatchSeconds => _builderSelectedElapsedMatchSeconds;
 
     public void StartMatchClock() => _firstObservationTimestamp = Stopwatch.GetTimestamp();
     public bool IsCompleted => _buildJob?.IsCompleted == true;
@@ -361,6 +360,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 $"requiredMinerals={requiredDepotMinerals}";
 
             _builderTag = selected.Worker.Tag;
+            _builderSelectedElapsedMatchSeconds = elapsedMatchTime.TotalSeconds;
             _builderSelectedGameLoop = observation.GameLoop;
             _firstMoveRequestGameLoop = 0;
             _buildRequestGameLoop = 0;

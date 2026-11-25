@@ -13,6 +13,11 @@ public sealed record CommandLayerDescriptor
     public IReadOnlyList<string> ProvidedCapabilities { get; init; } = Array.Empty<string>();
     public string DisplayName { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
+    /// <summary>Version of the settings contract exposed to schema-driven authoring clients.</summary>
+    public int SettingsSchemaVersion { get; init; } = 1;
+    /// <summary>Trusted setting metadata; values remain declarative and are interpreted by compiled behavior.</summary>
+    public IReadOnlyList<CommandLayerSettingDescriptor> Settings { get; init; } =
+        Array.Empty<CommandLayerSettingDescriptor>();
 }
 
 /// <summary>Resolves portable selections only against explicitly registered,
@@ -48,7 +53,8 @@ public sealed class CommandLayerRegistry
             Accepts = SnapshotIds(descriptor.Accepts, "accepted contracts", nameof(descriptor)),
             Emits = SnapshotIds(descriptor.Emits, "emitted contracts", nameof(descriptor)),
             RequiredCapabilities = SnapshotIds(descriptor.RequiredCapabilities, "required capabilities", nameof(descriptor)),
-            ProvidedCapabilities = SnapshotIds(descriptor.ProvidedCapabilities, "provided capabilities", nameof(descriptor))
+            ProvidedCapabilities = SnapshotIds(descriptor.ProvidedCapabilities, "provided capabilities", nameof(descriptor)),
+            Settings = CommandLayerSettingSchema.Snapshot(descriptor.Settings, descriptor.SettingsSchemaVersion)
         };
 
         if (_descriptors.ContainsKey(snapshot.ImplementationId))

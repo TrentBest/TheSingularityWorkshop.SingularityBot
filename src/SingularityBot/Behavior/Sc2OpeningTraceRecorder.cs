@@ -117,7 +117,7 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             B(thirdSupplyDepot?.IsBuildSubmitted ?? false),
             B(thirdSupplyDepot?.IsCompleted ?? false),
             OpeningConstructionSchedule.FirstDepotPullSeconds.ToString("F1", CultureInfo.InvariantCulture),
-            builder.BuilderTag is null ? "" : builder.ElapsedMatchSeconds.ToString("F3", CultureInfo.InvariantCulture),
+            builder.BuilderTag is null ? "" : builder.BuilderSelectedElapsedMatchSeconds?.ToString("F3", CultureInfo.InvariantCulture) ?? "",
             N(builder.BuilderSelectedGameLoop),
             N(builder.MoveRequestGameLoop),
             N(builder.BuildRequestGameLoop),

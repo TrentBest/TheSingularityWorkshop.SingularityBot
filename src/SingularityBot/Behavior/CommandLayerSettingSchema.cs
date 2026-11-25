@@ -119,6 +119,16 @@ public static class CommandLayerSettingSchema
                 errors.Add(settingPath + ": a display name of 1 to 160 characters is required.");
             if (setting.Description is null || setting.Description.Length > MaximumTextLength)
                 errors.Add(settingPath + ": description cannot exceed " + MaximumTextLength + " characters.");
+            if (setting.AllowedValues is null)
+            {
+                errors.Add(settingPath + ": allowedValues collection is required.");
+                continue;
+            }
+            if (setting.Children is null)
+            {
+                errors.Add(settingPath + ": children collection is required.");
+                continue;
+            }
             if (!Enum.IsDefined(setting.ValueKind))
                 errors.Add(settingPath + ": unknown value kind.");
             if (!Enum.IsDefined(setting.Mutability))
@@ -127,6 +137,8 @@ public static class CommandLayerSettingSchema
             System.Text.Json.JsonDocument? defaultDocument = null;
             try
             {
+                if (string.IsNullOrWhiteSpace(setting.DefaultJson))
+                    throw new System.Text.Json.JsonException("A default JSON value is required.");
                 defaultDocument = System.Text.Json.JsonDocument.Parse(setting.DefaultJson);
                 if (!MatchesKind(setting.ValueKind, defaultDocument.RootElement))
                     errors.Add(settingPath + ": default JSON value does not match " + setting.ValueKind + ".");

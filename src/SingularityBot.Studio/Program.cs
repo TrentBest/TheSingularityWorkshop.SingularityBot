@@ -1,5 +1,6 @@
 using System.IO;
 using System.Globalization;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -33,7 +34,9 @@ internal static class StudioWindow
 
     private static TextBox _documentEditor = null!;
     private static TextBlock _status = null!;
+    private static TextBox _mapEditor = null!;
     private static string? _currentPath;
+    private static Process? _runnerProcess;
 
     public static Window Create(string[] args)
     {
@@ -138,10 +141,20 @@ internal static class StudioWindow
         toolbar.Children.Add(CreateButton("Save As…", (_, _) => SaveDocument(saveAs: true)));
         toolbar.Children.Add(new TextBlock
         {
-            Text = "  The Runner consumes this exact versioned JSON artifact via --definition=<path>.",
+            Text = "Map",
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 0, 0)
+            Margin = new Thickness(8, 0, 5, 0)
         });
+        _mapEditor = new TextBox
+        {
+            Text = "AcolyteLE.SC2Map",
+            Width = 190,
+            Padding = new Thickness(6, 4, 6, 4),
+            VerticalContentAlignment = VerticalAlignment.Center,
+            ToolTip = "SC2 map filename or relative path beneath the StarCraft II Maps directory"
+        };
+        toolbar.Children.Add(_mapEditor);
+        toolbar.Children.Add(CreateButton("Launch Local Match", (_, _) => LaunchLocalMatch()));
         return toolbar;
     }
 
@@ -156,6 +169,145 @@ internal static class StudioWindow
         };
         button.Click += handler;
         return button;
+    }
+
+
+    private static void LaunchLocalMatch()
+    {
+        if (string.IsNullOrWhiteSpace(_mapEditor.Text))
+        {
+            MessageBox.Show("Enter an SC2 map filename or relative path.", "Map required",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (!TrySaveDocumentForLaunch())
+            return;
+
+        var repositoryRoot = FindRepositoryRoot();
+        if (repositoryRoot is null)
+        {
+            MessageBox.Show(
+                "The SingularityBot source checkout was not found. Open Studio from the repository workspace, or launch the saved JSON from PowerShell using the Runner README instructions.",
+                "Runner project unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (_runnerProcess is { HasExited: false })
+        {
+            var restart = MessageBox.Show(
+                $"A training match is already running (PID {_runnerProcess.Id}). Stop it and start a fresh match on '{_mapEditor.Text.Trim()}'? The current match will end.",
+                "Restart training session", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (restart != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                _runnerProcess.Kill(entireProcessTree: true);
+                _runnerProcess.WaitForExit(5000);
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                MessageBox.Show(exception.Message, "Unable to restart Runner",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            finally
+            {
+                _runnerProcess.Dispose();
+                _runnerProcess = null;
+            }
+        }
+        else
+        {
+            _runnerProcess?.Dispose();
+            _runnerProcess = null;
+        }
+
+        try
+        {
+            var runnerProject = Path.Combine(repositoryRoot, "src", "SingularityBot.Runner",
+                "SingularityBot.Runner.csproj");
+            var startInfo = new ProcessStartInfo("dotnet")
+            {
+                WorkingDirectory = repositoryRoot,
+                UseShellExecute = false
+            };
+            startInfo.ArgumentList.Add("run");
+            startInfo.ArgumentList.Add("--project");
+            startInfo.ArgumentList.Add(runnerProject);
+            startInfo.ArgumentList.Add("--configuration");
+            startInfo.ArgumentList.Add("Debug");
+            startInfo.ArgumentList.Add("--");
+            startInfo.ArgumentList.Add($"--definition={_currentPath}");
+            startInfo.ArgumentList.Add($"--map={_mapEditor.Text.Trim()}");
+
+            _runnerProcess = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("The .NET host did not return a Runner process.");
+            UpdateStatus($"TRAINING SESSION STARTED · map={_mapEditor.Text.Trim()} · Runner PID {_runnerProcess.Id}. A map change requires a fresh session.");
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception or
+                                         IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(exception.Message, "Unable to launch Runner",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            UpdateStatus("Runner launch failed · " + exception.Message);
+        }
+    }
+
+    private static bool TrySaveDocumentForLaunch()
+    {
+        if (!TryGetDefinition(out var definition) || definition is null)
+            return false;
+
+        var path = _currentPath;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Save BotDefinition before launching",
+                Filter = "Bot definitions (*.json)|*.json",
+                DefaultExt = ".json",
+                AddExtension = true,
+                FileName = definition.Id + ".json"
+            };
+            if (dialog.ShowDialog() != true)
+                return false;
+            path = dialog.FileName;
+        }
+
+        try
+        {
+            File.WriteAllText(path!, definition.Serialize());
+            _currentPath = Path.GetFullPath(path!);
+            UpdateStatus($"VALIDATED AND SAVED · {_currentPath}");
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            MessageBox.Show(exception.Message, "Unable to save BotDefinition",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            UpdateStatus("Save failed · " + exception.Message);
+            return false;
+        }
+    }
+
+    private static string? FindRepositoryRoot()
+    {
+        foreach (var start in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
+        {
+            var directory = new DirectoryInfo(start);
+            while (directory is not null)
+            {
+                var runnerProject = Path.Combine(directory.FullName, "src", "SingularityBot.Runner",
+                    "SingularityBot.Runner.csproj");
+                if (File.Exists(runnerProject))
+                    return directory.FullName;
+                directory = directory.Parent;
+            }
+        }
+
+        return null;
     }
 
     private static void OpenDocument()

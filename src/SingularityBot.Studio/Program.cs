@@ -1,4 +1,9 @@
 using System.IO;
+using System.Collections.ObjectModel;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Windows.Data;
 using System.Globalization;
 using System.Diagnostics;
 using System.Windows;
@@ -137,6 +142,7 @@ internal static class StudioWindow
         };
         toolbar.Children.Add(CreateButton("Open…", (_, _) => OpenDocument()));
         toolbar.Children.Add(CreateButton("Validate", (_, _) => ValidateDocument()));
+        toolbar.Children.Add(CreateButton("Build Production Plan…", (_, _) => EditProductionPlan()));
         toolbar.Children.Add(CreateButton("Save", (_, _) => SaveDocument(saveAs: false)));
         toolbar.Children.Add(CreateButton("Save As…", (_, _) => SaveDocument(saveAs: true)));
         toolbar.Children.Add(new TextBlock
@@ -370,6 +376,218 @@ internal static class StudioWindow
             MessageBox.Show(exception.Message, "BotDefinition validation failed", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
+    }
+
+    private static void EditProductionPlan()
+    {
+        if (!TryGetDefinition(out var definition) || definition is null)
+            return;
+
+        var plan = definition.Opening;
+        var rows = new ObservableCollection<ProductionStepRow>(
+            plan.Steps.Select(step => new ProductionStepRow
+            {
+                Id = step.Id,
+                Target = step.Target,
+                Producer = step.Producer,
+                DesiredCount = step.DesiredCount,
+                EarliestGameLoop = step.EarliestGameLoop,
+                Priority = step.Priority,
+                DependsOn = string.Join(", ", step.DependsOn ?? Array.Empty<string>()),
+                Lane = step.Lane.ToString()
+            }));
+
+        var planId = new TextBox { Text = plan.Id, MinWidth = 180, Margin = new Thickness(4) };
+        var planName = new TextBox { Text = plan.Name, MinWidth = 260, Margin = new Thickness(4) };
+        var race = new ComboBox { MinWidth = 120, Margin = new Thickness(4), IsEditable = false };
+        race.ItemsSource = new[] { "Terran", "Protoss", "Zerg" };
+        race.SelectedItem = plan.Race;
+
+        var metadata = new WrapPanel { Margin = new Thickness(8) };
+        metadata.Children.Add(new TextBlock { Text = "Plan ID", VerticalAlignment = VerticalAlignment.Center });
+        metadata.Children.Add(planId);
+        metadata.Children.Add(new TextBlock { Text = "Name", VerticalAlignment = VerticalAlignment.Center });
+        metadata.Children.Add(planName);
+        metadata.Children.Add(new TextBlock { Text = "Race", VerticalAlignment = VerticalAlignment.Center });
+        metadata.Children.Add(race);
+
+        var grid = new DataGrid
+        {
+            AutoGenerateColumns = false,
+            CanUserAddRows = false,
+            CanUserDeleteRows = false,
+            CanUserReorderColumns = true,
+            CanUserSortColumns = false,
+            IsReadOnly = false,
+            ItemsSource = rows,
+            Margin = new Thickness(8),
+            HeadersVisibility = DataGridHeadersVisibility.Column,
+            GridLinesVisibility = DataGridGridLinesVisibility.Horizontal,
+            SelectionMode = DataGridSelectionMode.Single,
+            SelectionUnit = DataGridSelectionUnit.FullRow
+        };
+
+        void AddColumn(string header, string property, double width)
+        {
+            grid.Columns.Add(new DataGridTextColumn
+            {
+                Header = header,
+                Binding = new Binding(property) { UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged },
+                Width = new DataGridLength(width)
+            });
+        }
+
+        AddColumn("Step ID", nameof(ProductionStepRow.Id), 145);
+        AddColumn("Target", nameof(ProductionStepRow.Target), 125);
+        AddColumn("Producer", nameof(ProductionStepRow.Producer), 125);
+        AddColumn("Count", nameof(ProductionStepRow.DesiredCount), 65);
+        AddColumn("Earliest Loop", nameof(ProductionStepRow.EarliestGameLoop), 100);
+        AddColumn("Priority", nameof(ProductionStepRow.Priority), 70);
+        AddColumn("Depends On (comma separated IDs)", nameof(ProductionStepRow.DependsOn), 230);
+        AddColumn("Lane (Buildings / Units)", nameof(ProductionStepRow.Lane), 145);
+
+        var add = CreateButton("Add Step", (_, _) =>
+        {
+            var index = rows.Count + 1;
+            rows.Add(new ProductionStepRow
+            {
+                Id = $"step-{index}",
+                Target = "Marine",
+                Producer = "Barracks",
+                DesiredCount = 1,
+                EarliestGameLoop = 0,
+                Priority = 50,
+                Lane = "Units"
+            });
+            grid.SelectedItem = rows[^1];
+            grid.ScrollIntoView(rows[^1]);
+        });
+        var remove = CreateButton("Remove Selected", (_, _) =>
+        {
+            if (grid.SelectedItem is ProductionStepRow selected)
+                rows.Remove(selected);
+        });
+        var apply = CreateButton("Apply to Definition", (_, _) => { });
+        var cancel = CreateButton("Cancel", (_, _) => { });
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(8)
+        };
+        actions.Children.Add(add);
+        actions.Children.Add(remove);
+        actions.Children.Add(apply);
+        actions.Children.Add(cancel);
+
+        var layout = new DockPanel();
+        DockPanel.SetDock(metadata, Dock.Top);
+        layout.Children.Add(metadata);
+        DockPanel.SetDock(actions, Dock.Bottom);
+        layout.Children.Add(actions);
+        layout.Children.Add(grid);
+
+        var dialog = new Window
+        {
+            Title = "Production Plan Builder · Buildings and Units",
+            Width = 1180,
+            Height = 620,
+            MinWidth = 900,
+            MinHeight = 420,
+            Owner = Application.Current.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = layout
+        };
+
+        apply.Click += (_, _) =>
+        {
+            grid.CommitEdit(DataGridEditingUnit.Cell, true);
+            grid.CommitEdit(DataGridEditingUnit.Row, true);
+            if (string.IsNullOrWhiteSpace(planId.Text) ||
+                string.IsNullOrWhiteSpace(planName.Text) ||
+                race.SelectedItem is not string selectedRace)
+            {
+                MessageBox.Show("Plan ID, name, and race are required.", "Production plan",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var steps = new List<ProductionStepDefinition>();
+            foreach (var row in rows)
+            {
+                if (!Enum.TryParse<ProductionLane>(row.Lane, ignoreCase: true, out var lane))
+                {
+                    MessageBox.Show($"Step '{row.Id}' has an invalid lane. Use Buildings or Units.",
+                        "Production plan", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                steps.Add(new ProductionStepDefinition(
+                    row.Id.Trim(),
+                    row.Target.Trim(),
+                    row.Producer.Trim(),
+                    row.DesiredCount,
+                    row.EarliestGameLoop,
+                    row.Priority,
+                    row.DependsOn.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+                    lane));
+            }
+
+            var updatedPlan = new ProductionPlanDefinition
+            {
+                SchemaVersion = plan.SchemaVersion,
+                Id = planId.Text.Trim(),
+                Name = planName.Text.Trim(),
+                Race = selectedRace,
+                Steps = steps
+            };
+            var errors = ProductionPlanValidator.Validate(updatedPlan);
+            if (errors.Count != 0)
+            {
+                MessageBox.Show(string.Join(Environment.NewLine, errors), "Production plan validation failed",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var root = JsonNode.Parse(_documentEditor.Text)!.AsObject();
+                var opening = root["opening"]!.AsObject();
+                opening["id"] = updatedPlan.Id;
+                opening["name"] = updatedPlan.Name;
+                opening["race"] = updatedPlan.Race;
+                var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+                options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+                opening["steps"] = JsonSerializer.SerializeToNode(updatedPlan.Steps, options);
+
+                var updatedDefinition = BotDefinition.Parse(root.ToJsonString());
+                _documentEditor.Text = updatedDefinition.Serialize();
+                UpdateStatus($"PRODUCTION PLAN UPDATED · {updatedPlan.Name} · {updatedPlan.Steps.Count} steps · validate and save the definition");
+                dialog.DialogResult = true;
+                dialog.Close();
+            }
+            catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException)
+            {
+                MessageBox.Show(exception.Message, "Unable to apply production plan",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        };
+
+        cancel.Click += (_, _) => dialog.Close();
+        dialog.ShowDialog();
+    }
+
+    private sealed class ProductionStepRow
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Target { get; set; } = string.Empty;
+        public string Producer { get; set; } = string.Empty;
+        public int DesiredCount { get; set; } = 1;
+        public int EarliestGameLoop { get; set; }
+        public int Priority { get; set; } = 50;
+        public string DependsOn { get; set; } = string.Empty;
+        public string Lane { get; set; } = "Units";
     }
 
     private static void ValidateDocument()

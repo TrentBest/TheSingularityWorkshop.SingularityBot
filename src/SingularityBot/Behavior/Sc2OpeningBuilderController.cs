@@ -298,11 +298,10 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 return null;
 
             var stagingPoint = _candidatePoints[0];
-            // Select an empty worker so dispatch never discards a carried load.
-            // Empty-handed mining orders are interrupted at the forecast departure
-            // window so travel overlaps mineral accumulation.
+            // Reserve the worker at the nine-second trigger even if it is carrying
+            // minerals. The cargo check below lets that SCV unload before movement.
             var eligibleWorkers = observation.Units
-                .Where(unit => IsLiveScv(unit) && !unit.HasCargo && !assignments.IsReserved(unit.Tag))
+                .Where(unit => IsLiveScv(unit) && !assignments.IsReserved(unit.Tag))
                 .ToArray();
             var rankedWorkers = eligibleWorkers
                 .Select(worker => new
@@ -315,9 +314,11 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                     IsConstructionCrew = constructionCrewTags.Contains(worker.Tag)
                 })
                 // Preserve a queued handoff worker, then prefer the construction
-                // crew and shortest route. Cargo-bearing workers were excluded.
+                // crew, an empty-handed worker, and the shortest route. A loaded
+                // worker is still reserved at the trigger and unloads before moving.
                 .OrderBy(candidate => candidate.IsPreferred ? 0 : 1)
                 .ThenBy(candidate => candidate.IsConstructionCrew ? 0 : 1)
+                .ThenBy(candidate => candidate.Worker.HasCargo ? 1 : 0)
                 .ThenBy(candidate => candidate.EstimatedArrivalDistance)
                 .ThenBy(candidate => candidate.Worker.Tag)
                 .ToArray();
@@ -325,6 +326,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             BuilderCandidateSummary = string.Join(";", rankedWorkers.Select(candidate =>
                 $"{candidate.Worker.Tag}|preferred={(candidate.IsPreferred ? 1 : 0)}|" +
                 $"crew={(candidate.IsConstructionCrew ? 1 : 0)}|" +
+                $"cargo={(candidate.Worker.HasCargo ? 1 : 0)}|" +
                 $"distance={candidate.EstimatedArrivalDistance:F2}|" +
                 $"x={candidate.Worker.PositionX:F2}|y={candidate.Worker.PositionY:F2}"));
 

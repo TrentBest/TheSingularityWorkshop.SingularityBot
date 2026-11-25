@@ -223,7 +223,7 @@ public static class CommandLayerSettingSchema
             if (setting.ValueKind == CommandLayerSettingValueKind.StringList && value.ValueKind == System.Text.Json.JsonValueKind.Array)
             {
                 var items = value.EnumerateArray().ToArray();
-                if (items.Length > setting.MaximumItems.Value)
+                if (setting.MaximumItems.HasValue && items.Length > setting.MaximumItems.Value)
                     errors.Add(path + ": default list exceeds maximumItems.");
                 if (items.Any(item => item.ValueKind != System.Text.Json.JsonValueKind.String))
                     errors.Add(path + ": string-list defaults must contain only strings.");

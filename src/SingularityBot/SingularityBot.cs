@@ -49,6 +49,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly bool _writeDiagnostics;
     private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
     private readonly Sc2OpeningTraceRecorder _openingTrace = new();
+    private readonly WorkerRouteTraceRecorder _workerRouteTrace = new();
     private readonly Sc2BinaryEventRecorder _binaryTrace = new();
     private uint _lastGameLoop;
     private uint _lastUnitSnapshotGameLoop;
@@ -431,7 +432,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         {
             Console.WriteLine($"[Diagnostics] Capture directory: {Sc2Diagnostics.OutputDirectory} (override with SINGULARITYBOT_DIAGNOSTICS_DIR).");
             if (_actualRace == Race.Terran)
+            {
                 _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
+                _workerRouteTrace.Start(Sc2Diagnostics.OutputDirectory, _studioMapName,
+                    _definition.Id, _definition.ModeId);
+            }
             _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
         }
         _unsupportedRaceLogged = false;
@@ -1401,6 +1406,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _currentWorkerAssignmentGenerations.Add(assignment.Key, assignment.Value);
 
         _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
+        if (_writeDiagnostics && _actualRace == Race.Terran)
+            _workerRouteTrace.RecordFrame(normalized, _unitBehaviors.Contexts, _workerAssignments);
         // Associate observed structures with their construction jobs after all
         // construction controllers have reconciled this frame's result evidence.
         _buildings.Reconcile(normalized, _buildJobs.Jobs, IsResearchAbility,
@@ -2198,6 +2205,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _militaryTranslator.Reset(operation.Id);
         PathingTopology = null;
         _openingTrace.Dispose();
+        _workerRouteTrace.Dispose();
         _binaryTrace.Dispose();
     }
 }

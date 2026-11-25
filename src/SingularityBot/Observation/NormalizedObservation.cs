@@ -60,6 +60,9 @@ public sealed record UnitObservationFacts(
     /// <summary>Remaining Vespene in a geyser or Refinery, as reported by SC2 raw unit data.</summary>
     public uint VespeneContents { get; init; }
 
+    /// <summary>Remaining minerals in a mineral field, as reported by SC2 raw unit data.</summary>
+    public uint MineralContents { get; init; }
+
     /// <summary>Optional fields actually populated by the normalizer; manually authored facts default to full capture.</summary>
     public ObservationFields CapturedFields { get; init; } = ObservationFields.All;
 

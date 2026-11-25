@@ -69,6 +69,11 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
     }
 
     public ulong? BuilderTag => _builderTag;
+    public double ElapsedMatchSeconds => _firstObservationTimestamp is long started
+        ? Stopwatch.GetElapsedTime(started).TotalSeconds
+        : 0d;
+
+    public void StartMatchClock() => _firstObservationTimestamp = Stopwatch.GetTimestamp();
     public bool IsCompleted => _buildJob?.IsCompleted == true;
     public string BuildJobState => _buildJob?.CurrentState ?? "NoBuildJob";
     public string BuildJobFailureReason => _buildJob?.FailureReason ?? string.Empty;

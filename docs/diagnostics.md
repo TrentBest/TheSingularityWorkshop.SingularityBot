@@ -8,7 +8,7 @@ Files are written beneath `Sc2Diagnostics.OutputDirectory`. Set the `SINGULARITY
 
 - `on-start-*.json` preserves the protocol inputs supplied at match start: game info, game data, ping response, and initial observation.
 - `terrain-calibration-*` preserves raw terrain-height data and a separate candidate conversion for analysis.
-- `opening-trace-*.csv` preserves timestamped per-match traces; `opening-trace-latest.csv` is overwritten alongside them and is the stable, tracked repository file to inspect and sync after each match. Both contain the same per-frame rows and named events.
+- `opening-trace-*.csv` preserves timestamped per-match traces; `opening-trace-latest.csv` is overwritten alongside them and is the stable, tracked repository file to inspect and sync after each match. Both contain the same per-frame rows and named events. The first Depot SCV trigger is measured with a monotonic wall-clock timer from the first match observation; SC2 game-loop counts are diagnostic only for this trigger.
 - `sc2-events-*.bin` is the compact, append-only event timeline written through `FSM_Serialization`.
 - Existing passive-baseline output remains separate.
 

@@ -423,6 +423,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _studioMapName = gameInfo?.MapName ?? string.Empty;
         var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
         _actualRace = playerInfo?.RaceActual ?? Race.Random;
+        _openingBuilder.StartMatchClock();
         _studioEvents.Publish("lifecycle", "match.started", "info", observation?.Observation?.GameLoop ?? 0,
             $"map={_studioMapName};actualRace={_actualRace};configuredMode={_definition.ModeId}");
         _lastUnitSnapshotGameLoop = 0;

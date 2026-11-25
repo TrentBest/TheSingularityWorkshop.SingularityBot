@@ -53,12 +53,9 @@ jobs:
           path: ./_site
 
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
     needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+    permissions:
+      pages: write
+      id-token: write
+    uses: TrentBest/TheSingularityWorkshop.CiAi/.github/workflows/deploy-pages.yml@5083c452b555d7645dd0c8ab01d76008026da436

@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The production rule for this experiment is now explicit: **reserve the first Supply Depot SCV at 9.0 game seconds**. At SC2's 22.4 game loops per second, that is the first observation at or after game loop 202. The worker is reserved at that trigger even if it is carrying minerals; it completes its return/unload before receiving the construction move. Mineral-bank forecasts and travel estimates are retained for diagnostics, not as gates on the pull.
+The production rule for this experiment is now explicit: **reserve the first Supply Depot SCV after 9.0 seconds of measured wall-clock time from the first match observation**. The first bot update at or after that elapsed-time boundary triggers the reservation. SC2 game-loop counts are not used for this decision because their relationship to wall-clock time depends on game speed. The worker is reserved at that trigger even if it is carrying minerals; it completes its return/unload before receiving the construction move. Mineral-bank forecasts and travel estimates are retained for diagnostics, not as gates on the pull.
 
 The previous predictive rule pulled the SCV at game loop 124 (about 5.54 seconds) with 90 minerals in the latest committed reference trace, then did not issue the Build command until loop 279 with 100 minerals. The observed move-to-build interval was 155 loops (about 6.92 seconds). That is the concrete early-pull baseline this change replaces.
 
-The purpose of subsequent experiments is to measure the result of the fixed nine-second trigger and refine later opening steps without silently changing this first pull time.
+The purpose of subsequent experiments is to measure the result of the fixed nine-second wall-clock trigger and refine later opening steps without silently changing this first pull time.
 
 This is a controlled measurement exercise, not a new hard-coded build order. The live observation, SC2 game data, placement result, resource bank, prerequisites and action result remain authoritative.
 

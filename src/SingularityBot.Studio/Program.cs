@@ -115,7 +115,7 @@ internal static class StudioWindow
         var definitionArgument = args.FirstOrDefault(value =>
             value.StartsWith("--definition=", StringComparison.Ordinal));
         if (definitionArgument is not null)
-            LoadDocument(definitionArgument["--definition=".Length..], markClean: true);
+            LoadDocument(definitionArgument["--definition=".Length..]);
         else
             _documentEditor.Text = BotDefinitionCatalog.CreateDefault().Serialize();
 
@@ -165,10 +165,10 @@ internal static class StudioWindow
             CheckFileExists = true
         };
         if (dialog.ShowDialog() == true)
-            LoadDocument(dialog.FileName, markClean: true);
+            LoadDocument(dialog.FileName);
     }
 
-    private static void LoadDocument(string path, bool markClean)
+    private static void LoadDocument(string path)
     {
         try
         {

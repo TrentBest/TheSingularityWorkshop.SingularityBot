@@ -499,6 +499,24 @@ internal static class StudioWindow
             if (grid.SelectedItem is ProductionStepRow selected)
                 rows.Remove(selected);
         });
+        var moveUp = CreateButton("Move Up", (_, _) =>
+        {
+            if (grid.SelectedItem is ProductionStepRow selected)
+            {
+                var index = rows.IndexOf(selected);
+                if (index > 0) rows.Move(index, index - 1);
+                grid.SelectedItem = selected;
+            }
+        });
+        var moveDown = CreateButton("Move Down", (_, _) =>
+        {
+            if (grid.SelectedItem is ProductionStepRow selected)
+            {
+                var index = rows.IndexOf(selected);
+                if (index >= 0 && index < rows.Count - 1) rows.Move(index, index + 1);
+                grid.SelectedItem = selected;
+            }
+        });
         var apply = CreateButton("Apply to Definition", (_, _) => { });
         var cancel = CreateButton("Cancel", (_, _) => { });
 
@@ -510,6 +528,8 @@ internal static class StudioWindow
         };
         actions.Children.Add(add);
         actions.Children.Add(remove);
+        actions.Children.Add(moveUp);
+        actions.Children.Add(moveDown);
         actions.Children.Add(apply);
         actions.Children.Add(cancel);
 

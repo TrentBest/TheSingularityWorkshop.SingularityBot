@@ -9,9 +9,9 @@ using FSMHandle = SingularityBot.Behavior.BotFsmHandle;
 namespace SingularityBot.Behavior;
 
 /// <summary>
-/// Keeps starting SCVs mining until the Supply Depot is affordable. A selected
-/// cargo-bearing worker completes its return to the Command Center before being
-/// dispatched, preserving the mineral income that funds the opening.
+/// Pulls the first Supply Depot builder at the configured game-time trigger.
+/// A selected cargo-bearing worker completes its return to the Command Center before
+/// being dispatched; mineral forecasts are diagnostic only and do not gate the pull.
 /// </summary>
 public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
 {
@@ -221,7 +221,7 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         ArgumentNullException.ThrowIfNull(assignments);
 
         _currentGameLoop = observation.GameLoop;
-        // No fixed mineral threshold or fixed game-loop delay is used here.
+        // The first Depot pull is controlled by an explicit game-time trigger below.
         _moveRetryReady = false;
         var previousMineralBank = _lastObservedMinerals;
         _mineralIncomeEstimator.Observe(observation.GameLoop, observation.Minerals);
@@ -277,10 +277,8 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
             Console.WriteLine($"[Opening] Reserved builder SCV {selectedTag} was lost or morphed; selecting a replacement.");
         }
 
-        // No fixed mineral threshold or fixed game-loop delay decides the pull.
-        // Estimate when the selected worker would reach the candidate site and
-        // dispatch only when the measured mineral-income forecast says the full
-        // Depot cost will be available at arrival.
+        // Pull on the nine-second game-time trigger. Travel and affordability
+        // estimates are retained for diagnostics only; neither can delay the pull.
         if (_builderTag is null)
         {
             // The first Depot worker pull is deliberately time-based: select and

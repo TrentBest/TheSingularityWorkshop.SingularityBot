@@ -9,6 +9,14 @@ public static class OpeningConstructionSchedule
 {
     public const double GameLoopsPerSecond = 22.4d;
 
+    /// <summary>
+    /// First observation at or after nine game seconds (ceil(9 * 22.4)).
+    /// </summary>
+    public const uint FirstDepotPullGameLoop = 202;
+
+    public static bool ShouldPullFirstDepotBuilder(uint currentGameLoop) =>
+        currentGameLoop >= FirstDepotPullGameLoop;
+
     public static uint EstimateTravelGameLoops(double distance, float movementSpeed)
     {
         if (!double.IsFinite(distance) || distance < 0 ||

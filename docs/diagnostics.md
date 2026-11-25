@@ -4,7 +4,7 @@ Local development matches capture diagnostics by default. The intent is to prese
 
 ## Output
 
-Files are written beneath `Sc2Diagnostics.OutputDirectory`. Set the `SINGULARITYBOT_DIAGNOSTICS_DIR` environment variable on the bot host to an explicit writable directory. If unset, captures go to an `extracted` directory beside the bot executable (`AppContext.BaseDirectory`). The bot prints the resolved absolute directory at match start; use that exact path to retrieve the files.
+Files are written beneath `Sc2Diagnostics.OutputDirectory`. Set the `SINGULARITYBOT_DIAGNOSTICS_DIR` environment variable on the bot host to an explicit writable directory. If unset, the bot walks upward from the current working directory and executable directory to find the repository root (the `.git` directory or solution file), then writes to that checkout's `extracted/` directory. If no checkout is found, it falls back to the executable directory. The bot prints the resolved absolute directory at match start; use that exact path to retrieve the files. New match traces are timestamped and written directly into this repository folder so they can be inspected and committed/synced with the rest of the repo.
 
 - `on-start-*.json` preserves the protocol inputs supplied at match start: game info, game data, ping response, and initial observation.
 - `terrain-calibration-*` preserves raw terrain-height data and a separate candidate conversion for analysis.

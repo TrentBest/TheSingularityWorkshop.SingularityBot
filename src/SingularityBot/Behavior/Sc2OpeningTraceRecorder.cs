@@ -12,7 +12,9 @@ namespace SingularityBot.Behavior;
 public sealed class Sc2OpeningTraceRecorder : IDisposable
 {
     private StreamWriter _writer;
+    private StreamWriter _latestWriter;
     private string _path;
+    private string _latestPath;
 
     public void Start(string directory)
     {
@@ -20,16 +22,23 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         {
             Directory.CreateDirectory(directory);
             _path = Path.Combine(directory, $"opening-trace-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.csv");
+            _latestPath = Path.Combine(directory, "opening-trace-latest.csv");
             _writer = new StreamWriter(_path, false);
+            _latestWriter = new StreamWriter(_latestPath, false);
             _writer.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete,thirdSupplyDepotBuilderTag,thirdSupplyDepotX,thirdSupplyDepotY,thirdSupplyDepotMoveSubmitted,thirdSupplyDepotBuildSubmitted,thirdSupplyDepotComplete,firstDepotPullTargetGameLoop,builderSelectedGameLoop,moveRequestGameLoop,buildRequestGameLoop,observedCompletionGameLoop,affordableGameLoop,travelGameLoops,affordabilityWaitGameLoops,constructionGameLoops,builderCandidateSummary,mineralIncomePerGameLoop,predictedAffordableGameLoop,predictedMineralsAtArrival,estimatedTravelGameLoops");
+            _latestWriter.WriteLine("gameLoop,minerals,vespene,foodUsed,foodCap,scvCount,marineCount,commandCenterCount,orbitalCount,refineryCount,engineeringBayCount,barracksCount,depotCount,enemyVisibleCount,enemyMarineCount,enemyRangedCount,activeBuildJobs,builderTag,builderX,builderY,candidateCount,placementQueryPending,placementX,placementY,moveSubmitted,dispatched,buildSubmitted,completed,builderActionAbility,builderActionX,builderActionY,marineActionSubmitted,spatialMapAvailable,expansionX,expansionY,expansionStarted,expansionComplete,firstBarracksBuilderTag,firstBarracksReleasedBuilderTag,firstBarracksComplete,firstMarineObserved,targetBarracksCount,secondBarracksBuilderTag,secondBarracksX,secondBarracksY,requiresSupplyDepot,requiresCommandCenter,supplyDepotBuilderTag,supplyDepotX,supplyDepotY,supplyDepotMoveSubmitted,supplyDepotBuildSubmitted,supplyDepotComplete,thirdSupplyDepotBuilderTag,thirdSupplyDepotX,thirdSupplyDepotY,thirdSupplyDepotMoveSubmitted,thirdSupplyDepotBuildSubmitted,thirdSupplyDepotComplete,firstDepotPullTargetGameLoop,builderSelectedGameLoop,moveRequestGameLoop,buildRequestGameLoop,observedCompletionGameLoop,affordableGameLoop,travelGameLoops,affordabilityWaitGameLoops,constructionGameLoops,builderCandidateSummary,mineralIncomePerGameLoop,predictedAffordableGameLoop,predictedMineralsAtArrival,estimatedTravelGameLoops");
             _writer.Flush();
+            _latestWriter.Flush();
             Console.WriteLine($"[Diagnostics] Opening trace: {_path}");
+            Console.WriteLine($"[Diagnostics] Latest opening trace (repository sync target): {_latestPath}");
         }
         catch (Exception exception)
         {
             Console.WriteLine($"[Diagnostics] Opening trace unavailable: {exception.Message}");
             _writer?.Dispose();
             _writer = null;
+            _latestWriter?.Dispose();
+            _latestWriter = null;
         }
     }
 
@@ -125,8 +134,11 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
             N(builder.PredictedMineralsAtArrival),
             N(builder.EstimatedTravelGameLoops)
         };
-        _writer.WriteLine(string.Join(",", row));
+        var csvRow = string.Join(",", row);
+        _writer.WriteLine(csvRow);
+        _latestWriter?.WriteLine(csvRow);
         _writer.Flush();
+        _latestWriter?.Flush();
     }
 
     public void RecordEvent(string eventName, uint gameLoop, string details)
@@ -134,8 +146,11 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         if (_writer is null)
             return;
         // Events are written as comment rows so the CSV remains easy to inspect.
-        _writer.WriteLine($"#event,{gameLoop},{Escape(eventName)},{Escape(details)}");
+        var eventRow = $"#event,{gameLoop},{Escape(eventName)},{Escape(details)}";
+        _writer.WriteLine(eventRow);
+        _latestWriter?.WriteLine(eventRow);
         _writer.Flush();
+        _latestWriter?.Flush();
     }
 
     public void Dispose()
@@ -143,8 +158,13 @@ public sealed class Sc2OpeningTraceRecorder : IDisposable
         _writer?.Flush();
         _writer?.Dispose();
         _writer = null;
+        _latestWriter?.Flush();
+        _latestWriter?.Dispose();
+        _latestWriter = null;
         if (_path is not null)
             Console.WriteLine($"[Diagnostics] Opening trace saved: {_path}");
+        if (_latestPath is not null)
+            Console.WriteLine($"[Diagnostics] Latest opening trace saved: {_latestPath}");
     }
 
     private static bool Is(UnitObservationFacts unit, string kind) =>

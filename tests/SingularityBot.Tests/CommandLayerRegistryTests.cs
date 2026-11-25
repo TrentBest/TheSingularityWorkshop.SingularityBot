@@ -129,4 +129,131 @@ public sealed class CommandLayerRegistryTests
             RequiredCapabilities = new[] { " " }
         }));
     }
+
+    [Fact]
+    public void Registry_ExposesVersionedTypedSettingsAndSnapshotsNestedMetadata()
+    {
+        var allowedRoles = new List<string> { "contain", "engage" };
+        var settings = new[]
+        {
+            new CommandLayerSettingDescriptor
+            {
+                Id = "enabled",
+                DisplayName = "Enabled",
+                Description = "Whether this layer participates.",
+                ValueKind = CommandLayerSettingValueKind.Boolean,
+                DefaultJson = "true",
+                Mutability = CommandLayerSettingMutability.PreMatch
+            },
+            new CommandLayerSettingDescriptor
+            {
+                Id = "default-role",
+                DisplayName = "Default role",
+                Description = "Initial squad posture.",
+                ValueKind = CommandLayerSettingValueKind.Enumeration,
+                DefaultJson = "\"contain\"",
+                AllowedValues = allowedRoles,
+                VisibleWhenSettingId = "enabled",
+                VisibleWhenValueJson = "true"
+            },
+            new CommandLayerSettingDescriptor
+            {
+                Id = "fallback-health",
+                DisplayName = "Fallback health",
+                Description = "Health fraction at which units retreat.",
+                ValueKind = CommandLayerSettingValueKind.Number,
+                DefaultJson = "0.35",
+                Minimum = 0,
+                Maximum = 1,
+                Precision = 2,
+                Units = "fraction"
+            }
+        };
+        var registry = new CommandLayerRegistry();
+        registry.Register(Army() with { SettingsSchemaVersion = 3, Settings = settings });
+
+        allowedRoles[0] = "mutated";
+        var descriptor = Assert.Single(registry.Descriptors);
+        Assert.Equal(3, descriptor.SettingsSchemaVersion);
+        Assert.Equal("contain", descriptor.Settings[1].AllowedValues[0]);
+        Assert.Throws<NotSupportedException>(() =>
+            ((IList<string>)descriptor.Settings[1].AllowedValues)[0] = "mutated");
+        Assert.Empty(CommandLayerSettingSchema.Validate(descriptor.Settings, descriptor.SettingsSchemaVersion));
+    }
+
+    [Fact]
+    public void Registry_RejectsInvalidSettingDefaultsRangesAndConditions()
+    {
+        var registry = new CommandLayerRegistry();
+        var duplicate = new[]
+        {
+            new CommandLayerSettingDescriptor
+            {
+                Id = "enabled", DisplayName = "Enabled", ValueKind = CommandLayerSettingValueKind.Boolean,
+                DefaultJson = "true"
+            },
+            new CommandLayerSettingDescriptor
+            {
+                Id = "enabled", DisplayName = "Also enabled", ValueKind = CommandLayerSettingValueKind.Boolean,
+                DefaultJson = "false"
+            }
+        };
+        Assert.Throws<ArgumentException>(() => registry.Register(Army() with { Settings = duplicate }));
+
+        var invalidRange = new[]
+        {
+            new CommandLayerSettingDescriptor
+            {
+                Id = "health", DisplayName = "Health", ValueKind = CommandLayerSettingValueKind.Number,
+                DefaultJson = "0.5", Minimum = 0.8, Maximum = 0.2
+            }
+        };
+        Assert.Throws<ArgumentException>(() => registry.Register(Army() with { Settings = invalidRange }));
+
+        var unknownCondition = new[]
+        {
+            new CommandLayerSettingDescriptor
+            {
+                Id = "role", DisplayName = "Role", ValueKind = CommandLayerSettingValueKind.Enumeration,
+                DefaultJson = "\"contain\"", AllowedValues = new[] { "contain", "engage" },
+                VisibleWhenSettingId = "missing", VisibleWhenValueJson = "true"
+            }
+        };
+        Assert.Throws<ArgumentException>(() => registry.Register(Army() with { Settings = unknownCondition }));
+    }
+
+    [Fact]
+    public void SettingSchema_ValidatesNestedObjectsAndBoundedStringLists()
+    {
+        var settings = new[]
+        {
+            new CommandLayerSettingDescriptor
+            {
+                Id = "formation",
+                DisplayName = "Formation",
+                ValueKind = CommandLayerSettingValueKind.Object,
+                DefaultJson = "{\"spacing\":1}",
+                Children = new[]
+                {
+                    new CommandLayerSettingDescriptor
+                    {
+                        Id = "spacing", DisplayName = "Spacing", ValueKind = CommandLayerSettingValueKind.Integer,
+                        DefaultJson = "1", Minimum = 1, Maximum = 8
+                    }
+                }
+            },
+            new CommandLayerSettingDescriptor
+            {
+                Id = "preferred-targets",
+                DisplayName = "Preferred targets",
+                ValueKind = CommandLayerSettingValueKind.StringList,
+                DefaultJson = "[\"Marine\"]",
+                MaximumItems = 4,
+                AllowedValues = new[] { "Marine", "Marauder", "SiegeTank" }
+            }
+        };
+
+        Assert.Empty(CommandLayerSettingSchema.Validate(settings));
+        Assert.Throws<ArgumentException>(() => CommandLayerSettingSchema.Snapshot(settings, schemaVersion: 0));
+    }
 }

@@ -9,6 +9,8 @@ The Bot Definition tab is now an editable versioned JSON authoring surface:
 - **Open** loads a saved definition and parses it before replacing the current editor contents.
 - **Validate** uses the same `BotDefinition.Parse` parser and semantic validator used by the Runner.
 - **Save / Save As** writes the validated, normalized JSON artifact to disk.
+- **Launch Local Match** saves and validates the current definition, then starts the existing Runner with the selected map.
+- If a Studio-launched Runner is still active, launching again asks permission to stop that session and start a clean match. This is the map-change restart boundary; it does not mutate the live match.
 - The document includes race and mode selection, opening production steps, default goals, advisor composition, strategy transitions, and bounded AI consultation policy.
 - Invalid documents are not saved or passed to the Runner.
 
@@ -24,7 +26,7 @@ An optional map override starts that new local session on the selected map:
 dotnet run --project src/SingularityBot.Runner/SingularityBot.Runner.csproj -- --definition="C:\\Bots\\my-bot.json" --map="AcolyteLE.SC2Map"
 ```
 
-Changing maps is a new Runner process/match, not an in-place mutation of a running game. The SC2 runtime's actual headless/invisible support remains a separate verification item.
+Changing maps is a new Runner process/match, not an in-place mutation of a running game. Studio starts the Runner through the local .NET CLI and finds the Runner project in the source checkout. The SC2 runtime's actual headless/invisible support remains a separate verification item; this first launch button does not claim to hide the SC2 window.
 
 ## Other workspaces
 

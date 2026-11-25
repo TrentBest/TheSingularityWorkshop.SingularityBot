@@ -2,7 +2,11 @@
 
 ## Purpose
 
-Determine whether the first Supply Depot builder should leave the mineral line earlier, and whether a better worker/travel/resource-arrival estimate reduces wasted time without starving the opening economy.
+The production rule for this experiment is now explicit: **pull the first Supply Depot SCV at 9.0 game seconds**. At SC2's 22.4 game loops per second, that is the first observation at or after game loop 202. Mineral-bank forecasts and travel estimates are retained for diagnostics, not as gates on the pull.
+
+The previous predictive rule pulled the SCV at game loop 124 (about 5.54 seconds) with 90 minerals in the latest committed reference trace, then did not issue the Build command until loop 279 with 100 minerals. The observed move-to-build interval was 155 loops (about 6.92 seconds). That is the concrete early-pull baseline this change replaces.
+
+The purpose of subsequent experiments is to measure the result of the fixed nine-second trigger and refine later opening steps without silently changing this first pull time.
 
 This is a controlled measurement exercise, not a new hard-coded build order. The live observation, SC2 game data, placement result, resource bank, prerequisites and action result remain authoritative.
 
@@ -32,7 +36,7 @@ Use the actual game-loop-to-seconds conversion for that match. Never assume a fi
 
 ## Baseline
 
-The current documented reference is the 80-mineral first-Depot worker-pull threshold. Preserve the exact source/configuration value printed in the run diagnostics as the baseline; do not silently substitute a documentation value if the running binary reports something different.
+The superseded reference trace used an 80-mineral pull threshold and selected the SCV at loop 124. The production target is now time-based: first eligible observation at or after loop 202 (9.0 game seconds). Mineral availability does not delay or advance worker selection. The actual Build action still requires the live mineral bank and a valid placement.
 
 The current opening diagnostics are expected to include builder selection, first move, first affordability, build command and observed completion loops. Worker and economy traces provide per-observation positions, cargo, orders, target identity, resources and structure milestones. Confirm those files exist before beginning the comparison.
 

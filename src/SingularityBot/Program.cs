@@ -27,6 +27,11 @@ public static class Program
             argument.StartsWith("--race=", StringComparison.Ordinal));
         var definitionArgument = args.FirstOrDefault(argument =>
             argument.StartsWith("--definition=", StringComparison.Ordinal));
+        var mapArgument = args.FirstOrDefault(argument =>
+            argument.StartsWith("--map=", StringComparison.Ordinal));
+        var requestedMap = mapArgument?["--map=".Length..];
+        if (mapArgument is not null && string.IsNullOrWhiteSpace(requestedMap))
+            throw new ArgumentException("--map requires a non-empty local map name or path.", nameof(args));
         var selectedModeId = modeArgument?["--mode=".Length..];
         Race? explicitRace = null;
         if (raceArgument is not null)
@@ -50,6 +55,7 @@ public static class Program
             !argument.StartsWith("--mode=", StringComparison.Ordinal) &&
             !argument.StartsWith("--race=", StringComparison.Ordinal) &&
             !argument.StartsWith("--definition=", StringComparison.Ordinal) &&
+            !argument.StartsWith("--map=", StringComparison.Ordinal) &&
             !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
@@ -59,6 +65,8 @@ public static class Program
             !string.Equals(argument, "--no-diagnostics", StringComparison.Ordinal) &&
             !(index > 0 && args[index - 1] == "--Map")).ToArray();
         var localRun = connectionArgs.Length == 0;
+        if (mapArgument is not null && !localRun)
+            throw new ArgumentException("--map is a local training option and cannot be combined with ladder connection arguments.", nameof(args));
         if (passiveBaseline && !localRun)
             throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.", nameof(args));
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
@@ -120,6 +128,8 @@ public static class Program
             selectedDefinition = BotDefinitionCatalog.CreateForMode(
                 selectedModeId ?? BotDefinitionCatalog.DefaultModeId);
         }
+        if (requestedMap is not null)
+            selectedConfiguration = selectedConfiguration with { MapName = requestedMap };
         var requestedRace = selectedConfiguration.RequestedRace;
         Console.WriteLine($"[BotStrategy] Using compiled '{selectedDefinition.Id}' ({selectedDefinition.Name}), race={selectedDefinition.Race}, mode={selectedDefinition.ModeId}.");
         var bot = new SingularityBot(

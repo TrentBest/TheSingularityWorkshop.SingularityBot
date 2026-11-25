@@ -64,7 +64,7 @@ jobs:
       - name: Check out FSM_COS development source
         uses: actions/checkout@v4
         with:
-          repository: TrentBest/FSM_COS
+          repository: TrentBest/TheSingularityWorkshop.FSM_COS
           ref: development
           path: dependencies/FSM_COS
       - name: Check out DataWarehouse development source

@@ -283,6 +283,12 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
         // Depot cost will be available at arrival.
         if (_builderTag is null)
         {
+            // The first Depot worker pull is deliberately time-based: select and
+            // dispatch on the first observation at or after 9.0 game seconds.
+            // Mineral forecasts remain diagnostics only; they never move this trigger.
+            if (!OpeningConstructionSchedule.ShouldPullFirstDepotBuilder(observation.GameLoop))
+                return null;
+
             var townHall = observation.Units.FirstOrDefault(unit =>
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
                 unit.HasPosition && IsTownHall(unit.UnitKind));
@@ -339,13 +345,11 @@ public sealed class Sc2OpeningBuilderController : IStateContext, IDisposable
                 observation.GameLoop, observation.Minerals, requiredDepotMinerals,
                 MineralIncomePerGameLoop);
             UpdateArrivalForecast(observation.Minerals, estimatedTravelLoops, affordableArrivalLoop);
-            if (affordableArrivalLoop is not uint expectedAffordableLoop ||
-                !OpeningConstructionSchedule.ShouldDispatchForArrival(
-                    observation.GameLoop, estimatedTravelLoops, expectedAffordableLoop))
-            {
-                BuilderCandidateSummary += $";schedule=hold|travelLoops={estimatedTravelLoops}|incomePerLoop={MineralIncomePerGameLoop:F4}|requiredMinerals={requiredDepotMinerals}";
-                return null;
-            }
+            BuilderCandidateSummary +=
+                $";schedule=time|pullTargetLoop={OpeningConstructionSchedule.FirstDepotPullGameLoop}|" +
+                $"travelLoops={estimatedTravelLoops}|incomePerLoop={MineralIncomePerGameLoop:F4}|" +
+                $"predictedAffordableLoop={affordableArrivalLoop?.ToString() ?? "unknown"}|" +
+                $"requiredMinerals={requiredDepotMinerals}";
 
             _builderTag = selected.Worker.Tag;
             _builderSelectedGameLoop = observation.GameLoop;

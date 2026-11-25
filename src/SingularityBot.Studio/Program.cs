@@ -555,8 +555,9 @@ internal static class StudioWindow
 
         apply.Click += (_, _) =>
         {
-            grid.CommitEdit(DataGridEditingUnit.Cell, true);
-            grid.CommitEdit(DataGridEditingUnit.Row, true);
+            if (!grid.CommitEdit(DataGridEditingUnit.Cell, true) ||
+                !grid.CommitEdit(DataGridEditingUnit.Row, true))
+                return;
             if (string.IsNullOrWhiteSpace(planId.Text) ||
                 string.IsNullOrWhiteSpace(planName.Text) ||
                 race.SelectedItem is not string selectedRace)

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Globalization;
 using System.Diagnostics;
 using System.Windows;
@@ -42,6 +43,8 @@ internal static class StudioWindow
     private static TextBox _mapEditor = null!;
     private static string? _currentPath;
     private static Process? _runnerProcess;
+    private static bool _isDirty;
+    private static bool _isLoadingDocument;
 
     public static Window Create(string[] args)
     {
@@ -119,6 +122,9 @@ internal static class StudioWindow
 
         _documentEditor.TextChanged += (_, _) =>
         {
+            if (_isLoadingDocument)
+                return;
+            _isDirty = true;
             UpdateStatus("Unsaved changes · validate before saving or launching.");
         };
 
@@ -127,9 +133,29 @@ internal static class StudioWindow
         if (definitionArgument is not null)
             LoadDocument(definitionArgument["--definition=".Length..]);
         else
-            _documentEditor.Text = BotDefinitionCatalog.CreateDefault().Serialize();
+            SetDocumentText(BotDefinitionCatalog.CreateDefault().Serialize());
 
         Render("Bot Definition");
+        window.PreviewKeyDown += (_, eventArgs) =>
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control && eventArgs.Key == Key.S)
+            {
+                SaveDocument(saveAs: false);
+                eventArgs.Handled = true;
+            }
+            else if (eventArgs.Key == Key.F5)
+            {
+                LaunchLocalMatch();
+                eventArgs.Handled = true;
+            }
+        };
+        window.Closing += (_, eventArgs) =>
+        {
+            if (_isDirty && MessageBox.Show(
+                    "The BotDefinition has unsaved changes. Close Studio and discard them?",
+                    "Unsaved BotDefinition", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                eventArgs.Cancel = true;
+        };
         return window;
     }
 
@@ -299,6 +325,7 @@ internal static class StudioWindow
         {
             File.WriteAllText(path!, definition.Serialize());
             _currentPath = Path.GetFullPath(path!);
+            _isDirty = false;
             UpdateStatus($"VALIDATED AND SAVED · {_currentPath}");
             return true;
         }
@@ -338,10 +365,10 @@ internal static class StudioWindow
             CheckFileExists = true
         };
         if (dialog.ShowDialog() == true)
-            LoadDocument(dialog.FileName);
+            LoadDocument(dialog.FileName, confirmDiscard: true);
     }
 
-    private static void LoadDocument(string path)
+    private static void LoadDocument(string path, bool confirmDiscard = false)
     {
         try
         {
@@ -349,7 +376,11 @@ internal static class StudioWindow
             // Parse before replacing the current document: a malformed file must not
             // destroy edits already open in the Studio.
             var definition = BotDefinition.Parse(text);
-            _documentEditor.Text = definition.Serialize();
+            if (confirmDiscard && _isDirty &&
+                MessageBox.Show("Discard the current unsaved BotDefinition and open this file?",
+                    "Discard unsaved changes", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+            SetDocumentText(definition.Serialize());
             _currentPath = Path.GetFullPath(path);
             UpdateStatus($"Loaded and parsed {Path.GetFileName(path)} · {definition.Name} · {definition.Race} / {definition.ModeId}");
         }
@@ -625,6 +656,7 @@ internal static class StudioWindow
         {
             File.WriteAllText(path!, definition.Serialize());
             _currentPath = Path.GetFullPath(path!);
+            _isDirty = false;
             UpdateStatus($"SAVED · {_currentPath} · ready for Runner --definition");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
@@ -726,6 +758,20 @@ internal static class StudioWindow
 
     private static void AddLine(GuiBuilder builder, string id, string text) =>
         builder.Child("Text", id, node => node.Text(text));
+
+    private static void SetDocumentText(string text)
+    {
+        _isLoadingDocument = true;
+        try
+        {
+            _documentEditor.Text = text;
+            _isDirty = false;
+        }
+        finally
+        {
+            _isLoadingDocument = false;
+        }
+    }
 
     private static void UpdateStatus(string message) => _status.Text = message;
 

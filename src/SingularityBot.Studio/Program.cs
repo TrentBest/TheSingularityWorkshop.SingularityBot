@@ -204,18 +204,31 @@ internal static class StudioWindow
             try
             {
                 _runnerProcess.Kill(entireProcessTree: true);
-                _runnerProcess.WaitForExit(5000);
+                if (!_runnerProcess.WaitForExit(5000))
+                {
+                    const string message = "The Runner did not exit within five seconds. Studio has left the process handle intact; no replacement match was started.";
+                    UpdateStatus("Runner shutdown timed out · existing process may still be active.");
+                    MessageBox.Show(message, "Runner shutdown timed out",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                _runnerProcess.Dispose();
+                _runnerProcess = null;
             }
             catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
             {
-                MessageBox.Show(exception.Message, "Unable to restart Runner",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-            finally
-            {
-                _runnerProcess.Dispose();
-                _runnerProcess = null;
+                if (_runnerProcess.HasExited)
+                {
+                    _runnerProcess.Dispose();
+                    _runnerProcess = null;
+                }
+                else
+                {
+                    MessageBox.Show(exception.Message, "Unable to restart Runner",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
             }
         }
         else

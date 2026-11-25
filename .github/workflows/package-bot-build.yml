@@ -83,12 +83,16 @@ jobs:
         run: dotnet publish src/SingularityBot.Runner/SingularityBot.Runner.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/runner
       - name: Create immutable package
         shell: pwsh
+        env:
+          BOT_IDENTITY_ID: ${{ inputs.bot_identity_id }}
+          BUILD_ID: ${{ inputs.build_id }}
+          DEFINITION_PATH: ${{ inputs.definition_path }}
         run: |
-          python tools/package_bot_build.py --bot-identity-id "${{ inputs.bot_identity_id }}" --build-id "${{ inputs.build_id }}" --runner-publish-dir "artifacts/runner" --runner-executable-path "SingularityBot.Runner.exe" --definition "${{ inputs.definition_path }}" --output-store "artifacts/packages"
+          python tools/package_bot_build.py --bot-identity-id "$env:BOT_IDENTITY_ID" --build-id "$env:BUILD_ID" --runner-publish-dir "artifacts/runner" --runner-executable-path "SingularityBot.Runner.exe" --definition "$env:DEFINITION_PATH" --output-store "artifacts/packages"
       - name: Upload immutable package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bot-build-${{ inputs.bot_identity_id }}-${{ inputs.build_id }}
+          name: bot-build-${{ github.run_id }}
           path: artifacts/packages/**
           if-no-files-found: error
           retention-days: 30

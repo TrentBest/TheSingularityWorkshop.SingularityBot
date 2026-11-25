@@ -35,6 +35,16 @@ The tool:
 
 The emitted contentSha256 is the value to register as ServerApp BotBuildReference.ContentSha256. ServerApp must register the same BotIdentityId and BuildId. The package store must be transferred to or mounted by the ServerSC2 host and made writable only by the trusted build-registration pipeline.
 
+## GitHub Actions packaging workflow
+
+The manual **Package immutable bot build** workflow publishes a self-contained Windows Runner, packages the selected definition, and uploads the resulting package tree as a 30-day workflow artifact. Dispatch it from the development branch and provide:
+
+- The already registered ServerApp BotIdentityId.
+- A new immutable BuildId.
+- The repository path to the exact Studio-exported BotDefinition JSON (the checked-in Terran definition is the smoke-test default).
+
+Download and extract the artifact into the configured ServerSC2 package-store root, preserving the BotIdentityId/BuildId/ContentSha256 directory structure. Register the emitted ContentSha256 with ServerApp before admitting the build. The workflow does not write directly into a production host or change build eligibility.
+
 ## Validation
 
 Run the packager contract tests:
@@ -43,4 +53,4 @@ Run the packager contract tests:
 
 ServerSC2 independently verifies the manifest, every payload hash, the aggregate digest, and both entrypoint paths before starting any SC2 or Runner process. The Runner then validates the BotDefinition's own schema and semantics before connecting to SC2.
 
-This packaging step creates an immutable build artifact; it does not register the build in ServerApp, publish a NuGet package, deploy a website, or prove a live SC2 match.
+This packaging step creates an immutable bot build artifact; it does not register the build in ServerApp, publish a NuGet package, deploy a website, or prove a live SC2 match.

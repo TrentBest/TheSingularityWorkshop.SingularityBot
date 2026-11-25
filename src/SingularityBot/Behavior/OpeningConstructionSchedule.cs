@@ -9,12 +9,6 @@ public static class OpeningConstructionSchedule
 {
     public const double GameLoopsPerSecond = 22.4d;
 
-    /// <summary>Required real elapsed time before reserving the first Depot SCV.</summary>
-    public const double FirstDepotPullSeconds = 9.0d;
-
-    public static bool ShouldPullFirstDepotBuilder(TimeSpan elapsedMatchTime) =>
-        elapsedMatchTime.TotalSeconds >= FirstDepotPullSeconds;
-
     public static uint EstimateTravelGameLoops(double distance, float movementSpeed)
     {
         if (!double.IsFinite(distance) || distance < 0 ||

@@ -32,7 +32,6 @@ internal static class StudioWindow
     private static TextBox _documentEditor = null!;
     private static TextBlock _status = null!;
     private static string? _currentPath;
-    private static bool _isDirty;
 
     public static Window Create(string[] args)
     {
@@ -47,7 +46,6 @@ internal static class StudioWindow
             TextWrapping = TextWrapping.NoWrap,
             MinHeight = 300,
             Padding = new Thickness(12),
-            SpellCheck = { IsEnabled = false }
         };
         _status = new TextBlock
         {
@@ -57,6 +55,15 @@ internal static class StudioWindow
         };
 
         var root = new DockPanel();
+        var statusFrame = new Border
+        {
+            BorderBrush = new SolidColorBrush(Color.FromRgb(70, 78, 90)),
+            BorderThickness = new Thickness(1, 1, 0, 0),
+            Child = _status
+        };
+        DockPanel.SetDock(statusFrame, Dock.Bottom);
+        root.Children.Add(statusFrame);
+
         var semanticHost = new ContentControl();
         DockPanel.SetDock(semanticHost, Dock.Top);
         root.Children.Add(semanticHost);
@@ -72,17 +79,7 @@ internal static class StudioWindow
             Margin = new Thickness(10, 4, 10, 4),
             Child = _documentEditor
         };
-        DockPanel.SetDock(editorFrame, Dock.Top);
         root.Children.Add(editorFrame);
-
-        var statusFrame = new Border
-        {
-            BorderBrush = new SolidColorBrush(Color.FromRgb(70, 78, 90)),
-            BorderThickness = new Thickness(1, 1, 0, 0),
-            Child = _status
-        };
-        DockPanel.SetDock(statusFrame, Dock.Bottom);
-        root.Children.Add(statusFrame);
 
         var window = new WpfWindowBuilder()
             .WithTitle("SingularityBot Studio")
@@ -112,7 +109,6 @@ internal static class StudioWindow
 
         _documentEditor.TextChanged += (_, _) =>
         {
-            _isDirty = true;
             UpdateStatus("Unsaved changes · validate before saving or launching.");
         };
 
@@ -123,7 +119,6 @@ internal static class StudioWindow
         else
             _documentEditor.Text = BotDefinitionCatalog.CreateDefault().Serialize();
 
-        _isDirty = false;
         Render("Bot Definition");
         return window;
     }
@@ -183,7 +178,6 @@ internal static class StudioWindow
             var definition = BotDefinition.Parse(text);
             _documentEditor.Text = definition.Serialize();
             _currentPath = Path.GetFullPath(path);
-            _isDirty = !markClean;
             UpdateStatus($"Loaded and parsed {Path.GetFileName(path)} · {definition.Name} · {definition.Race} / {definition.ModeId}");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
@@ -246,7 +240,6 @@ internal static class StudioWindow
         {
             File.WriteAllText(path!, definition.Serialize());
             _currentPath = Path.GetFullPath(path!);
-            _isDirty = false;
             UpdateStatus($"SAVED · {_currentPath} · ready for Runner --definition");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)

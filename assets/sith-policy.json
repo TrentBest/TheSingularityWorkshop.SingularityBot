@@ -6,13 +6,12 @@
     "master"
   ],
   "actual_branches": [
-    "chore/align-execution-owner-name",
     "development",
     "master"
   ],
-  "branch_count": 3,
-  "status": "NON-COMPLIANT",
-  "evaluated_at": "2026-11-25T14:18:44Z",
-  "workflow_run": "https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45632590862",
-  "triggering_commit": "835e6a16b02da8a637c96009b41b6cc46af8dd9c"
+  "branch_count": 2,
+  "status": "COMPLIANT",
+  "evaluated_at": "2026-11-26T03:33:09Z",
+  "workflow_run": "https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45749622523",
+  "triggering_commit": "3d9dc08483ab93ee486a9e14c932371c9def7fab"
 }

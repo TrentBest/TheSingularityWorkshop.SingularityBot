@@ -298,6 +298,30 @@ public static class BotDoctrineValidator
         foreach (var own in Races)
         foreach (var opponent in Races)
             if (!matchupKeys.Contains((own, opponent))) errors.Add($"$.matchups: missing {own}-vs-{opponent}.");
+
+        // Every commander/unit-scoped method must name a real node in at least
+        // one matchup, and that stable node ID must never change semantic kind.
+        var nodeKinds = new Dictionary<string, HashSet<BotDoctrineNodeKind>>(StringComparer.Ordinal);
+        foreach (var matchup in matchups.Where(value => value is not null))
+            foreach (var root in matchup.PrimaryCommanders ?? Array.Empty<BotDoctrineNode>())
+                CollectNodeKinds(root, nodeKinds);
+        foreach (var method in methods.Where(value => value is not null &&
+                     value.Scope != BotDoctrineMethodScope.Bot))
+        {
+            if (string.IsNullOrWhiteSpace(method.NodeId) ||
+                !nodeKinds.TryGetValue(method.NodeId, out var kinds))
+            {
+                errors.Add($"$.methods: scoped binding '{method.MethodId}' references unknown node '{method.NodeId}'.");
+                continue;
+            }
+
+            var expectedKind = method.Scope == BotDoctrineMethodScope.Commander
+                ? BotDoctrineNodeKind.Commander
+                : BotDoctrineNodeKind.UnitFsm;
+            if (kinds.Count != 1 || !kinds.Contains(expectedKind))
+                errors.Add($"$.methods: scoped binding '{method.MethodId}' targets a node ID with an incompatible or inconsistent kind.");
+        }
+
         if (totalNodes > MaximumNodes) errors.Add($"$.matchups: at most {MaximumNodes} hierarchy nodes are allowed.");
 
         return errors.AsReadOnly();
@@ -355,6 +379,21 @@ public static class BotDoctrineValidator
             errors.Add($"{p}.scope: commander nodes cannot have Unit scope.");
         if (depth <= MaximumDepth)
             foreach (var child in children) ValidateNode(child, path + ".children", depth + 1, ids, ref count, errors, node);
+    }
+
+    private static void CollectNodeKinds(
+        BotDoctrineNode node,
+        Dictionary<string, HashSet<BotDoctrineNodeKind>> nodeKinds)
+    {
+        if (node is null) return;
+        if (!string.IsNullOrWhiteSpace(node.NodeId))
+        {
+            if (!nodeKinds.TryGetValue(node.NodeId, out var kinds))
+                nodeKinds[node.NodeId] = kinds = new HashSet<BotDoctrineNodeKind>();
+            kinds.Add(node.Kind);
+        }
+        foreach (var child in node.Children ?? Array.Empty<BotDoctrineNode>())
+            CollectNodeKinds(child, nodeKinds);
     }
 
     private static void ValidateNodeIds(IReadOnlyList<string> values, string path, List<string> errors)

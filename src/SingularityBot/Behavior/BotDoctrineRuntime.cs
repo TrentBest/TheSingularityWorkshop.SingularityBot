@@ -259,10 +259,14 @@ public sealed class BotDoctrineEventDispatcher
             var handlerKey = $"doctrine-method-{index}";
             registry.Register(handlerKey, (Func<CancellationToken, ValueTask>)(cancellationToken =>
             {
-                var pending = handler.Handler(botEvent, cancellationToken);
+                using var handlerCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var pending = handler.Handler(botEvent, handlerCancellation.Token);
                 if (!pending.IsCompleted)
+                {
+                    handlerCancellation.Cancel();
                     throw new InvalidOperationException(
                         $"BotMethod '{handler.Id}' returned incomplete asynchronous work from the SC2 game loop.");
+                }
                 pending.GetAwaiter().GetResult();
                 return ValueTask.CompletedTask;
             }));

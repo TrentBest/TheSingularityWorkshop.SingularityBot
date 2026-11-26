@@ -158,10 +158,11 @@ public static class BotDoctrineValidator
         }
 
         var settingIds = new HashSet<string>(StringComparer.Ordinal);
-        CheckCount(definition.Settings, "$.settings", 128, errors);
-        for (var i = 0; i < definition.Settings.Count; i++)
+        var settings = definition.Settings ?? Array.Empty<BotDoctrineSetting>();
+        CheckCount(settings, "$.settings", 128, errors);
+        for (var i = 0; i < settings.Count; i++)
         {
-            var s = definition.Settings[i];
+            var s = settings[i];
             var p = $"$.settings[{i}]";
             if (s is null) { errors.Add($"{p}: cannot be null."); continue; }
             Unique(s.Id, p + ".id", settingIds, 128, errors);
@@ -190,19 +191,21 @@ public static class BotDoctrineValidator
         }
 
         var serviceIds = new HashSet<string>(StringComparer.Ordinal);
-        CheckCount(definition.Services, "$.services", 128, errors);
-        for (var i = 0; i < definition.Services.Count; i++)
+        var declaredServices = definition.Services ?? Array.Empty<BotDoctrineServiceRequirement>();
+        CheckCount(declaredServices, "$.services", 128, errors);
+        for (var i = 0; i < declaredServices.Count; i++)
         {
-            var service = definition.Services[i];
+            var service = declaredServices[i];
             if (service is null) { errors.Add($"$.services[{i}]: cannot be null."); continue; }
             Unique(service.ServiceId, $"$.services[{i}].serviceId", serviceIds, 160, errors);
         }
 
         var policyIds = new HashSet<string>(StringComparer.Ordinal);
-        CheckCount(definition.Policies, "$.policies", 256, errors);
-        for (var i = 0; i < definition.Policies.Count; i++)
+        var policies = definition.Policies ?? Array.Empty<BotDoctrinePolicy>();
+        CheckCount(policies, "$.policies", 256, errors);
+        for (var i = 0; i < policies.Count; i++)
         {
-            var policy = definition.Policies[i];
+            var policy = policies[i];
             var p = $"$.policies[{i}]";
             if (policy is null) { errors.Add($"{p}: cannot be null."); continue; }
             Unique(policy.Id, p + ".id", policyIds, 128, errors);
@@ -214,10 +217,11 @@ public static class BotDoctrineValidator
         }
 
         var methodKeys = new HashSet<string>(StringComparer.Ordinal);
-        CheckCount(definition.Methods, "$.methods", 512, errors);
-        for (var i = 0; i < definition.Methods.Count; i++)
+        var methods = definition.Methods ?? Array.Empty<BotDoctrineMethodBinding>();
+        CheckCount(methods, "$.methods", 512, errors);
+        for (var i = 0; i < methods.Count; i++)
         {
-            var method = definition.Methods[i];
+            var method = methods[i];
             var p = $"$.methods[{i}]";
             if (method is null) { errors.Add($"{p}: cannot be null."); continue; }
             Required(method.EventId, p + ".eventId", 160, errors);

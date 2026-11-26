@@ -80,9 +80,9 @@ public sealed class BotCompositionMatrixTests
         };
         var invalid = new BotCompositionMatrix { Matchups = matchups };
 
-        Assert.Contains(invalid.Validate(), error => error.Contains("$.hero.implementationId"));
-        Assert.Contains(invalid.Validate(), error => error.Contains("$.hero.presentationProfileId"));
-        Assert.Contains(invalid.Validate(), error => error.Contains("$.layers: is required"));
+        Assert.Contains(invalid.Validate(), error => error.Contains("$.matchups[0].hero.implementationId"));
+        Assert.Contains(invalid.Validate(), error => error.Contains("$.matchups[0].hero.presentationProfileId"));
+        Assert.Contains(invalid.Validate(), error => error.Contains("$.matchups[0].layers: is required"));
     }
 
     [Fact]

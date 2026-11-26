@@ -49,7 +49,7 @@ The [roadmap](roadmap.md) is the authoritative checklist. The [CiAi evidence gui
 | ServerSC2 | Owns hosted process/session orchestration and host-authoritative match evidence. |
 | CiAi | Observes CI evidence; it does not replace GitHub Actions or authorize releases. |
 
-The live match loop remains singular. FSM_Foundry is not inserted into unit-action execution. Renderer, Visualization and GUI are supporting authoring/inspection surfaces, not alternate strategy engines.
+The live match loop remains singular. FSM_Execution is not inserted into unit-action execution. Renderer, Visualization and GUI are supporting authoring/inspection surfaces, not alternate strategy engines.
 
 ## Development and evidence policy
 

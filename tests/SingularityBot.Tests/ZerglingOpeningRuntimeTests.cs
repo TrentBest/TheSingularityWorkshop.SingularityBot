@@ -191,6 +191,34 @@ public sealed class ZerglingOpeningRuntimeTests
     }
 
     [Fact]
+    public void Runtime_ReconcilesCompletedPoolBeforeReplacementWhenBuildCallbackIsMissing()
+    {
+        var runtime = CreateRuntime();
+        var opening = Observation(300, 0, 12, 14,
+            Unit(1, "Hatchery"), Unit(2, "Drone"), Unit(4, "Larva"));
+        Assert.Empty(runtime.OnFrame(opening));
+        var query = runtime.TakeQueryRequest();
+        var approved = new ResponseQuery();
+        approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        for (var i = 1; i < query.Placements.Count; i++)
+            approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.CantBuildLocationInvalid });
+        runtime.OnQueryResult(approved);
+        Assert.Single(runtime.OnFrame(opening));
+
+        // Deliberately omit OnActionResult: completed structure evidence must
+        // supersede the missing callback before replacement processing.
+        var completedPool = ObservationWithDeadTags(
+            100, 0, 12, 14, new HashSet<ulong> { 2 },
+            Unit(1, "Hatchery"), Unit(5, "SpawningPool"), Unit(6, "Larva"));
+
+        var replacement = Assert.Single(runtime.OnFrame(completedPool));
+
+        Assert.Equal(1345, replacement.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(6ul, Assert.Single(replacement.ActionRaw.UnitCommand.UnitTags));
+        Assert.Equal("Producing", runtime.State);
+    }
+
+    [Fact]
     public void Runtime_DoesNotRetryAcceptedPoolBuildBeforeStructureEvidence()
     {
         var runtime = CreateRuntime();

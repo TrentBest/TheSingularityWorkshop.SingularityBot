@@ -65,7 +65,7 @@ public sealed class BotCompositionMatrixTests
         Assert.Equal(Race.Zerg, zergMirror.OpponentRace);
 
         Assert.False(matrix.TryResolve(Race.Zerg, Race.Random, out _));
-        Assert.False(matrix.TryResolve(Race.Unknown, Race.Terran, out _));
+        Assert.False(matrix.TryResolve((Race)int.MaxValue, Race.Terran, out _));
     }
 
     [Fact]

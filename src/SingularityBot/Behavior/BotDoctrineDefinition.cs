@@ -159,6 +159,7 @@ public static class BotDoctrineValidator
             Required(definition.Presentation.SubordinateRoleLabel, "$.presentation.subordinateRoleLabel", 80, errors);
         }
 
+        if (definition.Settings is null) errors.Add("$.settings: is required.");
         var settingIds = new HashSet<string>(StringComparer.Ordinal);
         var settings = definition.Settings ?? Array.Empty<BotDoctrineSetting>();
         CheckCount(settings, "$.settings", 128, errors);
@@ -174,6 +175,11 @@ public static class BotDoctrineValidator
                 errors.Add($"{p}.editorControl: unsupported control.");
             try
             {
+                if (string.IsNullOrWhiteSpace(s.ValueJson))
+                {
+                    errors.Add($"{p}.valueJson: is required.");
+                    continue;
+                }
                 using var value = JsonDocument.Parse(s.ValueJson);
                 var kind = value.RootElement.ValueKind;
                 var valid = s.ValueType switch
@@ -198,6 +204,7 @@ public static class BotDoctrineValidator
             catch (JsonException) { errors.Add($"{p}.valueJson: must be valid JSON data."); }
         }
 
+        if (definition.Services is null) errors.Add("$.services: is required.");
         var serviceIds = new HashSet<string>(StringComparer.Ordinal);
         var declaredServices = definition.Services ?? Array.Empty<BotDoctrineServiceRequirement>();
         CheckCount(declaredServices, "$.services", 128, errors);
@@ -208,6 +215,7 @@ public static class BotDoctrineValidator
             Unique(service.ServiceId, $"$.services[{i}].serviceId", serviceIds, 160, errors);
         }
 
+        if (definition.Policies is null) errors.Add("$.policies: is required.");
         var policyIds = new HashSet<string>(StringComparer.Ordinal);
         var policies = definition.Policies ?? Array.Empty<BotDoctrinePolicy>();
         CheckCount(policies, "$.policies", 256, errors);
@@ -224,6 +232,7 @@ public static class BotDoctrineValidator
                 errors.Add($"{p}: comparison and finite threshold are required.");
         }
 
+        if (definition.Methods is null) errors.Add("$.methods: is required.");
         var methodKeys = new HashSet<string>(StringComparer.Ordinal);
         var methods = definition.Methods ?? Array.Empty<BotDoctrineMethodBinding>();
         CheckCount(methods, "$.methods", 512, errors);

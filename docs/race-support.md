@@ -51,7 +51,7 @@ The current Terran Marine path now connects the reserved Intelligence scout to t
 
 The combat group now ranks an observed enemy worker constructing an unfinished production structure above other visible targets. Builder identification requires an observed order whose ability is marked as a building ability in the match's authoritative SC2 game data, plus proximity to the unfinished structure. If no such builder is observed, a visible Probe is prioritized; otherwise the existing weapon, threat, range, and kill-time ranking remains in effect. The dedicated scout remains excluded from combat targeting.
 
-This is a **Terran Marine implementation slice**, not three-race parity. Zerg's opener still ends at its first Zergling pair, and Protoss still has no executable opener. The target rules are regression-tested and CI-verified, but no new controlled SC2 match or replay has yet verified the behavior in live gameplay.
+This is a **Terran Marine implementation slice**, not three-race parity. Zerg's executable opener still ends at its first Zergling pair. Protoss has a separate bounded executable opener (Pylon → Gateway → powered Gateway → first Zealot), but it does not yet provide a sustainable economy or follow-on composition. Neither experimental opener is eligible for Random selection; both require explicit race/mode selection. The target rules are regression-tested, but no controlled SC2 match or replay has yet verified either experimental opener in live gameplay.
 
 Exact development evidence for this slice:
 - [Build #1864 — all build and test steps passed](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/runs/45009704034)

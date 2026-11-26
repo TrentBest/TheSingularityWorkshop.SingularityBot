@@ -145,6 +145,21 @@ public sealed class BotDoctrineDefinitionTests
     }
 
     [Fact]
+    public void BuildArtifact_RoundTripsAndRejectsPayloadTampering()
+    {
+        var artifact = BotDoctrineBuildService.Build(CreateValid());
+        var serialized = BotDoctrineBuildService.SerializeArtifact(artifact);
+        var loaded = BotDoctrineBuildService.Load(serialized);
+
+        Assert.Equal("doctrine.test", loaded.Id);
+        Assert.Equal(9, loaded.Matchups.Count);
+
+        var tampered = artifact with { PayloadJson = artifact.PayloadJson.Replace("Test doctrine", "Altered doctrine", StringComparison.Ordinal) };
+        var tamperedJson = BotDoctrineBuildService.SerializeArtifact(tampered);
+        Assert.Throws<InvalidOperationException>(() => BotDoctrineBuildService.Load(tamperedJson));
+    }
+
+    [Fact]
     public async Task RuntimeResolver_RequiresTrustedMethodsControllersAndServices()
     {
         var definition = CreateValid();

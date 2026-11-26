@@ -188,6 +188,48 @@ public sealed class BotDoctrineDefinitionTests
     }
 
     [Fact]
+    public void RuntimeResolver_ActivatesOnlyBindingsForSelectedMatchup()
+    {
+        var definition = CreateValid();
+        definition = new BotDoctrineDefinition
+        {
+            Id = definition.Id, Name = definition.Name, Presentation = definition.Presentation,
+            Settings = definition.Settings, Services = definition.Services, Policies = definition.Policies,
+            InitializationPlans = definition.InitializationPlans, Matchups = definition.Matchups,
+            Methods = definition.Methods.Concat(new[]
+            {
+                new BotDoctrineMethodBinding
+                {
+                    EventId = "observation.enemy-spotted",
+                    MethodId = "method.zerg-mirror-only.v1",
+                    Scope = BotDoctrineMethodScope.Commander,
+                    NodeId = "Zerg.Terran.supreme"
+                }
+            }).ToArray()
+        };
+
+        var catalog = new BotDoctrineRuntimeCatalog();
+        catalog.RegisterService("spatial.query");
+        catalog.RegisterMethod(new BotDoctrineMethodRegistration(
+            "method.respond-to-contact.v1", BotDoctrineMethodScope.Bot,
+            (_, _) => ValueTask.CompletedTask));
+        catalog.RegisterMethod(new BotDoctrineMethodRegistration(
+            "method.zerg-mirror-only.v1", BotDoctrineMethodScope.Commander,
+            (_, _) => ValueTask.CompletedTask));
+        catalog.RegisterController(new BotDoctrineControllerRegistration(
+            "commander.force.v1", BotDoctrineNodeKind.Commander, BotDoctrineMethodScope.Commander,
+            new HashSet<string>(new[] { "spatial.query" }, StringComparer.Ordinal)));
+        catalog.RegisterController(new BotDoctrineControllerRegistration(
+            "unit.marine.fsm.v1", BotDoctrineNodeKind.UnitFsm, BotDoctrineMethodScope.Unit,
+            new HashSet<string>(StringComparer.Ordinal)));
+
+        var plan = BotDoctrineRuntimeResolver.Resolve(definition, Race.Terran, Race.Zerg, catalog);
+
+        Assert.Single(plan.MethodBindings);
+        Assert.Equal("method.respond-to-contact.v1", plan.MethodBindings[0].MethodId);
+    }
+
+    [Fact]
     public void RuntimeResolver_FailsClosedWhenRequiredServiceIsMissing()
     {
         var catalog = new BotDoctrineRuntimeCatalog();

@@ -70,6 +70,15 @@ public sealed class ProductionDemandLedger
         }
     }
 
+    public void Clear()
+    {
+        lock (_gate)
+        {
+            _demands.Clear();
+            _appliedRequests.Clear();
+        }
+    }
+
     public bool TryGet(uint unitTypeId, out ProductionDemand demand)
     {
         lock (_gate)

@@ -185,9 +185,15 @@ public static class BotDoctrineValidator
                     _ => false
                 };
                 if (!valid) errors.Add($"{p}.valueJson: does not match declared valueType.");
-                if (s.ValueType == BotDoctrineValueType.StringChoice &&
-                    (s.Choices is null || s.Choices.Count == 0 || !s.Choices.Contains(value.RootElement.GetString(), StringComparer.Ordinal)))
-                    errors.Add($"{p}.choices: must include the selected string value.");
+                if (s.ValueType == BotDoctrineValueType.StringChoice)
+                {
+                    var choices = s.Choices ?? Array.Empty<string>();
+                    var selected = kind == JsonValueKind.String ? value.RootElement.GetString() : null;
+                    if (choices.Count == 0 || choices.Any(string.IsNullOrWhiteSpace) ||
+                        choices.Distinct(StringComparer.Ordinal).Count() != choices.Count ||
+                        !choices.Contains(selected, StringComparer.Ordinal))
+                        errors.Add($"{p}.choices: must contain unique non-empty values and include the selected string value.");
+                }
             }
             catch (JsonException) { errors.Add($"{p}.valueJson: must be valid JSON data."); }
         }
@@ -229,6 +235,8 @@ public static class BotDoctrineValidator
             Required(method.EventId, p + ".eventId", 160, errors);
             Required(method.MethodId, p + ".methodId", 160, errors);
             if (!Enum.IsDefined(method.Scope)) errors.Add($"{p}.scope: unknown scope.");
+            if (method.Scope != BotDoctrineMethodScope.Bot && string.IsNullOrWhiteSpace(method.NodeId))
+                errors.Add($"{p}.nodeId: is required for commander- and unit-scoped methods.");
             if (!string.IsNullOrEmpty(method.PolicyId) && !policyIds.Contains(method.PolicyId))
                 errors.Add($"{p}.policyId: references an unknown policy.");
             if (!methodKeys.Add($"{method.EventId}|{method.MethodId}|{method.NodeId}"))
@@ -316,6 +324,8 @@ public static class BotDoctrineValidator
         Required(node.PresentationProfileId, p + ".presentationProfileId", 160, errors);
         if (!Enum.IsDefined(node.Kind) || !Enum.IsDefined(node.Scope)) errors.Add($"{p}: unknown node kind or scope.");
         var children = node.Children ?? Array.Empty<BotDoctrineNode>();
+        ValidateNodeIds(node.RequiresCapabilities, p + ".requiresCapabilities", errors);
+        ValidateNodeIds(node.ProvidesCapabilities, p + ".providesCapabilities", errors);
         ValidateNodeIds(node.EmitsIntents, p + ".emitsIntents", errors);
         ValidateNodeIds(node.AcceptsIntents, p + ".acceptsIntents", errors);
         if (parent is not null && parent.EmitsIntents is { Count: > 0 } && node.AcceptsIntents is { Count: > 0 } &&

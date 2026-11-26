@@ -102,7 +102,7 @@ public static class BotDoctrineRuntimeResolver
                 errors.Add($"$.methods: BotMethod '{binding.MethodId}' is not registered.");
             else if (registration.Scope != binding.Scope)
                 errors.Add($"$.methods: BotMethod '{binding.MethodId}' scope mismatch; expected {binding.Scope}, registered {registration.Scope}.");
-            else
+            else if (!methods.Any(method => string.Equals(method.Id, registration.Id, StringComparison.Ordinal)))
                 methods.Add(registration);
         }
 

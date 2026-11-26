@@ -18,13 +18,19 @@ public static class Sc2RaceProductionActionTranslator
         NormalizedObservation observation,
         int desiredRemainingUnits,
         IReadOnlySet<ulong>? unavailableProducerTags = null,
-        Func<UnitObservationFacts, bool>? hasPositivePowerEvidence = null)
+        Func<UnitObservationFacts, bool>? hasPositivePowerEvidence = null,
+        uint reservedMinerals = 0,
+        uint reservedVespene = 0,
+        float reservedFood = 0)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(producer);
         ArgumentNullException.ThrowIfNull(observation);
         unavailableProducerTags ??= new HashSet<ulong>();
+
+        if (!float.IsFinite(reservedFood) || reservedFood < 0)
+            return Sc2RaceProductionTranslation.Blocked("Strategic food reservation is invalid.");
 
         if (desiredRemainingUnits <= 0 || profile.UnitsPerOrder <= 0 ||
             target.AbilityId == 0 || target.AbilityId > int.MaxValue ||
@@ -50,12 +56,18 @@ public static class Sc2RaceProductionActionTranslator
             return Sc2RaceProductionTranslation.Blocked("Resolved food cost is invalid.");
 
         var availableFood = observation.FoodCap >= observation.FoodUsed
-            ? observation.FoodCap - observation.FoodUsed
-            : 0;
+            ? Math.Max(0f, observation.FoodCap - observation.FoodUsed - reservedFood)
+            : 0f;
+        var availableMinerals = observation.Minerals > reservedMinerals
+            ? observation.Minerals - reservedMinerals
+            : 0u;
+        var availableVespene = observation.Vespene > reservedVespene
+            ? observation.Vespene - reservedVespene
+            : 0u;
         var maxByMinerals = mineralCostPerOrder == 0 ? int.MaxValue :
-            (int)Math.Min(int.MaxValue, (ulong)observation.Minerals / mineralCostPerOrder);
+            (int)Math.Min(int.MaxValue, (ulong)availableMinerals / mineralCostPerOrder);
         var maxByVespene = vespeneCostPerOrder == 0 ? int.MaxValue :
-            (int)Math.Min(int.MaxValue, (ulong)observation.Vespene / vespeneCostPerOrder);
+            (int)Math.Min(int.MaxValue, (ulong)availableVespene / vespeneCostPerOrder);
         var maxByFood = foodPerOrder <= 0 ? int.MaxValue :
             (int)Math.Min(int.MaxValue, (ulong)Math.Floor(availableFood / foodPerOrder + 0.0001f));
         var desiredOrders = desiredRemainingUnits / profile.UnitsPerOrder +

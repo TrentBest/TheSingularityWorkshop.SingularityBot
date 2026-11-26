@@ -1,3 +1,5 @@
+using TheSingularityWorkshop.Execution;
+
 namespace SingularityBot.Behavior;
 
 /// <summary>
@@ -221,15 +223,40 @@ public sealed class BotDoctrineEventDispatcher
             throw new ArgumentException("An event ID is required.", nameof(botEvent));
         if (!_handlers.TryGetValue(botEvent.EventId, out var handlers))
             return 0;
-        foreach (var handler in handlers)
+        // FSM_Execution owns the ordered workflow semantics for a reaction.
+        // This adapter keeps the SC2 frame boundary synchronous: registered
+        // BotMethods must complete locally and may not escape onto background work.
+        var registry = new WorkflowHandlerRegistry();
+        var steps = new List<WorkflowStep>(handlers.Count);
+        for (var index = 0; index < handlers.Count; index++)
         {
-            var pending = handler.Handler(botEvent, CancellationToken.None);
-            if (!pending.IsCompleted)
-                throw new InvalidOperationException(
-                    $"BotMethod '{handler.Id}' returned incomplete asynchronous work from the SC2 game loop. " +
-                    "Game-loop handlers must complete synchronously; enqueue external work through a bounded host service.");
-            pending.GetAwaiter().GetResult();
+            var handler = handlers[index];
+            var handlerKey = $"doctrine-method-{index}";
+            registry.Register(handlerKey, (Func<CancellationToken, ValueTask>)(cancellationToken =>
+            {
+                var pending = handler.Handler(botEvent, cancellationToken);
+                if (!pending.IsCompleted)
+                    throw new InvalidOperationException(
+                        $"BotMethod '{handler.Id}' returned incomplete asynchronous work from the SC2 game loop.");
+                pending.GetAwaiter().GetResult();
+                return ValueTask.CompletedTask;
+            }));
+            steps.Add(new WorkflowStep($"method-{index}", handlerKey));
         }
+
+        var workflow = new WorkflowDefinition(
+            "bot-doctrine-event",
+            botEvent.EventId,
+            WorkflowDefinition.SupportedSchemaVersion,
+            steps);
+        var execution = new WorkflowRunner(registry).RunAsync(workflow);
+        if (!execution.IsCompleted)
+            throw new InvalidOperationException("A doctrine reaction workflow escaped the SC2 game-loop boundary.");
+
+        var result = execution.GetAwaiter().GetResult();
+        if (result.Status != WorkflowStatus.Succeeded)
+            throw new InvalidOperationException(
+                $"Doctrine reaction workflow '{botEvent.EventId}' ended with status {result.Status}.");
         return handlers.Count;
     }
 

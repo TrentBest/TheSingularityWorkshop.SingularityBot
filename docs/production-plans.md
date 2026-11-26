@@ -36,9 +36,9 @@ These examples demonstrate production-plan shape, not a claim that the current r
 The live strategic request is a desired-total dictionary, not a stream of build commands:
 
 ```csharp
-production.Set(marineFacts, 10); // desired total: 10 Marines
-production.Add(marineFacts, 10); // desired total increases by 10
-production.Set(barracksFacts, 2); // desired total: 2 Barracks
+production[marineFacts] = 10;  // desired total: 10 Marines
+production[marineFacts] += 10; // desired total increases to 20
+production[barracksFacts] = 2; // desired total: 2 Barracks
 ```
 
 `ProductionDemandLedger` keys entries by the authoritative SC2 `UnitTypeId` resolved from the match's `ResponseData`. It stores the desired total and priority; it does not issue actions. Additive event requests can carry a correlation ID through `AddOnce`, so replaying the same event cannot repeatedly inflate the target. Demand is bounded and reset between matches.

@@ -742,12 +742,24 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _doctrineVisibleEnemyTags.UnionWith(currentEnemies);
                 _doctrineVisibleFriendlyTags.UnionWith(currentFriendlies);
                 _doctrineObservationBaselineEstablished = true;
-                _doctrineEnemyForceConcernActive = currentEnemies.Count > 4;
+                _doctrineEnemyForceConcernActive = currentEnemies.Count > BotProductionMethods.EnemyForceConcernThreshold;
+                if (_doctrineEnemyForceConcernActive)
+                {
+                    _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
+                        "observation.enemy-force-concern",
+                        $"enemy-force:{normalized.GameLoop}",
+                        normalized.GameLoop,
+                        new Dictionary<string, string>(StringComparer.Ordinal)
+                        {
+                            ["enemy.count"] = currentEnemies.Count.ToString(),
+                            ["enemy.threshold"] = BotProductionMethods.EnemyForceConcernThreshold.ToString()
+                        }));
+                }
             }
             else
             {
                 var enemyCount = currentEnemies.Count;
-                if (enemyCount > 4 && !_doctrineEnemyForceConcernActive)
+                if (enemyCount > BotProductionMethods.EnemyForceConcernThreshold && !_doctrineEnemyForceConcernActive)
                 {
                     _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
                         "observation.enemy-force-concern",
@@ -756,10 +768,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                         new Dictionary<string, string>(StringComparer.Ordinal)
                         {
                             ["enemy.count"] = enemyCount.ToString(),
-                            ["enemy.threshold"] = "4"
+                            ["enemy.threshold"] = BotProductionMethods.EnemyForceConcernThreshold.ToString()
                         }));
                 }
-                _doctrineEnemyForceConcernActive = enemyCount > 4;
+                _doctrineEnemyForceConcernActive = enemyCount > BotProductionMethods.EnemyForceConcernThreshold;
 
 
             }

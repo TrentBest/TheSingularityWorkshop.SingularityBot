@@ -9,6 +9,13 @@
     <ProjectReference Include="../SC2API.CSharp/SC2API.CSharp.csproj" />
 
     <ProjectReference
+      Include="../../../TheSingularityWorkshop.FSM_Execution/src/Execution.Workflow/Execution.Workflow.csproj"
+      Condition="Exists('../../../TheSingularityWorkshop.FSM_Execution/src/Execution.Workflow/Execution.Workflow.csproj')" />
+    <ProjectReference
+      Include="../../dependencies/FSM_Execution/src/Execution.Workflow/Execution.Workflow.csproj"
+      Condition="!Exists('../../../TheSingularityWorkshop.FSM_Execution/src/Execution.Workflow/Execution.Workflow.csproj')" />
+
+    <ProjectReference
       Include="../../../FSM_API/FSM_API/FSM_API.csproj"
       Condition="Exists('../../../FSM_API/FSM_API/FSM_API.csproj')" />
     <ProjectReference

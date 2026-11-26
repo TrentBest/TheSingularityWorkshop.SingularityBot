@@ -211,6 +211,53 @@ public sealed class Sc2RaceProductionActionTranslatorTests
         Assert.Empty(result.ProducerTags);
     }
 
+    [Fact]
+    public void ZerglingTranslation_BlocksAtSupplyCapEvenWhenResourcesAndLarvaAreAvailable()
+    {
+        var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "zerg.zergling.v1");
+        var observation = Observation(
+            500, 100, 20, 20,
+            Unit(1, "Larva"),
+            Unit(2, "SpawningPool", buildProgress: 1f));
+
+        var result = Sc2RaceProductionActionTranslator.Translate(
+            profile,
+            new Sc2UnitFacts(105, "Zergling", 1343, 25, 0, 0.5f, 0),
+            new Sc2UnitFacts(151, "Larva", 0, 0, 0, 0, 0),
+            observation,
+            2,
+            new HashSet<ulong>());
+
+        Assert.True(result.IsBlocked);
+        Assert.Contains("resources or supply", result.BlockReason);
+        Assert.Empty(result.ProducerTags);
+    }
+
+    [Fact]
+    public void ZerglingTranslation_AllowsExactlyOnePairWhenExactlyOneSupplyIsFree()
+    {
+        var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "zerg.zergling.v1");
+        var observation = Observation(
+            50, 0, 19, 20,
+            Unit(1, "Larva"),
+            Unit(2, "SpawningPool", buildProgress: 1f));
+
+        var result = Sc2RaceProductionActionTranslator.Translate(
+            profile,
+            new Sc2UnitFacts(105, "Zergling", 1343, 25, 0, 0.5f, 0),
+            new Sc2UnitFacts(151, "Larva", 0, 0, 0, 0, 0),
+            observation,
+            2,
+            new HashSet<ulong>());
+
+        Assert.False(result.IsBlocked);
+        Assert.Single(result.Actions);
+        Assert.Equal(1f, result.ReservedFood);
+        Assert.Equal(2, result.ExpectedOutputUnits);
+    }
+
     private static NormalizedObservation Observation(
         uint minerals,
         uint vespene,

@@ -9,9 +9,9 @@
 
 [![Sith Policy](https://raw.githubusercontent.com/TrentBest/TheSingularityWorkshop.SingularityBot/master/assets/sith-policy.svg)](https://github.com/TrentBest/TheSingularityWorkshop.SingularityBot/actions/workflows/sith-policy.yml)
 
-**A Random-race StarCraft II agent with explicit race-configured strategy modes, built on The Singularity Workshop.**
+**A Terran-by-default, race-configurable StarCraft II agent with explicit race strategy modes, built on The Singularity Workshop.**
 
-SingularityBot observes StarCraft II, maintains persistent entity contexts, evaluates hierarchical finite-state machines, arbitrates intents, validates commands against current observations and game data, and submits actions through the SC2 protocol adapter. The default runner requests Random from SC2. Race-specific strategy modes are being built behind one shared decision system; Random assignment is not yet equivalent to complete Terran, Protoss, and Zerg gameplay support. See the [race support and first-tier pressure guide](docs/race-support.md) for the verified capability boundary.
+SingularityBot observes StarCraft II, maintains persistent entity contexts, evaluates hierarchical finite-state machines, arbitrates intents, validates commands against current observations and game data, and submits actions through the SC2 protocol adapter. The default runner requests Terran so the established Marine baseline is deterministic. Explicit `--race` / `--mode` choices expose bounded experimental openers; authored Random selection is restricted to races that pass the stronger race-selection acceptance gate. A selectable opener is not equivalent to a complete, match-verified race composition. See the [race support and first-tier pressure guide](docs/race-support.md) for the verified capability boundary.
 
 ## Current objective
 
@@ -63,7 +63,7 @@ Start with the [SingularityBot documentation home](docs/index.md) for current st
 - [ServerSC2 integration To Do — comprehensive implementation and proof checklist](docs/server-sc2-integration-todo.md)
 - [Immutable bot-build packaging — trusted ServerSC2 handoff](docs/bot-build-packaging.md)
 
-The live bot is a self-contained compiled DLL. The Runner selects a statically linked `AdaptiveMarineStrategy` through `ICompiledBotStrategy`; the shared engine obtains its validated definition, initial-goal composition, goal-assignment policy and Marine rally decision through that contract. Two compiled strategies are regression-tested through the same engine and action vocabulary. Objective/transition composition and most macro/tactical policy still need to move behind the contract. FSM_COS composes the definition and CommandAi vocabulary at startup. JSON remains an authoring/import/export representation, not a live runtime file. The SC2 Runner drives the bot lifecycle and frame callbacks; it is not a second strategy engine, and FSM_Foundry is not inserted into live unit-action execution.
+The live bot is a self-contained compiled DLL. The Runner selects a statically linked `AdaptiveMarineStrategy` through `ICompiledBotStrategy`; the shared engine obtains its validated definition, initial-goal composition, goal-assignment policy and Marine rally decision through that contract. Two compiled strategies are regression-tested through the same engine and action vocabulary. Objective/transition composition and most macro/tactical policy still need to move behind the contract. FSM_COS composes the definition and CommandAi vocabulary at startup. JSON remains an authoring/import/export representation, not a live runtime file. The SC2 Runner drives the bot lifecycle and frame callbacks; it is not a second strategy engine, and FSM_Execution is not inserted into live unit-action execution.
 - [CommandAi integration v1: bot-owned command vocabulary and validation boundary](docs/commandai-integration-v1.md)
 - [GrammarAi optional authoring/interchange boundary](https://github.com/TrentBest/TheSingularityWorkshop.GrammarAi/blob/development/docs/INTEGRATION_SINGULARITYBOT.md)
 - [Architecture](docs/architecture.md)

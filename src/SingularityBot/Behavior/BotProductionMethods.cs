@@ -10,12 +10,13 @@ namespace SingularityBot.Behavior;
 public static class BotProductionMethods
 {
     public const string LargeEnemyForceMarineResponse = "production.respond-to-large-enemy-force.v1";
+    public const int EnemyForceConcernThreshold = 4;
 
     public static void RegisterLargeEnemyForceMarineResponse(
         BotDoctrineRuntimeCatalog catalog,
         ProductionDemandLedger production,
         Func<Sc2GameDataCatalog> gameDataProvider,
-        int concernThreshold = 4,
+        int concernThreshold = EnemyForceConcernThreshold,
         int additionalMarines = 10,
         int priority = 85)
     {

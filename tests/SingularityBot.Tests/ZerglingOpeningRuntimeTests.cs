@@ -118,6 +118,50 @@ public sealed class ZerglingOpeningRuntimeTests
     }
 
     [Fact]
+    public void Runtime_ReplacesConsumedDroneExactlyOnceAfterDeadTagAndEggEvidence()
+    {
+        var runtime = CreateRuntime();
+        var opening = Observation(300, 0, 12, 14,
+            Unit(1, "Hatchery"), Unit(2, "Drone"), Unit(4, "Larva"));
+        Assert.Empty(runtime.OnFrame(opening));
+        var query = runtime.TakeQueryRequest();
+        var approved = new ResponseQuery();
+        approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        for (var i = 1; i < query.Placements.Count; i++)
+            approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.CantBuildLocationInvalid });
+        runtime.OnQueryResult(approved);
+        Assert.Single(runtime.OnFrame(opening));
+
+        var buildAccepted = new ResponseAction();
+        buildAccepted.Result.Add(ActionResult.Success);
+        runtime.OnActionResult(buildAccepted);
+
+        var consumed = ObservationWithDeadTags(
+            100, 0, 12, 14, new HashSet<ulong> { 2 },
+            Unit(1, "Hatchery"), Unit(6, "Larva"));
+        var replacement = Assert.Single(runtime.OnFrame(consumed));
+        Assert.Equal(1345, replacement.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(6ul, Assert.Single(replacement.ActionRaw.UnitCommand.UnitTags));
+
+        var replacementAccepted = new ResponseAction();
+        replacementAccepted.Result.Add(ActionResult.Success);
+        runtime.OnActionResult(replacementAccepted);
+
+        var replacementEgg = Unit(8, "Egg") with
+        {
+            HasOrders = true,
+            Orders = new[] { new UnitOrderObservationFacts(1345, null, null, null) }
+        };
+        var eggObserved = ObservationWithDeadTags(
+            50, 0, 13, 14, new HashSet<ulong> { 2 },
+            Unit(1, "Hatchery"), replacementEgg, Unit(7, "Larva"));
+
+        Assert.Empty(runtime.OnFrame(eggObserved));
+        Assert.Empty(runtime.OnFrame(eggObserved));
+        Assert.Equal("AwaitingPool", runtime.State);
+    }
+
+    [Fact]
     public void Runtime_DoesNotRetryAcceptedPoolBuildBeforeStructureEvidence()
     {
         var runtime = CreateRuntime();
@@ -146,7 +190,7 @@ public sealed class ZerglingOpeningRuntimeTests
         var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
             .Single(item => item.ModeId == "zerg.zergling.v1");
         return new ZerglingOpeningRuntime(
-            new Sc2UnitFacts(104, "Drone", 0, 50, 0, 1, 0),
+            new Sc2UnitFacts(104, "Drone", 1345, 50, 0, 1, 0),
             new Sc2UnitFacts(200, "SpawningPool", 1344, 200, 0, 0, 0),
             Ability(1344),
             profile,
@@ -162,7 +206,13 @@ public sealed class ZerglingOpeningRuntimeTests
     private static NormalizedObservation Observation(
         uint minerals, uint vespene, uint foodUsed, uint foodCap,
         params UnitObservationFacts[] units) =>
-        new(100, 1, units, new HashSet<ulong>())
+        ObservationWithDeadTags(minerals, vespene, foodUsed, foodCap, new HashSet<ulong>(), units);
+
+    private static NormalizedObservation ObservationWithDeadTags(
+        uint minerals, uint vespene, uint foodUsed, uint foodCap,
+        IReadOnlySet<ulong> deadUnitTags,
+        params UnitObservationFacts[] units) =>
+        new(100, 1, units, deadUnitTags)
         {
             Minerals = minerals, Vespene = vespene, FoodUsed = foodUsed, FoodCap = foodCap
         };

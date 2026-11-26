@@ -107,8 +107,8 @@ public static class BotDoctrineRuntimeResolver
             else if (registration.Scope != binding.Scope)
                 errors.Add($"$.methods: BotMethod '{binding.MethodId}' scope mismatch; expected {binding.Scope}, registered {registration.Scope}.");
             else if (binding.Scope != BotDoctrineMethodScope.Bot &&
-                     activeNodes[binding.NodeId].Node.Kind == BotDoctrineNodeKind.Commander &&
-                     binding.Scope != BotDoctrineMethodScope.Commander)
+                     binding.Scope == BotDoctrineMethodScope.Commander &&
+                     activeNodes[binding.NodeId].Node.Kind != BotDoctrineNodeKind.Commander)
                 errors.Add($"$.methods: binding '{binding.MethodId}' scope does not match commander node '{binding.NodeId}'.");
             else if (binding.Scope == BotDoctrineMethodScope.Unit &&
                      activeNodes[binding.NodeId].Node.Kind != BotDoctrineNodeKind.UnitFsm)

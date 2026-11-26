@@ -261,6 +261,38 @@ public sealed class ZerglingOpeningRuntimeTests
     }
 
     [Fact]
+    public void Runtime_KeepsReplacementReservationWhenCallbackAndEggEvidenceAreMissing()
+    {
+        var runtime = CreateRuntime();
+        var opening = Observation(300, 0, 12, 14,
+            Unit(1, "Hatchery"), Unit(2, "Drone"), Unit(4, "Larva"));
+        Assert.Empty(runtime.OnFrame(opening));
+        var query = runtime.TakeQueryRequest();
+        var approved = new ResponseQuery();
+        approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        for (var i = 1; i < query.Placements.Count; i++)
+            approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.CantBuildLocationInvalid });
+        runtime.OnQueryResult(approved);
+        Assert.Single(runtime.OnFrame(opening));
+
+        var consumed = ObservationWithDeadTags(
+            100, 0, 12, 14, new HashSet<ulong> { 2 },
+            Unit(1, "Hatchery"), Unit(5, "SpawningPool"), Unit(6, "Larva"));
+        var replacement = Assert.Single(runtime.OnFrame(consumed));
+        Assert.Equal(1345, replacement.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(6ul, Assert.Single(replacement.ActionRaw.UnitCommand.UnitTags));
+
+        // Neither an action callback nor an authoritative Drone Egg is observed.
+        // A new Larva appearing is not sufficient evidence to retry the order.
+        var unresolved = ObservationWithDeadTags(
+            50, 0, 13, 14, new HashSet<ulong> { 2 },
+            Unit(1, "Hatchery"), Unit(5, "SpawningPool"), Unit(7, "Larva"));
+        Assert.Empty(runtime.OnFrame(unresolved));
+        Assert.Empty(runtime.OnFrame(unresolved));
+        Assert.Equal("Producing", runtime.State);
+    }
+
+    [Fact]
     public void Runtime_DoesNotRetryAcceptedPoolBuildBeforeStructureEvidence()
     {
         var runtime = CreateRuntime();

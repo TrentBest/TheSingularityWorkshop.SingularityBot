@@ -1,8 +1,8 @@
 # Race support and first-tier pressure
 
-## Identity: one Random-race bot, race-specific strategy configurations
+## Identity: Terran by default, with explicit race selection
 
-SingularityBot is a **Random-race StarCraft II participant with an architecture for explicit race-specific strategy configurations**, not a claim that three complete strategies are already playable. The SC2 runner requests the Random race by default, and the runtime resolves the authoritative in-game `RaceActual` against a trusted race/mode catalogue. A requested race is never treated as proof of the race actually assigned by the match.
+SingularityBot is one reusable, race-configurable StarCraft II participant. The default Runner request is Terran to preserve a deterministic, established Marine baseline. The runtime still resolves authoritative in-game `RaceActual` against a trusted race/mode catalogue; a requested race is never treated as proof of the race actually assigned by the match. Authored Random selection is restricted to races that have passed the stronger race-selection acceptance gate. Explicit race/mode selection can expose bounded experimental openers without claiming full race support.
 
 Race configuration is a property of the bot/match composition. It must select the race-specific economy, worker construction rules, production profile, unit capabilities, and strategy mode. The shared decision system—observation reconciliation, persistent contexts, scouting, threat assessment, task arbitration, spatial reasoning, and evidence-gated action submission—is intended to be reused wherever the domain contracts genuinely match. The current default Terran definition is not a universal definition that can be run unchanged under any Random result.
 
@@ -12,10 +12,10 @@ Race configuration is a property of the bot/match composition. It must select th
 |---|---|---|
 | Terran / Marine Mode | Implemented baseline; regression-tested | The existing worker/economy, construction, Marine production, scouting, and tactical foundations are Terran-specific. A live match/replay is still required to prove the complete opening. |
 | Zerg / Zergling opening | Experimental selectable path | The runner exposes `--mode=zerg.zergling.v1` and a first-Zergling-pair definition. This is not yet a complete Zerg economy, production, scouting, or combat composition. |
-| Protoss / Zealot or Stalker | Registered mode identities only | The catalogue records intended modes, but they are not yet authorized to issue gameplay actions. |
+| Protoss / first Zealot | Experimental selectable path | The bounded Pylon/Gateway/first-Zealot opener can issue race-specific actions; a sustainable economy, follow-on production, scouting and combat composition remain incomplete. |
 | Other registered modes | Selection metadata only unless explicitly marked executable | A name in the catalogue is not proof of a working strategy. |
 
-The default Random request must not silently fall through to the Terran Marine strategy when SC2 assigns Protoss or Zerg. The current default BotDefinition is Terran Marine; selecting a different race requires a matching definition/mode and an executable opener. Match startup must resolve actual race and a compatible executable composition; if none exists, it must fail closed without issuing cross-race commands. Forge v1 currently keeps its visual race selector disabled and Terran-only, even though the runtime schema/catalogue contain additional race identities. Until that authoring path and the chosen race's end-to-end behavior are verified, do not describe Random as three-race gameplay parity.
+The default Terran request must not silently fall through to another race's strategy if SC2 reports a different `RaceActual`. The current default BotDefinition is Terran Marine; selecting a different race requires a matching definition/mode and an executable opener. Random definitions intersect their declared allow-list with `RaceSelectionEligibleRaces`, not the broader experimental-opener catalogue. Match startup must resolve actual race and a compatible executable composition; if none exists, it must fail closed without issuing cross-race commands. Forge v1 currently keeps its visual race selector disabled and Terran-only, even though the runtime schema/catalogue contain additional race identities. Until that authoring path and the chosen race's end-to-end behavior are verified, do not describe Random as three-race gameplay parity.
 
 ## Deterministic local baseline run
 
@@ -25,7 +25,7 @@ The runner now accepts an explicit Terran baseline mode so the first controlled 
 dotnet run --project src/SingularityBot -- --mode=terran.marine.v1
 ```
 
-This requests Terran and uses the existing Adaptive Marine strategy on the configured local map/opponent settings. Omitting `--mode` intentionally retains the Random request; because the compiled default definition is Terran Marine, a non-Terran actual race must still fail closed. The experimental Zergling opener remains separately selectable with `--mode=zerg.zergling.v1`, but it is not the recommended first gameplay proof and does not represent full Zerg support.
+This requests Terran and uses the existing Adaptive Marine strategy on the configured local map/opponent settings. Omitting `--mode` intentionally retains the default Terran request; if authoritative match data reports a non-Terran actual race, the Terran composition must fail closed. The experimental Zergling opener remains separately selectable with `--mode=zerg.zergling.v1`, but it is not the recommended first gameplay proof and does not represent full Zerg support.
 
 ## Strategic objective: fast first-tier pressure, intelligently
 

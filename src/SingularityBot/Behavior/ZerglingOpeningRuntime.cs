@@ -103,10 +103,15 @@ public sealed class ZerglingOpeningRuntime
                 _replacementLarvaTag = 0;
                 Console.WriteLine("[ZergOpening] Replacement Drone Egg observed; replacement accounted exactly once.");
             }
-            else if (_buildResultPending)
+            else if (_buildResultPending && !observation.Units.Any(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !observation.DeadUnitTags.Contains(unit.Tag) &&
+                unit.UnitKind.Equals(_pool.Name, StringComparison.OrdinalIgnoreCase) &&
+                unit.BuildProgress >= 1f))
             {
                 // The dead-tag evidence may arrive before the build action callback.
-                // Let the build callback/structure observation settle first.
+                // Let the build callback/structure observation settle first, unless
+                // the completed structure itself has already superseded that callback.
                 return Array.Empty<SC2APIProtocol.Action>();
             }
             else if (_replacementResultPending || _replacementAwaitingEgg)

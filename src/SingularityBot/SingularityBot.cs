@@ -27,6 +27,10 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly UnitBehaviorRuntime _unitBehaviors = new();
     private readonly BuildingBehaviorRuntime _buildings = new();
     private readonly ICompiledBotStrategy _compiledStrategy;
+    private readonly BotDoctrineDefinition _doctrineDefinition;
+    private readonly BotDoctrineRuntimeCatalog _doctrineCatalog;
+    private BotDoctrineRuntimePlan _doctrineRuntimePlan;
+    private BotDoctrineEventDispatcher _doctrineEventDispatcher;
     private readonly StrategyEvidenceCollector _strategyEvidenceCollector = new();
     private readonly ConstructionSiteSafety _constructionSiteSafety = new();
     private IReadOnlyList<StrategyEvidence> _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
@@ -62,8 +66,16 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         bool passiveBaseline = false,
         bool writeDiagnostics = false,
         BotDefinition botDefinition = null,
-        ICompiledBotStrategy compiledStrategy = null)
+        ICompiledBotStrategy compiledStrategy = null,
+        BotDoctrineDefinition doctrineDefinition = null,
+        BotDoctrineRuntimeCatalog doctrineCatalog = null)
     {
+        if ((doctrineDefinition is null) != (doctrineCatalog is null))
+            throw new ArgumentException("A doctrine definition and trusted runtime catalog must be supplied together.");
+
+        _doctrineDefinition = doctrineDefinition;
+        _doctrineCatalog = doctrineCatalog;
+
         if (botDefinition is not null && compiledStrategy is not null)
             throw new ArgumentException("Supply either a compiled strategy or a definition, not both.");
 
@@ -174,6 +186,21 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public BotStudioEventJournal StudioEvents => _studioEvents;
     /// <summary>The authoritative in-game race resolved from this player's SC2 game-info entry.</summary>
     public Race ActualRace => _actualRace;
+    /// <summary>The exact matchup doctrine resolved at match start, when doctrine activation was requested.</summary>
+    public BotDoctrineRuntimePlan DoctrineRuntimePlan => _doctrineRuntimePlan;
+
+    /// <summary>
+    /// Dispatches an event through the trusted methods selected for this match.
+    /// Callers cannot add handlers or change the active matchup through this surface.
+    /// </summary>
+    public ValueTask<int> DispatchDoctrineEventAsync(
+        BotDoctrineEvent botEvent,
+        CancellationToken cancellationToken = default)
+    {
+        if (_doctrineEventDispatcher is null)
+            throw new InvalidOperationException("No doctrine has been activated for the current match.");
+        return _doctrineEventDispatcher.DispatchAsync(botEvent, cancellationToken);
+    }
     /// <summary>The map-selected mode after validation against authoritative RaceActual.</summary>
     public BotModeDescriptor ActiveMode => _activeMode;
     /// <summary>Race/mode-specific first-unit production profile resolved from authoritative match game data.</summary>
@@ -424,6 +451,22 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _studioMapName = gameInfo?.MapName ?? string.Empty;
         var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
         _actualRace = playerInfo?.RaceActual ?? Race.Random;
+        _doctrineRuntimePlan = null;
+        _doctrineEventDispatcher = null;
+        if (_doctrineDefinition is not null)
+        {
+            var opponentRaces = gameInfo?.PlayerInfo?
+                .Where(player => player.PlayerId != playerId)
+                .Select(player => player.RaceActual)
+                .ToArray() ?? Array.Empty<Race>();
+            var opponentRace = BotDoctrineMatchIdentity.ResolveSingleOpponentRace(opponentRaces);
+            _doctrineRuntimePlan = BotDoctrineRuntimeResolver.Resolve(
+                _doctrineDefinition, _actualRace, opponentRace, _doctrineCatalog);
+            _doctrineEventDispatcher = new BotDoctrineEventDispatcher(_doctrineRuntimePlan);
+            Console.WriteLine(
+                $"[Doctrine] Activated {_doctrineDefinition.Id}; matchup={_actualRace}-vs-{opponentRace}; " +
+                $"controllers={_doctrineRuntimePlan.Controllers.Count}; methods={_doctrineRuntimePlan.Methods.Count}.");
+        }
         _openingBuilder.StartMatchClock();
         _studioEvents.Publish("lifecycle", "match.started", "info", observation?.Observation?.GameLoop ?? 0,
             $"map={_studioMapName};actualRace={_actualRace};configuredMode={_definition.ModeId}");

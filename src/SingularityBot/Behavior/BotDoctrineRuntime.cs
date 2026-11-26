@@ -92,7 +92,8 @@ public static class BotDoctrineRuntimeResolver
             throw new InvalidOperationException($"No exact doctrine matchup is configured for {ownRace}-vs-{opponentRace}; fallback is prohibited.");
 
         var initialization = definition.InitializationPlans.Single(plan => plan.Race == ownRace);
-        foreach (var service in definition.Services.Where(service => service.Required))
+        foreach (var service in definition.Services.Where(service => service.Required &&
+                     (service.AppliesToRaces is null || service.AppliesToRaces.Count == 0 || service.AppliesToRaces.Contains(ownRace))))
             if (!catalog.HasService(service.ServiceId))
                 errors.Add($"$.services: required service '{service.ServiceId}' is not registered.");
 

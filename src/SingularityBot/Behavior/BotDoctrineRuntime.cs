@@ -210,6 +210,29 @@ public sealed class BotDoctrineEventDispatcher
         _handlers = registrations;
     }
 
+    /// <summary>
+    /// Executes observation handlers synchronously at the SC2 game-loop boundary.
+    /// Async handlers are rejected rather than blocking or escaping the frame.
+    /// </summary>
+    public int DispatchOnGameLoop(BotDoctrineEvent botEvent)
+    {
+        ArgumentNullException.ThrowIfNull(botEvent);
+        if (string.IsNullOrWhiteSpace(botEvent.EventId))
+            throw new ArgumentException("An event ID is required.", nameof(botEvent));
+        if (!_handlers.TryGetValue(botEvent.EventId, out var handlers))
+            return 0;
+        foreach (var handler in handlers)
+        {
+            var pending = handler.Handler(botEvent, CancellationToken.None);
+            if (!pending.IsCompleted)
+                throw new InvalidOperationException(
+                    $"BotMethod '{handler.Id}' returned incomplete asynchronous work from the SC2 game loop. " +
+                    "Game-loop handlers must complete synchronously; enqueue external work through a bounded host service.");
+            pending.GetAwaiter().GetResult();
+        }
+        return handlers.Count;
+    }
+
     public async ValueTask<int> DispatchAsync(BotDoctrineEvent botEvent, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(botEvent);

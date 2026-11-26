@@ -2,7 +2,7 @@
 
 ## Objective
 
-Make SingularityBot a manifest-configured, FSM-composed StarCraft II bot. FSM_API owns behavior state and transitions; FSM_Foundry is the intended execution owner where its runtime contract supports this. SC2-specific code remains responsible for observation normalization, game-data interpretation, intent validation, and protocol action submission.
+Make SingularityBot a manifest-configured, FSM-composed StarCraft II bot. FSM_API owns behavior state and transitions; FSM_Execution is the intended execution owner where its runtime contract supports this. SC2-specific code remains responsible for observation normalization, game-data interpretation, intent validation, and protocol action submission.
 
 The ladder artifact must be self-contained: all runtime code, FSM definitions, catalogs, schemas, and built-in policies required for play are compiled/package-contained. A GUI-authored manifest selects and configures those compiled capabilities. The ladder runtime must not require filesystem or web access.
 
@@ -25,7 +25,7 @@ The ladder artifact must be self-contained: all runtime code, FSM definitions, c
 - [ ] Inventory current FSM definitions, contexts, handles, processing groups, update calls, and cleanup paths.
 - [ ] Inventory imperative controllers and distinguish behavior decisions from SC2 observation/action adapter responsibilities.
 - [x] Verify exact FSM_API signatures and semantics against source and SimpleDemos, including multiple FSMs on one context.
-- [ ] Verify FSM_Foundry availability, package/version, and intended execution lifecycle before assigning it ownership.
+- [ ] Verify FSM_Execution availability, package/version, and intended execution lifecycle before assigning it ownership.
 - [ ] Record baseline build/test status and current branch head.
 
 ### 2. Shared entity model and capability composition
@@ -86,7 +86,7 @@ Work on `development` only. Implement in small, buildable increments. Keep this 
 - Regression assertions committed at `12748e444e2191b42a62960ae7373a44b03bfdb7`: a Barracks context simultaneously owns both handles; research observations transition only the research FSM, and production observations transition only the production FSM.
 - GitHub Build #1178 completed successfully for `12748e444e2191b42a62960ae7373a44b03bfdb7`, including restore, Release build, and test suite.
 - FSM_API source confirms `CreateInstance(string, IStateContext, string processingGroup = "Update")` creates a distinct handle for the supplied shared context. This is the intended composition primitive.
-- Current `TheSingularityWorkshop.FSM_Foundry` repository is only a scaffold (README plus policy assets/workflow; no project or runtime source). Do not add a fictional Foundry dependency. Until Foundry has an executable runtime, the bot's single `OnStep` processing-group loop remains the actual scheduler owner and calls `FSM_API.Interaction.Update(group)` once per declared group.
+- The `TheSingularityWorkshop.FSM_Execution` repository now owns the execution runtime and workflow contracts. SingularityBot does not yet integrate that runtime into its live SC2 frame loop; the bot's single `OnStep` processing-group loop remains the actual scheduler for live decisions and calls `FSM_API.Interaction.Update(group)` once per declared group. Do not add a duplicate scheduler or imply that FSM_Execution currently drives live unit actions.
 - Remaining audit: imperative opening/expansion/Orbital controllers, production plan runtime, advisor/strategy scheduling, and spatial/navigation behavior still need migration classification and sequencing.
 
 - Building threat proximity slice committed at `11cd2d51d91de08da0452a3084bb0d709de654b9`: every building now owns a `BuildingThreatProximity` FSM with independent `Clear`, `EnemyWithin10`, and `EnemyWithin5` states, driven by nearest visible ground-enemy distance.

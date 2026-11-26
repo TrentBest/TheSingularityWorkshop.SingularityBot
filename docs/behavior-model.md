@@ -4,7 +4,7 @@
 
 SingularityBot is a player runtime, not an editor project. The live decision path is:
 
-`StarCraft II -> SC2 adapter -> normalized facts -> game ontology/capabilities -> FSM_API contexts executed by FSM_Foundry -> intent arbitration/validation -> SC2 actions`.
+`StarCraft II -> SC2 adapter -> normalized facts -> game ontology/capabilities -> FSM_API contexts executed by FSM_Execution -> intent arbitration/validation -> SC2 actions`.
 
 FSM_API owns reusable lifecycle and state-machine behavior. FSM_Foundry executes the composed workload. SC2 protocol DTOs stay in the adapter. GUI, Renderer and Visualize inspect or author the same versioned contracts; they do not implement a second runtime and are not required to run the headless bot.
 

@@ -116,3 +116,62 @@ The matrix is introduced as its own v1 contract first. Integration into the port
 5. Controlled SC2 matches and replay evidence for each enabled composition.
 
 Until a gate is met, show the capability as unavailable or experimental rather than implying it is ready.
+
+
+## Editor/runtime model refinement (design decision; implementation pending)
+
+The initial hero-plus-layers vocabulary is a useful first representation, but the editor must not make that vocabulary mandatory. The underlying model is a configurable command hierarchy with presentation-independent roles.
+
+### Bot-wide configuration
+
+Bot-wide settings are authored once and apply to every matchup unless a future, explicit override scope is introduced. Examples include:
+
+- Cheese policy (enabled/disabled, with any strategy-specific parameters owned by a registered method).
+- Worker scouting policy.
+- Opening chat/message, such as `GLHF`.
+- Race selection policy and other participant-wide identity/presentation metadata.
+
+These are data, not executable behavior. Settings must be typed, versioned, validated, and owned by registered setting definitions. A setting's editor label and control (dropdown, toggle, text field, slider, etc.) come from metadata; the serialized key and value semantics remain stable.
+
+### Bot methods and behaviors
+
+Bot methods are the registered behavior/capability catalog: the things the bot can do. A method can expose bot-wide behavior, commander behavior, subordinate behavior, or unit-level behavior according to its declared scope and capabilities.
+
+Behavior transitions are a candidate use for the existing FSM/event model. They should be represented as explicit, validated state/transition definitions and invoke only trusted registered methods. Do not serialize arbitrary code, reflection names, or user-provided executable expressions into a bot artifact.
+
+### Configurable command hierarchy
+
+The command chain is a tree, not a fixed list of military ranks:
+
+- Supreme commander layer: one or more primary strategic authorities.
+- Subordinate commander layers: zero or more additional levels, with one or more commanders/controllers at each configured level.
+- Unit FSM layer: leaf execution controllers assigned to units or unit groups.
+
+The bot definition carries an explicit hierarchy-depth setting (or an equivalent versioned hierarchy policy). The editor creates the configured number of levels and lets the creator assign registered commander/controller implementations to each level. A one-level hierarchy is valid; deeper trees are opt-in. Validation must check parent/child handoff contracts, supported scope, race compatibility, capabilities, and unique stable node IDs rather than relying on rank names.
+
+A supreme commander and a subordinate commander are not different hard-coded classes merely because of their titles. They are registrations of the same general commander/controller concept with different declared data, scopes, capabilities, and permitted responsibilities. The runtime enforces those capability boundaries. A commander may coordinate, delegate, or issue intents only within its registered authority.
+
+The earlier singular `hero` field should therefore be treated as the initial UI/presentation concept for a primary commander, not as a permanent cardinality restriction. The next contract revision must support one-or-more primary commanders if the selected runtime policy permits it. The nine matchup entries remain independently configurable.
+
+### Presentation and reskinning
+
+The editor presents semantic roles through selectable labels and profiles. For example, a primary Zerg commander could be shown as “Hero”, “Overmind”, “Hive Mind”, or “Supreme Commander”; subordinate nodes could use “Generals”, “Broodmothers”, “Commanders”, or creator-defined terminology. These are presentation profiles over the same stable data and execution contracts.
+
+Changing a label, theme, icon, lore description, or hierarchy vocabulary must not change serialized behavior, implementation identity, authority, or runtime capability. Conversely, changing the implementation selection is a real composition change and must be validated.
+
+### Contract consequences
+
+The current `BotCompositionMatrix` code is only a structural nine-matchup baseline. It does not yet implement bot-wide settings, bot methods, a variable-depth commander tree, multiple primary commanders, editor-provided role vocabularies, or unit-FSM leaf assignments. Do not pretend the current flat `Hero + CommandLayerComposition` shape already satisfies those requirements.
+
+Before runtime catalog/resolver work proceeds, define a separately versioned composition contract that includes:
+
+1. Bot-wide typed settings and identity/presentation metadata.
+2. Registered bot methods/behaviors and their allowed scopes.
+3. Nine independently authored matchup configurations.
+4. A configurable command-tree depth and one-or-more primary commander nodes.
+5. Zero-or-more subordinate commander nodes per parent, with explicit typed handoffs.
+6. Unit-FSM leaf assignments.
+7. Presentation profiles that rename/reskin semantic roles without altering runtime semantics.
+8. Deterministic validation, trusted implementation resolution, serialization round-trip, and a migration path that leaves BotDefinition v1 unchanged.
+
+The current nine-matchup implementation and its green CI remain a useful checkpoint, not the final composition schema. Do not build a hero-only catalog or wire the current matrix into BotDefinition v1 while this contract revision is being designed.

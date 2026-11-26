@@ -81,6 +81,7 @@ public sealed record BotDoctrineServiceRequirement
 {
     public string ServiceId { get; init; } = string.Empty;
     public bool Required { get; init; } = true;
+    public IReadOnlyList<Race> AppliesToRaces { get; init; } = Array.Empty<Race>();
 }
 
 public sealed record BotDoctrineMethodBinding
@@ -213,6 +214,9 @@ public static class BotDoctrineValidator
             var service = declaredServices[i];
             if (service is null) { errors.Add($"$.services[{i}]: cannot be null."); continue; }
             Unique(service.ServiceId, $"$.services[{i}].serviceId", serviceIds, 160, errors);
+            var serviceRaces = service.AppliesToRaces ?? Array.Empty<Race>();
+            if (serviceRaces.Any(race => !Races.Contains(race)) || serviceRaces.Distinct().Count() != serviceRaces.Count)
+                errors.Add($"$.services[{i}].appliesToRaces: must contain unique concrete playable races.");
         }
 
         if (definition.Policies is null) errors.Add("$.policies: is required.");

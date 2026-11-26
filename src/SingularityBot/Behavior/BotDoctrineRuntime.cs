@@ -81,6 +81,25 @@ public sealed class BotDoctrineRuntimeCatalog
             throw new InvalidOperationException($"Service '{serviceId}' is empty or already registered.");
     }
 
+    /// <summary>
+    /// Creates a per-bot catalog snapshot. Registrations are copied so built-in
+    /// handlers can safely close over that bot's own runtime state.
+    /// </summary>
+    public BotDoctrineRuntimeCatalog Clone()
+    {
+        var clone = new BotDoctrineRuntimeCatalog();
+        foreach (var method in _methods.Values)
+            clone.RegisterMethod(method);
+        foreach (var controller in _controllers.Values)
+            clone.RegisterController(controller with
+            {
+                Capabilities = new HashSet<string>(controller.Capabilities, StringComparer.Ordinal)
+            });
+        foreach (var service in _services)
+            clone.RegisterService(service);
+        return clone;
+    }
+
     public bool TryGetMethod(string id, out BotDoctrineMethodRegistration registration) => _methods.TryGetValue(id, out registration);
     public bool TryGetController(string id, out BotDoctrineControllerRegistration registration) => _controllers.TryGetValue(id, out registration);
     public bool HasService(string id) => _services.Contains(id);

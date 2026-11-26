@@ -162,6 +162,35 @@ public sealed class ZerglingOpeningRuntimeTests
     }
 
     [Fact]
+    public void Runtime_RecognizesConsumedDroneWhenItsTagMorphsIntoTheStructure()
+    {
+        var runtime = CreateRuntime();
+        var opening = Observation(300, 0, 12, 14,
+            Unit(1, "Hatchery"), Unit(2, "Drone"), Unit(4, "Larva"));
+        Assert.Empty(runtime.OnFrame(opening));
+        var query = runtime.TakeQueryRequest();
+        var approved = new ResponseQuery();
+        approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });
+        for (var i = 1; i < query.Placements.Count; i++)
+            approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.CantBuildLocationInvalid });
+        runtime.OnQueryResult(approved);
+        Assert.Single(runtime.OnFrame(opening));
+
+        var buildAccepted = new ResponseAction();
+        buildAccepted.Result.Add(ActionResult.Success);
+        runtime.OnActionResult(buildAccepted);
+
+        var morphedPool = Unit(2, "SpawningPool") with { BuildProgress = 0.5f };
+        var morphObserved = Observation(
+            100, 0, 12, 14,
+            Unit(1, "Hatchery"), morphedPool, Unit(6, "Larva"));
+        var replacement = Assert.Single(runtime.OnFrame(morphObserved));
+
+        Assert.Equal(1345, replacement.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(6ul, Assert.Single(replacement.ActionRaw.UnitCommand.UnitTags));
+    }
+
+    [Fact]
     public void Runtime_DoesNotRetryAcceptedPoolBuildBeforeStructureEvidence()
     {
         var runtime = CreateRuntime();

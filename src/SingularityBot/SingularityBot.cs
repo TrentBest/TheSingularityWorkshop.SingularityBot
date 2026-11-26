@@ -727,7 +727,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _doctrineVisibleEnemyTags.UnionWith(currentEnemies);
                 _doctrineVisibleFriendlyTags.UnionWith(currentFriendlies);
                 _doctrineObservationBaselineEstablished = true;
-                return;
+
             }
     
             foreach (var unit in visible
@@ -737,8 +737,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             {
                 _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
                     "observation.enemy-spotted",
-                    $"enemy:{unit.Tag}:{observation.GameLoop}",
-                    observation.GameLoop,
+                    $"enemy:{unit.Tag}:{normalized.GameLoop}",
+                    normalized.GameLoop,
                     new Dictionary<string, string>(StringComparer.Ordinal)
                     {
                         ["unit.tag"] = unit.Tag.ToString(),
@@ -754,8 +754,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             {
                 _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
                     "observation.friendly-unit-observed",
-                    $"friendly:{unit.Tag}:{observation.GameLoop}",
-                    observation.GameLoop,
+                    $"friendly:{unit.Tag}:{normalized.GameLoop}",
+                    normalized.GameLoop,
                     new Dictionary<string, string>(StringComparer.Ordinal)
                     {
                         ["unit.tag"] = unit.Tag.ToString(),

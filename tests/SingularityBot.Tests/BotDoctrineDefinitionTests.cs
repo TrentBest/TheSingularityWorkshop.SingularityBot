@@ -223,9 +223,14 @@ public sealed class BotDoctrineDefinitionTests
 
         var catalog = new BotDoctrineRuntimeCatalog();
         catalog.RegisterService("spatial.query");
+        var dispatchCalls = 0;
         catalog.RegisterMethod(new BotDoctrineMethodRegistration(
             "method.respond-to-contact.v1", BotDoctrineMethodScope.Bot,
-            (_, _) => ValueTask.CompletedTask));
+            (_, _) =>
+            {
+                dispatchCalls++;
+                return ValueTask.CompletedTask;
+            }));
         catalog.RegisterMethod(new BotDoctrineMethodRegistration(
             "method.zerg-mirror-only.v1", BotDoctrineMethodScope.Commander,
             (_, _) => ValueTask.CompletedTask));
@@ -240,6 +245,12 @@ public sealed class BotDoctrineDefinitionTests
 
         Assert.Single(plan.MethodBindings);
         Assert.Equal("method.respond-to-contact.v1", plan.MethodBindings[0].MethodId);
+
+        var dispatcher = new BotDoctrineEventDispatcher(plan);
+        Assert.Equal(1, dispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
+            "observation.enemy-spotted", "contact-42", 420,
+            new Dictionary<string, string> { ["unit.kind"] = "Zergling" })));
+        Assert.Equal(1, dispatchCalls);
     }
 
     [Fact]

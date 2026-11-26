@@ -106,6 +106,19 @@ public sealed class BotDoctrineDefinitionTests
     };
 
     [Fact]
+    public void MatchIdentity_RequiresExactlyOneConcreteOpponent()
+    {
+        Assert.Equal(Race.Zerg,
+            BotDoctrineMatchIdentity.ResolveSingleOpponentRace(new[] { Race.Zerg }));
+        Assert.Throws<InvalidOperationException>(() =>
+            BotDoctrineMatchIdentity.ResolveSingleOpponentRace(Array.Empty<Race>()));
+        Assert.Throws<InvalidOperationException>(() =>
+            BotDoctrineMatchIdentity.ResolveSingleOpponentRace(new[] { Race.Zerg, Race.Terran }));
+        Assert.Throws<InvalidOperationException>(() =>
+            BotDoctrineMatchIdentity.ResolveSingleOpponentRace(new[] { Race.Random }));
+    }
+
+    [Fact]
     public void Definition_ValidatesNineMatchupsAndVariableDepthHierarchy()
     {
         Assert.Empty(CreateValid().Validate());

@@ -34,6 +34,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     private readonly HashSet<ulong> _doctrineVisibleEnemyTags = new();
     private readonly HashSet<ulong> _doctrineVisibleFriendlyTags = new();
     private bool _doctrineObservationBaselineEstablished;
+    private bool _doctrineEnemyForceConcernActive;
+    private readonly ProductionDemandLedger _productionDemands = new();
     private readonly StrategyEvidenceCollector _strategyEvidenceCollector = new();
     private readonly ConstructionSiteSafety _constructionSiteSafety = new();
     private IReadOnlyList<StrategyEvidence> _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
@@ -78,6 +80,12 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
 
         _doctrineDefinition = doctrineDefinition;
         _doctrineCatalog = doctrineCatalog;
+        if (_doctrineCatalog is not null &&
+            !_doctrineCatalog.TryGetMethod(BotProductionMethods.LargeEnemyForceMarineResponse, out _))
+        {
+            BotProductionMethods.RegisterLargeEnemyForceMarineResponse(
+                _doctrineCatalog, _productionDemands, () => _gameData);
+        }
 
         if (botDefinition is not null && compiledStrategy is not null)
             throw new ArgumentException("Supply either a compiled strategy or a definition, not both.");
@@ -191,6 +199,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public Race ActualRace => _actualRace;
     /// <summary>The exact matchup doctrine resolved at match start, when doctrine activation was requested.</summary>
     public BotDoctrineRuntimePlan DoctrineRuntimePlan => _doctrineRuntimePlan;
+    /// <summary>Current desired production totals, keyed by authoritative SC2 UnitTypeId.</summary>
+    public IReadOnlyDictionary<uint, ProductionDemand> ProductionDemands => _productionDemands.Snapshot();
 
     /// <summary>
     /// Dispatches an event through the trusted methods selected for this match.
@@ -456,6 +466,11 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _actualRace = playerInfo?.RaceActual ?? Race.Random;
         _doctrineRuntimePlan = null;
         _doctrineEventDispatcher = null;
+        _doctrineObservationBaselineEstablished = false;
+        _doctrineEnemyForceConcernActive = false;
+        _doctrineVisibleEnemyTags.Clear();
+        _doctrineVisibleFriendlyTags.Clear();
+        _productionDemands.Clear();
         if (_doctrineDefinition is not null)
         {
             var opponentRaces = gameInfo?.PlayerInfo?
@@ -727,6 +742,25 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                 _doctrineVisibleEnemyTags.UnionWith(currentEnemies);
                 _doctrineVisibleFriendlyTags.UnionWith(currentFriendlies);
                 _doctrineObservationBaselineEstablished = true;
+                _doctrineEnemyForceConcernActive = currentEnemies.Count > 4;
+            }
+            else
+            {
+                var enemyCount = currentEnemies.Count;
+                if (enemyCount > 4 && !_doctrineEnemyForceConcernActive)
+                {
+                    _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
+                        "observation.enemy-force-concern",
+                        $"enemy-force:{normalized.GameLoop}",
+                        normalized.GameLoop,
+                        new Dictionary<string, string>(StringComparer.Ordinal)
+                        {
+                            ["enemy.count"] = enemyCount.ToString(),
+                            ["enemy.threshold"] = "4"
+                        }));
+                }
+                _doctrineEnemyForceConcernActive = enemyCount > 4;
+
 
             }
     

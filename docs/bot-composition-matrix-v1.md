@@ -175,3 +175,16 @@ Before runtime catalog/resolver work proceeds, define a separately versioned com
 8. Deterministic validation, trusted implementation resolution, serialization round-trip, and a migration path that leaves BotDefinition v1 unchanged.
 
 The current nine-matchup implementation and its green CI remain a useful checkpoint, not the final composition schema. Do not build a hero-only catalog or wire the current matrix into BotDefinition v1 while this contract revision is being designed.
+
+
+## Doctrine artifact v2 implementation checkpoint
+
+The runtime contract is now being implemented as a separate data-only artifact rather than changing BotDefinition v1.
+
+Implemented source files:
+- `src/SingularityBot/Behavior/BotDoctrineDefinition.cs`: strict JSON parse/serialize, typed bot-wide settings and editor metadata, presentation profiles, service requirements, event-to-method bindings, threshold policies, ordered per-race initialization plans, nine matchup entries, configurable-depth commander trees, and unit-FSM leaves.
+- `src/SingularityBot/Behavior/BotDoctrineRuntime.cs`: trusted compiled method/controller/service catalog, exact-matchup resolver, capability checks, and bounded deterministic event dispatch.
+
+The validator rejects unknown schema versions, incomplete or duplicate matchup matrices, malformed typed settings, duplicate IDs, invalid initialization dependencies/order, invalid hierarchy depth, non-commander roots, non-leaf unit FSMs, invalid scopes, and incompatible declared parent/child intent handoffs. Runtime resolution additionally fails closed when required services, methods, or controller implementations are not registered by the host.
+
+This is the first runtime-contract slice, not yet a completed in-game doctrine integration. It does not replace the existing observation/action pipeline, instantiate SC2 controllers, implement a Terran brigade/squad doctrine, implement Zergling swarm micro, or expose the new model in the Forge UI. The existing BotDefinition v1 and Terran runtime remain unchanged. The next gate is CI verification followed by integration with the actual match lifecycle and existing command/observation systems; only then should race-specific controller implementations be added.

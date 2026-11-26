@@ -1,5 +1,30 @@
 namespace SingularityBot.Behavior;
 
+/// <summary>
+/// Resolves the opponent side of the current SC2 match without guessing.
+/// This contract intentionally supports 1v1 only; team and FFA identity
+/// require a richer matchup key before they can be activated.
+/// </summary>
+public static class BotDoctrineMatchIdentity
+{
+    public static SC2APIProtocol.Race ResolveSingleOpponentRace(
+        IEnumerable<SC2APIProtocol.Race> opponentRaces)
+    {
+        ArgumentNullException.ThrowIfNull(opponentRaces);
+        var races = opponentRaces.ToArray();
+        if (races.Length != 1)
+            throw new InvalidOperationException(
+                $"Doctrine activation requires exactly one opponent; observed {races.Length}.");
+
+        if (races[0] is not (SC2APIProtocol.Race.Terran or
+            SC2APIProtocol.Race.Zerg or SC2APIProtocol.Race.Protoss))
+            throw new InvalidOperationException(
+                $"Doctrine activation requires a concrete opponent race; observed {races[0]}.");
+
+        return races[0];
+    }
+}
+
 /// <summary>Immutable event delivered to a registered BotMethod.</summary>
 public sealed record BotDoctrineEvent(
     string EventId,

@@ -14,6 +14,22 @@ public sealed class ProductionDemandLedger
     private readonly Dictionary<uint, ProductionDemand> _demands = new();
     private readonly HashSet<string> _appliedRequests = new(StringComparer.Ordinal);
 
+    /// <summary>Dictionary-style desired total. Missing unit types read as zero.</summary>
+    public int this[Sc2UnitFacts unit]
+    {
+        get
+        {
+            ArgumentNullException.ThrowIfNull(unit);
+            return TryGet(unit.UnitId, out var demand) ? demand.DesiredCount : 0;
+        }
+        set
+        {
+            if (!Set(unit, value))
+                throw new ArgumentOutOfRangeException(nameof(value),
+                    "The unit identity or desired production count is invalid.");
+        }
+    }
+
     public bool Set(Sc2UnitFacts unit, int desiredCount, int priority = 50)
     {
         if (!IsValid(unit, desiredCount, priority))

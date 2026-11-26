@@ -1,0 +1,216 @@
+name: Build
+
+on:
+  push:
+    branches: [master, development]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "schemas/**"
+      - "strategies/**"
+      - "military-plans/**"
+      - "examples/map-documents/**"
+      - "examples/match-snapshots/**"
+      - "docs/**"
+      - "README.md"
+      - "AGENTS.md"
+      - "AgentOnboarding.md"
+      - "Directory.Build.props"
+      - ".github/workflows/build.yml"
+  pull_request:
+    branches: [master, development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out CommandAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.CommandAi
+          ref: development
+          path: dependencies/CommandAi
+      - name: Check out FSM_API development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_API
+          ref: development
+          path: dependencies/FSM_API
+      - name: Check out FSM_UserIO development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_UserIO
+          ref: development
+          path: dependencies/FSM_UserIO
+      - name: Check out MicroBundleDomain development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.MicroBundleDomain
+          ref: development
+          path: dependencies/TheSingularityWorkshop.MicroBundleDomain
+      - name: Check out HeadlessAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.HeadlessAi
+          ref: development
+          path: dependencies/HeadlessAi
+      - name: Check out FSM_Serialization development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_Serialization
+          ref: development
+          path: dependencies/FSM_Serialization
+      - name: Check out FSM_COS development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_COS
+          ref: development
+          path: dependencies/FSM_COS
+      - name: Check out DataWarehouse development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.DataWarehouse
+          ref: development
+          path: dependencies/DataWarehouse
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Validate strategy, production and military plan documents
+        run: |
+          python -m pip install --disable-pip-version-check jsonschema
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          schemas = {
+              "strategy": json.loads(Path("schemas/strategy.schema.json").read_text(encoding="utf-8")),
+              "production": json.loads(Path("schemas/production-plan.schema.json").read_text(encoding="utf-8")),
+              "goal": json.loads(Path("schemas/goal-action-plan.schema.json").read_text(encoding="utf-8")),
+              "military": json.loads(Path("schemas/military-plan.schema.json").read_text(encoding="utf-8")),
+              "map": json.loads(Path("schemas/singularitybot-map-document-v1.schema.json").read_text(encoding="utf-8")),
+              "snapshot": json.loads(Path("schemas/singularitybot-match-snapshot-v1.schema.json").read_text(encoding="utf-8")),
+          }
+          validators = {name: Draft202012Validator(schema) for name, schema in schemas.items()}
+          files = sorted(Path("strategies").glob("*.json"))
+          if not files:
+              raise SystemExit("No strategy JSON files found.")
+          for path in files:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              schema_name = "production" if "steps" in document else ("goal" if "defaultRole" in document else "strategy")
+              errors = sorted(
+                  validators[schema_name].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
+              if errors:
+                  for error in errors:
+                      location = "/".join(map(str, error.absolute_path)) or "$"
+                      print(f"{path}:{location}: {error.message}")
+                  raise SystemExit(f"{schema_name.title()} validation failed: {path}")
+              print(f"Validated {path} against {schema_name} schema")
+
+          map_files = sorted(Path("examples/map-documents").glob("*.json"))
+          if not map_files:
+              raise SystemExit("No canonical map document fixtures found.")
+          for path in map_files:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              errors = sorted(
+                  validators["map"].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
+              if errors:
+                  for error in errors:
+                      location = "/".join(map(str, error.absolute_path)) or "$"
+                      print(f"{path}:{location}: {error.message}")
+                  raise SystemExit(f"Map document validation failed: {path}")
+              hash_document = dict(document)
+              expected_hash = hash_document["contentHash"]
+              hash_document["contentHash"] = ""
+              canonical_bytes = json.dumps(
+                  hash_document, separators=(",", ":"), ensure_ascii=False
+              ).encode("utf-8")
+              actual_hash = hashlib.sha256(canonical_bytes).hexdigest()
+              if actual_hash != expected_hash:
+                  raise SystemExit(f"{path}: contentHash mismatch (expected {expected_hash}, computed {actual_hash})")
+              for layer in document["layers"]:
+                  if layer["availability"] != "available":
+                      continue
+                  payload_path = (path.parent / layer["payloadReference"]).resolve()
+                  if path.parent.resolve() not in payload_path.parents or not payload_path.is_file():
+                      raise SystemExit(f"{path}: missing or unsafe payload reference for layer {layer['id']}")
+                  payload_hash = hashlib.sha256(payload_path.read_bytes()).hexdigest()
+                  if payload_hash != layer["payloadSha256"]:
+                      raise SystemExit(f"{path}: payload digest mismatch for layer {layer['id']}")
+              print(f"Validated {path} schema, map digest and layer payloads")
+
+          snapshot_files = sorted(Path("examples/match-snapshots").glob("*.json"))
+          if not snapshot_files:
+              raise SystemExit("No canonical match snapshot fixtures found.")
+          for path in snapshot_files:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              errors = sorted(
+                  validators["snapshot"].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
+              if errors:
+                  for error in errors:
+                      location = "/".join(map(str, error.absolute_path)) or "$"
+                      print(f"{path}:{location}: {error.message}")
+                  raise SystemExit(f"Match snapshot validation failed: {path}")
+              print(f"Validated {path} against match snapshot schema")
+
+          military_files = sorted(Path("military-plans").glob("*.json"))
+          if not military_files:
+              raise SystemExit("No military plan JSON files found.")
+          for path in military_files:
+              document = json.loads(path.read_text(encoding="utf-8"))
+              errors = sorted(
+                  validators["military"].iter_errors(document),
+                  key=lambda error: list(map(str, error.absolute_path)),
+              )
+              if errors:
+                  for error in errors:
+                      location = "/".join(map(str, error.absolute_path)) or "$"
+                      print(f"{path}:{location}: {error.message}")
+                  raise SystemExit(f"Military plan validation failed: {path}")
+              print(f"Validated {path} against military schema")
+          PY
+      - name: Validate exact-commit agent onboarding contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("AgentOnboarding.md")
+          if not path.is_file():
+              raise SystemExit("AgentOnboarding.md is required for CiAi admission.")
+          content = path.read_text(encoding="utf-8").strip()
+          required = (
+              "Mandatory admission rule",
+              "exact target commit",
+              "NOT ELIGIBLE",
+              "Human approval remains a separate host-side boundary.",
+              "ServerSC2 owns host process supervision",
+              "Forge owns map-first authoring",
+          )
+          missing = [item for item in required if item not in content]
+          if missing:
+              raise SystemExit("AgentOnboarding.md is missing required contract sections: " + ", ".join(missing))
+          print(f"Validated {path} ({len(content)} characters) at the checked-out commit")
+          PY
+      - name: Check Forge browser script syntax
+        run: node --check docs/forge/forge.js
+      - name: Restore
+        run: dotnet restore src/SingularityBot.Runner/SingularityBot.Runner.csproj
+      - name: Build Debug (Visual Studio configuration)
+        run: dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj --configuration Debug --no-restore
+      - name: Build Release
+        run: dotnet build src/SingularityBot.Runner/SingularityBot.Runner.csproj --configuration Release --no-restore
+      - name: Test
+        if: hashFiles('tests/SingularityBot.Tests/SingularityBot.Tests.csproj') != ''
+        run: dotnet test tests/SingularityBot.Tests/SingularityBot.Tests.csproj --configuration Release

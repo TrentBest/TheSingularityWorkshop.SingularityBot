@@ -1,0 +1,233 @@
+ 
+#nullable enable annotations
+
+using SingularityBot.Observation;
+using TheSingularityWorkshop.FSM_API;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
+using FSMHandle = SingularityBot.Behavior.BotFsmHandle;
+
+namespace SingularityBot.Behavior;
+
+/// <summary>
+/// Reconciles persistent entity contexts and advances their FSM processing groups.
+/// Entity contexts own their FSM handles; fog-of-war is not a destruction event.
+/// Unit composition is supplied by declarative UnitDefinitions resources.
+/// </summary>
+public sealed class UnitBehaviorRuntime
+{
+    private readonly Dictionary<ulong, UnitBehaviorContext> _contexts = new();
+    private readonly UnitObservationMemoryStore _observationMemory = new();
+
+    public int ObservationMemoryCount => _observationMemory.Count;
+    public long ObservationMemoryAllocatedBytes => _observationMemory.AllocatedBytes;
+    public bool TryGetObservationMemory(ulong unitTag, out UnitObservationMemoryRecord record) =>
+        _observationMemory.TryRead(unitTag, out record);
+    private Action<ulong, BehaviorCommand>? _activeEmit;
+
+    public int Count => _contexts.Count;
+    public IReadOnlyCollection<UnitBehaviorContext> Contexts => _contexts.Values.ToArray();
+    public IReadOnlyList<string> ProcessGroupsThisFrame => UnitBehaviorCatalog.ProcessGroupsThisFrame;
+
+    public UnitBehaviorContext Attach(
+        ulong unitTag,
+        UnitExpertiseProfile profile,
+        Action<BehaviorCommand> emit)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(emit);
+        if (_contexts.TryGetValue(unitTag, out var existing))
+            return existing;
+
+        var context = new UnitBehaviorContext(
+            unitTag, $"{profile.UnitKind}:{unitTag}", profile.UnitKind, profile.IsWorker,
+            command => Emit(unitTag, emit, command));
+        _contexts.Add(unitTag, context);
+        AttachHandle(context, UnitBehaviorCatalog.EntityExistenceFsm, UnitBehaviorCatalog.DataSyncProcessingGroup);
+        AttachDefinitionCapabilities(context, profile.UnitKind);
+        return context;
+    }
+
+    private UnitBehaviorContext AttachEntity(UnitObservationFacts facts)
+    {
+        var kind = string.IsNullOrWhiteSpace(facts.UnitKind)
+            ? $"UnknownUnitType:{facts.UnitTypeId}"
+            : facts.UnitKind;
+        var hasProfile = UnitExpertiseProfiles.TryGet(facts.UnitKind, out var profile);
+        var context = new UnitBehaviorContext(
+            facts.Tag, $"{kind}:{facts.Tag}", kind, hasProfile && profile.IsWorker,
+            command => Emit(facts.Tag, static _ => { }, command));
+        _contexts.Add(facts.Tag, context);
+        AttachHandle(context, UnitBehaviorCatalog.EntityExistenceFsm, UnitBehaviorCatalog.DataSyncProcessingGroup);
+        AttachDefinitionCapabilities(context, facts.UnitKind);
+        return context;
+    }
+
+    private static void AttachDefinitionCapabilities(UnitBehaviorContext context, string unitKind)
+    {
+        if (!UnitDefinitions.TryGet(unitKind, out var definition))
+            return;
+
+        foreach (var capability in definition.Capabilities)
+            AttachHandle(context, capability.FsmName, capability.ProcessingGroup);
+    }
+
+    private static void AttachHandle(UnitBehaviorContext context, string fsmName, string processingGroup)
+    {
+        if (context.HasCapability(fsmName)) return;
+        var handle = FsmApi.Create.CreateInstance(fsmName, context, processingGroup);
+        context.OwnHandle(fsmName, handle);
+    }
+
+    public bool AttachCapability(ulong unitTag, string fsmName, string processingGroup)
+    {
+        if (!_contexts.TryGetValue(unitTag, out var context) || !context.IsValid)
+            return false;
+        if (string.IsNullOrWhiteSpace(fsmName) || string.IsNullOrWhiteSpace(processingGroup))
+            throw new ArgumentException("FSM name and processing group are required.");
+        if (context.HasCapability(fsmName))
+            return false;
+        AttachHandle(context, fsmName, processingGroup);
+        return true;
+    }
+
+    public void Reconcile(NormalizedObservation observation, Action<ulong, BehaviorCommand> emit)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+        ArgumentNullException.ThrowIfNull(emit);
+        _activeEmit = emit;
+
+        foreach (var context in _contexts.Values)
+            context.MarkNotObserved(observation.GameLoop);
+
+        foreach (var deadTag in observation.DeadUnitTags.OrderBy(tag => tag))
+            Remove(deadTag);
+
+        foreach (var facts in observation.Units.OrderBy(unit => unit.Tag))
+        {
+            if (facts.Tag == 0 || observation.DeadUnitTags.Contains(facts.Tag))
+                continue;
+
+            _observationMemory.Upsert(facts);
+
+            var exists = _contexts.TryGetValue(facts.Tag, out var context);
+            if (!exists)
+            {
+                // Mineral fields are persistent economic entities even though
+                // their resource amount is not represented as unit health on every
+                // protocol observation. Keep their tag-backed context alive so
+                // worker jobs can bind to the actual resource node.
+                if (facts.HealthMax <= 0 &&
+                    !facts.UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                context = AttachEntity(facts);
+            }
+            else if (context.UnitTypeId != 0 && facts.UnitTypeId != 0 &&
+                     context.UnitTypeId != facts.UnitTypeId)
+            {
+                Remove(facts.Tag);
+                if (facts.HealthMax <= 0)
+                    continue;
+                context = AttachEntity(facts);
+            }
+
+            context.Apply(facts);
+        }
+    }
+
+    public void ApplyWorkerAssignments(
+        IReadOnlyDictionary<ulong, WorkerResourceAssignment> assignments, uint gameLoop)
+    {
+        ArgumentNullException.ThrowIfNull(assignments);
+        foreach (var context in _contexts.Values)
+        {
+            if (!context.IsWorker || !context.IsCurrentlyVisible) continue;
+            assignments.TryGetValue(context.UnitTag, out var assignment);
+            UnitBehaviorContext mineralContext = null;
+            if (assignment is not null &&
+                _contexts.TryGetValue(assignment.MineralTag, out var resource) &&
+                resource.IsMineralResource)
+                mineralContext = resource;
+            context.ApplyWorkerAssignment(assignment, gameLoop, mineralContext);
+        }
+    }
+
+    private void Emit(ulong unitTag, Action<BehaviorCommand> fallback, BehaviorCommand command)
+    {
+        if (_activeEmit is { } active) active(unitTag, command);
+        else fallback(command);
+    }
+
+    public bool TryGetContext(ulong unitTag, out UnitBehaviorContext context) =>
+        _contexts.TryGetValue(unitTag, out context);
+
+    public bool TryGetHandle(ulong unitTag, out FSMHandle handle)
+    {
+        handle = default;
+        return _contexts.TryGetValue(unitTag, out var context) && context.TryGetFirstHandle(out handle);
+    }
+
+    public bool TryGetHandle(ulong unitTag, string fsmName, out FSMHandle handle)
+    {
+        handle = default;
+        return _contexts.TryGetValue(unitTag, out var context) &&
+               context.TryGetHandle(fsmName, out handle);
+    }
+
+    public IReadOnlyCollection<string> GetCapabilities(ulong unitTag) =>
+        _contexts.TryGetValue(unitTag, out var context)
+            ? context.Capabilities
+            : Array.Empty<string>();
+
+    /// <summary>Returns the current FSM_API state of each capability attached to an entity.</summary>
+    public IReadOnlyDictionary<string, string> GetStates(ulong unitTag) =>
+        _contexts.TryGetValue(unitTag, out var context)
+            ? context.CurrentStates
+            : new Dictionary<string, string>();
+
+    public bool TryGetState(ulong unitTag, string fsmName, out string state)
+    {
+        if (_contexts.TryGetValue(unitTag, out var context))
+            return context.TryGetState(fsmName, out state);
+
+        state = null!;
+        return false;
+    }
+
+    public bool Remove(ulong unitTag)
+    {
+        if (!_contexts.Remove(unitTag, out var context)) return false;
+        context.Invalidate();
+        context.DestroyOwnedHandles();
+        _observationMemory.Remove(unitTag);
+        return true;
+    }
+
+    public void RemoveAll()
+    {
+        foreach (var context in _contexts.Values)
+        {
+            context.Invalidate();
+            context.DestroyOwnedHandles();
+        }
+        _contexts.Clear();
+        _observationMemory.Clear();
+        _activeEmit = null;
+    }
+
+    public void UpdateGroup(string processingGroup)
+    {
+        if (string.IsNullOrWhiteSpace(processingGroup))
+            throw new ArgumentException("A processing group is required.", nameof(processingGroup));
+        FsmApi.Interaction.Update(processingGroup);
+    }
+
+    public void EndFrame() => _activeEmit = null;
+
+    /// <summary>Advances every declared processing group in the same order as the frame owner.</summary>
+    public void Update()
+    {
+        foreach (var processingGroup in ProcessGroupsThisFrame)
+            UpdateGroup(processingGroup);
+    }
+    public void UpdateRepair() => UpdateGroup(UnitBehaviorCatalog.RepairProcessingGroup);
+}

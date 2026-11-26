@@ -1,0 +1,286 @@
+ 
+#nullable enable annotations
+
+using SingularityBot.Observation;
+using SingularityBot.Spatial;
+using TheSingularityWorkshop.FSM_API;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
+using FSMHandle = SingularityBot.Behavior.BotFsmHandle;
+
+namespace SingularityBot.Behavior;
+
+/// <summary>
+/// Persistent, protocol-independent facts for one game entity. The context owns
+/// all FSM handles attached to that entity and survives temporary observation loss.
+/// </summary>
+public sealed class UnitBehaviorContext : IStateContext, IController
+{
+    private readonly Action<BehaviorCommand> _emit;
+    private readonly Dictionary<string, FSMHandle> _ownedHandles = new(StringComparer.Ordinal);
+
+    public UnitBehaviorContext(ulong unitTag, string name, string unitKind, bool isWorker, Action<BehaviorCommand> emit)
+    {
+        if (unitTag == 0) throw new ArgumentOutOfRangeException(nameof(unitTag));
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("A context name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(unitKind)) throw new ArgumentException("A unit kind is required.", nameof(unitKind));
+        UnitTag = unitTag;
+        Name = name;
+        UnitKind = unitKind;
+        IsWorker = isWorker;
+        _emit = emit ?? throw new ArgumentNullException(nameof(emit));
+        IsValid = true;
+    }
+
+    public ulong UnitTag { get; }
+    public string Name { get; set; }
+    public string UnitKind { get; }
+    public bool IsWorker { get; }
+    /// <summary>True when this persistent entity context represents a mineral-field resource node.</summary>
+    public bool IsMineralResource => UnitKind.Contains("MineralField", StringComparison.OrdinalIgnoreCase);
+    public bool IsValid { get; set; }
+
+    public uint UnitTypeId { get; private set; }
+    public uint OwnerId { get; private set; }
+    public UnitAlliance Alliance { get; private set; }
+    public UnitVisibility CurrentVisibility { get; private set; } = UnitVisibility.Unknown;
+    public uint LastObservedGameLoop { get; private set; }
+    public uint LastSeenGameLoop { get; private set; }
+    /// <summary>Optional per-field history; disabled fields incur no history writes.</summary>
+    public UnitObservationHistory History { get; } = new();
+    public bool IsCurrentlyVisible => CurrentVisibility == UnitVisibility.Visible;
+    public float Health { get; private set; }
+    public float HealthMax { get; private set; }
+    public float Shield { get; private set; }
+    public float ShieldMax { get; private set; }
+    public float BuildProgress { get; private set; }
+    public float PositionX { get; private set; }
+    public float PositionY { get; private set; }
+    public bool HasPosition { get; private set; }
+    public bool IsFlying { get; private set; }
+    public bool IsBurrowed { get; private set; }
+    public bool IsHallucination { get; private set; }
+    public bool HasCargo { get; private set; }
+    public bool HasAssignedWork { get; private set; }
+    public IReadOnlyList<UnitOrderObservationFacts> ObservedOrders { get; private set; } = Array.Empty<UnitOrderObservationFacts>();
+    public UnitOrderObservationFacts? CurrentOrder => ObservedOrders.Count == 0 ? null : ObservedOrders[0];
+
+    public ulong? AssignedMineralTag { get; private set; }
+    /// <summary>The persistent mineral-node context currently backing this worker's mining assignment.</summary>
+    public UnitBehaviorContext? AssignedMineralContext { get; private set; }
+    public ulong? AssignedTownHallTag { get; private set; }
+    public uint WorkerAssignmentGeneration { get; private set; }
+    public WorkerRoutePhase WorkerRoutePhase { get; private set; }
+    public uint WorkerRoutePhaseChangedAtGameLoop { get; private set; }
+
+    // Behavior requests are caller-owned facts/assignments consumed by independent FSM capabilities.
+    public ulong? MoveTowardsTargetTag { get; set; }
+    public ulong? MoveAwayFromTargetTag { get; set; }
+    public ulong? FollowTargetTag { get; set; }
+    public bool HasPatrolRoute { get; set; }
+    public ulong? FlankTargetTag { get; set; }
+    public bool FlankLeftRequested { get; set; }
+    public bool FlankRightRequested { get; set; }
+    public ulong? AttackTargetTag { get; set; }
+    public GoalActionRole GoalRole { get; set; } = GoalActionRole.None;
+    public SectorId? AssignedSector { get; set; }
+    public float SectorCenterX { get; set; }
+    public float SectorCenterY { get; set; }
+    public bool StutterStepEnabled { get; set; }
+    public float WeaponCooldownRemaining { get; set; }
+
+    public bool HasVisibleThreat { get; set; }
+    public bool ShouldRetreat { get; set; }
+    public bool HasObjective { get; set; }
+    public bool IsAtObjective { get; set; }
+    public bool ShouldRegroup { get; set; }
+    public bool BuildOrderAvailable { get; set; }
+    public ulong? RepairTargetTag { get; set; }
+    public bool IsRepairAssignmentSafe { get; set; }
+    public int RepairDistanceManhattan { get; set; }
+
+    public IReadOnlyCollection<string> Capabilities => _ownedHandles.Keys.ToArray();
+
+    /// <summary>Current FSM_API state for every capability attached to this entity.</summary>
+    public IReadOnlyDictionary<string, string> CurrentStates =>
+        _ownedHandles.ToDictionary(pair => pair.Key, pair => pair.Value.CurrentState, StringComparer.Ordinal);
+
+    public int Context_ID => throw new NotImplementedException();
+
+    public bool TryGetState(string fsmName, out string state)
+    {
+        if (_ownedHandles.TryGetValue(fsmName, out var handle))
+        {
+            state = handle.CurrentState;
+            return true;
+        }
+
+        state = null!;
+        return false;
+    }
+    internal bool HasCapability(string name) => _ownedHandles.ContainsKey(name);
+    internal void OwnHandle(string name, FSMHandle handle) => _ownedHandles.Add(name, handle);
+
+    internal bool TryGetFirstHandle(out FSMHandle handle)
+    {
+        handle = default;
+        if (_ownedHandles.Count == 0) return false;
+        handle = _ownedHandles.Values.First();
+        return true;
+    }
+
+    internal bool TryGetHandle(string fsmName, out FSMHandle handle)
+    {
+        if (_ownedHandles.TryGetValue(fsmName, out handle))
+            return true;
+        handle = default;
+        return false;
+    }
+
+    internal void DestroyOwnedHandles()
+    {
+        foreach (var handle in _ownedHandles.Values)
+            FsmApi.Interaction.DestroyInstance(handle);
+        _ownedHandles.Clear();
+    }
+
+    internal void Invalidate()
+    {
+        IsValid = false;
+        CurrentVisibility = UnitVisibility.Unknown;
+    }
+
+    internal void MarkNotObserved(uint gameLoop)
+    {
+        if (LastObservedGameLoop < gameLoop)
+            CurrentVisibility = UnitVisibility.Unknown;
+    }
+
+    public void Apply(UnitObservationFacts facts)
+    {
+        ArgumentNullException.ThrowIfNull(facts);
+        if (facts.Tag != UnitTag)
+            throw new ArgumentException("Observation facts belong to a different unit tag.", nameof(facts));
+
+        UnitTypeId = facts.UnitTypeId == 0 ? UnitTypeId : facts.UnitTypeId;
+        OwnerId = checked((uint)facts.OwnerId);
+        Alliance = facts.Alliance;
+        CurrentVisibility = facts.Visibility;
+        LastObservedGameLoop = facts.GameLoop;
+
+        var captured = facts.CapturedFields;
+        bool Captured(ObservationFields field) => (captured & field) == field;
+
+        if (facts.IsLiveVisible)
+        {
+            History.Record(facts);
+            LastSeenGameLoop = facts.GameLoop;
+            // HealthMax is a mandatory identity/reconciliation fact. Optional values
+            // only update persistent state when this sample actually captured them.
+            HealthMax = facts.HealthMax;
+            if (Captured(ObservationFields.Health)) Health = facts.Health;
+            if (Captured(ObservationFields.Shields))
+            {
+                Shield = facts.Shield;
+                ShieldMax = facts.ShieldMax;
+            }
+            if (Captured(ObservationFields.BuildProgress)) BuildProgress = facts.BuildProgress;
+            if (Captured(ObservationFields.Position))
+            {
+                PositionX = facts.PositionX;
+                PositionY = facts.PositionY;
+                HasPosition = facts.HasPosition;
+            }
+            if (Captured(ObservationFields.Cargo)) HasCargo = facts.HasCargo;
+            if (Captured(ObservationFields.WeaponCooldown))
+                WeaponCooldownRemaining = facts.WeaponCooldownRemaining;
+            if (Captured(ObservationFields.HasOrders) || Captured(ObservationFields.OrderDetails))
+                HasAssignedWork = facts.HasOrders;
+            if (Captured(ObservationFields.OrderDetails)) ObservedOrders = facts.Orders;
+            if (Captured(ObservationFields.Mobility))
+            {
+                IsFlying = facts.IsFlying;
+                IsBurrowed = facts.IsBurrowed;
+                IsHallucination = facts.IsHallucination;
+            }
+        }
+        else
+        {
+            if (facts.HealthMax > 0)
+            {
+                HealthMax = facts.HealthMax;
+                if (Captured(ObservationFields.Health)) Health = facts.Health;
+                if (Captured(ObservationFields.Shields))
+                {
+                    Shield = facts.Shield;
+                    ShieldMax = facts.ShieldMax;
+                }
+            }
+            if (Captured(ObservationFields.Position) && facts.HasPosition)
+            {
+                PositionX = facts.PositionX;
+                PositionY = facts.PositionY;
+                HasPosition = true;
+            }
+        }
+
+        IsValid = true;
+    }
+
+    public void ApplyWorkerAssignment(
+        WorkerResourceAssignment? assignment,
+        uint gameLoop,
+        UnitBehaviorContext? mineralContext = null)
+    {
+        if (assignment is null)
+        {
+            AssignedMineralTag = null;
+            AssignedMineralContext = null;
+            AssignedTownHallTag = null;
+            WorkerAssignmentGeneration = 0;
+            SetRoutePhase(WorkerRoutePhase.Unassigned, gameLoop);
+            return;
+        }
+
+        var changed = WorkerAssignmentGeneration != assignment.Generation ||
+                      AssignedMineralTag != assignment.MineralTag ||
+                      AssignedTownHallTag != assignment.TownHallTag;
+        AssignedMineralTag = assignment.MineralTag;
+        AssignedMineralContext = mineralContext is { IsValid: true, IsMineralResource: true } &&
+                                 mineralContext.UnitTag == assignment.MineralTag
+            ? mineralContext
+            : null;
+        AssignedTownHallTag = assignment.TownHallTag;
+        WorkerAssignmentGeneration = assignment.Generation;
+
+        var orderTarget = CurrentOrder?.TargetUnitTag;
+        var observedPhase = HasCargo
+            ? orderTarget == AssignedTownHallTag ? WorkerRoutePhase.Returning : WorkerRoutePhase.CarryingResources
+            : orderTarget == AssignedMineralTag ? WorkerRoutePhase.Outbound
+            : HasAssignedWork ? WorkerRoutePhase.ExecutingOrder
+            : WorkerRoutePhase.Assigned;
+        SetRoutePhase(changed ? WorkerRoutePhase.Assigned : observedPhase, gameLoop, forceTimestamp: changed);
+    }
+
+    private void SetRoutePhase(WorkerRoutePhase phase, uint gameLoop, bool forceTimestamp = false)
+    {
+        if (WorkerRoutePhase == phase && !forceTimestamp) return;
+        WorkerRoutePhase = phase;
+        WorkerRoutePhaseChangedAtGameLoop = gameLoop;
+    }
+
+    public void Emit(BehaviorCommand command)
+    {
+        if (command != BehaviorCommand.None)
+            _emit(command);
+    }
+}
+
+public enum WorkerRoutePhase
+{
+    Unassigned,
+    Assigned,
+    ExecutingOrder,
+    CarryingResources,
+    Outbound,
+    Returning
+}

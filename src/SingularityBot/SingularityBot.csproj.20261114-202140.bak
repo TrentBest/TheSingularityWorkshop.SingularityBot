@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../SC2API.CSharp/SC2API.CSharp.csproj" />
+    <ProjectReference Include="../../dependencies/FSM_API/FSM_API/FSM_API.csproj" />
+    <ProjectReference Include="../../dependencies/FSM_COS/src/FSM_COS/FSM_COS.csproj" />
+    <ProjectReference Include="../../dependencies/FSM_UserIO/TheSingularityWorkshop.FSM_UserIO.csproj" />
+    <ProjectReference Include="../../dependencies/TheSingularityWorkshop.MicroBundleDomain/TheSingularityWorkshop.MicroBundleDomain.csproj" />
+    <ProjectReference Include="../../dependencies/CommandAi/TheSingularityWorkshop.CommandAi.csproj" />
+    <ProjectReference Include="../../dependencies/HeadlessAi/src/TheSingularityWorkshop.HeadlessAi/TheSingularityWorkshop.HeadlessAi.csproj" />
+    <ProjectReference Include="../../dependencies/FSM_Serialization/TheSingularityWorkshop.FSM_Serialization.csproj" />
+    <EmbeddedResource Include="../../config/singularitybot.manifest.json" LogicalName="SingularityBot.Manifest.default.json" />
+    <EmbeddedResource Include="../../schemas/singularitybot-manifest-v1.schema.json" LogicalName="SingularityBot.Manifest.schema.v1.json" />
+    <EmbeddedResource Include="../../schemas/singularitybot-definition-v1.schema.json" LogicalName="SingularityBot.Definition.schema.v1.json" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "0.1",
+  "id": "terran.marine-cheese",
+  "name": "Marine Cheese Attack",
+  "race": "Terran",
+  "steps": [
+    {
+      "id": "supply-depot",
+      "target": "SupplyDepot",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 100
+    },
+    {
+      "id": "barracks",
+      "target": "Barracks",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 100,
+      "dependsOn": ["supply-depot"]
+    },
+    {
+      "id": "marines",
+      "target": "Marine",
+      "producer": "Barracks",
+      "desiredCount": 8,
+      "earliestGameLoop": 0,
+      "priority": 95,
+      "dependsOn": ["barracks"]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+using SingularityBot.Behavior;
+using Xunit;
+
+namespace SingularityBot.Tests;
+
+public sealed class MilitaryPlanDefinitionTests
+{
+    [Fact]
+    public void MilitaryPlan_ValidatesNamedRoutesAndSynchronizedBattlecruiserOperations()
+    {
+        var plan = new MilitaryPlanDefinition
+        {
+            Id = "battlecruiser-mineral-line-pincer",
+            Name = "Battlecruiser Mineral Line Pincer",
+            Locations =
+            [
+                new("OpponentMainMineralLine", "Opponent main mineral line", 120, 80, 8),
+                new("OpponentExpansionMineralLine", "Opponent expansion mineral line", 96, 112, 8)
+            ],
+            Routes =
+            [
+                new("ConcealedMainApproach", "Concealed main approach",
+                    [new("ApproachStart", 40, 40), new("MainFlank", 82, 55), new("MainMineralLine", 120, 80)],
+                    MilitaryRouteConstraints.AvoidKnownThreats | MilitaryRouteConstraints.AvoidContact),
+                new("TacticalJumpApproach", "Tactical jump approach",
+                    [new("JumpOrigin", 70, 70), new("ExpansionLanding", 96, 112)])
+            ],
+            Operations =
+            [
+                new("FirstBattlecruiser", "Position over main mineral line",
+                    MilitaryForceRole.Harass, "ConcealedMainApproach", "OpponentMainMineralLine",
+                    SynchronizationGroup: "MineralLinePincer"),
+                new("SecondBattlecruiser", "Jump to expansion mineral line",
+                    MilitaryForceRole.Harass, "TacticalJumpApproach", "OpponentExpansionMineralLine",
+                    DependsOn: new[] { "FirstBattlecruiser" },
+                    RequiredAbility: "TacticalJump",
+                    SynchronizationGroup: "MineralLinePincer")
+            ]
+        };
+
+        Assert.Empty(MilitaryPlanValidator.Validate(plan));
+        Assert.Contains("FirstBattlecruiser", plan.Operations[1].DependsOn);
+        Assert.Equal(MilitaryRouteConstraints.AvoidKnownThreats | MilitaryRouteConstraints.AvoidContact,
+            plan.Routes[0].Constraints);
+    }
+
+    [Fact]
+    public void MilitaryPlanValidator_RejectsUnknownReferencesAndDependencyCycles()
+    {
+        var plan = new MilitaryPlanDefinition
+        {
+            Id = "invalid",
+            Name = "Invalid",
+            Locations = [new("main", "Main", 10, 10)],
+            Routes = [new("route", "Route", [new("a", 0, 0), new("b", 10, 10)])],
+            Operations =
+            [
+                new("first", "First", MilitaryForceRole.Harass, "missing-route", "main",
+                    DependsOn: new[] { "second" }),
+                new("second", "Second", MilitaryForceRole.Harass, "route", "missing-location",
+                    DependsOn: new[] { "first" })
+            ]
+        };
+
+        var errors = MilitaryPlanValidator.Validate(plan);
+
+        Assert.Contains(errors, error => error.Contains("unknown route"));
+        Assert.Contains(errors, error => error.Contains("unknown location"));
+        Assert.Contains(errors, error => error.Contains("cycle"));
+    }
+
+
+    [Fact]
+    public void MilitaryPlanRuntime_HoldsSecondStrikeUntilFirstOperationCompletionIsObserved()
+    {
+        var runtime = new MilitaryPlanRuntime();
+        var plan = new MilitaryPlanDefinition
+        {
+            Id = "pincer",
+            Name = "Mineral line pincer",
+            Locations =
+            [
+                new("main", "Opponent main mineral line", 100, 80),
+                new("natural", "Opponent expansion mineral line", 80, 110)
+            ],
+            Routes =
+            [
+                new("main-route", "Evasive main route", [new("a", 0, 0), new("b", 100, 80)],
+                    MilitaryRouteConstraints.AvoidKnownThreats | MilitaryRouteConstraints.AvoidContact),
+                new("jump-route", "Jump route", [new("c", 40, 40), new("d", 80, 110)])
+            ],
+            Operations =
+            [
+                new("first-bc", "Position first Battlecruiser", MilitaryForceRole.Harass,
+                    "main-route", "main", SynchronizationGroup: "pincer"),
+                new("second-bc", "Jump second Battlecruiser", MilitaryForceRole.Harass,
+                    "jump-route", "natural", DependsOn: new[] { "first-bc" },
+                    RequiredAbility: "TacticalJump", SynchronizationGroup: "pincer")
+            ]
+        };
+
+        Assert.Empty(runtime.AddPlan(plan));
+        Assert.True(runtime.TryGetIntent("first-bc", out var firstIntent));
+        Assert.Equal("main-route", firstIntent.RouteId);
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+
+        Assert.True(runtime.MarkSubmitted("first-bc", 100));
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+        Assert.True(runtime.ObserveStarted("first-bc", 101));
+        Assert.True(runtime.TryGetIntent("first-bc", out _)); // active operation may issue its next route step
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+
+        Assert.False(runtime.ObserveCompletion("first-bc", false, 120));
+        Assert.False(runtime.TryGetIntent("second-bc", out _));
+        Assert.True(runtime.ObserveCompletion("first-bc", true, 121));
+
+        Assert.True(runtime.TryGetIntent("second-bc", out var secondIntent));
+        Assert.Equal("TacticalJump", secondIntent.RequiredAbility);
+        Assert.Equal("natural", secondIntent.ObjectiveLocationId);
+    }
+
+
+    [Fact]
+    public void MilitaryPlanValidator_RejectsNullCollectionsAndNullNodes()
+    {
+        var nullCollections = new MilitaryPlanDefinition
+        {
+            Id = "null-collections",
+            Name = "Null collections",
+            Locations = null,
+            Routes = null,
+            Operations = null
+        };
+        Assert.NotEmpty(MilitaryPlanValidator.Validate(nullCollections));
+
+        var nullNodes = new MilitaryPlanDefinition
+        {
+            Id = "null-nodes",
+            Name = "Null nodes",
+            Locations = [null],
+            Routes = [null],
+            Operations = [null]
+        };
+        Assert.NotEmpty(MilitaryPlanValidator.Validate(nullNodes));
+    }
+
+    [Fact]
+    public void MilitaryPlanParser_ReadsNamedRoutesAndStringEnums()
+    {
+        const string json = """
+        {
+          "version": 1,
+          "id": "raid",
+          "name": "Mineral line raid",
+          "locations": [{ "id": "main", "name": "Main mineral line", "x": 80, "y": 90 }],
+          "routes": [{
+            "id": "approach",
+            "name": "Evasive approach",
+            "constraints": "avoidKnownThreats, avoidContact",
+            "waypoints": [
+              { "id": "start", "x": 10, "y": 10 },
+              { "id": "finish", "x": 80, "y": 90 }
+            ]
+          }],
+          "operations": [{
+            "id": "first-bc",
+            "name": "First Battlecruiser",
+            "role": "harass",
+            "routeId": "approach",
+            "objectiveLocationId": "main",
+            "requiredAbility": "TacticalJump",
+            "completion": "atObjective"
+          }]
+        }
+        """;
+
+        var plan = MilitaryPlanDefinition.Parse(json);
+
+        Assert.Empty(MilitaryPlanValidator.Validate(plan));
+        Assert.Equal(MilitaryForceRole.Harass, Assert.Single(plan.Operations).Role);
+    }
+}

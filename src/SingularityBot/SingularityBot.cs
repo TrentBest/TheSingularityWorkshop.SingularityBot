@@ -1,0 +1,2211 @@
+#nullable enable annotations
+ 
+using System.Collections.Generic;
+using Google.Protobuf;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using SC2APIProtocol;
+using SingularityBot.Behavior;
+using SingularityBot.Observation;
+using SingularityBot.Spatial;
+using TheSingularityWorkshop.FSM_API;
+using FsmApi = SingularityBot.Behavior.BotFsmApi;
+
+namespace SingularityBot;
+
+/// <summary>
+/// Protocol-facing bot shell. Strategic decisions belong to FSM behavior
+/// definitions; this class owns the game-loop boundary.
+/// </summary>
+public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAwareBot
+{
+    private readonly BotManifest _manifest;
+    private readonly BotDefinition _definition;
+    private ITerran Terran => _raceRuntime as ITerran ?? throw new InvalidOperationException($"Terran-only policy was requested while active race runtime is {_raceRuntime.Race}.");
+    public IRace RaceRuntime => _raceRuntime;
+    private readonly BotRuntimeComposition _runtimeComposition;
+    private readonly UnitBehaviorRuntime _unitBehaviors = new();
+    private readonly BuildingBehaviorRuntime _buildings = new();
+    private readonly ICompiledBotStrategy _compiledStrategy;
+    private readonly StrategyEvidenceCollector _strategyEvidenceCollector = new();
+    private readonly ConstructionSiteSafety _constructionSiteSafety = new();
+    private IReadOnlyList<StrategyEvidence> _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
+    private GoalActionPlanDefinition _goalActionPlan;
+    private readonly IRace _raceRuntime;
+    private readonly RaceModuleCatalog _raceModules = RaceModuleCatalog.CreateDefault();
+    private IReadOnlySet<uint> _constructionAbilityIds = new HashSet<uint>();
+    private readonly BotModeCatalog _botModes = BotModeCatalog.CreateDefault();
+    private readonly Sc2RaceProductionProfileCatalog _raceProductionProfiles = Sc2RaceProductionProfileCatalog.CreateDefault();
+    private Sc2RaceProductionProfile _activeProductionProfile;
+    private readonly OpeningCatalog _openingCatalog = OpeningCatalog.CreateDefault();
+    private IOpener _activeOpener;
+    private RaceModuleDescriptor _activeRaceModule;
+    private BotModeDescriptor _activeMode;
+    private readonly AdvisorJobBoard _advisorJobBoard = new();
+    private readonly StrategicPlanner _strategicPlanner = new();
+    private CompositionGoalDefinition? _compositionGoal;
+    private readonly GameStateContext _gameState = new();
+    private readonly bool _passiveBaseline;
+    private readonly bool _writeDiagnostics;
+    private readonly Sc2PassiveBaselineRecorder _baselineRecorder = new();
+    private readonly Sc2OpeningTraceRecorder _openingTrace = new();
+    private readonly WorkerRouteTraceRecorder _workerRouteTrace = new();
+    private readonly Sc2BinaryEventRecorder _binaryTrace = new();
+    private uint _lastGameLoop;
+    private uint _lastUnitSnapshotGameLoop;
+    private long _studioSnapshotSequence;
+    private BotStudioSnapshot _latestStudioSnapshot;
+    private readonly BotStudioEventJournal _studioEvents = new();
+    private string _studioMapName = string.Empty;
+
+    public SingularityBot(
+        bool passiveBaseline = false,
+        bool writeDiagnostics = false,
+        BotDefinition botDefinition = null,
+        ICompiledBotStrategy compiledStrategy = null)
+    {
+        if (botDefinition is not null && compiledStrategy is not null)
+            throw new ArgumentException("Supply either a compiled strategy or a definition, not both.");
+
+        if (botDefinition is null && compiledStrategy is null)
+            throw new ArgumentException("The host must select a race-specific bot definition before constructing SingularityBot.", nameof(botDefinition));
+
+        var selectedStrategy = compiledStrategy ?? new DefinitionBackedBotStrategy(botDefinition);
+        var selectedDefinition = selectedStrategy.Definition
+            ?? throw new ArgumentException("The compiled strategy must supply a definition.", nameof(compiledStrategy));
+        _compiledStrategy = selectedStrategy;
+        _runtimeComposition = BotRuntimeComposer.Compose(selectedDefinition);
+        _definition = _runtimeComposition.Definition;
+        _raceRuntime = RaceRuntimeFactory.Create(_definition.Race);
+        _manifest = _definition.Runtime;
+        _goalActionPlan = selectedStrategy.CreateInitialGoalPlan()
+            ?? throw new ArgumentException("The compiled strategy must supply an initial goal plan.", nameof(compiledStrategy));
+        var goalErrors = _goalActionPlan.Validate();
+        if (goalErrors.Count != 0)
+            throw new ArgumentException("The compiled strategy returned an invalid goal plan: " + string.Join(" ", goalErrors), nameof(compiledStrategy));
+        _desiredMarineCount = _definition.Opening.Steps
+            .Where(step => step is not null &&
+                step.Target.Equals("Marine", StringComparison.OrdinalIgnoreCase))
+            .Select(step => step.DesiredCount)
+            .DefaultIfEmpty(60)
+            .Max();
+        _passiveBaseline = passiveBaseline;
+        _writeDiagnostics = writeDiagnostics;
+    }
+    private readonly WorkerResourceAssignmentPlanner _workerAssignments = new();
+    private readonly Sc2WorkerProgressWatchdog _workerProgressWatchdog = new();
+    private Sc2GameDataCatalog _gameData;
+    private IReadOnlyDictionary<uint, CombatWeaponProfile> _combatWeapons = new Dictionary<uint, CombatWeaponProfile>();
+    private uint _playerId;
+    private Race _actualRace = Race.Random;
+    private bool _unsupportedRaceLogged;
+    private bool _behaviorCatalogRegistered;
+    private bool _spatialDiagnosticsReported;
+    private readonly Sc2OpeningProductionController _openingProduction = new();
+    private readonly Sc2OpeningRallyController _openingRally = new();
+    private bool _openingRallyActionSubmitted;
+    private bool _openingProductionActionSubmitted;
+    private bool _scvTrainingOrderObserved;
+    private bool _initialScvProductionObserved;
+    private bool _openingBuilderActionSubmitted;
+    private bool _openingSprayActionSubmitted;
+    private RequestQuery _pendingQuery;
+    private readonly Sc2OpeningBuilderController _openingBuilder = new();
+    private readonly Sc2OpeningMarineController _openingMarine = new();
+    private readonly Sc2MarineRallyController _marineRally = new();
+    private readonly Sc2SecondBarracksController _secondBarracks = new();
+    private readonly Sc2ExpansionCommandCenterController _expansionCommandCenter = new();
+    private bool _expansionCommandCenterActionSubmitted;
+    private int _expansionCommandCenterPlacementCount;
+    private readonly Sc2OpeningBuilderController _supplyDepotExpansion = new();
+    private bool _supplyDepotExpansionActionSubmitted;
+    private int _supplyDepotExpansionPlacementCount;
+    private readonly Sc2OpeningBuilderController _thirdSupplyDepot = new();
+    private bool _thirdSupplyDepotActionSubmitted;
+    private int _thirdSupplyDepotPlacementCount;
+    private readonly BuildJobRuntime _buildJobs = new();
+    private readonly Sc2BarracksProductionController _barracksProduction = new();
+    private readonly int _desiredMarineCount;
+    private bool _barracksProductionActionSubmitted;
+    private int _openingBuilderPlacementCount;
+    private int _openingMarinePlacementCount;
+    private int _secondBarracksPlacementCount;
+    private bool _secondBarracksActionSubmitted;
+    private bool _openingMarineActionSubmitted;
+    private readonly Sc2OpeningSprayController _openingSpray = new();
+    private readonly Sc2OrbitalSupportController _orbitalSupport = new();
+    private readonly Sc2RefineryRuntime _refineries = new();
+    private bool _orbitalSupportActionSubmitted;
+    private string _lastOrbitalDiagnostic;
+    private string _lastStartingTownHallKind;
+    private readonly Dictionary<ulong, uint> _currentWorkerAssignmentGenerations = new();
+    private MilitaryPlanDefinition _militaryPlan;
+    private MilitaryPlanRuntime _militaryPlanRuntime = new();
+    private readonly Sc2MilitaryOperationActionTranslator _militaryTranslator = new();
+    private readonly Dictionary<string, ulong[]> _militaryAssignments = new(StringComparer.Ordinal);
+    // The reverse index is the single authoritative owner for military unit assignment.
+    private readonly Dictionary<ulong, string> _militaryUnitOwners = new();
+    private readonly Dictionary<string, string> _militaryOperationDiagnostics = new(StringComparer.Ordinal);
+    private readonly List<(string OperationId, int ActionIndex)> _militaryActionResultMappings = new();
+
+
+    /// <summary>Immutable map geometry cached for the lifetime of this match.</summary>
+    public BotManifest Manifest => _manifest;
+    /// <summary>The validated authoring artifact selected for this match, when supplied by the host.</summary>
+    public BotDefinition Definition => _definition;
+    public TheSingularityWorkshop.FSM_COS.RuntimeAssembly ComposedRuntime => _runtimeComposition.Assembly;
+    public IReadOnlyList<BotCommandVocabulary.ActionDefinition> AvailableActions => _runtimeComposition.Actions;
+    /// <summary>Configured maximum observed Marine force size; defaults to the runtime's 60-Marine policy.</summary>
+    public int DesiredMarineCount => _desiredMarineCount;
+    /// <summary>The opening plan carried by the selected definition. Its live production adapter is host-owned.</summary>
+    public ProductionPlanDefinition OpeningPlan => _definition?.Opening;
+    /// <summary>The active user-authored goal policy consumed by GoalActionPlanner.</summary>
+    public GoalActionPlanDefinition GoalActionPlan => _goalActionPlan;
+    public SpatialMap SpatialMap { get; private set; }
+    public SpatialIntelligence SpatialIntelligence { get; private set; }
+    /// <summary>Immutable pathing, placement and elevation layers cached from SC2 OnStart data.</summary>
+    public SpatialTerrain SpatialTerrain { get; private set; }
+    public SpatialTopology PathingTopology { get; private set; }
+    public IReadOnlyList<string> ProcessGroupsThisFrame => _unitBehaviors.ProcessGroupsThisFrame;
+    public GamePhase CurrentGamePhase => _gameState.Phase;
+    /// <summary>Latest immutable read-only snapshot published for the optional local Bot Studio bridge.</summary>
+    public BotStudioSnapshot LatestStudioSnapshot => Volatile.Read(ref _latestStudioSnapshot);
+    /// <summary>Bounded structured event history for the optional local Bot Studio bridge.</summary>
+    public BotStudioEventJournal StudioEvents => _studioEvents;
+    /// <summary>The authoritative in-game race resolved from this player's SC2 game-info entry.</summary>
+    public Race ActualRace => _actualRace;
+    /// <summary>The map-selected mode after validation against authoritative RaceActual.</summary>
+    public BotModeDescriptor ActiveMode => _activeMode;
+    /// <summary>Race/mode-specific first-unit production profile resolved from authoritative match game data.</summary>
+    public Sc2RaceProductionProfile ActiveProductionProfile => _activeProductionProfile;
+    /// <summary>Retained direct-observation evidence available to transition policy evaluation.</summary>
+    public IReadOnlyList<StrategyEvidence> CurrentStrategyEvidence => _currentStrategyEvidence;
+    public IReadOnlyDictionary<AdvisorDomain, int> AdvisorComputeWeights => AdvisorWorkScheduler.GetWeights(_gameState.Phase);
+    public IReadOnlyList<StrategicJobPosting> CurrentStrategicPlan => _strategicPlanner.GetPlan(_advisorJobBoard, _lastGameLoop);
+
+    /// <summary>Current FSM_API states for every capability attached to one observed unit.</summary>
+    public IReadOnlyDictionary<string, string> GetUnitFsmStates(ulong unitTag) =>
+        _unitBehaviors.GetStates(unitTag);
+
+    /// <summary>Live build and production jobs, including their authoritative FSM_API states and evidence.</summary>
+    public IReadOnlyCollection<BuildJobContext> CurrentBuildJobs => _buildJobs.Jobs;
+
+    /// <summary>Current SCV production request state.</summary>
+    public string OpeningScvProductionState => _openingProduction.CurrentState;
+    public string OpeningDepotBuildJobState => _openingBuilder.BuildJobState;
+    public string OpeningDepotBuildFailureReason => _openingBuilder.BuildJobFailureReason;
+    public string OpeningDepotMovementState => _openingBuilder.MovementState;
+    public bool OpeningDepotMoveRetryReady => _openingBuilder.IsMoveRetryReady;
+    public string OpeningBarracksBuildJobState => _openingMarine.BarracksBuildJobState;
+    public string OpeningMarineProductionJobState => _openingMarine.MarineProductionJobState;
+    public IReadOnlyCollection<BuildingBehaviorContext> Buildings => _buildings.Buildings;
+
+    public IReadOnlyDictionary<string, string> GetBuildingFsmStates(ulong buildingTag) =>
+        _buildings.TryGet(buildingTag, out var building) && building is not null
+            ? building.CurrentStates
+            : new Dictionary<string, string>();
+
+    /// <summary>Publishes an explicit passage request; this overrides nearby-enemy Depot closure.</summary>
+    public bool RequestSupplyDepotPassage(ulong buildingTag, bool requested = true) =>
+        _buildings.RequestDepotPassage(buildingTag, requested);
+
+    /// <summary>Queues a Scanner Sweep request on an Orbital Command at the supplied map position.</summary>
+    public bool RequestOrbitalScan(ulong orbitalTag, float targetX, float targetY) =>
+        _buildings.RequestOrbitalScan(orbitalTag, targetX, targetY);
+
+    /// <summary>Defines the exclusion zone in which a landed Command Center must not morph to Orbital.</summary>
+    public void ConfigureDesignatedCommandCenterConstructionArea(float centerX, float centerY, float radius) =>
+        _buildings.ConfigureDesignatedCommandCenterConstructionArea(centerX, centerY, radius);
+
+    public void ClearDesignatedCommandCenterConstructionArea() =>
+        _buildings.ClearDesignatedCommandCenterConstructionArea();
+
+    /// <summary>Sets the user-authored goal plan before or during a match.</summary>
+    public IReadOnlyList<string> ConfigureGoalActionPlanJson(string json)
+    {
+        var plan = GoalActionPlanDefinition.Parse(json);
+        var errors = plan.Validate();
+        if (errors.Count == 0) _goalActionPlan = plan;
+        return errors;
+    }
+
+    /// <summary>Current named military operations and their observed lifecycle evidence.</summary>
+    public IReadOnlyCollection<MilitaryOperationContext> MilitaryOperations => _militaryPlanRuntime.Operations;
+
+    /// <summary>Loads a validated named-location, route and operation plan.</summary>
+    public IReadOnlyList<string> ConfigureMilitaryPlanJson(string json)
+    {
+        MilitaryPlanDefinition plan;
+        try
+        {
+            plan = MilitaryPlanDefinition.Parse(json);
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException)
+        {
+            return new[] { "$: invalid military plan: " + exception.Message };
+        }
+
+        var runtime = new MilitaryPlanRuntime();
+        var errors = runtime.AddPlan(plan);
+        if (errors.Count != 0)
+            return errors;
+
+        foreach (var operation in _militaryPlanRuntime.Operations)
+            _militaryTranslator.Reset(operation.Definition.Id);
+        _militaryPlan = plan;
+        _militaryPlanRuntime = runtime;
+        _militaryAssignments.Clear();
+        _militaryUnitOwners.Clear();
+        _militaryOperationDiagnostics.Clear();
+        _militaryActionResultMappings.Clear();
+        return Array.Empty<string>();
+    }
+
+    /// <summary>Assigns visible friendly unit tags to a named military operation.</summary>
+    public IReadOnlyList<string> AssignMilitaryOperationUnits(
+        string operationId,
+        IReadOnlyCollection<ulong> unitTags)
+    {
+        if (!_militaryPlanRuntime.TryGetOperation(operationId, out _))
+            return new[] { "$.operationId: unknown military operation." };
+        if (unitTags is null)
+            return new[] { "$.unitTags: an assignment collection is required." };
+        if (unitTags.Any(tag => tag == 0))
+            return new[] { "$.unitTags: unit tags must be non-zero." };
+        if (unitTags.Distinct().Count() != unitTags.Count)
+            return new[] { "$.unitTags: duplicate unit tags are not allowed." };
+
+        // Validate the complete replacement before mutating either index.
+        foreach (var tag in unitTags)
+            if (_militaryUnitOwners.TryGetValue(tag, out var owner) &&
+                !string.Equals(owner, operationId, StringComparison.Ordinal))
+                return new[] { $"$.unitTags: unit {tag} is already assigned to military operation '{owner}'." };
+
+        if (_militaryAssignments.TryGetValue(operationId, out var previous))
+            foreach (var tag in previous)
+                if (_militaryUnitOwners.TryGetValue(tag, out var owner) &&
+                    string.Equals(owner, operationId, StringComparison.Ordinal))
+                    _militaryUnitOwners.Remove(tag);
+
+        var ordered = unitTags.OrderBy(tag => tag).ToArray();
+        _militaryAssignments[operationId] = ordered;
+        foreach (var tag in ordered)
+            _militaryUnitOwners[tag] = operationId;
+
+        _militaryTranslator.Reset(operationId);
+        return Array.Empty<string>();
+    }
+
+    /// <summary>Releases all unit reservations held by one military operation.</summary>
+    public bool ReleaseMilitaryOperationUnits(string operationId)
+    {
+        if (!_militaryAssignments.Remove(operationId, out var assignedTags))
+            return false;
+
+        foreach (var tag in assignedTags)
+            if (_militaryUnitOwners.TryGetValue(tag, out var owner) &&
+                string.Equals(owner, operationId, StringComparison.Ordinal))
+                _militaryUnitOwners.Remove(tag);
+
+        _militaryTranslator.Reset(operationId);
+        return true;
+    }
+
+    /// <summary>Returns the authoritative military operation owner for a unit, if assigned.</summary>
+    public bool TryGetMilitaryUnitAssignment(ulong unitTag, out string operationId) =>
+        _militaryUnitOwners.TryGetValue(unitTag, out operationId);
+
+    /// <summary>
+    /// Supplies host-observed completion evidence for conditions such as target
+    /// neutralization that cannot be inferred from arrival at a map location.
+    /// </summary>
+    public bool ObserveMilitaryOperationCompletion(string operationId, bool conditionObserved) =>
+        _militaryPlanRuntime.ObserveCompletion(operationId, conditionObserved, _lastGameLoop);
+
+    /// <summary>Sets user-authored economy policy before or during a match.</summary>
+    public IReadOnlyList<string> ConfigureEconomyAdvisorJson(string json) =>
+        Terran.Economy.ConfigureJson(json);
+
+    /// <summary>Current economy policy exposed to the development GUI.</summary>
+    public EconomyAdvisorSettings EconomySettings => Terran.Economy.Settings;
+
+    /// <summary>Sets user-authored intelligence policy before or during a match.</summary>
+    public IReadOnlyList<string> ConfigureIntelligenceAdvisorJson(string json) =>
+        Terran.Intelligence.ConfigureJson(json);
+
+    /// <summary>Current intelligence policy exposed to the development GUI.</summary>
+    public IntelligenceAdvisorSettings IntelligenceSettings => Terran.Intelligence.Settings;
+
+    /// <summary>Publish or replace an advisor-owned job posting.</summary>
+    public StrategicJobPosting PublishAdvisorJob(
+        AdvisorDomain owner, string id, StrategicJobKind kind, string target,
+        int quantity, int priority, uint? expiresAtGameLoop = null,
+        IReadOnlyDictionary<string, string>? constraints = null) =>
+        _advisorJobBoard.Upsert(owner, id, kind, target, quantity, priority,
+            _lastGameLoop, expiresAtGameLoop, constraints);
+
+    /// <summary>Withdraw one job posting owned by the specified advisor.</summary>
+    public bool WithdrawAdvisorJob(AdvisorDomain owner, string id) =>
+        _advisorJobBoard.Withdraw(owner, id);
+
+    /// <summary>
+    /// Compile a declarative force target into standing unit, producer, add-on
+    /// and prerequisite postings. Recipe metadata must be supplied explicitly.
+    /// </summary>
+    public CompositionPlanResult ConfigureCompositionGoal(
+        CompositionGoalDefinition goal,
+        IReadOnlyDictionary<string, ProductionRecipe> recipes,
+        int priority = 50) =>
+        CompositionGoalCompiler.Compile(goal, recipes, _advisorJobBoard, _lastGameLoop, priority);
+
+    /// <summary>Current declarative composition target, if configured.</summary>
+    public CompositionGoalDefinition? CompositionGoal => _compositionGoal;
+
+    /// <summary>
+    /// JSON authoring surface for the development GUI. Recipe metadata is
+    /// explicit input until the normalized game-data tech graph is complete.
+    /// </summary>
+    public CompositionPlanResult ConfigureCompositionGoalJson(
+        string goalJson,
+        string recipesJson,
+        int priority = 50)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var goal = JsonSerializer.Deserialize<CompositionGoalDefinition>(goalJson, options)
+                ?? throw new JsonException("Composition goal JSON was empty.");
+            var recipes = JsonSerializer.Deserialize<Dictionary<string, ProductionRecipe>>(recipesJson, options)
+                ?? throw new JsonException("Production recipe JSON was empty.");
+            var result = CompositionGoalCompiler.Compile(goal, recipes, _advisorJobBoard, _lastGameLoop, priority);
+            if (result.Errors.Count == 0)
+                _compositionGoal = goal;
+            return result;
+        }
+        catch (JsonException exception)
+        {
+            return new CompositionPlanResult(Array.Empty<StrategicJobPosting>(),
+                new[] { "$: invalid composition configuration: " + exception.Message });
+        }
+    }
+
+    /// <summary>Withdraw every posting currently owned by the configured goal.</summary>
+    public int ClearCompositionGoal()
+    {
+        if (_compositionGoal is null) return 0;
+        var removed = _advisorJobBoard.WithdrawComposition(_compositionGoal.GoalId);
+        _compositionGoal = null;
+        return removed;
+    }
+
+    public void OnStart(
+        ResponseGameInfo gameInfo,
+        ResponseData data,
+        ResponsePing pingResponse,
+        ResponseObservation observation,
+        uint playerId,
+        string opponentId)
+    {
+        // A bot instance may be reused by a host. Never carry a query assembled
+        // for the previous match into the next match's callback stream.
+        _pendingQuery = null;
+        _barracksProduction.Reset();
+        _workerAssignments.Clear();
+        _currentWorkerAssignmentGenerations.Clear();
+        if (_writeDiagnostics)
+        {
+            WriteOnStartSnapshot(gameInfo, data, pingResponse, observation, playerId, opponentId);
+            Sc2Diagnostics.WriteTerrainCalibration(gameInfo);
+        }
+        if (_passiveBaseline || _writeDiagnostics)
+            _baselineRecorder.Start();
+        _constructionSiteSafety.Reset();
+        _playerId = playerId;
+        _studioMapName = gameInfo?.MapName ?? string.Empty;
+        var playerInfo = gameInfo?.PlayerInfo?.FirstOrDefault(player => player.PlayerId == playerId);
+        _actualRace = playerInfo?.RaceActual ?? Race.Random;
+        _openingBuilder.StartMatchClock();
+        _studioEvents.Publish("lifecycle", "match.started", "info", observation?.Observation?.GameLoop ?? 0,
+            $"map={_studioMapName};actualRace={_actualRace};configuredMode={_definition.ModeId}");
+        _lastUnitSnapshotGameLoop = 0;
+        if (_writeDiagnostics)
+        {
+            Console.WriteLine($"[Diagnostics] Capture directory: {Sc2Diagnostics.OutputDirectory} (override with SINGULARITYBOT_DIAGNOSTICS_DIR).");
+            if (_actualRace == Race.Terran)
+            {
+                _openingTrace.Start(Sc2Diagnostics.OutputDirectory);
+                _workerRouteTrace.Start(Sc2Diagnostics.OutputDirectory, _studioMapName,
+                    _definition.Id, _definition.ModeId);
+            }
+            _binaryTrace.Start(Sc2Diagnostics.OutputDirectory);
+        }
+        _unsupportedRaceLogged = false;
+        _activeRaceModule = _raceModules.TryResolve(_actualRace, out var selectedRaceModule)
+            ? selectedRaceModule
+            : null;
+        _activeMode = _botModes.TryResolveForMatch(
+            new BotModeSelection(_definition.ModeId), _actualRace, out var selectedMode, out var modeError)
+            ? selectedMode
+            : null;
+        Console.WriteLine($"[RaceComposition] Player {playerId}: requested={playerInfo?.RaceRequested.ToString() ?? "unknown"}, actual={_actualRace}.");
+        if (_activeRaceModule is null)
+            Console.WriteLine($"[RaceComposition] FAIL-CLOSED: no registered module for actual race {_actualRace}.");
+        else
+            Console.WriteLine($"[RaceComposition] Selected {_activeRaceModule.Id}; mode={_activeRaceModule.ExecutionMode}; capabilities={string.Join(",", _activeRaceModule.Capabilities)}. {_activeRaceModule.Status}");
+        if (_activeMode is null)
+            Console.WriteLine($"[BotMode] FAIL-CLOSED: configured mode '{_definition.ModeId}' is invalid for actual race {_actualRace}: {modeError}");
+        else
+            Console.WriteLine($"[BotMode] Selected {_activeMode.Name} ({_activeMode.Id}); primary={_activeMode.PrimaryUnit}; executable={_activeMode.CanIssueGameplayActions}. {_activeMode.Status}");
+        if (_actualRace == Race.Terran)
+        {
+            Terran.Scouting.Reset(_advisorJobBoard);
+            _marineRally.Reset();
+        }
+        _gameData = Sc2GameDataCatalog.Create(data);
+        _constructionAbilityIds = _gameData.AbilitiesById.Values
+            .Where(ability => ability.IsBuilding)
+            .Select(ability => ability.AbilityId)
+            .ToHashSet();
+        _activeProductionProfile = null;
+        _activeOpener = null;
+        if (_activeMode is not null && _raceProductionProfiles.TryResolveGameData(
+            _activeMode.Id, _actualRace, _gameData,
+            out var productionProfile, out var targetFacts, out var producerFacts, out var productionError))
+        {
+            _activeProductionProfile = productionProfile;
+            Console.WriteLine($"[RaceProduction] Resolved mode={productionProfile.ModeId}; target={targetFacts.Name} ability={targetFacts.AbilityId} mineral={targetFacts.MineralCost} gas={targetFacts.VespeneCost} food={targetFacts.FoodRequired}; producer={producerFacts.Name}; prerequisites={string.Join(",", productionProfile.RequiredCompletedUnits)}; poweredProducerRequired={productionProfile.RequiresPoweredProducer}. {productionProfile.Status}");
+        }
+        else if (_activeMode is not null && _raceProductionProfiles.TryResolve(_activeMode.Id, out _))
+        {
+            _raceProductionProfiles.TryResolveGameData(
+                _activeMode.Id, _actualRace, _gameData,
+                out _, out _, out _, out var profileError);
+            Console.WriteLine($"[RaceProduction] FAIL-CLOSED: mode={_activeMode.Id}; {profileError}");
+        }
+        if (_activeMode is not null && _openingCatalog.TryCreate(_activeMode.Id, out var opener))
+        {
+            var openingContext = new OpeningContext(
+                _actualRace, _activeMode, _gameData, _activeProductionProfile);
+            if (opener.Initialize(openingContext, out var openingError))
+            {
+                _activeOpener = opener;
+                Console.WriteLine($"[Opening] Initialized opener={opener.ModeId}; state={opener.State}.");
+            }
+            else
+            {
+                Console.WriteLine($"[Opening] FAIL-CLOSED: opener={opener.ModeId}; {openingError}");
+            }
+        }
+        if (_militaryPlan is not null)
+        {
+            var militaryRuntime = new MilitaryPlanRuntime();
+            var militaryErrors = militaryRuntime.AddPlan(_militaryPlan);
+            if (militaryErrors.Count == 0)
+                _militaryPlanRuntime = militaryRuntime;
+            else
+                Console.WriteLine("[Military] Configured plan could not be restored: " + string.Join(" ", militaryErrors));
+            foreach (var operation in _militaryPlan.Operations)
+                _militaryTranslator.Reset(operation.Id);
+            _militaryOperationDiagnostics.Clear();
+            _militaryActionResultMappings.Clear();
+        }
+        _combatWeapons = CombatWeaponProfile.FromCatalog(_gameData);
+
+        if (Sc2SpatialTerrainFactory.TryCreate(gameInfo, out var spatialTerrain))
+        {
+            SpatialTerrain = spatialTerrain;
+            Console.WriteLine($"[Spatial] Terrain layers: pathing={spatialTerrain.Pathing != null}, placement={spatialTerrain.Placement != null}, height={spatialTerrain.TerrainHeight != null}.");
+        }
+        else
+        {
+            SpatialTerrain = null;
+            Console.WriteLine("[Spatial] SC2 terrain image layers unavailable or invalid; terrain-dependent reasoning remains disabled.");
+        }
+
+        PathingTopology = SpatialTerrain?.Pathing is not null
+            ? SpatialTopology.Build(SpatialTerrain)
+            : null;
+        if (PathingTopology is not null)
+            Console.WriteLine($"[Spatial] Pathing topology: {PathingTopology.Regions.Count} connected walkable regions.");
+
+        if (SpatialMapFactory.TryCreate(gameInfo, observation, out var spatialMap))
+        {
+            SpatialMap = spatialMap;
+            SpatialIntelligence = new SpatialIntelligence(spatialMap);
+            Console.WriteLine($"[Spatial] {gameInfo.MapName}: bounds=({spatialMap.Bounds.MinX},{spatialMap.Bounds.MinY})-({spatialMap.Bounds.MaxX},{spatialMap.Bounds.MaxY}), center=({spatialMap.Center.X:F1},{spatialMap.Center.Y:F1}), sectors={spatialMap.Sectors.Count}.");
+            Console.WriteLine($"[Spatial] Friendly start=({spatialMap.Side.FriendlyStart.X:F1},{spatialMap.Side.FriendlyStart.Y:F1}); enemy start=({spatialMap.Side.EnemyStart.X:F1},{spatialMap.Side.EnemyStart.Y:F1}).");
+        }
+        else
+        {
+            SpatialMap = null;
+            SpatialIntelligence = null;
+            Console.WriteLine($"[Spatial] Map geometry unresolved for {gameInfo?.MapName ?? "unknown map"}; the bot needs valid playable bounds, a visible starting town hall, and one or two start locations.");
+        }
+
+        if (_behaviorCatalogRegistered)
+            return;
+
+        UnitBehaviorCatalog.Register();
+        BuildingBehaviorRuntime.RegisterDefinitions();
+        FsmApi.Create.CreateInstance("SingularityBot.GameState", _gameState, UnitBehaviorCatalog.StrategyProcessingGroup);
+        _behaviorCatalogRegistered = true;
+
+        Console.WriteLine($"[Runtime] SC2 game data: units={_gameData.UnitNames.Count}, buffs={_gameData.BuffNames.Count}, smart={_gameData.SmartAbilityId?.ToString() ?? "unavailable"}, spray={_gameData.SprayAbilityId?.ToString() ?? "unavailable"}, rally-workers={_gameData.RallyWorkersAbilityId?.ToString() ?? "unavailable"}, train-SCV={_gameData.ScvTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.ScvMineralCost}, supply={_gameData.ScvFoodRequired}), move={_gameData.MoveAbilityId?.ToString() ?? "unavailable"}, build-Depot={_gameData.SupplyDepotBuildAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.SupplyDepotMineralCost}), build-Barracks={_gameData.BarracksBuildAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.BarracksMineralCost}), train-Marine={_gameData.MarineTrainAbilityId?.ToString() ?? "unavailable"} (minerals={_gameData.MarineMineralCost}, supply={_gameData.MarineFoodRequired}).");
+    }
+
+    /// <summary>
+    /// Persists the complete protocol payload supplied to OnStart so map and
+    /// game-data assumptions can be checked against the authoritative inputs.
+    /// </summary>
+    private static void WriteOnStartSnapshot(
+        ResponseGameInfo gameInfo,
+        ResponseData data,
+        ResponsePing pingResponse,
+        ResponseObservation observation,
+        uint playerId,
+        string opponentId)
+    {
+        try
+        {
+            var snapshot = new JsonObject
+            {
+                ["capturedAtUtc"] = DateTime.UtcNow.ToString("O"),
+                ["playerId"] = playerId,
+                ["opponentId"] = opponentId,
+                ["gameInfo"] = SerializeProtocolMessage(gameInfo),
+                ["data"] = SerializeProtocolMessage(data),
+                ["pingResponse"] = SerializeProtocolMessage(pingResponse),
+                ["initialObservation"] = SerializeProtocolMessage(observation)
+            };
+
+            var diagnosticsDirectory = Sc2Diagnostics.OutputDirectory;
+            Directory.CreateDirectory(diagnosticsDirectory);
+
+            var fileName = $"on-start-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}.json";
+            var path = Path.Combine(diagnosticsDirectory, fileName);
+            File.WriteAllText(path, snapshot.ToJsonString(new JsonSerializerOptions
+            {
+                WriteIndented = true
+            }));
+
+            Console.WriteLine($"[Diagnostics] Complete OnStart protocol snapshot: {path}.");
+        }
+        catch (Exception exception)
+        {
+            // Diagnostics must never prevent the bot from entering the match.
+            Console.WriteLine($"[Diagnostics] Could not serialize OnStart protocol inputs: {exception.Message}");
+        }
+    }
+
+    private static JsonNode SerializeProtocolMessage(IMessage message)
+    {
+        return message == null ? null : JsonNode.Parse(JsonFormatter.Default.Format(message));
+    }
+
+    public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
+    {
+        if (_passiveBaseline)
+        {
+            var baselineObservation = Sc2ObservationNormalizer.Normalize(
+                observation,
+                _playerId,
+                _gameData.UnitNames,
+                _gameData.BuffNames);
+            _baselineRecorder.Record(baselineObservation);
+            PublishStudioSnapshot(baselineObservation, "running");
+            return Array.Empty<SC2APIProtocol.Action>();
+        }
+
+        // An initialized opener is an explicit executable capability. All other
+        // modes remain fail-closed until their complete gameplay path is registered.
+        var openerEnabled = _activeOpener is not null &&
+            string.Equals(_activeOpener.ModeId, _activeMode?.Id, StringComparison.Ordinal);
+        if (!openerEnabled &&
+            (_activeRaceModule is null || !_activeRaceModule.CanIssueGameplayActions ||
+             _activeMode is null || !_activeMode.CanIssueGameplayActions))
+        {
+            if (!_unsupportedRaceLogged)
+            {
+                var moduleId = _activeRaceModule?.Id ?? "unregistered";
+                Console.WriteLine($"[RaceComposition] FAIL-CLOSED: race={_actualRace}, module={moduleId}, botMode={_activeMode?.Id ?? _definition.ModeId}, modeExecutable={_activeMode?.CanIssueGameplayActions.ToString() ?? "false"}; no gameplay actions will be issued.");
+                _unsupportedRaceLogged = true;
+            }
+            if (_writeDiagnostics)
+                RecordFailClosedRaceFrame(observation);
+            else
+            {
+                var unsupportedObservation = Sc2ObservationNormalizer.Normalize(
+                    observation, _playerId, _gameData.UnitNames, _gameData.BuffNames);
+                _lastGameLoop = unsupportedObservation.GameLoop;
+                PublishStudioSnapshot(unsupportedObservation, "running");
+            }
+            return Array.Empty<SC2APIProtocol.Action>();
+        }
+
+        // DataSync starts immediately after normalization. Every later decision
+        // consumes the same persistent entity registry and frame facts.
+        // The Zergling opener has a smaller, audited consumer contract. The
+        // composed gameplay path keeps every field required by its FSM and
+        // sub-controller consumers. Diagnostic recording deliberately opts
+        // back into full capture until its schema can declare its own needs.
+        var observationRequirements = _writeDiagnostics
+            ? ObservationRequirements.All
+            : openerEnabled
+                ? ObservationRequirements.Opening
+                : ObservationRequirements.Gameplay;
+        var normalized = Sc2ObservationNormalizer.Normalize(
+            observation,
+            _playerId,
+            _gameData.UnitNames,
+            _gameData.BuffNames,
+            observationRequirements);
+        _lastGameLoop = normalized.GameLoop;
+        if (openerEnabled)
+        {
+            var raceActions = _activeOpener.Advance(normalized);
+            if (_writeDiagnostics)
+            {
+                _binaryTrace.RecordFrame(
+                    normalized.GameLoop, normalized.Minerals,
+                    normalized.FoodUsed, normalized.FoodCap,
+                    normalized.Units.Count, raceActions.Count);
+                _binaryTrace.RecordEconomySnapshot(normalized, activeBuildJobs: 0);
+                _binaryTrace.RecordRaceSnapshot(
+                    normalized, _actualRace, _activeMode.Id,
+                    _activeOpener.State, raceActions.Count);
+                if (_lastUnitSnapshotGameLoop == 0 ||
+                    normalized.GameLoop >= _lastUnitSnapshotGameLoop + 8)
+                {
+                    _binaryTrace.RecordUnitSnapshots(normalized);
+                    _lastUnitSnapshotGameLoop = normalized.GameLoop;
+                }
+                foreach (var action in raceActions)
+                    _binaryTrace.RecordAction(normalized.GameLoop, action);
+            }
+            PublishStudioSnapshot(normalized, "running");
+            return raceActions;
+        }
+        var executive = new ExecutiveController(normalized.GameLoop);
+        _currentStrategyEvidence = _strategyEvidenceCollector.Apply(normalized);
+        var intents = new BehaviorIntentBuffer();
+        _unitBehaviors.Reconcile(normalized, intents.Add);
+        executive.Advance(ExecutiveStage.ExecutiveReaction);
+        _gameState.Apply(normalized);
+        UpdateSpatialIntelligence(observation);
+        executive.Advance(ExecutiveStage.SubControllers);
+        if (SpatialMap is not null)
+            Terran.Scouting.PublishJobs(normalized, SpatialMap, _combatWeapons, _advisorJobBoard);
+        Sc2SpatialTerrainFactory.TryCreateVisibilityGrid(
+            observation, SpatialTerrain, out var constructionVisibilityGrid);
+        _constructionSiteSafety.Update(normalized, constructionVisibilityGrid, SpatialIntelligence);
+        if (SpatialMap is not null)
+            _compiledStrategy.ApplyGoalPolicy(_goalActionPlan, _unitBehaviors, SpatialMap);
+
+        if (_writeDiagnostics)
+            _baselineRecorder.Record(normalized);
+
+        foreach (var actionError in observation.ActionErrors)
+        {
+            Console.WriteLine($"[SC2 API] Action error: unit={actionError.UnitTag}, ability={actionError.AbilityId}, result={actionError.Result}.");
+            _studioEvents.Publish("diagnostic", "action.error", "warning", normalized.GameLoop,
+                $"unit={actionError.UnitTag};ability={actionError.AbilityId};result={actionError.Result}");
+        }
+
+        var scvTrainingOrderObserved = _gameData.ScvTrainAbilityId is > 0 && normalized.Units.Any(unit =>
+            unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible &&
+            (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase)) &&
+            unit.Orders.Any(order => order.AbilityId == _gameData.ScvTrainAbilityId.Value));
+        var startingTownHall = normalized.Units
+            .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !normalized.DeadUnitTags.Contains(unit.Tag) &&
+                (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(unit => unit.Tag)
+            .FirstOrDefault();
+        var startingTownHallKind = startingTownHall?.UnitKind ?? "missing";
+        if (!string.Equals(_lastStartingTownHallKind, startingTownHallKind, StringComparison.Ordinal))
+        {
+            Console.WriteLine($"[Orbital] OBSERVED starting town hall: tag={startingTownHall?.Tag.ToString() ?? "none"}, kind={startingTownHallKind}, loop={normalized.GameLoop}.");
+            _lastStartingTownHallKind = startingTownHallKind;
+        }
+        if (scvTrainingOrderObserved && !_scvTrainingOrderObserved)
+            Console.WriteLine("[Opening] OBSERVED: Command Center has an SCV training order.");
+        _scvTrainingOrderObserved = scvTrainingOrderObserved;
+        _initialScvProductionObserved |= scvTrainingOrderObserved;
+
+        var initialWorkerPathingQuery = _workerAssignments.PrepareInitialPathingQuery(normalized);
+        var assignments = _workerAssignments.Reconcile(
+            normalized, Terran.Economy.Settings.MineralSaturation);
+        var actions = new List<SC2APIProtocol.Action>();
+        IReadOnlyList<StrategicJobDecision> scoutDecisions = Array.Empty<StrategicJobDecision>();
+        ulong? plannerReservedScoutTag = null;
+        var usePlannerScoutReservation = SpatialMap is not null;
+        executive.Advance(ExecutiveStage.ExecutiveReview);
+        if (SpatialMap is not null)
+        {
+            scoutDecisions = _strategicPlanner.Evaluate(
+                _advisorJobBoard, normalized.GameLoop, normalized, SpatialMap);
+            var acceptedScout = scoutDecisions.FirstOrDefault(decision =>
+                decision.IsAccepted && decision.Posting.Kind == StrategicJobKind.Scout);
+            plannerReservedScoutTag = acceptedScout?.Reservation?.UnitTag;
+
+            var delegatedScoutTags = plannerReservedScoutTag is ulong delegatedScoutTag
+                ? new HashSet<ulong> { delegatedScoutTag }
+                : null;
+            var scoutExecution = StrategicScoutActionExecutor.Execute(
+                scoutDecisions, normalized, SpatialMap, _gameData, SpatialTerrain, PathingTopology,
+                delegatedUnitTags: delegatedScoutTags);
+            actions.AddRange(scoutExecution.Actions);
+            if (_writeDiagnostics)
+                foreach (var rejected in scoutExecution.Decisions.Where(decision => !decision.IsAccepted))
+                    _openingTrace.RecordEvent("StrategicJobRejected", normalized.GameLoop,
+                        $"job={rejected.Posting.Id};reason={rejected.Reason}");
+        }
+        var buildingAccessActions = new List<SC2APIProtocol.Action>();
+        SC2APIProtocol.Action sprayAction = null;
+        SC2APIProtocol.Action builderAction = null;
+        SC2APIProtocol.Action marineAction = null;
+        SC2APIProtocol.Action orbitalSupportAction = null;
+        SC2APIProtocol.Action secondBarracksAction = null;
+        SC2APIProtocol.Action supplyDepotExpansionAction = null;
+        SC2APIProtocol.Action thirdSupplyDepotPendingAction = null;
+        SC2APIProtocol.Action expansionCommandCenterAction = null;
+        SC2APIProtocol.Action barracksProductionAction = null;
+        IReadOnlyList<SC2APIProtocol.Action> refineryActions = Array.Empty<SC2APIProtocol.Action>();
+        RequestQuery sprayQuery = null;
+        var allowWorkerActions = true;
+        var reservedInfrastructureMinerals = 0u;
+        uint reservedProductionMinerals = 0;
+        // Opening production and mineral routing are independent commands: the
+        // first SCV request must not suppress the starting workers' first-frame spread.
+        var allowWorkerBehaviorActions = true;
+        // Compute this once per frame at the enclosing scope: the Orbital morph
+        // observation gates infrastructure below and must be visible outside
+        // the optional worker-action block.
+        var orbitalAbility = _gameData.OrbitalUpgradeAbilityId;
+        var orbitalMorphingObserved = startingTownHall is not null &&
+            (startingTownHallKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+             orbitalAbility is > 0 && startingTownHall.Orders.Any(order => order.AbilityId == orbitalAbility.Value));
+
+        // Existing opening controllers are being migrated into FSM capabilities.
+        // Until that migration is complete, their gates suppress competing actions,
+        // but never suppress the frame's ordered FSM processing groups.
+        var rallyAction = _openingRally.TryCreateAction(
+            normalized,
+            SpatialMap,
+            _gameData,
+            assignments,
+            _openingBuilder.IsDispatched);
+        _openingRallyActionSubmitted = rallyAction is not null;
+        if (rallyAction is not null)
+        {
+            actions.Add(rallyAction);
+            // Rallying the Command Center does not conflict with explicit
+            // starting-worker mineral assignments; keep first-frame routing live.
+            _pendingQuery = null;
+        }
+        var orbitalBarracksReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible && unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+            unit.BuildProgress >= 1f);
+        var orbitalDepotReady = normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible &&
+            (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+             unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+            unit.BuildProgress >= 1f);
+        uint orbitalMineralReservation = 0;
+        uint reservedStrategicMinerals = 0;
+        uint depotTwoReservedMinerals = 0;
+        uint depotThreeReservedMinerals = 0;
+
+        // Worker rally is an optimization, not a production prerequisite. If
+        // the optional rally ability is unavailable or rejected, the opening
+        // must still produce its first SCV and continue toward construction.
+        if (allowWorkerActions)
+        {
+            var observedBarracks = normalized.Units.Where(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag)).ToArray();
+            var secondBarracksUnderConstruction = observedBarracks.Length >= 2 &&
+                observedBarracks.Any(unit => unit.BuildProgress < 1f);
+            var observedDepotCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag));
+            var secondBarracksComplete = observedBarracks.Length >= 2 &&
+                observedBarracks.All(unit => unit.BuildProgress >= 1f);
+            var designatedAreaStreaming = _buildings.HasDesignatedCommandCenterConstructionArea &&
+                _buildings.Buildings.Any(building =>
+                    building.TownHallExpansionState == "StreamingCommandCenters");
+            var expansionProductionEnabledForBudget = _buildings.HasDesignatedCommandCenterConstructionArea
+                ? designatedAreaStreaming
+                : orbitalMorphingObserved && _secondBarracks.IsComplete;
+            // Reserve for each next expansion while the designated Town Hall is
+            // in streaming mode. A completed cycle immediately becomes eligible
+            // for the next one rather than imposing a two-town-hall ceiling.
+            var expansionCommandCenterPending = expansionProductionEnabledForBudget &&
+                (!_expansionCommandCenter.IsStarted || _expansionCommandCenter.IsComplete);
+
+            reservedProductionMinerals = Terran.Economy.GetReservedMinerals(
+                new EconomyAdvisorFrame(
+                    expansionCommandCenterPending,
+                    _secondBarracks.RequiresSupplyDepot || secondBarracksUnderConstruction,
+                    !_openingBuilder.IsCompleted && _openingBuilder.BuilderTag is null,
+                    _openingBuilder.IsBuildSubmitted && !_openingMarine.IsBuildSubmitted,
+                    _openingMarine.BarracksComplete && normalized.Units.Any(unit =>
+                        unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                        unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                        !unit.HasOrders && !normalized.DeadUnitTags.Contains(unit.Tag)),
+                    !_openingBuilder.IsBuildSubmitted && !_openingBuilder.IsCompleted),
+                new EconomyAdvisorCosts(
+                    _gameData.CommandCenterMineralCost,
+                    _gameData.SupplyDepotMineralCost,
+                    _gameData.ScvMineralCost,
+                    _gameData.BarracksMineralCost,
+                    _gameData.MarineMineralCost));
+
+            // Keep the active follow-up Depot affordable before refilling SCVs
+            // or optional Marine queues. The third Depot is not represented by
+            // the older advisor frame, so reserve its cost explicitly as soon
+            // as Depot two is complete and until Depot three is observed complete.
+            var followupDepotPending = _secondBarracks.RequiresSupplyDepot && !_thirdSupplyDepot.IsCompleted;
+            if (followupDepotPending)
+                reservedProductionMinerals = Math.Max(
+                    reservedProductionMinerals, _gameData.SupplyDepotMineralCost);
+
+            // The Orbital and the first Refinery are strategic commitments, not
+            // optional spending capacity. Include both before any follow-on build
+            // or Marine controller receives its mineral budget.
+            // The Orbital is the first post-Barracks mineral commitment. Do not let
+            // optional Marine or follow-on infrastructure reservations starve it.
+            // Reserve the Orbital from the first Barracks commitment. The
+            // Command Center queue remains available only while a new SCV can
+            // finish before the observed/estimated Barracks completion window.
+            var townHallUpgradeReady = startingTownHall is not null &&
+                _buildings.Buildings.Any(building =>
+                    building.UnitTag == startingTownHall.Tag &&
+                    building.TownHallUpgradeState == "UpgradeReady");
+            var firstBarracks = observedBarracks.FirstOrDefault();
+            var barracksBuildTimeSeconds = _gameData.TryGetUniqueUnit("Barracks", out var barracksFacts)
+                ? barracksFacts.BuildTimeSeconds
+                : 0f;
+            var scvBuildTimeSeconds = _gameData.TryGetUniqueUnit("SCV", out var scvFacts)
+                ? scvFacts.BuildTimeSeconds
+                : 0f;
+            float? barracksRemainingSeconds = null;
+            if (firstBarracks is not null)
+            {
+                barracksRemainingSeconds = firstBarracks.BuildProgress >= 1f
+                    ? 0f
+                    : barracksBuildTimeSeconds > 0
+                        ? barracksBuildTimeSeconds * Math.Clamp(1f - firstBarracks.BuildProgress, 0f, 1f)
+                        : null;
+            }
+            else if (_openingMarine.BarracksBuildRequestGameLoop is uint barracksRequestLoop &&
+                     barracksBuildTimeSeconds > 0)
+            {
+                // Until the structure first appears in an observation, estimate
+                // its remaining duration from the accepted build-request loop.
+                var elapsedSeconds = (normalized.GameLoop - barracksRequestLoop) /
+                    (float)OpeningConstructionSchedule.GameLoopsPerSecond;
+                barracksRemainingSeconds = Math.Max(0f, barracksBuildTimeSeconds - elapsedSeconds);
+            }
+
+            var firstBarracksCommitted = _openingMarine.IsBuildSubmitted || orbitalBarracksReady;
+            var scvQueueMustDrainForOrbital = firstBarracksCommitted &&
+                (townHallUpgradeReady ||
+                 barracksRemainingSeconds is null ||
+                 scvBuildTimeSeconds <= 0 ||
+                 barracksRemainingSeconds <= scvBuildTimeSeconds + 0.5f);
+            ulong? orbitalReservedCommandCenter = scvQueueMustDrainForOrbital &&
+                startingTownHall is not null &&
+                startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase)
+                    ? startingTownHall.Tag
+                    : null;
+            var orbitalUpgradeCost = _gameData.OrbitalUpgradeMineralCost;
+            // Save the Orbital's 150 minerals as soon as the Barracks build is
+            // committed, but keep the Command Center producing SCVs while each
+            // SCV can finish before the Barracks. Close the queue only at the
+            // calculated handoff window so Orbital can start on the completion frame.
+            orbitalMineralReservation = Terran.Economy.ShouldEnableOrbitalMorph() &&
+                firstBarracksCommitted && orbitalAbility is > 0 && orbitalUpgradeCost > 0
+                    ? orbitalUpgradeCost
+                    : 0u;
+            var orbitalReservationReason = !firstBarracksCommitted ? "first-barracks-not-committed" :
+                orbitalReservedCommandCenter is null ? "scv-production-window-open" :
+                !townHallUpgradeReady ? "draining-command-center-for-orbital-handoff" :
+                orbitalAbility is not > 0 ? "orbital-ability-unavailable-or-ambiguous" :
+                orbitalUpgradeCost == 0 ? "orbital-cost-unavailable" :
+                normalized.Minerals < orbitalUpgradeCost ? "accumulating-orbital-minerals" :
+                "orbital-priority-reserved";
+            var firstRefineryPending = orbitalMorphingObserved &&
+                _gameData.RefineryMineralCost > 0 &&
+                !normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Self &&
+                    unit.IsLiveVisible && unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
+                    !normalized.DeadUnitTags.Contains(unit.Tag)) &&
+                normalized.Units.Any(unit => unit.Alliance == UnitAlliance.Neutral &&
+                    unit.IsLiveVisible && unit.UnitKind.Contains("Geyser", StringComparison.OrdinalIgnoreCase) &&
+                    !normalized.DeadUnitTags.Contains(unit.Tag));
+            var firstRefineryMineralReservation = firstRefineryPending
+                ? _gameData.RefineryMineralCost
+                : 0u;
+            reservedStrategicMinerals = (uint)Math.Min(
+                uint.MaxValue,
+                (ulong)orbitalMineralReservation + firstRefineryMineralReservation);
+            reservedInfrastructureMinerals = (uint)Math.Min(
+                uint.MaxValue,
+                (ulong)reservedProductionMinerals + reservedStrategicMinerals);
+            var reservedScvMinerals = reservedInfrastructureMinerals;
+
+            // While building Depot two, preserve the next Depot's cost as well.
+            // Once Depot two is observed complete, its own cost is released and
+            // the same reserve protects Depot three instead.
+            var remainingFollowupReserve = reservedProductionMinerals > _gameData.SupplyDepotMineralCost
+                ? reservedProductionMinerals - _gameData.SupplyDepotMineralCost
+                : 0u;
+            depotTwoReservedMinerals = (uint)Math.Min(
+                uint.MaxValue,
+                (ulong)reservedStrategicMinerals + remainingFollowupReserve + _gameData.SupplyDepotMineralCost);
+            depotThreeReservedMinerals = (uint)Math.Min(
+                uint.MaxValue,
+                (ulong)reservedStrategicMinerals + remainingFollowupReserve);
+            var orbitalDiagnostic = $"reservation={orbitalReservedCommandCenter?.ToString() ?? "none"};reason={orbitalReservationReason};firstTag={startingTownHall?.Tag.ToString() ?? "none"};firstKind={startingTownHallKind};depot={orbitalDepotReady};barracks={orbitalBarracksReady};ability={orbitalAbility?.ToString() ?? "none"};cost={orbitalUpgradeCost};minerals={normalized.Minerals};reserved={reservedProductionMinerals};refineryReserve={firstRefineryMineralReservation};scvReserve={reservedScvMinerals};loop={normalized.GameLoop}";
+            if (!string.Equals(_lastOrbitalDiagnostic, orbitalDiagnostic, StringComparison.Ordinal))
+            {
+                Console.WriteLine("[Orbital] " + orbitalDiagnostic + ".");
+                _lastOrbitalDiagnostic = orbitalDiagnostic;
+            }
+            var productionAction = _openingProduction.TryCreateScvTrainingAction(
+                normalized, _gameData, reservedScvMinerals, orbitalReservedCommandCenter,
+                barracksRemainingSeconds: firstBarracksCommitted
+                    ? barracksRemainingSeconds ?? 0f
+                    : null,
+                scvBuildTimeSeconds: scvBuildTimeSeconds);
+            _openingProductionActionSubmitted = productionAction is not null;
+            if (productionAction is not null)
+            {
+                var command = productionAction.ActionRaw.UnitCommand;
+                Console.WriteLine($"[Opening] Requesting first SCV: Command Center={command.UnitTags[0]}, ability={command.AbilityId}, minerals={normalized.Minerals}, supply={normalized.FoodUsed}/{normalized.FoodCap}.");
+                actions.Add(productionAction);
+                _pendingQuery = null;
+                // SCV production uses the Command Center; construction, gas,
+                // and Orbital controllers use separate units. Do not let one
+                // production request suppress the rest of the opening schedule.
+            }
+        }
+        else
+        {
+            _openingProductionActionSubmitted = false;
+        }
+
+        if (allowWorkerActions)
+        {
+            sprayQuery = _openingSpray.PrepareAbilityQuery(
+                normalized,
+                assignments,
+                _gameData,
+                _initialScvProductionObserved,
+                _workerAssignments);
+            sprayAction = _openingSpray.TryCreateAction(normalized, _gameData, _workerAssignments);
+            _openingSprayActionSubmitted = sprayAction is not null;
+
+            var supplementalWorkerTags = assignments.Values
+                .Where(assignment => assignment.IsSupplementalWorker)
+                .Select(assignment => assignment.WorkerTag)
+                .ToHashSet();
+            var constructionCrewTags = _unitBehaviors.Contexts
+                .Where(context => context.IsWorker &&
+                                  context.Capabilities.Contains(UnitBehaviorCatalog.ConstructionFsm) &&
+                                  supplementalWorkerTags.Contains(context.UnitTag))
+                .Select(context => context.UnitTag)
+                .ToHashSet();
+
+            // If the opening has not yet produced any supplemental mineral slots,
+            // retain a bootstrap crew rather than blocking the first construction.
+            if (constructionCrewTags.Count == 0)
+            {
+                constructionCrewTags = _unitBehaviors.Contexts
+                    .Where(context => context.IsWorker &&
+                                      context.Capabilities.Contains(UnitBehaviorCatalog.ConstructionFsm))
+                    .Select(context => context.UnitTag)
+                    .ToHashSet();
+            }
+
+            builderAction = _openingBuilder.TryCreateAction(
+                normalized,
+                SpatialMap,
+                _gameData,
+                _workerAssignments,
+                constructionCrewTags,
+                _buildJobs);
+            _openingBuilderActionSubmitted = builderAction is not null;
+            if (builderAction is not null)
+            {
+                var command = builderAction.ActionRaw.UnitCommand;
+                var target = command.TargetWorldSpacePos is null
+                    ? "none"
+                    : $"({command.TargetWorldSpacePos.X:F1},{command.TargetWorldSpacePos.Y:F1})";
+                Console.WriteLine($"[Opening] Builder SCV {_openingBuilder.BuilderTag}: ability={command.AbilityId}, target={target}.");
+            }
+
+            // Refresh after a builder reservation so this frame cannot emit a
+            // stale gather intent for the worker now committed to construction.
+            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
+            if (_openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted)
+            {
+                // Stage a second SCV as soon as the Depot build is submitted.
+                // It travels while the Depot completes and minerals accumulate;
+                // the Barracks command itself remains gated on Depot completion
+                // and the full 150-mineral cost after strategic reservations.
+                // The first Marine is not allowed to consume minerals already committed to
+                // the starting Command Center's Orbital morph (or higher-priority
+                // infrastructure). Releasing this reserve here can spend the exact
+                // 150 minerals before the independent Orbital action is submitted.
+                // The advisor reserves the first Barracks as soon as the
+                // Depot build starts until the Barracks order is submitted, so SCV production cannot consume its 150 minerals.
+                // The reservation includes the Barracks' own cost. The controller separately
+                // checks that cost before submitting the build, so exclude that
+                // self-reservation while preserving the Orbital commitment.
+                var firstBarracksBuildPending = _openingBuilder.IsBuildSubmitted && !_openingMarine.IsBuildSubmitted;
+                var barracksActionReservedMinerals = firstBarracksBuildPending
+                    ? reservedInfrastructureMinerals > _gameData.BarracksMineralCost
+                        ? reservedInfrastructureMinerals - _gameData.BarracksMineralCost
+                        : 0u
+                    : reservedInfrastructureMinerals;
+                var marineReservedMinerals = Terran.Economy.GetMarineActionReservedMinerals(
+                    barracksActionReservedMinerals,
+                    firstMarineReady: _openingMarine.BarracksComplete && !_openingMarine.MarineTrainingStarted,
+                    firstMarineObserved: _openingMarine.MarineObserved,
+                    marineMineralCost: _gameData.MarineMineralCost);
+                var observedMarineCount = normalized.Units.Count(unit =>
+                    unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                    unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+                    !normalized.DeadUnitTags.Contains(unit.Tag));
+                uint? depotDesiredArrivalLoop = null;
+                var firstDepot = _openingBuilder.Placement is MapPoint depotSite
+                    ? normalized.Units
+                        .Where(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                            (unit.UnitKind.Equals("SupplyDepot", StringComparison.OrdinalIgnoreCase) ||
+                             unit.UnitKind.Equals("SupplyDepotLowered", StringComparison.OrdinalIgnoreCase)) &&
+                            !normalized.DeadUnitTags.Contains(unit.Tag))
+                        .OrderBy(unit => Math.Pow(unit.PositionX - depotSite.X, 2) + Math.Pow(unit.PositionY - depotSite.Y, 2))
+                        .FirstOrDefault()
+                    : null;
+                if (_openingBuilder.IsCompleted)
+                {
+                    depotDesiredArrivalLoop = normalized.GameLoop;
+                }
+                else if (firstDepot is not null &&
+                         _gameData.TryGetUniqueUnit("SupplyDepot", out var depotFacts) &&
+                         depotFacts.BuildTimeSeconds > 0)
+                {
+                    depotDesiredArrivalLoop = normalized.GameLoop +
+                        OpeningConstructionSchedule.EstimateRemainingBuildGameLoops(
+                            depotFacts.BuildTimeSeconds, firstDepot.BuildProgress);
+                }
+
+                marineAction = observedMarineCount < _desiredMarineCount
+                    ? _openingMarine.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments,
+                        preferredBuilderTag: null,
+                        buildJobs: _buildJobs,
+                        reservedMinerals: marineReservedMinerals,
+                        excludedBuilderTag: _openingBuilder.BuilderTag,
+                        allowConstruction: _openingBuilder.IsCompleted,
+                        allowBuilderStaging: depotDesiredArrivalLoop.HasValue,
+                        allowMarineTraining: orbitalMorphingObserved,
+                        desiredBuilderArrivalGameLoop: depotDesiredArrivalLoop,
+                        mineralIncomePerGameLoop: _openingBuilder.MineralIncomePerGameLoop)
+                    : null;
+                _openingMarineActionSubmitted = marineAction is not null;
+            }
+            else
+            {
+                _openingMarineActionSubmitted = false;
+            }
+
+            // Do not leave the original Depot SCV reserved while another worker
+            // constructs the first Barracks. Recycle it immediately when it is not
+            // the Barracks builder; if it is the same worker, release after handoff.
+            _openingBuilder.ReleaseBuilderIfNotAssignedToBarracks(
+                _workerAssignments, _openingMarine.BuilderTag);
+            if (_openingMarine.BarracksComplete)
+                _openingBuilder.ReleaseBuilderAfterBarracksHandoff(_workerAssignments);
+
+            var firstBarracksObserved = normalized.Units.Any(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag));
+
+            if (firstBarracksObserved)
+            {
+                // The Barracks controller itself is the timing gate: it keeps
+                // every SCV mining until the next 150 minerals are available
+                // after strategic reservations, then selects the nearest legal
+                // worker and starts the placement trip. A fixed post-Barracks
+                // delay only wastes mineral income and delays the second facility.
+                secondBarracksAction = _secondBarracks.TryCreateAction(
+                    normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags, _buildJobs,
+                    reservedMinerals: reservedInfrastructureMinerals);
+                _secondBarracksActionSubmitted = secondBarracksAction is not null;
+                assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
+
+                // Start Depot two as soon as Barracks two is observed under
+                // construction, then start Depot three only after Depot two is
+                // observed complete. Both builders preserve the strategic reserve.
+                if (_secondBarracks.RequiresSupplyDepot && !_supplyDepotExpansion.IsCompleted)
+                {
+                    supplyDepotExpansionAction = _supplyDepotExpansion.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
+                        _buildJobs, _openingMarine.ReleasedBuilderTag, releaseBuilderOnCompletion: true,
+                        reservedMinerals: depotTwoReservedMinerals);
+                    _supplyDepotExpansionActionSubmitted = supplyDepotExpansionAction is not null;
+                    // Keep Barracks three gated until both sequential follow-up Depots are observed complete.
+                    _thirdSupplyDepotActionSubmitted = false;
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
+                }
+                else if (_secondBarracks.RequiresSupplyDepot && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted)
+                {
+                    // Depot two is the post-Orbital expansion Depot. Build Depot
+                    // three next, reusing the released Depot-two worker when possible;
+                    // the second Refinery remains gated on Depot three completing.
+                    supplyDepotExpansionAction = null;
+                    _thirdSupplyDepotActionSubmitted = false;
+                    var thirdDepotAction = _thirdSupplyDepot.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
+                        _buildJobs, _supplyDepotExpansion.BuilderTag, releaseBuilderOnCompletion: true,
+                        reservedMinerals: depotThreeReservedMinerals);
+                    _thirdSupplyDepotActionSubmitted = thirdDepotAction is not null;
+                    thirdSupplyDepotPendingAction = thirdDepotAction;
+                    if (_thirdSupplyDepot.IsCompleted)
+                        _secondBarracks.NotifySupplyDepotCompleted(_thirdSupplyDepot.BuilderTag);
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
+                }
+                else
+                {
+                    _supplyDepotExpansionActionSubmitted = false;
+                    _thirdSupplyDepotActionSubmitted = false;
+                }
+
+                // Do not spend on the four-Barracks expansion or a second town hall
+                // until SC2 has observed the starting Command Center's Orbital morph
+                // order. This keeps the 150-mineral upgrade ahead of optional builds.
+                var designatedAreaStreaming = _buildings.HasDesignatedCommandCenterConstructionArea &&
+                    _buildings.Buildings.Any(building =>
+                        building.TownHallExpansionState == "StreamingCommandCenters");
+                var expansionProductionEnabled = _buildings.HasDesignatedCommandCenterConstructionArea
+                    ? designatedAreaStreaming
+                    : orbitalMorphingObserved && _secondBarracks.IsComplete;
+                if (expansionProductionEnabled)
+                {
+                    expansionCommandCenterAction = _expansionCommandCenter.TryCreateAction(
+                        normalized, SpatialMap, _gameData, _workerAssignments, constructionCrewTags,
+                        _buildJobs, _secondBarracks.PreferredBuilderTag,
+                        _buildings.DesignatedCommandCenterConstructionAreaCenter,
+                        _buildings.DesignatedCommandCenterConstructionAreaRadius,
+                        reservedStrategicMinerals);
+                    _expansionCommandCenterActionSubmitted = expansionCommandCenterAction is not null;
+                    if (_expansionCommandCenter.IsStarted)
+                        _secondBarracks.NotifyCommandCenterStarted();
+                    assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
+                }
+                else
+                {
+                    _expansionCommandCenterActionSubmitted = false;
+                }
+            }
+            else
+            {
+                _secondBarracksActionSubmitted = false;
+                _supplyDepotExpansionActionSubmitted = false;
+                _thirdSupplyDepotActionSubmitted = false;
+            }
+
+            // The Command Center FSM is authoritative: exactly one completed
+            // Barracks, a completed Depot, no SCV training order, and no expansion-area
+            // conflict. Marine production is deliberately not an Orbital prerequisite.
+            var orbitalCoordinatorBlockers = string.Join(",",
+                new[] {
+                    builderAction is not null ? "builder" : null
+                }.Where(value => value is not null));
+            // The Orbital morph is an independent Command Center action. Do not
+            // suppress it because an SCV is moving/building elsewhere: doing so
+            // allowed the construction worker's repeated commands to starve the
+            // one-time 150-mineral upgrade indefinitely. The controller still
+            // verifies the observed Depot/Barracks prerequisites and SCV queue.
+            orbitalSupportAction = _orbitalSupport.TryCreateAction(
+                normalized, _gameData,
+                allowOrbitalUpgrade: Terran.Economy.ShouldEnableOrbitalMorph() &&
+                    startingTownHall is not null &&
+                    startingTownHallKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) &&
+                    orbitalDepotReady && orbitalBarracksReady,
+                permittedCommandCenterTag: startingTownHall?.Tag,
+                reservedOrbitalTags: Terran.Economy.Settings.MuleCallDownPolicy.Equals(
+                    "PreserveScan", StringComparison.OrdinalIgnoreCase)
+                        ? _buildings.ScanReservedOrbitalTags
+                        : null,
+                reservedEnergyForScan: Terran.Economy.Settings.MuleCallDownPolicy.Equals(
+                    "PreserveScan", StringComparison.OrdinalIgnoreCase)
+                        ? Terran.Intelligence.GetMuleScanEnergyReserve(economyAlsoRequestsPreservation: true)
+                        : 0u,
+                allowMules: Terran.Economy.Settings.EnableMules);
+            _orbitalSupportActionSubmitted = orbitalSupportAction is not null;
+            if (orbitalSupportAction is not null)
+            {
+                var command = orbitalSupportAction.ActionRaw.UnitCommand;
+                Console.WriteLine($"[Orbital] SUBMIT: unit={string.Join(",", command.UnitTags)}, ability={command.AbilityId}, minerals={normalized.Minerals}, reserved={reservedInfrastructureMinerals}, loop={normalized.GameLoop}.");
+            }
+
+            // Gas infrastructure starts only after the starting Orbital morph
+            // order is observed. Each geyser owns an independent FSM; construction
+            // targets the geyser unit tag and completed Refineries receive up to three SCVs.
+            var friendlyTownHallCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !normalized.DeadUnitTags.Contains(unit.Tag) &&
+                unit.BuildProgress >= 1f &&
+                (unit.UnitKind.Equals("CommandCenter", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("OrbitalCommand", StringComparison.OrdinalIgnoreCase) ||
+                 unit.UnitKind.Equals("PlanetaryFortress", StringComparison.OrdinalIgnoreCase)));
+            var completedRefineryCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !normalized.DeadUnitTags.Contains(unit.Tag) &&
+                unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase));
+            var refineryUnderConstruction = normalized.Units.Any(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Refinery", StringComparison.OrdinalIgnoreCase) &&
+                unit.BuildProgress < 1f && !normalized.DeadUnitTags.Contains(unit.Tag));
+            // Refineries are unlocked only after SC2 exposes the starting
+            // Command Center's Orbital morph order. The third Supply Depot must
+            // be complete before the second geyser is taken.
+            var refineryConstructionAllowed = Sc2RefineryProgressionPolicy.ShouldConstruct(
+                orbitalBarracksReady,
+                orbitalMorphingObserved,
+                completedRefineryCount,
+                _thirdSupplyDepot.IsCompleted,
+                refineryUnderConstruction);
+            refineryActions = _refineries.ReconcileAndCreateActions(
+                normalized, _gameData, _workerAssignments, constructionCrewTags,
+                allowConstruction: refineryConstructionAllowed,
+                reservedMinerals: orbitalMineralReservation);
+            assignments = _workerAssignments.Reconcile(normalized, allowLongDistanceMining: Terran.Economy.Settings.AllowLongDistanceMining);
+
+            // Secondary Barracks remain idle until the starting Orbital morph is
+            // observed; the opening objective is early Orbital energy, not Marines.
+            if (orbitalSupportAction is null && secondBarracksAction is null &&
+                expansionCommandCenterAction is null && builderAction is null &&
+                marineAction is null && sprayAction is null)
+            {
+                barracksProductionAction = _barracksProduction.TryCreateMarineTrainingAction(
+                    normalized, _gameData, _buildJobs, reservedInfrastructureMinerals,
+                    desiredMarineCount: _desiredMarineCount);
+                _barracksProductionActionSubmitted = barracksProductionAction is not null;
+            }
+            else
+            {
+                _barracksProductionActionSubmitted = false;
+            }
+
+            var placementQuery = _openingBuilder.TakePlacementQuery(_gameData);
+            var marinePlacementQuery = _openingBuilder.IsBuildSubmitted || _openingBuilder.IsCompleted
+                ? _openingMarine.TakePlacementQuery(_gameData, _constructionSiteSafety, normalized.GameLoop)
+                : null;
+            var secondBarracksPlacementQuery = _secondBarracks.TakePlacementQuery(_gameData);
+            var supplyDepotExpansionPlacementQuery = _secondBarracks.RequiresSupplyDepot && !_supplyDepotExpansion.IsCompleted
+                ? _supplyDepotExpansion.TakePlacementQuery(_gameData)
+                : null;
+            var thirdSupplyDepotPlacementQuery = _secondBarracks.RequiresSupplyDepot && _supplyDepotExpansion.IsCompleted && !_thirdSupplyDepot.IsCompleted
+                ? _thirdSupplyDepot.TakePlacementQuery(_gameData)
+                : null;
+            var expansionCommandCenterPlacementQuery = _secondBarracks.IsComplete && !_expansionCommandCenter.IsComplete
+                ? _expansionCommandCenter.TakePlacementQuery(_gameData)
+                : null;
+            _openingBuilderPlacementCount = placementQuery?.Placements.Count ?? 0;
+            _openingMarinePlacementCount = marinePlacementQuery?.Placements.Count ?? 0;
+            _secondBarracksPlacementCount = secondBarracksPlacementQuery?.Placements.Count ?? 0;
+            _supplyDepotExpansionPlacementCount = supplyDepotExpansionPlacementQuery?.Placements.Count ?? 0;
+            _thirdSupplyDepotPlacementCount = thirdSupplyDepotPlacementQuery?.Placements.Count ?? 0;
+            _expansionCommandCenterPlacementCount = expansionCommandCenterPlacementQuery?.Placements.Count ?? 0;
+            if (sprayQuery is not null || placementQuery is not null || marinePlacementQuery is not null || secondBarracksPlacementQuery is not null || supplyDepotExpansionPlacementQuery is not null || thirdSupplyDepotPlacementQuery is not null || expansionCommandCenterPlacementQuery is not null)
+            {
+                _pendingQuery = new RequestQuery();
+                if (sprayQuery is not null)
+                    _pendingQuery.Abilities.Add(sprayQuery.Abilities);
+                if (placementQuery is not null)
+                    _pendingQuery.Placements.Add(placementQuery.Placements);
+                if (marinePlacementQuery is not null)
+                    _pendingQuery.Placements.Add(marinePlacementQuery.Placements);
+                if (secondBarracksPlacementQuery is not null)
+                    _pendingQuery.Placements.Add(secondBarracksPlacementQuery.Placements);
+                if (supplyDepotExpansionPlacementQuery is not null)
+                    _pendingQuery.Placements.Add(supplyDepotExpansionPlacementQuery.Placements);
+                if (thirdSupplyDepotPlacementQuery is not null)
+                    _pendingQuery.Placements.Add(thirdSupplyDepotPlacementQuery.Placements);
+                if (expansionCommandCenterPlacementQuery is not null)
+                    _pendingQuery.Placements.Add(expansionCommandCenterPlacementQuery.Placements);
+            }
+            else
+            {
+                _pendingQuery = null;
+            }
+        }
+        else
+        {
+            _openingSprayActionSubmitted = false;
+            _openingBuilderActionSubmitted = false;
+            _openingMarineActionSubmitted = false;
+            _secondBarracksActionSubmitted = false;
+            _supplyDepotExpansionActionSubmitted = false;
+            _thirdSupplyDepotActionSubmitted = false;
+            _expansionCommandCenterActionSubmitted = false;
+            _orbitalSupportActionSubmitted = false;
+            _barracksProductionActionSubmitted = false;
+        }
+
+        if (initialWorkerPathingQuery is not null)
+        {
+            _pendingQuery ??= new RequestQuery();
+            _pendingQuery.Pathing.Add(initialWorkerPathingQuery.Pathing);
+        }
+
+        var currentWorkerAssignments = assignments.Values
+            .OrderBy(item => item.WorkerTag)
+            .ToDictionary(item => item.WorkerTag, item => item.Generation);
+
+        foreach (var previous in _currentWorkerAssignmentGenerations.OrderBy(item => item.Key))
+        {
+            if (currentWorkerAssignments.TryGetValue(previous.Key, out var currentGeneration) &&
+                currentGeneration == previous.Value)
+                continue;
+
+            var releaseReason = _workerAssignments.IsReserved(previous.Key)
+                ? "reserved"
+                : normalized.DeadUnitTags.Contains(previous.Key)
+                    ? "dead"
+                    : "assignment-removed-or-replaced";
+            _openingTrace.RecordEvent("WorkerAssignmentReleased", normalized.GameLoop,
+                $"worker={previous.Key};generation={previous.Value};reason={releaseReason}");
+        }
+
+        foreach (var assignment in assignments.Values.OrderBy(item => item.WorkerTag))
+        {
+            if (_currentWorkerAssignmentGenerations.TryGetValue(assignment.WorkerTag, out var previousGeneration) &&
+                previousGeneration == assignment.Generation)
+                continue;
+
+            Console.WriteLine($"[Economy] SCV {assignment.WorkerTag} -> mineral {assignment.MineralTag}; town hall {assignment.TownHallTag}; generation {assignment.Generation}.");
+            _openingTrace.RecordEvent("WorkerAssignment", normalized.GameLoop,
+                $"worker={assignment.WorkerTag};mineral={assignment.MineralTag};townHall={assignment.TownHallTag};generation={assignment.Generation};supplemental={assignment.IsSupplementalWorker}");
+        }
+
+        _currentWorkerAssignmentGenerations.Clear();
+        foreach (var assignment in currentWorkerAssignments)
+            _currentWorkerAssignmentGenerations.Add(assignment.Key, assignment.Value);
+
+        _unitBehaviors.ApplyWorkerAssignments(assignments, normalized.GameLoop);
+        if (_writeDiagnostics && _actualRace == Race.Terran)
+            _workerRouteTrace.RecordFrame(normalized, _unitBehaviors.Contexts, _workerAssignments);
+        // Associate observed structures with their construction jobs after all
+        // construction controllers have reconciled this frame's result evidence.
+        _buildings.Reconcile(normalized, _buildJobs.Jobs, IsResearchAbility,
+            _gameData.ScvTrainAbilityId, _gameData.OrbitalUpgradeAbilityId);
+
+        // The scheduler advances every registered group in declared order even
+        // when an opening gate suppresses outgoing actions for this frame.
+        try
+        {
+            executive.Advance(ExecutiveStage.UnitAi);
+            foreach (var pg in ProcessGroupsThisFrame)
+            {
+                FsmApi.Interaction.Update(pg);
+                if (pg == UnitBehaviorCatalog.StrategyProcessingGroup)
+                {
+                    AdvisorWorkScheduler.Advance(_gameState.Phase);
+                    Terran.Economy.CurrentPhase = _gameState.Phase;
+                }
+            }
+            foreach (var buildingEvent in _buildings.DrainEvents())
+            {
+                if (buildingEvent.Kind == BuildingEventKind.Operational &&
+                    buildingEvent.BuilderWorkerTag is ulong builderTag)
+                {
+                    // The building lifecycle owns the handoff boundary. Return the
+                    // actual worker FSM to Assess so it chooses its next task from
+                    // current observations rather than inheriting a stale mining state.
+                    if (_unitBehaviors.TryGetHandle(builderTag, UnitBehaviorCatalog.WorkerFsm, out var workerHandle))
+                        workerHandle.TransitionTo("Assess");
+                    _workerAssignments.Unreserve(builderTag);
+                    Console.WriteLine($"[Building] {buildingEvent.BuildingId} is operational; SCV {builderTag} returned to worker assessment.");
+                }
+                if (buildingEvent.Kind is BuildingEventKind.RaiseSupplyDepot or BuildingEventKind.LowerSupplyDepot)
+                {
+                    var accessAction = CreateDepotAccessAction(buildingEvent);
+                    if (accessAction is not null)
+                        buildingAccessActions.Add(accessAction);
+                }
+                else if (buildingEvent.Kind == BuildingEventKind.ScanRequested)
+                {
+                    var scanAction = CreateOrbitalScanAction(buildingEvent);
+                    if (scanAction is not null && _buildings.MarkScanSubmitted(buildingEvent.BuildingTag, normalized.GameLoop))
+                        buildingAccessActions.Add(scanAction);
+                }
+            }
+            if (_writeDiagnostics)
+                foreach (var job in _buildJobs.Jobs)
+                    _binaryTrace.RecordBuildJob(job, normalized.GameLoop);
+            _buildJobs.RetireTerminalJobs();
+        }
+        finally
+        {
+            _unitBehaviors.EndFrame();
+        }
+        executive.Complete();
+
+        if (sprayAction is not null)
+            actions.Add(sprayAction);
+        if (builderAction is not null)
+            actions.Add(builderAction);
+        if (marineAction is not null)
+            actions.Add(marineAction);
+        if (supplyDepotExpansionAction is not null)
+            actions.Add(supplyDepotExpansionAction);
+        if (thirdSupplyDepotPendingAction is not null)
+            actions.Add(thirdSupplyDepotPendingAction);
+        if (secondBarracksAction is not null)
+            actions.Add(secondBarracksAction);
+        if (expansionCommandCenterAction is not null)
+            actions.Add(expansionCommandCenterAction);
+        if (barracksProductionAction is not null)
+            actions.Add(barracksProductionAction);
+        if (orbitalSupportAction is not null)
+            actions.Add(orbitalSupportAction);
+        actions.AddRange(refineryActions);
+
+        if (allowWorkerBehaviorActions)
+        {
+            var frameIntents = intents.Drain()
+                .Where(intent => !_workerAssignments.ShouldSuppressIntent(intent.Key, intent.Value))
+                .ToArray();
+            actions.AddRange(Sc2ActionTranslator.Translate(
+                frameIntents,
+                normalized,
+                _gameData.SmartAbilityId,
+                assignments));
+            actions.AddRange(Sc2MarineFsmActionTranslator.Translate(
+                frameIntents, _unitBehaviors.Contexts, normalized, _gameData));
+        }
+
+        // The first live Marine is assigned a dedicated scout role before
+        // combat planning. It may observe the enemy ramp but is never given an
+        // attack target; the remaining Marines share the combat focus and patrol.
+        if (_openingMarine.MarineDeployed)
+        {
+            var scoutTag = _marineRally.GetScoutTag(
+                normalized, _combatWeapons, plannerReservedScoutTag, usePlannerScoutReservation);
+            var excludedScoutTags = scoutTag is ulong dedicatedScoutTag
+                ? new HashSet<ulong> { dedicatedScoutTag }
+                : null;
+            var combatDecisions = MarineCombatPlanner.Plan(
+                normalized, _combatWeapons,
+                excludedUnitTags: excludedScoutTags,
+                constructionAbilityIds: _constructionAbilityIds);
+            actions.AddRange(Sc2MarineCombatActionTranslator.Translate(
+                combatDecisions, normalized, _gameData, _combatWeapons));
+            var liveMarineCount = normalized.Units.Count(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                unit.UnitKind.Equals("Marine", StringComparison.OrdinalIgnoreCase) &&
+                !normalized.DeadUnitTags.Contains(unit.Tag));
+            var fourthMarineInProduction = liveMarineCount >= 3 &&
+                _gameData.MarineTrainAbilityId is > 0 &&
+                normalized.Units.Any(unit =>
+                    unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                    unit.UnitKind.Equals("Barracks", StringComparison.OrdinalIgnoreCase) &&
+                    unit.Orders.Any(order => order.AbilityId == _gameData.MarineTrainAbilityId.Value));
+            SpatialGridSnapshot visibilityGrid = null;
+            if (SpatialMap is not null)
+                Sc2SpatialVisionFactory.TryCreate(observation, SpatialMap, out visibilityGrid);
+            var marineRallyActions = _marineRally.TryCreateActions(
+                normalized, SpatialMap, combatDecisions, _gameData, fourthMarineInProduction,
+                SpatialTerrain, PathingTopology, visibilityGrid,
+                advanceToEnemyStart: _compiledStrategy.ShouldAdvanceToEnemyStart(_goalActionPlan),
+                executeDedicatedScout: true,
+                weaponsByUnitType: _combatWeapons,
+                plannerReservedScoutTag: plannerReservedScoutTag,
+                usePlannerReservation: usePlannerScoutReservation);
+            actions.AddRange(marineRallyActions);
+            if (_writeDiagnostics &&
+                _marineRally.TryTakeScoutStatusChange(out var scoutStatus, out var scoutDetails))
+                _openingTrace.RecordEvent("MarineScout", normalized.GameLoop,
+                    $"status={scoutStatus};{scoutDetails}");
+            if (_writeDiagnostics)
+                foreach (var decision in combatDecisions)
+                    _binaryTrace.RecordMarineDecision(normalized.GameLoop, decision.MarineTag,
+                        decision.TargetTag ?? 0, decision.Action.ToString());
+            if (_writeDiagnostics && combatDecisions.Count > 0)
+            {
+                var firing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Fire);
+                var repositioning = combatDecisions.Count(item =>
+                    item.Action == MarineTacticalAction.RepositionDuringCooldown);
+                var withdrawing = combatDecisions.Count(item => item.Action == MarineTacticalAction.Withdraw);
+                _openingTrace.RecordEvent("MarineCombat", normalized.GameLoop,
+                    $"marines={combatDecisions.Count};fire={firing};reposition={repositioning};withdraw={withdrawing};rally={marineRallyActions.Count}");
+                foreach (var decision in combatDecisions)
+                    _openingTrace.RecordEvent("MarineDecision", normalized.GameLoop,
+                        $"marine={decision.MarineTag};target={decision.TargetTag?.ToString() ?? "none"};action={decision.Action};friendlyDps={decision.FriendlyDps:F2};threatDps={decision.ThreatDps:F2};reason={decision.Reason}");
+            }
+        }
+
+        // Verify that live SCVs are physically progressing toward their current
+        // Move destinations. Do not issue a second command for a worker already
+        // commanded by another controller this frame.
+        var commandedUnitTags = actions
+            .Where(action => action.ActionRaw?.UnitCommand is not null)
+            .SelectMany(action => action.ActionRaw.UnitCommand.UnitTags)
+            .ToHashSet();
+        foreach (var reservedWorker in normalized.Units.Where(unit =>
+                     unit.Alliance == UnitAlliance.Self &&
+                     unit.UnitKind.Equals("SCV", StringComparison.OrdinalIgnoreCase) &&
+                     _workerAssignments.IsReserved(unit.Tag)))
+            commandedUnitTags.Add(reservedWorker.Tag);
+        actions.AddRange(_workerProgressWatchdog.TryCreateActions(
+            normalized, _gameData.MoveAbilityId, commandedUnitTags));
+
+        // Append building access actions after the existing controller action
+        // sequence so per-action result correlation for opening controllers stays stable.
+        actions.AddRange(buildingAccessActions);
+        AdvanceMilitaryOperations(normalized, actions);
+
+        if (_writeDiagnostics)
+        {
+            _openingTrace.RecordFrame(normalized, _openingBuilder, builderAction,
+                marineAction is not null, SpatialMap is not null, _buildJobs.ActiveCount, _expansionCommandCenter,
+                _openingMarine, _secondBarracks, _supplyDepotExpansion, _thirdSupplyDepot);
+            _binaryTrace.RecordFrame(normalized.GameLoop, normalized.Minerals,
+                normalized.FoodUsed, normalized.FoodCap, normalized.Units.Count, actions.Count);
+            _binaryTrace.RecordEconomySnapshot(normalized, _buildJobs.ActiveCount);
+            if (_lastUnitSnapshotGameLoop == 0 || normalized.GameLoop >= _lastUnitSnapshotGameLoop + 8)
+            {
+                _binaryTrace.RecordUnitSnapshots(normalized);
+                _lastUnitSnapshotGameLoop = normalized.GameLoop;
+            }
+            foreach (var action in actions)
+                _binaryTrace.RecordAction(normalized.GameLoop, action);
+        }
+
+        PublishStudioSnapshot(normalized, "running");
+        return actions;
+    }
+
+    public void OnActionResult(IReadOnlyList<SC2APIProtocol.Action> submittedActions, ResponseAction response)
+    {
+        if (response?.Result is { Count: > 0 })
+        {
+            for (var eventIndex = 0; eventIndex < response.Result.Count; eventIndex++)
+            {
+                var command = eventIndex < (submittedActions?.Count ?? 0)
+                    ? submittedActions[eventIndex].ActionRaw?.UnitCommand : null;
+                _studioEvents.Publish("action", "action.result", string.Equals(response.Result[eventIndex].ToString(), "Success", StringComparison.OrdinalIgnoreCase) ? "info" : "warning",
+                    _lastGameLoop, $"index={eventIndex};ability={command?.AbilityId.ToString() ?? "unknown"};result={response.Result[eventIndex]}");
+            }
+        }
+        else
+        {
+            _studioEvents.Publish("action", "action.result.missing", "warning", _lastGameLoop,
+                "SC2 returned no per-action result; acceptance is unknown.");
+        }
+        if (_activeOpener is not null)
+        {
+            if (_writeDiagnostics)
+            {
+                if (response?.Result is { Count: > 0 })
+                {
+                    for (var index = 0; index < response.Result.Count; index++)
+                    {
+                        var command = index < (submittedActions?.Count ?? 0)
+                            ? submittedActions[index].ActionRaw?.UnitCommand
+                            : null;
+                        _binaryTrace.RecordActionResult(
+                            _lastGameLoop, index,
+                            unchecked((uint)(command?.AbilityId ?? 0)),
+                            response.Result[index].ToString());
+                    }
+                }
+                else
+                {
+                    _binaryTrace.RecordDecision(
+                        _lastGameLoop, "ActionResult",
+                        "Zerg action request returned no per-action result; runtime submission latch retained.");
+                }
+            }
+            _activeOpener.OnActionResult(response);
+            return;
+        }
+        if (response is null || response.Result.Count == 0)
+        {
+            Console.WriteLine("[SC2 API] Action request returned no per-action result.");
+            if (_openingRallyActionSubmitted)
+                _openingRally.OnActionResult(null);
+            if (_openingProductionActionSubmitted)
+                _openingProduction.OnActionResult(null);
+            if (_openingSprayActionSubmitted)
+                _openingSpray.OnActionResult(null, _workerAssignments);
+            if (_openingBuilderActionSubmitted)
+                _openingBuilder.OnActionResult(null, _buildJobs);
+            if (_openingMarineActionSubmitted)
+                _openingMarine.OnActionResult(null);
+            if (_supplyDepotExpansionActionSubmitted)
+                _supplyDepotExpansion.OnActionResult(null, _buildJobs);
+            if (_thirdSupplyDepotActionSubmitted)
+                _thirdSupplyDepot.OnActionResult(null, _buildJobs);
+            if (_expansionCommandCenterActionSubmitted)
+                _expansionCommandCenter.OnActionResult(null, _lastGameLoop);
+            if (_secondBarracksActionSubmitted)
+                _secondBarracks.OnActionResult(null);
+            if (_barracksProductionActionSubmitted)
+                _barracksProduction.OnActionResult(null, _buildJobs);
+            if (_orbitalSupportActionSubmitted)
+                _orbitalSupport.OnActionResult(null);
+            _openingRallyActionSubmitted = false;
+            _openingProductionActionSubmitted = false;
+            _openingSprayActionSubmitted = false;
+            _openingBuilderActionSubmitted = false;
+            _openingMarineActionSubmitted = false;
+            _secondBarracksActionSubmitted = false;
+            _supplyDepotExpansionActionSubmitted = false;
+            _thirdSupplyDepotActionSubmitted = false;
+            _expansionCommandCenterActionSubmitted = false;
+            _barracksProductionActionSubmitted = false;
+            _orbitalSupportActionSubmitted = false;
+            foreach (var operationId in _militaryActionResultMappings.Select(item => item.OperationId).Distinct())
+                _militaryPlanRuntime.ResolveSubmission(operationId);
+            _militaryActionResultMappings.Clear();
+            return;
+        }
+
+        for (var index = 0; index < response.Result.Count; index++)
+        {
+            var result = response.Result[index];
+            var command = index < submittedActions.Count ? submittedActions[index].ActionRaw?.UnitCommand : null;
+            var unitTags = command is null ? string.Empty : string.Join(",", command.UnitTags);
+            Console.WriteLine($"[SC2 API] Action {index}: ability={command?.AbilityId.ToString() ?? "unknown"}, units=[{unitTags}], result={result}.");
+            if (_writeDiagnostics)
+                _openingTrace.RecordEvent("ActionResult", _lastGameLoop, $"index={index};ability={command?.AbilityId};units={unitTags};result={result}");
+                _binaryTrace.RecordActionResult(_lastGameLoop, index, unchecked((uint)(command?.AbilityId ?? 0)), result.ToString());
+        }
+        foreach (var operationGroup in _militaryActionResultMappings.GroupBy(item => item.OperationId))
+        {
+            var anyAccepted = operationGroup.Any(item =>
+                item.ActionIndex < response.Result.Count &&
+                string.Equals(response.Result[item.ActionIndex].ToString(), "Success", StringComparison.OrdinalIgnoreCase));
+            if (!anyAccepted)
+                _militaryPlanRuntime.ResolveSubmission(operationGroup.Key);
+        }
+        _militaryActionResultMappings.Clear();
+
+        var resultIndex = 0;
+        if (_openingRallyActionSubmitted)
+        {
+            _openingRally.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
+        if (_openingProductionActionSubmitted)
+        {
+            _openingProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
+        if (_openingSprayActionSubmitted)
+        {
+            _openingSpray.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _workerAssignments);
+            resultIndex++;
+        }
+        if (_openingBuilderActionSubmitted)
+        {
+            _openingBuilder.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
+            resultIndex++;
+        }
+        if (_openingMarineActionSubmitted)
+        {
+            _openingMarine.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
+        if (_supplyDepotExpansionActionSubmitted)
+        {
+            _supplyDepotExpansion.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
+            resultIndex++;
+        }
+        if (_thirdSupplyDepotActionSubmitted)
+        {
+            _thirdSupplyDepot.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
+            resultIndex++;
+        }
+        if (_secondBarracksActionSubmitted)
+        {
+            _secondBarracks.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
+        if (_expansionCommandCenterActionSubmitted)
+        {
+            _expansionCommandCenter.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _lastGameLoop);
+            resultIndex++;
+        }
+        if (_barracksProductionActionSubmitted)
+        {
+            _barracksProduction.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null, _buildJobs);
+            resultIndex++;
+        }
+        if (_orbitalSupportActionSubmitted)
+        {
+            _orbitalSupport.OnActionResult(resultIndex < response.Result.Count ? response.Result[resultIndex] : null);
+            resultIndex++;
+        }
+        _openingRallyActionSubmitted = false;
+        _openingProductionActionSubmitted = false;
+        _openingSprayActionSubmitted = false;
+        _openingBuilderActionSubmitted = false;
+        _openingMarineActionSubmitted = false;
+        _secondBarracksActionSubmitted = false;
+        _supplyDepotExpansionActionSubmitted = false;
+        _thirdSupplyDepotActionSubmitted = false;
+        _expansionCommandCenterActionSubmitted = false;
+        _barracksProductionActionSubmitted = false;
+        _orbitalSupportActionSubmitted = false;
+    }
+
+    public RequestQuery TakeQueryRequest()
+    {
+        if (_activeOpener is not null)
+            return _activeOpener.TakeQueryRequest();
+        var query = _pendingQuery;
+        _pendingQuery = null;
+        return query;
+    }
+
+    public void OnQueryResult(ResponseQuery response)
+    {
+        if (_activeOpener is not null)
+        {
+            if (_writeDiagnostics)
+                _binaryTrace.RecordDecision(
+                    _lastGameLoop, "PlacementQueryResult",
+                    response is null
+                        ? "response=null"
+                        : $"placements={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
+            _activeOpener.OnQueryResult(response);
+            return;
+        }
+        var validPathingDistances = response?.Pathing
+            .Select(item => item.Distance)
+            .Where(distance => float.IsFinite(distance) && distance > 0)
+            .ToArray() ?? Array.Empty<float>();
+        if (_writeDiagnostics)
+            _openingTrace.RecordEvent("QueryResult", 0,
+                response is null
+                    ? "response=null"
+                    : $"pathingCount={response.Pathing.Count};pathingValidCount={validPathingDistances.Length};pathingMin={validPathingDistances.DefaultIfEmpty().Min():F2};pathingMax={validPathingDistances.DefaultIfEmpty().Max():F2};abilityCount={response.Abilities.Count};placementCount={response.Placements.Count};results={string.Join("|", response.Placements.Select(item => item.Result))}");
+        _workerAssignments.OnInitialPathingQueryResult(response);
+        var placementOffset = 0;
+        if (_openingBuilderPlacementCount > 0)
+        {
+            _openingBuilder.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _openingBuilderPlacementCount));
+            placementOffset += _openingBuilderPlacementCount;
+        }
+        if (_openingMarinePlacementCount > 0)
+        {
+            _openingMarine.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _openingMarinePlacementCount));
+            placementOffset += _openingMarinePlacementCount;
+        }
+        if (_secondBarracksPlacementCount > 0)
+        {
+            _secondBarracks.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _secondBarracksPlacementCount));
+            placementOffset += _secondBarracksPlacementCount;
+        }
+        if (_supplyDepotExpansionPlacementCount > 0)
+        {
+            _supplyDepotExpansion.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _supplyDepotExpansionPlacementCount));
+            placementOffset += _supplyDepotExpansionPlacementCount;
+        }
+        if (_thirdSupplyDepotPlacementCount > 0)
+        {
+            _thirdSupplyDepot.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _thirdSupplyDepotPlacementCount));
+            placementOffset += _thirdSupplyDepotPlacementCount;
+        }
+        if (_expansionCommandCenterPlacementCount > 0)
+        {
+            _expansionCommandCenter.OnPlacementQueryResult(SlicePlacementResults(response, placementOffset, _expansionCommandCenterPlacementCount));
+            placementOffset += _expansionCommandCenterPlacementCount;
+        }
+        _openingBuilderPlacementCount = 0;
+        _openingMarinePlacementCount = 0;
+        _secondBarracksPlacementCount = 0;
+        _supplyDepotExpansionPlacementCount = 0;
+        _thirdSupplyDepotPlacementCount = 0;
+        _expansionCommandCenterPlacementCount = 0;
+        _openingSpray.OnQueryResult(response, _workerAssignments);
+    }
+
+    private static ResponseQuery SlicePlacementResults(ResponseQuery response, int offset, int count)
+    {
+        var slice = new ResponseQuery();
+        if (response is null || offset < 0 || count <= 0 || offset >= response.Placements.Count)
+            return slice;
+        slice.Placements.Add(response.Placements.Skip(offset).Take(count));
+        return slice;
+    }
+
+    private static bool IsResearchAbility(uint abilityId, Sc2GameDataCatalog gameData)
+    {
+        if (!gameData.TryGetAbility(abilityId, out var ability))
+            return false;
+        return ability.LinkName.Contains("Research", StringComparison.OrdinalIgnoreCase) ||
+               ability.LinkName.Contains("Upgrade", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsResearchAbility(uint abilityId) => IsResearchAbility(abilityId, _gameData);
+
+    private SC2APIProtocol.Action? CreateOrbitalScanAction(BuildingEvent buildingEvent)
+    {
+        if (buildingEvent.TargetX is not float x || buildingEvent.TargetY is not float y ||
+            SpatialMap is null || !SpatialMap.Bounds.Contains(new MapPoint(x, y)))
+            return null;
+
+        var abilityIds = _gameData.AbilitiesById.Values
+            .Where(ability => ability.LinkName.Contains("ScannerSweep", StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Distinct()
+            .ToArray();
+        if (abilityIds.Length != 1)
+            return null;
+
+        var command = new ActionRawUnitCommand
+        {
+            AbilityId = checked((int)abilityIds[0]),
+            TargetWorldSpacePos = new Point2D { X = x, Y = y },
+            QueueCommand = false
+        };
+        command.UnitTags.Add(buildingEvent.BuildingTag);
+        return new SC2APIProtocol.Action { ActionRaw = new ActionRaw { UnitCommand = command } };
+    }
+
+    private SC2APIProtocol.Action? CreateDepotAccessAction(BuildingEvent buildingEvent)
+    {
+        var linkName = buildingEvent.Kind == BuildingEventKind.RaiseSupplyDepot
+            ? "RaiseSupplyDepot"
+            : "LowerSupplyDepot";
+        var abilityIds = _gameData.AbilitiesById.Values
+            .Where(ability => ability.LinkName.Contains(linkName, StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Distinct()
+            .ToArray();
+        if (abilityIds.Length != 1)
+        {
+            Console.WriteLine($"[Building] {buildingEvent.BuildingId}: {linkName} ability unavailable or ambiguous; no command emitted.");
+            return null;
+        }
+
+        var command = new ActionRawUnitCommand
+        {
+            AbilityId = checked((int)abilityIds[0]),
+            QueueCommand = false
+        };
+        command.UnitTags.Add(buildingEvent.BuildingTag);
+        return new SC2APIProtocol.Action { ActionRaw = new ActionRaw { UnitCommand = command } };
+    }
+
+    private void AdvanceMilitaryOperations(
+        NormalizedObservation observation,
+        List<SC2APIProtocol.Action> actions)
+    {
+        if (_militaryPlan is null || _gameData is null)
+            return;
+
+        var visibleSelf = observation.Units.Where(unit =>
+            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
+            !observation.DeadUnitTags.Contains(unit.Tag)).ToDictionary(unit => unit.Tag);
+
+        foreach (var operation in _militaryPlanRuntime.Operations)
+        {
+            var definition = operation.Definition;
+            if (!_militaryAssignments.TryGetValue(definition.Id, out var assignedTags))
+                continue;
+
+            if (operation.RequestPending &&
+                operation.SubmittedAtGameLoop is uint submittedAt &&
+                observation.GameLoop > submittedAt + 44)
+                _militaryPlanRuntime.ResolveSubmission(definition.Id);
+
+            var assigned = assignedTags.Where(visibleSelf.ContainsKey)
+                .Select(tag => visibleSelf[tag]).ToArray();
+            if (assigned.Length < definition.RequiredUnitCount)
+                continue;
+
+            uint? executionAbility = _gameData.MoveAbilityId;
+            float targetX = 0;
+            float targetY = 0;
+            var targetRadius = 1.5f;
+            if (_militaryPlan.Locations.FirstOrDefault(item =>
+                    item.Id == definition.ObjectiveLocationId) is { } objective)
+            {
+                targetX = objective.X;
+                targetY = objective.Y;
+                if (objective.Radius > 0) targetRadius = objective.Radius;
+            }
+
+            if (!string.IsNullOrWhiteSpace(definition.RequiredAbility))
+            {
+                var abilityMatches = _gameData.FindAbilities(definition.RequiredAbility);
+                executionAbility = abilityMatches.Count == 1 ? abilityMatches[0].AbilityId : null;
+            }
+
+            var route = _militaryPlan.Routes.FirstOrDefault(item => item.Id == definition.RouteId);
+            var executionAbilityIds = new HashSet<uint>();
+            if (executionAbility is uint abilityId)
+            {
+                executionAbilityIds.Add(abilityId);
+                if (_gameData.TryGetAbility(abilityId, out var ability) && ability.RemapsToAbilityId > 0)
+                    executionAbilityIds.Add(ability.RemapsToAbilityId);
+            }
+            var routeMoveAbilityIds = new HashSet<uint>();
+            if (definition.RequiredAbility is not null && _gameData.MoveAbilityId is uint moveAbilityId)
+            {
+                routeMoveAbilityIds.Add(moveAbilityId);
+                if (_gameData.TryGetAbility(moveAbilityId, out var moveAbility) && moveAbility.RemapsToAbilityId > 0)
+                    routeMoveAbilityIds.Add(moveAbility.RemapsToAbilityId);
+            }
+            var hasObservedOrder = assigned.Any(unit => unit.Orders.Any(order =>
+                order.TargetPositionX.HasValue && order.TargetPositionY.HasValue &&
+                ((definition.RequiredAbility is not null &&
+                  executionAbilityIds.Contains(order.AbilityId) &&
+                  DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
+                      targetX, targetY) <= 2.25f) ||
+                 route is not null && (definition.RequiredAbility is null
+                      ? executionAbilityIds.Contains(order.AbilityId)
+                      : routeMoveAbilityIds.Contains(order.AbilityId)) &&
+                  route.Waypoints.Any(point =>
+                      DistanceSquared(order.TargetPositionX.Value, order.TargetPositionY.Value,
+                          point.X, point.Y) <= 2.25f))));
+            if (operation.RequestPending && hasObservedOrder)
+                _militaryPlanRuntime.ObserveStarted(definition.Id, observation.GameLoop);
+
+            var allAtObjective = assigned.Length >= definition.RequiredUnitCount &&
+                assigned.All(unit => DistanceSquared(
+                    unit.PositionX, unit.PositionY, targetX, targetY) <= targetRadius * targetRadius);
+            if (allAtObjective && !operation.IsStarted &&
+                definition.Completion is MilitaryCompletionCondition.AtObjective or
+                    MilitaryCompletionCondition.AllAssignedUnitsArrived)
+                _militaryPlanRuntime.ObserveStarted(definition.Id, observation.GameLoop);
+            if (allAtObjective && operation.IsStarted &&
+                definition.Completion is MilitaryCompletionCondition.AtObjective or
+                    MilitaryCompletionCondition.AllAssignedUnitsArrived)
+                _militaryPlanRuntime.ObserveCompletion(definition.Id, true, observation.GameLoop);
+        }
+
+        foreach (var operation in _militaryPlanRuntime.ReadyOperations)
+        {
+            var definition = operation.Definition;
+            if (!_militaryAssignments.TryGetValue(definition.Id, out var assignedTags) ||
+                !_militaryPlanRuntime.TryGetIntent(definition.Id, out var intent))
+                continue;
+
+            var translation = _militaryTranslator.Translate(
+                intent, _militaryPlan, assignedTags, observation, _gameData, SpatialTerrain, PathingTopology);
+            if (translation.IsBlocked)
+            {
+                if (!_militaryOperationDiagnostics.TryGetValue(definition.Id, out var prior) ||
+                    !string.Equals(prior, translation.Reason, StringComparison.Ordinal))
+                {
+                    Console.WriteLine($"[Military] {definition.Id} blocked: {translation.Reason}");
+                    _militaryOperationDiagnostics[definition.Id] = translation.Reason;
+                }
+                continue;
+            }
+
+            _militaryOperationDiagnostics.Remove(definition.Id);
+            if (translation.Actions.Count == 0 ||
+                !_militaryPlanRuntime.MarkSubmitted(definition.Id, observation.GameLoop))
+                continue;
+
+            var firstActionIndex = actions.Count;
+            actions.AddRange(translation.Actions);
+            for (var index = 0; index < translation.Actions.Count; index++)
+                _militaryActionResultMappings.Add((definition.Id, firstActionIndex + index));
+        }
+    }
+
+    private static float DistanceSquared(float x1, float y1, float x2, float y2)
+    {
+        var dx = x1 - x2;
+        var dy = y1 - y2;
+        return dx * dx + dy * dy;
+    }
+
+    private void UpdateSpatialIntelligence(ResponseObservation response)
+    {
+        var intelligence = SpatialIntelligence;
+        var raw = response?.Observation?.RawData;
+        if (intelligence == null || raw == null)
+            return;
+
+        var visibleContacts = new List<SpatialContact>();
+        foreach (var unit in raw.Units)
+        {
+            if (unit.DisplayType != DisplayType.Visible || unit.Pos == null)
+                continue;
+
+            SpatialAlliance alliance;
+            switch (unit.Alliance)
+            {
+                case Alliance.Self:
+                case Alliance.Ally:
+                    alliance = SpatialAlliance.Friendly;
+                    break;
+                case Alliance.Enemy:
+                    alliance = SpatialAlliance.Enemy;
+                    break;
+                case Alliance.Neutral:
+                    alliance = SpatialAlliance.Neutral;
+                    break;
+                default:
+                    continue;
+            }
+
+            var position = new MapPoint(unit.Pos.X, unit.Pos.Y);
+            if (!SpatialMap.Bounds.Contains(position))
+                continue;
+
+            visibleContacts.Add(new SpatialContact(
+                unit.Tag,
+                unit.UnitType,
+                position,
+                alliance,
+                ContactVisibility.Visible,
+                response.Observation.GameLoop));
+        }
+
+        intelligence.Update(
+            response.Observation.GameLoop,
+            visibleContacts,
+            raw.Event?.DeadUnits);
+
+        if (!_spatialDiagnosticsReported)
+        {
+            Console.WriteLine($"[Spatial] First index: friendly={intelligence.VisibleFriendlyCount}, enemy={intelligence.VisibleEnemyCount}, remembered-enemy={intelligence.RememberedEnemyCount}, known={intelligence.KnownContactCount}.");
+            _spatialDiagnosticsReported = true;
+        }
+    }
+
+    private void RecordFailClosedRaceFrame(ResponseObservation observation)
+    {
+        var normalized = Sc2ObservationNormalizer.Normalize(
+            observation, _playerId, _gameData.UnitNames, _gameData.BuffNames);
+        _lastGameLoop = normalized.GameLoop;
+        PublishStudioSnapshot(normalized, "running");
+        var moduleId = _activeRaceModule?.Id ?? "unregistered";
+        var modeId = _activeMode?.Id ?? _definition.ModeId;
+        var controllerState = $"FailClosed:{moduleId}:{_activeRaceModule?.ExecutionMode.ToString() ?? "NoModule"}";
+
+        _binaryTrace.RecordFrame(
+            normalized.GameLoop, normalized.Minerals,
+            normalized.FoodUsed, normalized.FoodCap,
+            normalized.Units.Count, actionCount: 0);
+        _binaryTrace.RecordEconomySnapshot(normalized, activeBuildJobs: 0);
+        _binaryTrace.RecordRaceSnapshot(
+            normalized, _actualRace, modeId, controllerState, proposedActionCount: 0);
+        _binaryTrace.RecordDecision(
+            normalized.GameLoop, "GameplayFailClosed",
+            $"race={_actualRace};module={moduleId};mode={modeId};reason=NoExecutableRaceAdapter");
+        if (observation is not null)
+        {
+            foreach (var error in observation.ActionErrors)
+                _binaryTrace.RecordDecision(
+                    normalized.GameLoop, "ActionError",
+                    $"unit={error.UnitTag};ability={error.AbilityId};result={error.Result}");
+        }
+
+        if (_lastUnitSnapshotGameLoop == 0 ||
+            normalized.GameLoop >= _lastUnitSnapshotGameLoop + 8)
+        {
+            _binaryTrace.RecordUnitSnapshots(normalized);
+            _lastUnitSnapshotGameLoop = normalized.GameLoop;
+        }
+    }
+
+
+    private void PublishStudioSnapshot(NormalizedObservation observation, string lifecycle)
+    {
+        if (observation is null)
+            return;
+
+        var units = observation.Units;
+        var visible = units.Where(unit => unit.IsLiveVisible && !observation.DeadUnitTags.Contains(unit.Tag)).ToArray();
+        var self = visible.Where(unit => unit.Alliance == UnitAlliance.Self).ToArray();
+        var enemy = visible.Count(unit => unit.Alliance == UnitAlliance.Enemy);
+        var workers = self.Count(unit =>
+            string.Equals(unit.UnitKind, "SCV", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(unit.UnitKind, "Drone", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(unit.UnitKind, "Probe", StringComparison.OrdinalIgnoreCase));
+
+        var snapshot = new BotStudioSnapshot(
+            Sequence: Interlocked.Increment(ref _studioSnapshotSequence),
+            CapturedAtUtc: DateTimeOffset.UtcNow,
+            Lifecycle: lifecycle,
+            MapName: _studioMapName,
+            GameLoop: observation.GameLoop,
+            ActualRace: _actualRace.ToString(),
+            ActiveModeId: _activeMode?.Id ?? string.Empty,
+            GamePhase: _gameState.Phase.ToString(),
+            Minerals: observation.Minerals,
+            Vespene: observation.Vespene,
+            FoodUsed: observation.FoodUsed,
+            FoodCap: observation.FoodCap,
+            VisibleFriendlyUnits: self.Length,
+            VisibleEnemyUnits: enemy,
+            VisibleWorkers: workers,
+            BuildJobCount: _buildJobs.Jobs.Count,
+            StrategicJobCount: CurrentStrategicPlan.Count);
+
+        Volatile.Write(ref _latestStudioSnapshot, snapshot);
+    }
+
+    public void OnEnd(ResponseObservation observation, Result result)
+    {
+        _studioEvents.Publish("lifecycle", "match.ended", "info", _lastGameLoop, $"result={result}");
+        var previous = LatestStudioSnapshot;
+        if (previous is not null)
+            Volatile.Write(ref _latestStudioSnapshot, previous with { Sequence = Interlocked.Increment(ref _studioSnapshotSequence), Lifecycle = "ended", CapturedAtUtc = DateTimeOffset.UtcNow });
+        if (_writeDiagnostics)
+            _baselineRecorder.Write(
+                Sc2Diagnostics.OutputDirectory,
+                _passiveBaseline ? "passive-baseline" : "active-run");
+        _unitBehaviors.RemoveAll();
+        _strategyEvidenceCollector.Reset();
+        _constructionSiteSafety.Reset();
+        if (_raceRuntime is ITerran terranRuntime)
+            terranRuntime.Scouting.Reset(_advisorJobBoard);
+        _currentStrategyEvidence = Array.Empty<StrategyEvidence>();
+        _buildings.Clear();
+        _openingProduction.Dispose();
+        _openingBuilder.Dispose();
+        _supplyDepotExpansion.Dispose();
+        _thirdSupplyDepot.Dispose();
+        _barracksProduction.Reset();
+        _buildJobs.Clear();
+        _pendingQuery = null;
+        _workerAssignments.Clear();
+        _currentWorkerAssignmentGenerations.Clear();
+        _marineRally.Reset();
+        _militaryAssignments.Clear();
+        _militaryUnitOwners.Clear();
+        _militaryOperationDiagnostics.Clear();
+        _militaryActionResultMappings.Clear();
+        if (_militaryPlan is not null)
+            foreach (var operation in _militaryPlan.Operations)
+                _militaryTranslator.Reset(operation.Id);
+        PathingTopology = null;
+        _openingTrace.Dispose();
+        _workerRouteTrace.Dispose();
+        _binaryTrace.Dispose();
+    }
+}

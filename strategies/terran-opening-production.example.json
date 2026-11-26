@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "0.1",
+  "id": "terran-named-opening",
+  "name": "Terran Named-Step Opening",
+  "race": "Terran",
+  "steps": [
+    {
+      "id": "FirstSupplyDepot",
+      "target": "SupplyDepot",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 100,
+      "lane": "buildings"
+    },
+    {
+      "id": "FirstBarracks",
+      "target": "Barracks",
+      "producer": "SCV",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 100,
+      "dependsOn": ["FirstSupplyDepot"],
+      "lane": "buildings"
+    },
+    {
+      "id": "OrbitalCommand",
+      "target": "OrbitalCommand",
+      "producer": "CommandCenter",
+      "desiredCount": 1,
+      "earliestGameLoop": 0,
+      "priority": 95,
+      "dependsOn": ["FirstBarracks"],
+      "lane": "buildings"
+    },
+    {
+      "id": "MarineWave",
+      "target": "Marine",
+      "producer": "Barracks",
+      "desiredCount": 40,
+      "earliestGameLoop": 0,
+      "priority": 70,
+      "dependsOn": ["FirstBarracks"],
+      "lane": "units"
+    }
+  ]
+}

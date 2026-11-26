@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "0.1",
+  "metadata": {
+    "id": "terran.safe-opening",
+    "name": "Terran Safe Opening",
+    "version": "0.1.0",
+    "description": "Illustrative strategy document; not yet executable."
+  },
+  "race": "Terran",
+  "opening": {
+    "buildIntents": [
+      {
+        "id": "supply-01",
+        "target": "Terran_SupplyDepot",
+        "count": 1,
+        "earliestGameLoop": 0,
+        "latestGameLoop": 1200,
+        "priority": 100
+      },
+      {
+        "id": "production-01",
+        "target": "Terran_Barracks",
+        "count": 1,
+        "earliestGameLoop": 0,
+        "latestGameLoop": 2400,
+        "priority": 90
+      }
+    ]
+  },
+  "goals": [
+    {
+      "id": "economy.establish",
+      "kind": "Economy",
+      "priority": 80
+    },
+    {
+      "id": "survival.maintain",
+      "kind": "Survival",
+      "priority": 100
+    }
+  ],
+  "constraints": [
+    {
+      "id": "never-issue-invalid-command",
+      "kind": "CommandValidity",
+      "severity": "Hard"
+    }
+  ],
+  "tactics": [],
+  "scouting": [],
+  "composition": {
+    "desiredUnits": []
+  },
+  "evaluation": {
+    "tags": ["smoke-test", "terran", "example"],
+    "metrics": ["supply-block-time", "worker-idle-time", "invalid-action-count"]
+  }
+}

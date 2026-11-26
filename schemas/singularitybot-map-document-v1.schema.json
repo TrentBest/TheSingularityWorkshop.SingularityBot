@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thesingularityworkshop.dev/schemas/singularitybot-map-document-v1.schema.json",
+  "title": "SingularityBot MapDocument v1",
+  "description": "Immutable, protocol-independent static map data. Raster payload bytes are external and identified by SHA-256.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "mapId", "mapName", "source", "contentHash", "coordinateSystem", "fullBounds", "playableBounds", "startLocations", "layers"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "mapId": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "mapName": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "source": { "type": "string", "minLength": 1 },
+    "contentHash": { "$ref": "#/$defs/sha256" },
+    "coordinateSystem": { "$ref": "#/$defs/coordinateSystem" },
+    "fullBounds": { "$ref": "#/$defs/rectangle" },
+    "playableBounds": { "$ref": "#/$defs/rectangle" },
+    "startLocations": { "type": "array", "items": { "$ref": "#/$defs/startLocation" } },
+    "layers": { "type": "array", "items": { "$ref": "#/$defs/layer" } }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "coordinateSystem": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "units", "xAxis", "yAxis", "cellEdgeConvention"],
+      "properties": {
+        "kind": { "const": "cartesian-2d" },
+        "units": { "const": "sc2-world-units" },
+        "xAxis": { "const": "east" },
+        "yAxis": { "const": "north" },
+        "cellEdgeConvention": { "const": "minimum-inclusive-maximum-exclusive" }
+      }
+    },
+    "rectangle": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" }, "minY": { "type": "number" },
+        "maxX": { "type": "number" }, "maxY": { "type": "number" }
+      }
+    },
+    "startLocation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "x", "y"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "x": { "type": "number" }, "y": { "type": "number" }
+      }
+    },
+    "layer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "semantic", "availability", "source"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "semantic": { "type": "string", "minLength": 1 },
+        "availability": { "enum": ["available", "unavailable", "unsupported"] },
+        "source": { "type": "string", "minLength": 1 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "worldOriginX": { "type": "number" }, "worldOriginY": { "type": "number" },
+        "worldWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "worldHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "encoding": { "type": "string", "minLength": 1 },
+        "units": { "type": "string", "minLength": 1 },
+        "compression": { "enum": ["none", "gzip", "zstd"] },
+        "payloadReference": { "type": "string", "minLength": 1 },
+        "payloadSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "availability": { "const": "available" } } },
+          "then": { "required": ["width", "height", "worldOriginX", "worldOriginY", "worldWidth", "worldHeight", "encoding", "compression", "payloadReference", "payloadSha256"] }
+        },
+        {
+          "if": { "properties": { "availability": { "enum": ["unavailable", "unsupported"] } } },
+          "then": { "not": { "required": ["payloadSha256"] } }
+        }
+      ]
+    }
+  }
+}

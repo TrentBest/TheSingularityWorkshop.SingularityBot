@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "contain-and-observe",
+  "name": "Contain and observe",
+  "defaultRole": "Contain",
+  "scoutCount": 2,
+  "scoutSectors": [],
+  "excludeEnemyStartSector": true,
+  "stutterStepEnabled": true,
+  "fallbackHealthFraction": 0.35,
+  "engageVisibleThreats": false
+}

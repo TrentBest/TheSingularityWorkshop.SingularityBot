@@ -1,0 +1,33 @@
+name: Bot package contract
+
+on:
+  push:
+    branches: [master, development]
+    paths:
+      - "tools/package_bot_build.py"
+      - "tests/test_package_bot_build.py"
+      - "docs/bot-build-packaging.md"
+      - ".github/workflows/bot-package-contract.yml"
+  pull_request:
+    branches: [master, development]
+    paths:
+      - "tools/package_bot_build.py"
+      - "tests/test_package_bot_build.py"
+      - "docs/bot-build-packaging.md"
+      - ".github/workflows/bot-package-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Test immutable package generation
+        run: python -m unittest discover -s tests -p "test_package_bot_build.py"
+      - name: Validate packager command interface
+        run: python tools/package_bot_build.py --help

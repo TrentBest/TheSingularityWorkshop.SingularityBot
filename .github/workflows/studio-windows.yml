@@ -1,0 +1,85 @@
+name: Studio Windows Build
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - "src/SingularityBot.Studio/**"
+      - "src/SingularityBot/**"
+      - "src/SC2API.CSharp/**"
+      - "src/SC2APIProtocol/**"
+      - "TheSingularityWorkshop.SingularityBot.sln"
+      - ".github/workflows/studio-windows.yml"
+  pull_request:
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  studio:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out CommandAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.CommandAi
+          ref: development
+          path: dependencies/CommandAi
+      - name: Check out FSM_API development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_API
+          ref: development
+          path: dependencies/FSM_API
+      - name: Check out FSM_UserIO development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_UserIO
+          ref: development
+          path: dependencies/FSM_UserIO
+      - name: Check out MicroBundleDomain development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.MicroBundleDomain
+          ref: development
+          path: dependencies/TheSingularityWorkshop.MicroBundleDomain
+      - name: Check out HeadlessAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.HeadlessAi
+          ref: development
+          path: dependencies/HeadlessAi
+      - name: Check out FSM_Serialization development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_Serialization
+          ref: development
+          path: dependencies/FSM_Serialization
+      - name: Check out FSM_COS development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_COS
+          ref: development
+          path: dependencies/FSM_COS
+      - name: Check out DataWarehouse development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.DataWarehouse
+          ref: development
+          path: dependencies/DataWarehouse
+      - name: Check out Workshop GUI development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.GUI
+          ref: development
+          path: dependencies/GUI
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore Studio
+        run: dotnet restore src/SingularityBot.Studio/SingularityBot.Studio.csproj
+      - name: Build Studio
+        run: dotnet build src/SingularityBot.Studio/SingularityBot.Studio.csproj --configuration Release --no-restore

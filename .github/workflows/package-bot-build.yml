@@ -1,0 +1,98 @@
+name: Package immutable bot build
+
+on:
+  workflow_dispatch:
+    inputs:
+      bot_identity_id:
+        description: Registered ServerApp bot identity ID
+        required: true
+        type: string
+      build_id:
+        description: Immutable build ID to register in ServerApp
+        required: true
+        type: string
+      definition_path:
+        description: Repository path to the exact Studio-exported BotDefinition JSON
+        required: true
+        default: examples/bot-definitions/terran-adaptive-marine.v1.json
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out CommandAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.CommandAi
+          ref: development
+          path: dependencies/CommandAi
+      - name: Check out FSM_API development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_API
+          ref: development
+          path: dependencies/FSM_API
+      - name: Check out FSM_UserIO development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/FSM_UserIO
+          ref: development
+          path: dependencies/FSM_UserIO
+      - name: Check out MicroBundleDomain development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.MicroBundleDomain
+          ref: development
+          path: dependencies/TheSingularityWorkshop.MicroBundleDomain
+      - name: Check out HeadlessAi development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.HeadlessAi
+          ref: development
+          path: dependencies/HeadlessAi
+      - name: Check out FSM_Serialization development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_Serialization
+          ref: development
+          path: dependencies/FSM_Serialization
+      - name: Check out FSM_COS development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_COS
+          ref: development
+          path: dependencies/FSM_COS
+      - name: Check out DataWarehouse development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.DataWarehouse
+          ref: development
+          path: dependencies/DataWarehouse
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Publish Windows Runner payload
+        run: dotnet publish src/SingularityBot.Runner/SingularityBot.Runner.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/runner
+      - name: Create immutable package
+        shell: pwsh
+        env:
+          BOT_IDENTITY_ID: ${{ inputs.bot_identity_id }}
+          BUILD_ID: ${{ inputs.build_id }}
+          DEFINITION_PATH: ${{ inputs.definition_path }}
+        run: |
+          python tools/package_bot_build.py --bot-identity-id "$env:BOT_IDENTITY_ID" --build-id "$env:BUILD_ID" --runner-publish-dir "artifacts/runner" --runner-executable-path "SingularityBot.Runner.exe" --definition "$env:DEFINITION_PATH" --output-store "artifacts/packages"
+      - name: Upload immutable package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-build-${{ github.run_id }}
+          path: artifacts/packages/**
+          if-no-files-found: error
+          retention-days: 30

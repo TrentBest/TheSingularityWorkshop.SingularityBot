@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "matchId": "fixture-match-01",
+  "mapId": "fixture-translated-map",
+  "mapContentHash": "86c64b9d76c6add5306e35720a3ebb3ae4eed6455446a906db0f32a84862d7ac",
+  "observerPlayerId": 1,
+  "capturedFields": ["economy", "health", "position"],
+  "sequence": 1,
+  "gameLoop": 400,
+  "lifecycle": "running",
+  "players": [
+    { "playerId": 1, "team": "1", "race": "Terran", "minerals": 125, "vespene": 50, "foodUsed": 18, "foodCap": 23 },
+    { "playerId": 2, "team": "2", "race": "Terran" }
+  ],
+  "units": [
+    { "tag": 100, "unitTypeId": 48, "unitKind": "Marine", "ownerId": 1, "alliance": "self", "contactState": "visible", "x": 24.5, "y": 32.5, "health": 45, "healthMax": 45, "orders": [] },
+    { "tag": 200, "unitTypeId": 48, "unitKind": "Marine", "ownerId": 2, "alliance": "enemy", "contactState": "visible", "lastSeenGameLoop": 400, "x": 198.5, "y": 164.5, "health": 45, "healthMax": 45, "orders": [] }
+  ],
+  "authoritativelyDestroyedUnitTags": []
+}

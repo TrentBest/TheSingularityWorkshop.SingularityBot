@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "mapId": "fixture-translated-map",
+  "mapName": "Translated Two-Start Fixture",
+  "source": "canonical-test-fixture",
+  "contentHash": "86c64b9d76c6add5306e35720a3ebb3ae4eed6455446a906db0f32a84862d7ac",
+  "coordinateSystem": {
+    "kind": "cartesian-2d",
+    "units": "sc2-world-units",
+    "xAxis": "east",
+    "yAxis": "north",
+    "cellEdgeConvention": "minimum-inclusive-maximum-exclusive"
+  },
+  "fullBounds": { "minX": 0, "minY": 0, "maxX": 256, "maxY": 224 },
+  "playableBounds": { "minX": 16, "minY": 8, "maxX": 240, "maxY": 200 },
+  "startLocations": [
+    { "id": "start-01", "x": 32.5, "y": 28.5 },
+    { "id": "start-02", "x": 220.5, "y": 180.5 }
+  ],
+  "layers": [
+    {
+      "id": "resource-nodes",
+      "semantic": "resource-node-features",
+      "availability": "unavailable",
+      "source": "not-yet-decoded"
+    },
+    {
+      "id": "terrain-height",
+      "semantic": "terrain-elevation-byte",
+      "availability": "available",
+      "source": "canonical-fixture-payload",
+      "width": 2,
+      "height": 2,
+      "worldOriginX": 0,
+      "worldOriginY": 0,
+      "worldWidth": 256,
+      "worldHeight": 224,
+      "encoding": "hex-text-uint8-row-major",
+      "units": "raw-byte-un-calibrated",
+      "compression": "none",
+      "payloadReference": "payloads/terrain-height.fixture.hex",
+      "payloadSha256": "d6bbff4501793f6776bc5ece5ee470d31d909af1ce1cdbc817c623921eef948a"
+    }
+  ]
+}

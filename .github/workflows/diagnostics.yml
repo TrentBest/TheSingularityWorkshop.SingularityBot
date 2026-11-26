@@ -1,0 +1,71 @@
+name: SC2 Diagnostics
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - "extracted/**/*.json"
+      - "extracted/**/*.csv"
+      - "extracted/**/*.bin"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate diagnostic files
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import struct
+          from pathlib import Path
+
+          root = Path("extracted")
+          extensions = {".json", ".csv", ".bin"}
+          files = sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in extensions)
+          if not files:
+              raise SystemExit("No JSON, CSV, or binary diagnostics found.")
+
+          for path in files:
+              if path.suffix.lower() == ".json":
+                  json.loads(path.read_text(encoding="utf-8"))
+              elif path.suffix.lower() == ".csv":
+                  with path.open(newline="", encoding="utf-8") as stream:
+                      list(csv.reader(stream))
+              else:
+                  data = path.read_bytes()
+                  if len(data) < 8 or data[:4] != b"SC2T":
+                      raise SystemExit(f"Invalid SC2 timeline header: {path}")
+                  version, reserved = struct.unpack_from("<HH", data, 4)
+                  if version != 1 or reserved != 0:
+                      raise SystemExit(f"Unsupported SC2 timeline header: {path}")
+                  offset = 8
+                  records = 0
+                  while offset < len(data):
+                      if len(data) - offset < 50:
+                          raise SystemExit(f"Truncated SC2 timeline record: {path}")
+                      detail_length = struct.unpack_from("<I", data, offset + 46)[0]
+                      if detail_length > 1_048_576:
+                          raise SystemExit(f"Oversized SC2 timeline detail: {path}")
+                      end = offset + 50 + detail_length
+                      if end > len(data):
+                          raise SystemExit(f"Truncated SC2 timeline detail: {path}")
+                      data[offset + 50:end].decode("utf-8", errors="strict")
+                      offset = end
+                      records += 1
+                  print(f"Validated {path} ({records} binary records)")
+                  continue
+              print(f"Validated {path}")
+          PY
+      - name: Archive diagnostics for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: sc2-diagnostics-${{ github.sha }}
+          path: extracted/
+          if-no-files-found: error
+          retention-days: 30

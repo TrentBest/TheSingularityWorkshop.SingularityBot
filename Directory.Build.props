@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Development builds consume checked-out Workshop repositories, never NuGet fallbacks. -->
+    <WorkshopUseRepositorySources>true</WorkshopUseRepositorySources>
+  </PropertyGroup>
+</Project>

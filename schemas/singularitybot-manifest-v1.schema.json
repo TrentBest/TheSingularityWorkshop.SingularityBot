@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thesingularityworkshop.dev/schemas/singularitybot-manifest-v1.schema.json",
+  "title": "SingularityBot Match Manifest",
+  "description": "Declarative selection and configuration of compiled SingularityBot FSM and Advisor capabilities. This document is data, never executable code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "bot", "advisors"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "bot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "race": { "const": "Terran" },
+        "strategyProfile": { "type": "string", "minLength": 1 },
+        "deterministicScheduling": { "const": true }
+      }
+    },
+    "advisors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/advisor" },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "advisor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "definition", "enabled", "processGroup"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{1,63}$" },
+        "definition": {
+          "enum": ["advisor.military.v1", "advisor.economy.v1", "advisor.research.v1", "advisor.base-layout.v1", "advisor.intelligence.v1"]
+        },
+        "enabled": { "type": "boolean" },
+        "processGroup": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{1,95}$" },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "settings": { "type": "object" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/advisor" },
+          "maxItems": 64
+        }
+      }
+    }
+  }
+}

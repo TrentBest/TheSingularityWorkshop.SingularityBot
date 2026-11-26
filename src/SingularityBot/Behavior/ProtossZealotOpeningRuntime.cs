@@ -177,9 +177,10 @@ public sealed class ProtossZealotOpeningRuntime
             unit.UnitKind.Equals("Nexus", StringComparison.OrdinalIgnoreCase))
             .OrderBy(unit => unit.Tag).FirstOrDefault();
         var probe = observation.Units.Where(unit => unit.Alliance == UnitAlliance.Self &&
-            unit.IsLiveVisible && unit.HasPosition && !unit.HasCargo && !unit.HasOrders &&
+            unit.IsLiveVisible && unit.HasPosition &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&
-            unit.UnitKind.Equals(_probe.Name, StringComparison.OrdinalIgnoreCase))
+            unit.UnitKind.Equals(_probe.Name, StringComparison.OrdinalIgnoreCase) &&
+            HasOnlyInterruptibleGatherOrders(unit))
             .OrderBy(unit => nexus is null ? 0f :
                 DistanceSquared(unit.PositionX, unit.PositionY, nexus.PositionX, nexus.PositionY))
             .ThenBy(unit => unit.Tag).FirstOrDefault();

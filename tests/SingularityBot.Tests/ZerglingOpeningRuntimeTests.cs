@@ -253,7 +253,9 @@ public sealed class ZerglingOpeningRuntimeTests
             50, 0, 13, 14, new HashSet<ulong> { 2 },
             Unit(1, "Hatchery"), Unit(5, "SpawningPool"), replacementEgg, Unit(7, "Larva"));
 
-        Assert.Empty(runtime.OnFrame(eggObserved));
+        var resumedProduction = Assert.Single(runtime.OnFrame(eggObserved));
+        Assert.Equal(1343, resumedProduction.ActionRaw.UnitCommand.AbilityId);
+        Assert.Equal(7ul, Assert.Single(resumedProduction.ActionRaw.UnitCommand.UnitTags));
         Assert.Empty(runtime.OnFrame(eggObserved));
         Assert.Equal("Producing", runtime.State);
     }

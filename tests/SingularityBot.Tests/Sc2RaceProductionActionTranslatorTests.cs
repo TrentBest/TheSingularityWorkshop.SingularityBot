@@ -280,17 +280,25 @@ public sealed class Sc2RaceProductionActionTranslatorTests
         Assert.True(blocked.IsBlocked);
         Assert.Contains("resources or supply", blocked.BlockReason);
 
+        var stalkerProfile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "protoss.stalker.v1");
+        var protossObservation = Observation(
+            200, 100, 10, 20,
+            Unit(10, "Gateway") with { HasPowerEvidence = true, IsPowered = true },
+            Unit(11, "Pylon", buildProgress: 1f),
+            Unit(12, "CyberneticsCore", buildProgress: 1f));
         var gasReserved = Sc2RaceProductionActionTranslator.Translate(
-            profile,
-            new Sc2UnitFacts(105, "Zergling", 1343, 25, 0, 0.5f, 0),
-            new Sc2UnitFacts(151, "Larva", 0, 0, 0, 0, 0),
-            observation,
-            2,
+            stalkerProfile,
+            new Sc2UnitFacts(74, "Stalker", 919, 125, 50, 2, 0),
+            new Sc2UnitFacts(62, "Gateway", 0, 0, 0, 0, 0),
+            protossObservation,
+            1,
             new HashSet<ulong>(),
-            reservedVespene: 100);
+            gateway => gateway.HasPowerEvidence && gateway.IsPowered,
+            reservedVespene: 51);
 
-        Assert.False(gasReserved.IsBlocked);
-        Assert.Single(gasReserved.Actions);
+        Assert.True(gasReserved.IsBlocked);
+        Assert.Contains("resources or supply", gasReserved.BlockReason);
     }
 
     [Fact]

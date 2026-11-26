@@ -104,11 +104,11 @@ public static class Program
                         selectedConfiguration.MapName);
                     var selection = new BotRaceSelectionResolver().Resolve(
                         selectedDefinition.RaceSelection,
-                        RaceModuleCatalog.CreateDefault().ExecutableRaces,
+                        RaceModuleCatalog.CreateDefault().RaceSelectionEligibleRaces,
                         selectionContext);
                     selectedDefinition = BotDefinitionCatalog.RebindRace(selectedDefinition, selection.SelectedRace);
                     selectedConfiguration = BotMatchConfiguration.ForMode(selectedDefinition.ModeId);
-                    Console.WriteLine($"[RaceSelection] Randomly selected {selection.SelectedRace} from executable modes: {string.Join(", ", selection.EligibleExecutableRaces)}.");
+                    Console.WriteLine($"[RaceSelection] Randomly selected {selection.SelectedRace} from race-selection-eligible modes: {string.Join(", ", selection.EligibleExecutableRaces)}.");
                     break;
 
                 case BotRaceSelectionPolicy.Custom:

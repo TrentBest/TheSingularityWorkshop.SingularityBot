@@ -132,6 +132,8 @@ public sealed record BotDoctrineNode
     public BotDoctrineMethodScope Scope { get; init; }
     public IReadOnlyList<string> RequiresCapabilities { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> ProvidesCapabilities { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> EmitsIntents { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> AcceptsIntents { get; init; } = Array.Empty<string>();
     public IReadOnlyList<BotDoctrineNode> Children { get; init; } = Array.Empty<BotDoctrineNode>();
 }
 
@@ -265,7 +267,11 @@ public static class BotDoctrineValidator
             {
                 var nodeIds = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var root in matchup.PrimaryCommanders)
-                    ValidateNode(root, p + ".primaryCommanders", 1, nodeIds, ref totalNodes, errors);
+                {
+                    if (root is not null && root.Kind != BotDoctrineNodeKind.Commander)
+                        errors.Add($"{p}.primaryCommanders: every root must be a Commander node.");
+                    ValidateNode(root, p + ".primaryCommanders", 1, nodeIds, ref totalNodes, errors, null);
+                }
             }
         }
         foreach (var own in Races)
@@ -300,7 +306,7 @@ public static class BotDoctrineValidator
             errors.Add($"{path}.steps: final phase must be Activate.");
     }
 
-    private static void ValidateNode(BotDoctrineNode node, string path, int depth, HashSet<string> ids, ref int count, List<string> errors)
+    private static void ValidateNode(BotDoctrineNode node, string path, int depth, HashSet<string> ids, ref int count, List<string> errors, BotDoctrineNode parent)
     {
         count++;
         var p = $"{path}[{count - 1}]";
@@ -310,6 +316,11 @@ public static class BotDoctrineValidator
         Required(node.PresentationProfileId, p + ".presentationProfileId", 160, errors);
         if (!Enum.IsDefined(node.Kind) || !Enum.IsDefined(node.Scope)) errors.Add($"{p}: unknown node kind or scope.");
         var children = node.Children ?? Array.Empty<BotDoctrineNode>();
+        ValidateNodeIds(node.EmitsIntents, p + ".emitsIntents", errors);
+        ValidateNodeIds(node.AcceptsIntents, p + ".acceptsIntents", errors);
+        if (parent is not null && parent.EmitsIntents is { Count: > 0 } && node.AcceptsIntents is { Count: > 0 } &&
+            !parent.EmitsIntents.Intersect(node.AcceptsIntents, StringComparer.Ordinal).Any())
+            errors.Add($"{p}: parent emits no intent accepted by this child.");
         if (depth > MaximumDepth) errors.Add($"{p}: hierarchy exceeds maximum depth {MaximumDepth}.");
         if (node.Kind == BotDoctrineNodeKind.UnitFsm && children.Count != 0)
             errors.Add($"{p}.children: unit FSM nodes must be leaves.");
@@ -320,7 +331,14 @@ public static class BotDoctrineValidator
         if (node.Kind == BotDoctrineNodeKind.Commander && node.Scope == BotDoctrineMethodScope.Unit)
             errors.Add($"{p}.scope: commander nodes cannot have Unit scope.");
         if (depth <= MaximumDepth)
-            foreach (var child in children) ValidateNode(child, path + ".children", depth + 1, ids, ref count, errors);
+            foreach (var child in children) ValidateNode(child, path + ".children", depth + 1, ids, ref count, errors, node);
+    }
+
+    private static void ValidateNodeIds(IReadOnlyList<string> values, string path, List<string> errors)
+    {
+        if (values is null) { errors.Add($"{path}: cannot be null."); return; }
+        if (values.Count > 64 || values.Any(string.IsNullOrWhiteSpace) || values.Distinct(StringComparer.Ordinal).Count() != values.Count)
+            errors.Add($"{path}: must contain at most 64 unique non-empty identifiers.");
     }
 
     private static void CheckCount<T>(IReadOnlyList<T> list, string path, int max, List<string> errors)

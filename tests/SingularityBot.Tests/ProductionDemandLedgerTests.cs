@@ -50,9 +50,10 @@ public sealed class ProductionDemandLedgerTests
 
         Assert.False(production.Set(new Sc2UnitFacts(0, "Marine", 1, 50, 0, 1, 0), 10));
         Assert.False(production.Set(Marine, ProductionDemandLedger.MaximumDesiredCount + 1));
+        Assert.True(production.Set(Marine, 10));
         Assert.False(production.Set(Marine with { Name = "Marauder" }, 10));
-        Assert.False(production.Add(Marine, -1));
-        Assert.Empty(production.Snapshot());
+        Assert.False(production.Add(Marine, -11));
+        Assert.Equal(10, production.Snapshot()[Marine.UnitId].DesiredCount);
     }
 
     [Fact]

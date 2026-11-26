@@ -34,6 +34,12 @@ jobs:
           repository: TrentBest/FSM_API
           ref: development
           path: dependencies/FSM_API
+      - name: Check out FSM_Execution development source
+        uses: actions/checkout@v4
+        with:
+          repository: TrentBest/TheSingularityWorkshop.FSM_Execution
+          ref: development
+          path: dependencies/FSM_Execution
       - name: Check out FSM_UserIO development source
         uses: actions/checkout@v4
         with:

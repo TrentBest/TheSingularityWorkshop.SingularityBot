@@ -62,17 +62,16 @@ public sealed class ProductionDemandLedgerTests
     {
         var production = new ProductionDemandLedger();
         var catalog = new BotDoctrineRuntimeCatalog();
-        var gameData = Sc2GameDataCatalog.Create(new SC2APIProtocol.ResponseData
+        var responseData = new SC2APIProtocol.ResponseData();
+        responseData.Units.Add(new SC2APIProtocol.UnitTypeData
         {
-            Units = { new SC2APIProtocol.UnitTypeData
-            {
-                UnitId = Marine.UnitId,
-                Name = Marine.Name,
-                AbilityId = Marine.AbilityId,
-                MineralCost = Marine.MineralCost,
-                FoodRequired = Marine.FoodRequired
-            }}
+            UnitId = Marine.UnitId,
+            Name = Marine.Name,
+            AbilityId = Marine.AbilityId,
+            MineralCost = Marine.MineralCost,
+            FoodRequired = Marine.FoodRequired
         });
+        var gameData = Sc2GameDataCatalog.Create(responseData);
         BotProductionMethods.RegisterLargeEnemyForceMarineResponse(catalog, production, () => gameData);
         var method = Assert.IsType<BotDoctrineMethodRegistration>(GetMethod(catalog));
         var belowThreshold = new BotDoctrineEvent(

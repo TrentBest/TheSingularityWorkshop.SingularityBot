@@ -141,10 +141,18 @@ public sealed class ProtossZealotOpener : IOpener
             error = "Required Probe, Pylon, Gateway, Zealot or authoritative building abilities are unavailable.";
             return false;
         }
+        var gatherAbilityIds = context.GameData.AbilitiesById.Values
+            .Where(ability =>
+                ability.LinkName.Contains("Harvest", StringComparison.OrdinalIgnoreCase) ||
+                ability.LinkName.Contains("Gather", StringComparison.OrdinalIgnoreCase))
+            .Select(ability => ability.AbilityId)
+            .Where(id => id > 0)
+            .ToHashSet();
         try
         {
             _runtime = new ProtossZealotOpeningRuntime(
-                probe, pylon, gateway, zealot, pylonBuild, gatewayBuild, context.ProductionProfile);
+                probe, pylon, gateway, zealot, pylonBuild, gatewayBuild,
+                context.ProductionProfile, gatherAbilityIds);
         }
         catch (ArgumentException exception)
         {

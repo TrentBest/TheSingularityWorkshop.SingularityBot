@@ -201,6 +201,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
     public BotDoctrineRuntimePlan DoctrineRuntimePlan => _doctrineRuntimePlan;
     /// <summary>Current desired production totals, keyed by authoritative SC2 UnitTypeId.</summary>
     public IReadOnlyDictionary<uint, ProductionDemand> ProductionDemands => _productionDemands.Snapshot();
+    /// <summary>Trusted strategy-facing desired production dictionary; it does not submit game actions.</summary>
+    public ProductionDemandLedger Production => _productionDemands;
 
     /// <summary>
     /// Dispatches an event through the trusted methods selected for this match.

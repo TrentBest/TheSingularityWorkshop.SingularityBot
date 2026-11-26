@@ -26,7 +26,8 @@ public sealed class ProtossZealotOpeningRuntimeTests
         Assert.Empty(runtime.OnFrame(opening));
         var query = runtime.TakeQueryRequest();
         Assert.NotNull(query);
-        Assert.Equal(7ul, Assert.Single(query.Placements).PlacingUnitTag);
+        Assert.Equal(48, query.Placements.Count);
+        Assert.All(query.Placements, placement => Assert.Equal(7ul, placement.PlacingUnitTag));
 
         var approved = new ResponseQuery();
         approved.Placements.Add(new ResponseQueryBuildingPlacement { Result = ActionResult.Success });

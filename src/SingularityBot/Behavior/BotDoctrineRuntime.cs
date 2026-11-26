@@ -267,11 +267,29 @@ public sealed class BotDoctrineEventDispatcher
             throw new ArgumentException("An event ID is required.", nameof(botEvent));
         if (!_handlers.TryGetValue(botEvent.EventId, out var handlers))
             return 0;
-        foreach (var handler in handlers)
+
+        var registry = new WorkflowHandlerRegistry();
+        var steps = new List<WorkflowStep>(handlers.Count);
+        for (var index = 0; index < handlers.Count; index++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await handler.Handler(botEvent, cancellationToken).ConfigureAwait(false);
+            var handler = handlers[index];
+            var handlerKey = $"doctrine-method-{index}";
+            registry.Register(handlerKey, (Func<CancellationToken, ValueTask>)(token =>
+                handler.Handler(botEvent, token)));
+            steps.Add(new WorkflowStep($"method-{index}", handlerKey));
         }
+
+        var workflow = new WorkflowDefinition(
+            "bot-doctrine-event",
+            botEvent.EventId,
+            WorkflowDefinition.SupportedSchemaVersion,
+            steps);
+        var result = await new WorkflowRunner(registry)
+            .RunAsync(workflow, cancellationToken)
+            .ConfigureAwait(false);
+        if (result.Status != WorkflowStatus.Succeeded)
+            throw new InvalidOperationException(
+                $"Doctrine reaction workflow '{botEvent.EventId}' ended with status {result.Status}.");
         return handlers.Count;
     }
 }

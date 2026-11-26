@@ -64,6 +64,7 @@ public sealed record BotDoctrineRuntimePlan(
     BotDoctrineDefinition Definition,
     BotRaceInitializationPlan Initialization,
     BotDoctrineMatchup Matchup,
+    IReadOnlyList<BotDoctrineMethodBinding> MethodBindings,
     IReadOnlyList<BotDoctrineMethodRegistration> Methods,
     IReadOnlyList<BotDoctrineControllerRegistration> Controllers);
 
@@ -95,19 +96,29 @@ public static class BotDoctrineRuntimeResolver
             if (!catalog.HasService(service.ServiceId))
                 errors.Add($"$.services: required service '{service.ServiceId}' is not registered.");
 
+        var activeNodes = Walk(matchup.PrimaryCommanders).ToDictionary(entry => entry.Node.NodeId, entry => entry, StringComparer.Ordinal);
+        var activeBindings = definition.Methods.Where(binding =>
+            binding.Scope == BotDoctrineMethodScope.Bot || activeNodes.ContainsKey(binding.NodeId)).ToArray();
         var methods = new List<BotDoctrineMethodRegistration>();
-        foreach (var binding in definition.Methods)
+        foreach (var binding in activeBindings)
         {
             if (!catalog.TryGetMethod(binding.MethodId, out var registration))
                 errors.Add($"$.methods: BotMethod '{binding.MethodId}' is not registered.");
             else if (registration.Scope != binding.Scope)
                 errors.Add($"$.methods: BotMethod '{binding.MethodId}' scope mismatch; expected {binding.Scope}, registered {registration.Scope}.");
+            else if (binding.Scope != BotDoctrineMethodScope.Bot &&
+                     activeNodes[binding.NodeId].Node.Kind == BotDoctrineNodeKind.Commander &&
+                     binding.Scope != BotDoctrineMethodScope.Commander)
+                errors.Add($"$.methods: binding '{binding.MethodId}' scope does not match commander node '{binding.NodeId}'.");
+            else if (binding.Scope == BotDoctrineMethodScope.Unit &&
+                     activeNodes[binding.NodeId].Node.Kind != BotDoctrineNodeKind.UnitFsm)
+                errors.Add($"$.methods: unit-scoped binding '{binding.MethodId}' must target a unit-FSM leaf.");
             else if (!methods.Any(method => string.Equals(method.Id, registration.Id, StringComparison.Ordinal)))
                 methods.Add(registration);
         }
 
         var controllers = new List<BotDoctrineControllerRegistration>();
-        foreach (var node in Walk(matchup.PrimaryCommanders))
+        foreach (var (node, parent) in activeNodes.Values)
         {
             if (!catalog.TryGetController(node.ImplementationId, out var registration))
                 errors.Add($"$.matchups: controller '{node.ImplementationId}' is not registered.");
@@ -115,9 +126,13 @@ public static class BotDoctrineRuntimeResolver
             {
                 if (registration.Kind != node.Kind || registration.Scope != node.Scope)
                     errors.Add($"$.matchups: controller '{node.ImplementationId}' kind/scope mismatch.");
-                foreach (var capability in node.RequiresCapabilities)
+                foreach (var capability in node.ProvidesCapabilities)
                     if (!registration.Capabilities.Contains(capability))
-                        errors.Add($"$.matchups: controller '{node.ImplementationId}' lacks declared capability '{capability}'.");
+                        errors.Add($"$.matchups: controller '{node.ImplementationId}' does not provide declared capability '{capability}'.");
+                foreach (var capability in node.RequiresCapabilities)
+                    if (!(parent?.ProvidesCapabilities.Contains(capability, StringComparer.Ordinal) ?? false) &&
+                        !catalog.HasService(capability))
+                        errors.Add($"$.matchups: controller '{node.ImplementationId}' requires unavailable capability '{capability}'.");
                 controllers.Add(registration);
             }
         }
@@ -126,15 +141,16 @@ public static class BotDoctrineRuntimeResolver
             throw new InvalidOperationException("Doctrine cannot be activated: " + string.Join(" ", errors));
 
         return new BotDoctrineRuntimePlan(definition, initialization, matchup,
-            methods.AsReadOnly(), controllers.AsReadOnly());
+            activeBindings, methods.AsReadOnly(), controllers.AsReadOnly());
     }
 
-    private static IEnumerable<BotDoctrineNode> Walk(IEnumerable<BotDoctrineNode> roots)
+    private static IEnumerable<(BotDoctrineNode Node, BotDoctrineNode Parent)> Walk(
+        IEnumerable<BotDoctrineNode> roots, BotDoctrineNode parent = null)
     {
         foreach (var node in roots)
         {
-            yield return node;
-            foreach (var child in Walk(node.Children ?? Array.Empty<BotDoctrineNode>()))
+            yield return (node, parent);
+            foreach (var child in Walk(node.Children ?? Array.Empty<BotDoctrineNode>(), node))
                 yield return child;
         }
     }
@@ -155,7 +171,7 @@ public sealed class BotDoctrineEventDispatcher
         if (maximumHandlersPerEvent is < 1 or > 128)
             throw new ArgumentOutOfRangeException(nameof(maximumHandlersPerEvent));
         _maximumHandlersPerEvent = maximumHandlersPerEvent;
-        var registrations = plan.Definition.Methods
+        var registrations = plan.MethodBindings
             .GroupBy(binding => binding.EventId, StringComparer.Ordinal)
             .ToDictionary(
                 group => group.Key,

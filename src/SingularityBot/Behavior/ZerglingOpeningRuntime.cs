@@ -26,6 +26,12 @@ public sealed class ZerglingOpeningRuntime
     private readonly List<Point2D> _candidatePoints = new();
     private OpeningState _state = OpeningState.NeedPlacement;
     private ulong _builderTag;
+    private ulong _submittedBuilderTag;
+    private ulong _consumedBuilderTag;
+    private ulong _replacementLarvaTag;
+    private bool _replacementResultPending;
+    private bool _replacementAwaitingEgg;
+    private bool _replacementEggObserved;
     private Point2D _selectedPlacement;
     private bool _queryPending;
     private bool _buildResultPending;
@@ -54,7 +60,7 @@ public sealed class ZerglingOpeningRuntime
         if (desiredZerglings < 2 || desiredZerglings % 2 != 0)
             throw new ArgumentOutOfRangeException(nameof(desiredZerglings), "Zergling targets must be positive pairs.");
         _desiredZerglings = desiredZerglings;
-        if (_pool.AbilityId == 0 || _poolBuildAbility.AbilityId != _pool.AbilityId ||
+        if (_drone.AbilityId == 0 || _pool.AbilityId == 0 || _poolBuildAbility.AbilityId != _pool.AbilityId ||
             !_poolBuildAbility.IsBuilding || _zergling.AbilityId == 0 ||
             !_profile.TargetUnit.Equals(_zergling.Name, StringComparison.OrdinalIgnoreCase) ||
             !_profile.ProducerUnit.Equals(_larva.Name, StringComparison.OrdinalIgnoreCase) ||
@@ -70,6 +76,60 @@ public sealed class ZerglingOpeningRuntime
     public IReadOnlyList<SC2APIProtocol.Action> OnFrame(NormalizedObservation observation)
     {
         ArgumentNullException.ThrowIfNull(observation);
+
+        // A Zerg Drone is consumed by construction. Do not infer consumption from
+        // command acceptance or temporary visibility loss: wait for SC2's explicit
+        // dead-unit tag, then reserve exactly one Larva replacement.
+        if (_submittedBuilderTag != 0 && observation.DeadUnitTags.Contains(_submittedBuilderTag) &&
+            _consumedBuilderTag == 0)
+        {
+            _consumedBuilderTag = _submittedBuilderTag;
+            _reservedWorkers.Remove(_submittedBuilderTag);
+            Console.WriteLine($"[ZergOpening] SC2 confirmed construction Drone {_consumedBuilderTag} consumed.");
+        }
+
+        if (_consumedBuilderTag != 0 && !_replacementEggObserved)
+        {
+            var replacementEggObserved = observation.Units.Any(unit =>
+                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+                !observation.DeadUnitTags.Contains(unit.Tag) &&
+                unit.UnitKind.Equals("Egg", StringComparison.OrdinalIgnoreCase) &&
+                unit.Orders.Any(order => order.AbilityId == _drone.AbilityId));
+            if (replacementEggObserved)
+            {
+                _replacementEggObserved = true;
+                _replacementResultPending = false;
+                _replacementAwaitingEgg = false;
+                _replacementLarvaTag = 0;
+                Console.WriteLine("[ZergOpening] Replacement Drone Egg observed; replacement accounted exactly once.");
+            }
+            else if (_buildResultPending)
+            {
+                // The dead-tag evidence may arrive before the build action callback.
+                // Let the build callback/structure observation settle first.
+                return Array.Empty<SC2APIProtocol.Action>();
+            }
+            else if (_replacementResultPending || _replacementAwaitingEgg)
+            {
+                return Array.Empty<SC2APIProtocol.Action>();
+            }
+            else
+            {
+                var replacementProfile = new Sc2RaceProductionProfile(
+                    "zerg.drone.replacement.v1", SC2APIProtocol.Race.Zerg,
+                    "Drone", "Larva", Array.Empty<string>(), false,
+                    "One replacement Drone for the explicitly observed consumed construction Drone.");
+                var replacement = Sc2RaceProductionActionTranslator.Translate(
+                    replacementProfile, _drone, _larva, observation, 1);
+                if (replacement.IsBlocked)
+                    return Array.Empty<SC2APIProtocol.Action>();
+                _replacementLarvaTag = replacement.ProducerTags[0];
+                _replacementResultPending = true;
+                Console.WriteLine($"[ZergOpening] Submitting one replacement Drone order from Larva {_replacementLarvaTag}.");
+                return new[] { replacement.Actions[0] };
+            }
+        }
+
         var poolObserved = observation.Units.Any(unit =>
             unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
             !observation.DeadUnitTags.Contains(unit.Tag) &&
@@ -116,6 +176,7 @@ public sealed class ZerglingOpeningRuntime
                     return Array.Empty<SC2APIProtocol.Action>();
                 }
                 _builderTag = translated.WorkerTag;
+                _submittedBuilderTag = _builderTag;
                 _reservedWorkers.Add(_builderTag);
                 _buildResultPending = true;
                 _state = OpeningState.BuildSubmitted;
@@ -277,6 +338,24 @@ public sealed class ZerglingOpeningRuntime
                 _selectedPlacement = null;
                 _state = OpeningState.NeedPlacement;
                 Console.WriteLine($"[ZergOpening] Spawning Pool action rejected/unknown ({result.ToString()}); placement will be reconsidered.");
+            }
+            return;
+        }
+        if (_replacementResultPending)
+        {
+            if (response is null || response.Result.Count == 0)
+                return; // keep the one-Larva reservation until authoritative evidence arrives
+            _replacementResultPending = false;
+            var result = response.Result[0];
+            if (result == ActionResult.Success)
+            {
+                _replacementAwaitingEgg = true;
+                Console.WriteLine("[ZergOpening] Replacement Drone order accepted; waiting for its Egg observation.");
+            }
+            else
+            {
+                _replacementLarvaTag = 0;
+                Console.WriteLine($"[ZergOpening] Replacement Drone order rejected: {result}; will reconsider after a fresh observation.");
             }
             return;
         }

@@ -71,7 +71,13 @@ public sealed class BotDoctrineRuntimeCatalog
         ArgumentNullException.ThrowIfNull(registration);
         if (string.IsNullOrWhiteSpace(registration.Id))
             throw new ArgumentException("A controller registration requires an ID.", nameof(registration));
-        if (!_controllers.TryAdd(registration.Id, registration))
+        var snapshot = registration with
+        {
+            Capabilities = new HashSet<string>(
+                registration.Capabilities ?? new HashSet<string>(StringComparer.Ordinal),
+                StringComparer.Ordinal)
+        };
+        if (!_controllers.TryAdd(registration.Id, snapshot))
             throw new InvalidOperationException($"Controller '{registration.Id}' is already registered.");
     }
 
@@ -93,7 +99,7 @@ public sealed class BotDoctrineRuntimeCatalog
         foreach (var controller in _controllers.Values)
             clone.RegisterController(controller with
             {
-                Capabilities = new HashSet<string>(controller.Capabilities, StringComparer.Ordinal)
+                Capabilities = new HashSet<string>(controller.Capabilities ?? new HashSet<string>(StringComparer.Ordinal), StringComparer.Ordinal)
             });
         foreach (var service in _services)
             clone.RegisterService(service);

@@ -708,8 +708,8 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         _lastGameLoop = normalized.GameLoop;
         if (_doctrineEventDispatcher is not null)
         {
-            var visible = observation.Units
-                .Where(unit => unit.IsLiveVisible && !observation.DeadUnitTags.Contains(unit.Tag))
+            var visible = normalized.Units
+                .Where(unit => unit.IsLiveVisible && !normalized.DeadUnitTags.Contains(unit.Tag))
                 .ToArray();
             var currentEnemies = visible
                 .Where(unit => unit.Alliance == UnitAlliance.Enemy)
@@ -758,7 +758,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
                     observation.GameLoop,
                     new Dictionary<string, string>(StringComparer.Ordinal)
                     {
-                        ["unit.tag"] = unit.Tag.ToString(CultureInfo.InvariantCulture),
+                        ["unit.tag"] = unit.Tag.ToString(),
                         ["unit.kind"] = unit.UnitKind ?? string.Empty,
                         ["unit.alliance"] = "Self"
                     }));

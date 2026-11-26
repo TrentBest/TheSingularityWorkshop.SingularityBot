@@ -76,12 +76,14 @@ public sealed class ZerglingOpeningRuntime
     public IReadOnlyList<SC2APIProtocol.Action> OnFrame(NormalizedObservation observation)
     {
         ArgumentNullException.ThrowIfNull(observation);
-
-        // A Zerg Drone is consumed by construction. Do not infer consumption from
-        // command acceptance or temporary visibility loss: wait for SC2's explicit
-        // dead-unit tag, then reserve exactly one Larva replacement.
-        if (_submittedBuilderTag != 0 && observation.DeadUnitTags.Contains(_submittedBuilderTag) &&
-            _consumedBuilderTag == 0)
+        // A Zerg Drone is consumed by construction. SC2 can report the worker tag
+        // as dead, or preserve that tag on the newly morphed structure. Neither
+        // command acceptance nor temporary visibility loss is sufficient evidence.
+        var builderMorphObserved = _submittedBuilderTag != 0 && observation.Units.Any(unit =>
+            unit.Tag == _submittedBuilderTag && unit.Alliance == UnitAlliance.Self &&
+            unit.IsLiveVisible && unit.UnitKind.Equals(_pool.Name, StringComparison.OrdinalIgnoreCase));
+        if (_submittedBuilderTag != 0 && _consumedBuilderTag == 0 &&
+            (observation.DeadUnitTags.Contains(_submittedBuilderTag) || builderMorphObserved))
         {
             _consumedBuilderTag = _submittedBuilderTag;
             _reservedWorkers.Remove(_submittedBuilderTag);
@@ -103,15 +105,10 @@ public sealed class ZerglingOpeningRuntime
                 _replacementLarvaTag = 0;
                 Console.WriteLine("[ZergOpening] Replacement Drone Egg observed; replacement accounted exactly once.");
             }
-            else if (_buildResultPending && !observation.Units.Any(unit =>
-                unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-                !observation.DeadUnitTags.Contains(unit.Tag) &&
-                unit.UnitKind.Equals(_pool.Name, StringComparison.OrdinalIgnoreCase) &&
-                unit.BuildProgress >= 1f))
+            else if (_buildResultPending)
             {
-                // The dead-tag evidence may arrive before the build action callback.
-                // Let the build callback/structure observation settle first, unless
-                // the completed structure itself has already superseded that callback.
+                // The consumed tag can arrive before the build action callback.
+                // Let the callback or completed-structure observation settle first.
                 return Array.Empty<SC2APIProtocol.Action>();
             }
             else if (_replacementResultPending || _replacementAwaitingEgg)

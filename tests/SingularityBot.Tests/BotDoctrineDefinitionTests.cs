@@ -120,7 +120,7 @@ public sealed class BotDoctrineDefinitionTests
         Assert.Equal("Hive Mind", parsed.Presentation.PrimaryRoleLabel);
         Assert.Equal("\"GLHF\"", parsed.Settings.Single(s => s.Id == "bot.opening.chat").ValueJson);
         Assert.Equal(9, parsed.Matchups.Count);
-        Assert.Equal(3, parsed.Matchups.Single(m => m.OwnRace == Race.Zerg && m.OpponentRace == Race.Zerg)
+        Assert.Equal(1, parsed.Matchups.Single(m => m.OwnRace == Race.Zerg && m.OpponentRace == Race.Zerg)
             .PrimaryCommanders[0].Children[0].Children.Count);
     }
 

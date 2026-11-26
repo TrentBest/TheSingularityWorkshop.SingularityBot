@@ -14,10 +14,11 @@ public sealed class ProductionDemandLedgerTests
         var production = new ProductionDemandLedger();
 
         Assert.True(production.Set(Barracks, 2));
-        Assert.True(production.Set(Marine, 10));
+        production[Marine] = 10;
+        production[Marine] += 10;
 
         Assert.Equal(2, production.Snapshot()[Barracks.UnitId].DesiredCount);
-        Assert.Equal(10, production.Snapshot()[Marine.UnitId].DesiredCount);
+        Assert.Equal(20, production.Snapshot()[Marine.UnitId].DesiredCount);
     }
 
     [Fact]

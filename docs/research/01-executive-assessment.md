@@ -13,7 +13,7 @@ The packages are complementary, but they do not add up to a complete scriptable-
 | Concern | Owner |
 |---|---|
 | Match lifecycle, live observations, strategy and action authority | SingularityBot + FSM_API |
-| Reusable behavior execution/cadence | FSM_API / FSM_Foundry when integrated |
+| Reusable behavior execution/cadence | FSM_API / FSM_Execution when integrated |
 | Game-specific vocabulary and capability facts | SingularityBot ontology |
 | Stable cross-tool symbol identities | ProtocolAi, selectively |
 | Script grammar and structural validation | GrammarAi |

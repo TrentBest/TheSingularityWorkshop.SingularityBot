@@ -45,7 +45,7 @@ production[barracksFacts] = 2; // desired total: 2 Barracks
 
 The nervous system emits `observation.enemy-force-concern` when the first complete observation already contains more than four currently visible live enemy units, or when the visible count later crosses above four. The trusted `production.respond-to-large-enemy-force.v1` BotMethod reads that event's `enemy.count` and adds ten Marines to the desired total. A doctrine must explicitly bind that event to that method. This is an example response, not a hard-coded universal strategy.
 
-The next boundary is reconciliation: translate each ledger entry into a production objective, compare desired totals with completed and in-progress units, validate prerequisites/resources/supply/producers, and then emit intents for the host action pipeline. The current ledger is exposed as strategic intent; it is not yet connected to the live SC2 action path. Existing opening controllers remain unchanged.
+The next boundary is end-to-end reconciliation: translate each supported ledger entry into a stable production objective, compare desired totals with completed and in-progress units, validate prerequisites/resources/supply/producers, and then emit intents for the host action pipeline. The race-profile action translator now accepts explicit mineral, vespene, and food reservations and subtracts them before calculating affordable orders; invalid food reservations fail closed. These reservation parameters are available to callers but the live demand ledger is not yet connected to the SC2 action path. Existing opening controllers remain unchanged.
 
 ## FSM_API and FSM_Execution have different jobs
 

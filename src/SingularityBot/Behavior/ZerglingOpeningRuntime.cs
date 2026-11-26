@@ -76,6 +76,20 @@ public sealed class ZerglingOpeningRuntime
     public IReadOnlyList<SC2APIProtocol.Action> OnFrame(NormalizedObservation observation)
     {
         ArgumentNullException.ThrowIfNull(observation);
+        var poolObserved = observation.Units.Any(unit =>
+            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
+            !observation.DeadUnitTags.Contains(unit.Tag) &&
+            unit.UnitKind.Equals(_pool.Name, StringComparison.OrdinalIgnoreCase) &&
+            unit.BuildProgress >= 1f);
+        if (poolObserved && _state is not OpeningState.Producing and not OpeningState.Complete)
+        {
+            _state = OpeningState.Producing;
+            _buildResultPending = false; // completed structure observation supersedes a missing callback
+            _builderTag = 0;
+            _reservedWorkers.Clear();
+            Console.WriteLine("[ZergOpening] Completed Spawning Pool observed; enabling Larva production.");
+        }
+
         // A Zerg Drone is consumed by construction. SC2 can report the worker tag
         // as dead, or preserve that tag on the newly morphed structure. Neither
         // command acceptance nor temporary visibility loss is sufficient evidence.
@@ -132,19 +146,6 @@ public sealed class ZerglingOpeningRuntime
             }
         }
 
-        var poolObserved = observation.Units.Any(unit =>
-            unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&
-            !observation.DeadUnitTags.Contains(unit.Tag) &&
-            unit.UnitKind.Equals(_pool.Name, StringComparison.OrdinalIgnoreCase) &&
-            unit.BuildProgress >= 1f);
-        if (poolObserved && _state is not OpeningState.Producing and not OpeningState.Complete)
-        {
-            _state = OpeningState.Producing;
-            _buildResultPending = false; // completed structure observation supersedes a missing callback
-            _builderTag = 0;
-            _reservedWorkers.Clear();
-            Console.WriteLine("[ZergOpening] Completed Spawning Pool observed; enabling Larva production.");
-        }
 
         if (_state is OpeningState.NeedPlacement or OpeningState.PlacementReady)
         {

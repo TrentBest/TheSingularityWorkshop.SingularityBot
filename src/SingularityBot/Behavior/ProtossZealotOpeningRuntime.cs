@@ -22,6 +22,7 @@ public sealed class ProtossZealotOpeningRuntime
     private readonly Sc2AbilityFacts _pylonBuild;
     private readonly Sc2AbilityFacts _gatewayBuild;
     private readonly Sc2RaceProductionProfile _profile;
+    private readonly IReadOnlySet<uint> _interruptibleGatherAbilityIds;
     private readonly List<Point2D> _candidatePoints = new();
     private readonly HashSet<ulong> _reservedProducers = new();
     private Stage _stage = Stage.NeedPylonPlacement;
@@ -37,7 +38,8 @@ public sealed class ProtossZealotOpeningRuntime
     public ProtossZealotOpeningRuntime(
         Sc2UnitFacts probe, Sc2UnitFacts pylon, Sc2UnitFacts gateway,
         Sc2UnitFacts zealot, Sc2AbilityFacts pylonBuild, Sc2AbilityFacts gatewayBuild,
-        Sc2RaceProductionProfile profile)
+        Sc2RaceProductionProfile profile,
+        IReadOnlySet<uint>? interruptibleGatherAbilityIds = null)
     {
         _probe = probe ?? throw new ArgumentNullException(nameof(probe));
         _pylon = pylon ?? throw new ArgumentNullException(nameof(pylon));
@@ -46,6 +48,7 @@ public sealed class ProtossZealotOpeningRuntime
         _pylonBuild = pylonBuild ?? throw new ArgumentNullException(nameof(pylonBuild));
         _gatewayBuild = gatewayBuild ?? throw new ArgumentNullException(nameof(gatewayBuild));
         _profile = profile ?? throw new ArgumentNullException(nameof(profile));
+        _interruptibleGatherAbilityIds = interruptibleGatherAbilityIds ?? new HashSet<uint>();
         if (_pylon.AbilityId == 0 || _gateway.AbilityId == 0 ||
             _pylonBuild.AbilityId != _pylon.AbilityId || _gatewayBuild.AbilityId != _gateway.AbilityId ||
             !_pylonBuild.IsBuilding || !_gatewayBuild.IsBuilding ||
@@ -99,7 +102,7 @@ public sealed class ProtossZealotOpeningRuntime
                 unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible && unit.HasPosition &&
                 !observation.DeadUnitTags.Contains(unit.Tag) &&
                 unit.UnitKind.Equals(_probe.Name, StringComparison.OrdinalIgnoreCase) &&
-                !unit.HasCargo && !unit.HasOrders);
+                HasOnlyInterruptibleGatherOrders(unit));
             if (probe is null)
             {
                 ResetPlacement();
@@ -107,7 +110,7 @@ public sealed class ProtossZealotOpeningRuntime
             }
             var translated = Sc2RaceBuildingActionTranslator.Translate(
                 structure, _probe, ability, observation, probe.Tag,
-                _placement.X, _placement.Y, new HashSet<ulong>());
+                _placement.X, _placement.Y, new HashSet<ulong>(), _interruptibleGatherAbilityIds);
             if (translated.IsBlocked)
             {
                 LogOnce(structure.Name + " build blocked: " + translated.BlockReason);
@@ -155,6 +158,10 @@ public sealed class ProtossZealotOpeningRuntime
         }
         return Array.Empty<SC2APIProtocol.Action>();
     }
+
+    private bool HasOnlyInterruptibleGatherOrders(UnitObservationFacts unit) =>
+        !unit.HasOrders || (unit.Orders.Count > 0 && unit.Orders.All(order =>
+            _interruptibleGatherAbilityIds.Contains(order.AbilityId)));
 
     private bool HasCompleted(NormalizedObservation observation, string name) =>
         observation.Units.Any(unit => unit.Alliance == UnitAlliance.Self && unit.IsLiveVisible &&

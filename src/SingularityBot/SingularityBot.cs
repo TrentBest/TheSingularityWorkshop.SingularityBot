@@ -79,7 +79,7 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             throw new ArgumentException("A doctrine definition and trusted runtime catalog must be supplied together.");
 
         _doctrineDefinition = doctrineDefinition;
-        _doctrineCatalog = doctrineCatalog;
+        _doctrineCatalog = doctrineCatalog?.Clone();
         if (_doctrineCatalog is not null &&
             !_doctrineCatalog.TryGetMethod(BotProductionMethods.LargeEnemyForceMarineResponse, out _))
         {

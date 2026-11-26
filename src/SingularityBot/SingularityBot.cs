@@ -648,73 +648,6 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
         return message == null ? null : JsonNode.Parse(JsonFormatter.Default.Format(message));
     }
 
-    private void DispatchDoctrineObservationEvents(NormalizedObservation observation)
-    {
-        if (_doctrineEventDispatcher is null || observation is null)
-            return;
-
-        var visible = observation.Units
-            .Where(unit => unit.IsLiveVisible && !observation.DeadUnitTags.Contains(unit.Tag))
-            .ToArray();
-        var currentEnemies = visible
-            .Where(unit => unit.Alliance == UnitAlliance.Enemy)
-            .Select(unit => unit.Tag)
-            .ToHashSet();
-        var currentFriendlies = visible
-            .Where(unit => unit.Alliance == UnitAlliance.Self)
-            .Select(unit => unit.Tag)
-            .ToHashSet();
-
-        // The first complete observation establishes a baseline. Emitting every
-        // already-visible unit as "new" would create false contact events at start.
-        if (!_doctrineObservationBaselineEstablished)
-        {
-            _doctrineVisibleEnemyTags.UnionWith(currentEnemies);
-            _doctrineVisibleFriendlyTags.UnionWith(currentFriendlies);
-            _doctrineObservationBaselineEstablished = true;
-            return;
-        }
-
-        foreach (var unit in visible
-            .Where(unit => unit.Alliance == UnitAlliance.Enemy &&
-                !_doctrineVisibleEnemyTags.Contains(unit.Tag))
-            .OrderBy(unit => unit.Tag))
-        {
-            _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
-                "observation.enemy-spotted",
-                $"enemy:{unit.Tag}:{observation.GameLoop}",
-                observation.GameLoop,
-                new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["unit.tag"] = unit.Tag.ToString(CultureInfo.InvariantCulture),
-                    ["unit.kind"] = unit.UnitKind ?? string.Empty,
-                    ["unit.alliance"] = "Enemy"
-                }));
-        }
-
-        foreach (var unit in visible
-            .Where(unit => unit.Alliance == UnitAlliance.Self &&
-                !_doctrineVisibleFriendlyTags.Contains(unit.Tag))
-            .OrderBy(unit => unit.Tag))
-        {
-            _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
-                "observation.friendly-unit-observed",
-                $"friendly:{unit.Tag}:{observation.GameLoop}",
-                observation.GameLoop,
-                new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["unit.tag"] = unit.Tag.ToString(CultureInfo.InvariantCulture),
-                    ["unit.kind"] = unit.UnitKind ?? string.Empty,
-                    ["unit.alliance"] = "Self"
-                }));
-        }
-
-        _doctrineVisibleEnemyTags.Clear();
-        _doctrineVisibleEnemyTags.UnionWith(currentEnemies);
-        _doctrineVisibleFriendlyTags.Clear();
-        _doctrineVisibleFriendlyTags.UnionWith(currentFriendlies);
-    }
-
     public IEnumerable<SC2APIProtocol.Action> OnFrame(ResponseObservation observation)
     {
         if (_passiveBaseline)
@@ -773,7 +706,69 @@ public sealed class SingularityBot : SC2API_CSharp.Bot, SC2API_CSharp.QueryAware
             _gameData.BuffNames,
             observationRequirements);
         _lastGameLoop = normalized.GameLoop;
-        DispatchDoctrineObservationEvents(normalized);
+        if (_doctrineEventDispatcher is not null)
+        {
+            var visible = observation.Units
+                .Where(unit => unit.IsLiveVisible && !observation.DeadUnitTags.Contains(unit.Tag))
+                .ToArray();
+            var currentEnemies = visible
+                .Where(unit => unit.Alliance == UnitAlliance.Enemy)
+                .Select(unit => unit.Tag)
+                .ToHashSet();
+            var currentFriendlies = visible
+                .Where(unit => unit.Alliance == UnitAlliance.Self)
+                .Select(unit => unit.Tag)
+                .ToHashSet();
+    
+            // The first complete observation establishes a baseline. Emitting every
+            // already-visible unit as "new" would create false contact events at start.
+            if (!_doctrineObservationBaselineEstablished)
+            {
+                _doctrineVisibleEnemyTags.UnionWith(currentEnemies);
+                _doctrineVisibleFriendlyTags.UnionWith(currentFriendlies);
+                _doctrineObservationBaselineEstablished = true;
+                return;
+            }
+    
+            foreach (var unit in visible
+                .Where(unit => unit.Alliance == UnitAlliance.Enemy &&
+                    !_doctrineVisibleEnemyTags.Contains(unit.Tag))
+                .OrderBy(unit => unit.Tag))
+            {
+                _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
+                    "observation.enemy-spotted",
+                    $"enemy:{unit.Tag}:{observation.GameLoop}",
+                    observation.GameLoop,
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["unit.tag"] = unit.Tag.ToString(),
+                        ["unit.kind"] = unit.UnitKind ?? string.Empty,
+                        ["unit.alliance"] = "Enemy"
+                    }));
+            }
+    
+            foreach (var unit in visible
+                .Where(unit => unit.Alliance == UnitAlliance.Self &&
+                    !_doctrineVisibleFriendlyTags.Contains(unit.Tag))
+                .OrderBy(unit => unit.Tag))
+            {
+                _doctrineEventDispatcher.DispatchOnGameLoop(new BotDoctrineEvent(
+                    "observation.friendly-unit-observed",
+                    $"friendly:{unit.Tag}:{observation.GameLoop}",
+                    observation.GameLoop,
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["unit.tag"] = unit.Tag.ToString(CultureInfo.InvariantCulture),
+                        ["unit.kind"] = unit.UnitKind ?? string.Empty,
+                        ["unit.alliance"] = "Self"
+                    }));
+            }
+    
+            _doctrineVisibleEnemyTags.Clear();
+            _doctrineVisibleEnemyTags.UnionWith(currentEnemies);
+            _doctrineVisibleFriendlyTags.Clear();
+            _doctrineVisibleFriendlyTags.UnionWith(currentFriendlies);
+        }
         if (openerEnabled)
         {
             var raceActions = _activeOpener.Advance(normalized);

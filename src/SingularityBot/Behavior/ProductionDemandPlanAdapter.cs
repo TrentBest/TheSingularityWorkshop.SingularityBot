@@ -41,9 +41,13 @@ public sealed class ProductionDemandPlanAdapter
             if (demand.DesiredCount == 0)
             {
                 var existingId = GetStepId(demand.UnitTypeId);
-                if (runtime.TryGetStep(existingId, out _) &&
-                    !runtime.TrySetDesiredTarget(existingId, 0, demand.Priority))
-                    rejected.Add($"Existing objective '{existingId}' rejected its zero target.");
+                if (runtime.TryGetStep(existingId, out var zeroStep))
+                {
+                    if (!IsMatchingObjective(zeroStep, target.Name, zeroStep.Definition.Producer))
+                        rejected.Add($"Existing objective '{existingId}' conflicts with the authoritative unit identity.");
+                    else if (!runtime.TrySetDesiredTarget(existingId, 0, demand.Priority))
+                        rejected.Add($"Existing objective '{existingId}' rejected its zero target.");
+                }
                 activeStepIds.Add(existingId);
                 continue;
             }
@@ -75,9 +79,11 @@ public sealed class ProductionDemandPlanAdapter
 
             var stepId = GetStepId(demand.UnitTypeId);
             activeStepIds.Add(stepId);
-            if (runtime.TryGetStep(stepId, out _))
+            if (runtime.TryGetStep(stepId, out var existingStep))
             {
-                if (!runtime.TrySetDesiredTarget(stepId, demand.DesiredCount, demand.Priority))
+                if (!IsMatchingObjective(existingStep, resolvedTarget.Name, producer.Name))
+                    rejected.Add($"Existing objective '{stepId}' conflicts with the resolved target, producer, or lane.");
+                else if (!runtime.TrySetDesiredTarget(stepId, demand.DesiredCount, demand.Priority))
                     rejected.Add($"Existing objective '{stepId}' rejected the updated target.");
                 else
                     updated++;
@@ -106,6 +112,14 @@ public sealed class ProductionDemandPlanAdapter
 
         return new ProductionDemandPlanSyncResult(created, updated, rejected);
     }
+
+    private static bool IsMatchingObjective(
+        ProductionStepContext step,
+        string target,
+        string producer) =>
+        step.Definition.Lane == ProductionLane.Units &&
+        string.Equals(step.Definition.Target, target, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(step.Definition.Producer, producer, StringComparison.OrdinalIgnoreCase);
 
     public static string GetStepId(uint unitTypeId) => $"demand.units.{unitTypeId}";
 }

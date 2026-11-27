@@ -80,7 +80,7 @@ public sealed class ProductionStepContext : IStateContext
 
     internal bool TryApplyAuthorizedTarget(int desiredCount, int priority)
     {
-        if (desiredCount < 1 || priority is < 0 or > 100)
+        if (desiredCount is < 0 or > ProductionDemandLedger.MaximumDesiredCount || priority is < 0 or > 100)
             return false;
         EffectiveDesiredCount = desiredCount;
         EffectivePriority = priority;

@@ -4,8 +4,8 @@ namespace SingularityBot.Behavior;
 
 /// <summary>
 /// Reconciles completed units and visible in-progress production against a
-/// race-specific profile. Zerg Egg orders count as the profile's full output
-/// batch (two Zerglings for one Larva order).
+/// race-specific profile. Producer orders are counted as output commitments;
+/// Zerg Egg orders are counted on their Egg container rather than on Larva.
 /// </summary>
 public static class Sc2RaceProductionProgressReconciler
 {
@@ -33,21 +33,23 @@ public static class Sc2RaceProductionProgressReconciler
             unit.UnitKind.Equals(target.Name, StringComparison.OrdinalIgnoreCase) &&
             unit.BuildProgress >= 1f);
 
-        var inProgressUnits = selfUnits.Count(unit =>
+        var observedInProgressUnits = selfUnits.Count(unit =>
             unit.UnitKind.Equals(target.Name, StringComparison.OrdinalIgnoreCase) &&
             unit.BuildProgress < 1f);
 
-        // A Zerg Egg is a single visible container for the full result of the
-        // morph order. Count its target ability once, then expand by UnitsPerOrder.
-        var inProgressOrders = selfUnits.Count(unit =>
-            unit.UnitKind.Equals("Egg", StringComparison.OrdinalIgnoreCase) &&
-            unit.Orders.Any(order => order.AbilityId == target.AbilityId));
+        // Training orders live on their producer (Barracks, Gateway, Hatchery,
+        // etc.). Zerg morph orders instead live on an Egg. Count the order once,
+        // then compare its expected output with visible target units so a unit
+        // represented by both observations is not double-counted.
+        var inProgressOrders = selfUnits
+            .Where(unit =>
+                unit.UnitKind.Equals(profile.ProducerUnit, StringComparison.OrdinalIgnoreCase) ||
+                unit.UnitKind.Equals("Egg", StringComparison.OrdinalIgnoreCase))
+            .Sum(unit => unit.Orders.Count(order => order.AbilityId == target.AbilityId));
 
-        var eggOutput = checked(inProgressOrders * profile.UnitsPerOrder);
-        return new Sc2RaceProductionProgress(
-            completed,
-            checked(inProgressUnits + eggOutput),
-            inProgressOrders);
+        var orderOutput = checked(inProgressOrders * profile.UnitsPerOrder);
+        var inProgress = Math.Max(observedInProgressUnits, orderOutput);
+        return new Sc2RaceProductionProgress(completed, inProgress, inProgressOrders);
     }
 }
 

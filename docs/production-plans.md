@@ -22,7 +22,7 @@ stateDiagram-v2
 
 The `Issuing` entry action emits a semantic `ProductionIntent`. It does not submit an SC2 command. The host action pipeline remains responsible for resolving the target and producer against authoritative game data, checking resources/supply/producer availability, translating to a protocol command, and reporting submission outcomes back to the context.
 
-The context distinguishes currently completed units from in-progress production. This prevents the graph from treating a queued unit as completed or blindly issuing duplicates. A submission latch is held until the host observes the order or rejects the command. Dependency completion is supplied as an observation-derived context fact; the FSM does not infer that a building exists merely because an earlier action was requested.
+The context distinguishes currently completed units from in-progress production. The race-profile progress reconciler now counts matching training orders on their producer (for example, a Marine order on a Barracks) and Zerg morph orders on Eggs, while avoiding double-counting a visible incomplete target unit. This prevents a queued unit from being treated as completed or blindly issuing duplicates. A submission latch is held until the host observes the order or rejects the command. Dependency completion is supplied as an observation-derived context fact; the FSM does not infer that a building exists merely because an earlier action was requested.
 
 ## User-authored examples
 

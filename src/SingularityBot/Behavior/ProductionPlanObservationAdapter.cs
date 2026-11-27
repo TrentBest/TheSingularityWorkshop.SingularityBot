@@ -21,6 +21,14 @@ public sealed record ProductionObservationRule(
 /// </summary>
 public sealed class ProductionPlanObservationAdapter
 {
+    private static readonly IReadOnlyDictionary<string, int> UnitsPerOrderByTarget =
+        Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .GroupBy(profile => profile.TargetUnit, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(profile => profile.UnitsPerOrder).DefaultIfEmpty(1).Max(),
+                StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Compatibility overload for callers that already have complete strategic
     /// recipes. Runtime eligibility only consumes the recipe's producer and
@@ -110,13 +118,9 @@ public sealed class ProductionPlanObservationAdapter
             // target unit or BuildJobRuntime entry appears. Count only orders
             // whose ability is the target's authoritative ResponseData ability.
             // Zerg morph output is reported on Egg containers, not Larva.
-            var unitsPerOrder = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
-                .Where(profile => profile.TargetUnit.Equals(target.Name, StringComparison.OrdinalIgnoreCase))
-                .Select(profile => profile.UnitsPerOrder)
-                .Distinct()
-                .SingleOrDefault();
-            if (unitsPerOrder <= 0)
-                unitsPerOrder = 1;
+            var unitsPerOrder = UnitsPerOrderByTarget.TryGetValue(target.Name, out var configuredUnitsPerOrder)
+                ? configuredUnitsPerOrder
+                : 1;
 
             var matchingOrders = liveSelf
                 .Where(unit =>

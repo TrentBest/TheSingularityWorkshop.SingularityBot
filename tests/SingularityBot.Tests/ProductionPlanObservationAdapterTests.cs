@@ -79,7 +79,8 @@ public sealed class ProductionPlanObservationAdapterTests
 
         new ProductionPlanObservationAdapter().Apply(
             runtime,
-            CreateObservation(100, 10, 1, 1f, 1, marineTrainingOrder: true),
+            CreateObservation(100, 10, 1, 1f, 1,
+                marineTrainingOrder: true, marineBuildProgress: 0.2f),
             CreateGameData(),
             new BuildJobRuntime(),
             new HashSet<ulong>(),
@@ -126,7 +127,8 @@ public sealed class ProductionPlanObservationAdapterTests
         uint foodUsed,
         float barracksProgress,
         int marineCount,
-        bool marineTrainingOrder = false)
+        bool marineTrainingOrder = false,
+        float marineBuildProgress = 1f)
     {
         var units = new List<UnitObservationFacts>
         {
@@ -145,7 +147,7 @@ public sealed class ProductionPlanObservationAdapterTests
         {
             units.Add(new UnitObservationFacts(
                 (ulong)(200 + index), 48, "Marine", 1, UnitAlliance.Self,
-                UnitVisibility.Visible, 45, 45, 0, 0, 1, 11 + index, 10,
+                UnitVisibility.Visible, 45, 45, 0, 0, marineBuildProgress, 11 + index, 10,
                 true, false, false, false, false, false, 10));
         }
 

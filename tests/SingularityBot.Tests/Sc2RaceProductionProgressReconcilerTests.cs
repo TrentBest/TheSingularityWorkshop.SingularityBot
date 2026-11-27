@@ -25,6 +25,38 @@ public sealed class Sc2RaceProductionProgressReconcilerTests
     }
 
     [Fact]
+    public void TerranProducerOrderCountsAsInProgressMarine()
+    {
+        var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "terran.marine.v1");
+        var target = new Sc2UnitFacts(48, "Marine", 560, 50, 0, 1, 0);
+        var observation = Observation(ProducerWithOrder(1, "Barracks", 560));
+
+        var progress = Sc2RaceProductionProgressReconciler.Reconcile(profile, target, observation);
+
+        Assert.Equal(0, progress.CompletedUnits);
+        Assert.Equal(1, progress.InProgressUnits);
+        Assert.Equal(1, progress.InProgressOrders);
+        Assert.Equal(1, progress.AccountedUnits);
+    }
+
+    [Fact]
+    public void ProducerOrderAndVisibleIncompleteTargetAreNotDoubleCounted()
+    {
+        var profile = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+            .Single(item => item.ModeId == "terran.marine.v1");
+        var target = new Sc2UnitFacts(48, "Marine", 560, 50, 0, 1, 0);
+        var observation = Observation(
+            ProducerWithOrder(1, "Barracks", 560),
+            Unit(2, "Marine", 0.2f));
+
+        var progress = Sc2RaceProductionProgressReconciler.Reconcile(profile, target, observation);
+
+        Assert.Equal(1, progress.InProgressUnits);
+        Assert.Equal(1, progress.InProgressOrders);
+    }
+
+    [Fact]
     public void Reconciler_IgnoresEggsWithoutMatchingOrderAndNonSelfOrDeadUnits()
     {
         var profile = ZerglingProfile();
@@ -66,12 +98,15 @@ public sealed class Sc2RaceProductionProgressReconcilerTests
     private static NormalizedObservation Observation(params UnitObservationFacts[] units) =>
         new(100, 1, units, new HashSet<ulong>());
 
-    private static UnitObservationFacts Egg(ulong tag, uint abilityId) =>
-        Unit(tag, "Egg") with
+    private static UnitObservationFacts ProducerWithOrder(ulong tag, string kind, uint abilityId) =>
+        Unit(tag, kind) with
         {
             HasOrders = true,
             Orders = new[] { new UnitOrderObservationFacts(abilityId, null, null, null) }
         };
+
+    private static UnitObservationFacts Egg(ulong tag, uint abilityId) =>
+        ProducerWithOrder(tag, "Egg", abilityId);
 
     private static UnitObservationFacts Unit(ulong tag, string kind, float buildProgress = 1f) =>
         new(tag, 1, kind, 1, UnitAlliance.Self, UnitVisibility.Visible,

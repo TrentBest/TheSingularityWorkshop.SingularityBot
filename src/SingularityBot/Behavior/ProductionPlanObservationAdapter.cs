@@ -104,7 +104,28 @@ public sealed class ProductionPlanObservationAdapter
                 .ToHashSet();
             var observedInProgressCount = targetUnits.Count(unit =>
                 unit.BuildProgress < 1f && !associatedResultTags.Contains(unit.Tag));
-            var inProgressCount = observedInProgressCount + activeJobs.Length;
+            var observedAndJobProgress = observedInProgressCount + activeJobs.Length;
+
+            // Training/morph orders are commitments even before an incomplete
+            // target unit or BuildJobRuntime entry appears. Count only orders
+            // whose ability is the target's authoritative ResponseData ability.
+            // Zerg morph output is reported on Egg containers, not Larva.
+            var unitsPerOrder = Sc2RaceProductionProfileCatalog.CreateDefault().Profiles
+                .Where(profile => profile.TargetUnit.Equals(target.Name, StringComparison.OrdinalIgnoreCase))
+                .Select(profile => profile.UnitsPerOrder)
+                .Distinct()
+                .SingleOrDefault();
+            if (unitsPerOrder <= 0)
+                unitsPerOrder = 1;
+
+            var matchingOrders = liveSelf
+                .Where(unit =>
+                    (unit.UnitKind.Equals(definition.Producer, StringComparison.OrdinalIgnoreCase) ||
+                     unit.UnitKind.Equals("Egg", StringComparison.OrdinalIgnoreCase)) &&
+                    unit.Orders is not null)
+                .Sum(unit => unit.Orders.Count(order => order.AbilityId == target.AbilityId));
+            var orderOutput = checked(matchingOrders * unitsPerOrder);
+            var inProgressCount = Math.Max(observedAndJobProgress, orderOutput);
 
             var producers = liveSelf.Where(unit =>
                 unit.UnitKind.Equals(definition.Producer, StringComparison.OrdinalIgnoreCase)).ToArray();

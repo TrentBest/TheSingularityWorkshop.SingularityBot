@@ -30,6 +30,30 @@ public sealed class ProductionPlanFsmTests
         Assert.Equal(90, intent.Priority);
     }
 
+
+    [Fact]
+    public void ProductionPlanRuntime_ZeroTargetDisablesObjectiveAndCanBeReactivated()
+    {
+        var emitted = new List<ProductionIntent>();
+        using var runtime = new ProductionPlanRuntime(emitted.Add);
+        var step = runtime.AddStep(new ProductionStepDefinition(
+            "marine-demand", "Marine", "Barracks", 6, 0, 70));
+
+        Assert.True(runtime.TrySetDesiredTarget("marine-demand", 0, 70));
+        Assert.Equal(0, step.EffectiveDesiredCount);
+        Assert.True(step.IsComplete);
+        Assert.False(step.CanIssue);
+
+        Assert.True(runtime.TrySetDesiredTarget("marine-demand", 4, 80));
+        step.ApplyObservation(20, 0, 0, true, true, true);
+        Assert.False(step.IsComplete);
+        Assert.True(step.CanIssue);
+        Assert.Equal(80, step.EffectivePriority);
+        Assert.False(runtime.TrySetDesiredTarget("missing-step", 3, 50));
+        Assert.False(runtime.TrySetDesiredTarget("marine-demand", -1, 50));
+        Assert.False(runtime.TrySetDesiredTarget("marine-demand", 3, 101));
+    }
+
     [Fact]
     public void ProductionStep_DoesNotEmitAgainWhileSubmissionIsPending()
     {

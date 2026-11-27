@@ -43,6 +43,52 @@ public sealed class ProductionPlanObservationAdapterTests
     }
 
     [Fact]
+    public void ProducerTrainingOrderCountsAsInProgressBeforeTargetUnitIsVisible()
+    {
+        using var runtime = new ProductionPlanRuntime(_ => { });
+        var step = runtime.AddStep(new ProductionStepDefinition(
+            "marine-core", "Marine", "Barracks", 6, 0, 80));
+        var rules = new Dictionary<string, ProductionObservationRule>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Marine"] = new("Marine", "Barracks", new[] { "Barracks" })
+        };
+
+        new ProductionPlanObservationAdapter().Apply(
+            runtime,
+            CreateObservation(100, 10, 1, 1f, 0, marineTrainingOrder: true),
+            CreateGameData(),
+            new BuildJobRuntime(),
+            new HashSet<ulong>(),
+            rules);
+
+        Assert.Equal(1, step.InProgressCount);
+    }
+
+    [Fact]
+    public void ProducerTrainingOrderAndVisibleIncompleteTargetAreNotDoubleCounted()
+    {
+        using var runtime = new ProductionPlanRuntime(_ => { });
+        var step = runtime.AddStep(new ProductionStepDefinition(
+            "marine-core", "Marine", "Barracks", 6, 0, 80));
+        var rules = new Dictionary<string, ProductionObservationRule>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Marine"] = new("Marine", "Barracks", new[] { "Barracks" })
+        };
+
+        new ProductionPlanObservationAdapter().Apply(
+            runtime,
+            CreateObservation(100, 10, 1, 1f, 1, marineTrainingOrder: true),
+            CreateGameData(),
+            new BuildJobRuntime(),
+            new HashSet<ulong>(),
+            rules);
+
+        Assert.Equal(1, step.InProgressCount);
+    }
+
+    [Fact]
     public void ObservationRulesFailClosedWhenPrerequisiteIsNotComplete()
     {
         using var runtime = new ProductionPlanRuntime(_ => { });
@@ -79,7 +125,8 @@ public sealed class ProductionPlanObservationAdapterTests
         uint foodCap,
         uint foodUsed,
         float barracksProgress,
-        int marineCount)
+        int marineCount,
+        bool marineTrainingOrder = false)
     {
         var units = new List<UnitObservationFacts>
         {
@@ -87,6 +134,12 @@ public sealed class ProductionPlanObservationAdapterTests
                 100, 21, "Barracks", 1, UnitAlliance.Self, UnitVisibility.Visible,
                 100, 100, 0, 0, barracksProgress, 10, 10, true, false, false,
                 false, false, false, 10)
+            {
+                HasOrders = marineTrainingOrder,
+                Orders = marineTrainingOrder
+                    ? new[] { new UnitOrderObservationFacts(560, null, null, null) }
+                    : Array.Empty<UnitOrderObservationFacts>()
+            }
         };
         for (var index = 0; index < marineCount; index++)
         {

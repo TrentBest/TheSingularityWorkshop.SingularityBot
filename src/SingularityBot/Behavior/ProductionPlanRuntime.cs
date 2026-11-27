@@ -72,6 +72,18 @@ public sealed class ProductionPlanRuntime : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Updates one registered objective's desired total without replacing its
+    /// stable FSM identity. A target of zero disables further production while
+    /// retaining the objective for later reactivation.
+    /// </summary>
+    public bool TrySetDesiredTarget(string stepId, int desiredCount, int priority)
+    {
+        if (!_steps.TryGetValue(stepId, out var entry))
+            return false;
+        return entry.Context.TryApplyAuthorizedTarget(desiredCount, priority);
+    }
+
     public bool TryGetStep(string id, out ProductionStepContext context)
     {
         if (_steps.TryGetValue(id, out var entry))

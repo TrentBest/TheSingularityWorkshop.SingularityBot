@@ -82,7 +82,24 @@ public static class Program
             !string.Equals(argument, "--diagnostics", StringComparison.Ordinal) &&
             !string.Equals(argument, "--no-diagnostics", StringComparison.Ordinal) &&
             !(index > 0 && args[index - 1] == "--Map")).ToArray();
-        var localRun = connectionArgs.Length == 0;
+        var hasLadderArguments = connectionArgs.Any(argument =>
+            argument is "--GamePort" or "-g" or
+                "--StartPort" or "-o" or
+                "--LadderServer" or "-l" or
+                "--OpponentId" or
+                "--ComputerOpponent" or "-c" or
+                "--ComputerRace" or "-a" or
+                "--ComputerDifficulty" or "-d");
+        var localRun = !hasLadderArguments;
+        if (localRun && connectionArgs.Length > 0)
+        {
+            Console.Error.WriteLine("[LaunchDiagnostics] Unrecognized arguments (not treated as ladder options):");
+            foreach (var argument in connectionArgs)
+                Console.Error.WriteLine($"[LaunchDiagnostics] <{argument}>");
+            throw new ArgumentException(
+                "Unrecognized launch arguments. Local mode is the default; ladder mode requires explicit --GamePort and --StartPort arguments.",
+                nameof(args));
+        }
         if (!localRun)
         {
             Console.Error.WriteLine($"[LaunchDiagnostics] Local-run options: diagnostics-dir={diagnosticsDirectoryArgument is not null}, match-output-dir={matchOutputDirectoryArgument is not null}.");

@@ -38,20 +38,6 @@ public sealed class ProductionDemandPlanAdapter
                 continue;
             }
 
-            if (demand.DesiredCount == 0)
-            {
-                var existingId = GetStepId(demand.UnitTypeId);
-                if (runtime.TryGetStep(existingId, out var zeroStep))
-                {
-                    if (!IsMatchingObjective(zeroStep, target.Name, zeroStep.Definition.Producer))
-                        rejected.Add($"Existing objective '{existingId}' conflicts with the authoritative unit identity.");
-                    else if (!runtime.TrySetDesiredTarget(existingId, 0, demand.Priority))
-                        rejected.Add($"Existing objective '{existingId}' rejected its zero target.");
-                }
-                activeStepIds.Add(existingId);
-                continue;
-            }
-
             var matches = profiles.Profiles
                 .Where(profile => profile.Race == actualRace &&
                     string.Equals(profile.TargetUnit, target.Name, StringComparison.OrdinalIgnoreCase))
@@ -78,6 +64,19 @@ public sealed class ProductionDemandPlanAdapter
             }
 
             var stepId = GetStepId(demand.UnitTypeId);
+            if (demand.DesiredCount == 0)
+            {
+                if (runtime.TryGetStep(stepId, out var zeroStep))
+                {
+                    if (!IsMatchingObjective(zeroStep, resolvedTarget.Name, producer.Name))
+                        rejected.Add($"Existing objective '{stepId}' conflicts with the resolved target, producer, or lane.");
+                    else if (!runtime.TrySetDesiredTarget(stepId, 0, demand.Priority))
+                        rejected.Add($"Existing objective '{stepId}' rejected its zero target.");
+                }
+                activeStepIds.Add(stepId);
+                continue;
+            }
+
             activeStepIds.Add(stepId);
             if (runtime.TryGetStep(stepId, out var existingStep))
             {

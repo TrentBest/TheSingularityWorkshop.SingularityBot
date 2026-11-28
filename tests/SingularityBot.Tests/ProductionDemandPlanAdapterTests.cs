@@ -101,6 +101,7 @@ public sealed class ProductionDemandPlanAdapterTests
         Assert.Empty(runtime.Steps);
         Assert.Single(wrongRace.Rejections);
 
+        ledger.Clear();
         Assert.True(ledger.Set(new Sc2UnitFacts(21, "Barracks", 321, 150, 0, 0, 0), 2));
         var building = adapter.Apply(ledger, runtime, gameData, profiles, Race.Terran);
         Assert.Empty(runtime.Steps);
@@ -110,7 +111,8 @@ public sealed class ProductionDemandPlanAdapterTests
     [Fact]
     public void Apply_RejectsDemandWhoseNameDoesNotMatchAuthoritativeUnitId()
     {
-        var (gameData, ledger) = CreateTerranFixture();
+        var (gameData, _) = CreateTerranFixture();
+        var ledger = new ProductionDemandLedger();
         Assert.True(ledger.Set(new Sc2UnitFacts(48, "Marauder", 560, 50, 0, 1, 0), 4));
         var adapter = new ProductionDemandPlanAdapter();
         using var runtime = new ProductionPlanRuntime(_ => { });

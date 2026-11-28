@@ -15,6 +15,7 @@ internal static class MatchArtifactCollector
         if (string.IsNullOrWhiteSpace(sourceDirectory))
             return;
 
+        sourceDirectory = Environment.ExpandEnvironmentVariables(sourceDirectory);
         var source = Path.GetFullPath(sourceDirectory);
         var destination = Path.GetFullPath(destinationDirectory);
         if (!Directory.Exists(source))
@@ -35,7 +36,7 @@ internal static class MatchArtifactCollector
         var skipped = new List<string>();
         try
         {
-            foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            foreach (var file in Directory.EnumerateFiles(source, "*.SC2Replay", SearchOption.AllDirectories))
             {
                 try
                 {

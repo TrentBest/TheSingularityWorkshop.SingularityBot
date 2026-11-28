@@ -26,6 +26,16 @@ Environment variable path rules are:
 - An absolute value is used as-is.
 - A relative value is resolved from the repository root.
 
+## Visual Studio Play-button launch
+
+The `SingularityBot (Local SC2)` profile in `src/SingularityBot/Properties/launchSettings.json` automatically passes the standard Windows SC2 account replay root:
+
+`%USERPROFILE%\\Documents\\StarCraft II\\Accounts`
+
+The collector searches that tree recursively but copies only new `.SC2Replay` files, so it does not sweep up unrelated account data. Environment variables in the configured path are expanded at runtime. If your Documents folder or SC2 replay location is elsewhere, edit the profile's `--match-output-dir` argument to the actual parent folder. Select **SingularityBot (Local SC2)** in Visual Studio's launch-profile dropdown and press Play.
+
+The bot's own diagnostics continue to go directly to the repository's `data/diagnostics/` directory.
+
 ## Expected artifacts
 
 Depending on the selected match mode, a run can produce:

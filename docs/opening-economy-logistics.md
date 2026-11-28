@@ -54,6 +54,12 @@ Phases are driven by observed facts: assigned, travelling, gathering, returning 
 
 Cache route geometry and stable positions. Recompute only when the worker route, mineral/town-hall position, map/pathing identity or measured route error makes the cache stale. Use game-loop deltas for low-cost timers; never assume sub-loop precision.
 
+## Diagnostic data location and sharing
+
+All local diagnostic recorders use the single `Sc2Diagnostics.OutputDirectory` contract. By default this resolves to `<repository-root>/data/diagnostics/`, independent of the IDE working directory and build output directory. The runner's session log prints the absolute destination at startup. Set `SINGULARITYBOT_DIAGNOSTICS_DIR` only when a host deliberately needs another location; relative overrides resolve from the repository root, while absolute overrides are used as supplied. If the checkout cannot be located, diagnostics report the configuration failure rather than silently falling back to `bin/`.
+
+The local runner writes files to the developer's checkout; it does not push them to GitHub. To make a run available for remote review, verify the logged path and non-empty frame rows, then commit and push the selected evidence from `data/diagnostics/` to `development`. See [data/README.md](../data/README.md) for the artifact inventory and sharing procedure.
+
 ## Pathing and interaction calibration
 
 The worker-route diagnostic trace is the evidence source for the next mining experiments. It records the match/map and bot mode, game-loop observations, resource banks, worker identity and assignment generation, route phase and phase age, mineral identity and remaining contents, town-hall identity, worker position/cargo/current order, and SC2 pathing distances when those query results are available.

@@ -101,16 +101,32 @@ internal static class Sc2Diagnostics
             lock (_gate) { _primary.Flush(); _file.Flush(); }
         }
     }
-    // Prefer an explicit host-provided location; otherwise keep captures beside the bot executable.
-    // This avoids binding diagnostics to one developer's checkout path.
+    // All local match evidence is written inside the checkout so it can be reviewed,
+    // versioned, and shared with the Workshop tools. Hosts may override this with an
+    // absolute path; relative overrides are resolved from the repository root.
     public static string OutputDirectory
     {
         get
         {
+            var repositoryRoot = FindRepositoryRoot();
             var configured = Environment.GetEnvironmentVariable("SINGULARITYBOT_DIAGNOSTICS_DIR");
-            return Path.GetFullPath(string.IsNullOrWhiteSpace(configured)
-                ? Path.Combine(FindRepositoryRoot(), "extracted")
-                : configured);
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                if (Path.IsPathRooted(configured))
+                    return Path.GetFullPath(configured);
+
+                if (repositoryRoot is null)
+                    throw new InvalidOperationException(
+                        "A relative SINGULARITYBOT_DIAGNOSTICS_DIR requires a discoverable SingularityBot repository root. Set an absolute path instead.");
+
+                return Path.GetFullPath(Path.Combine(repositoryRoot, configured));
+            }
+
+            if (repositoryRoot is null)
+                throw new InvalidOperationException(
+                    "Could not locate the SingularityBot checkout. Launch from within the repository or set SINGULARITYBOT_DIAGNOSTICS_DIR to an absolute directory.");
+
+            return Path.Combine(repositoryRoot, "data", "diagnostics");
         }
     }
 
@@ -121,14 +137,18 @@ internal static class Sc2Diagnostics
             var directory = new DirectoryInfo(start);
             while (directory is not null)
             {
-                if (Directory.Exists(Path.Combine(directory.FullName, ".git")) ||
-                    File.Exists(Path.Combine(directory.FullName, "TheSingularityWorkshop.SingularityBot.sln")))
-                    return directory.FullName;
+                var root = directory.FullName;
+                if (File.Exists(Path.Combine(root, "TheSingularityWorkshop.SingularityBot.sln")) ||
+                    File.Exists(Path.Combine(root, "src", "SingularityBot", "SingularityBot.csproj")) ||
+                    Directory.Exists(Path.Combine(root, ".git")) ||
+                    File.Exists(Path.Combine(root, ".git")))
+                    return root;
+
                 directory = directory.Parent;
             }
         }
 
-        return AppContext.BaseDirectory;
+        return null;
     }
 
     /// <summary>

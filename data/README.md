@@ -22,7 +22,7 @@ SingularityBot.exe --diagnostics-dir="D:\\SC2-Experiments\\BotRuns" --match-outp
 
 The handoff is best-effort: it retries transient file locks, but if SC2 writes a replay after the connection has already returned, that late file may not be included. The log and manifest make collection results visible. These options are local-run options and are rejected for ladder launches.
 
-Hosts may also override the destination with `SINGULARITYBOT_DIAGNOSTICS_DIR`:
+Environment variable path rules are:
 - An absolute value is used as-is.
 - A relative value is resolved from the repository root.
 

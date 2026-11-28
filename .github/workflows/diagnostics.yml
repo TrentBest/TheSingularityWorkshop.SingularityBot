@@ -4,6 +4,10 @@ on:
   push:
     branches: [development]
     paths:
+      - "data/diagnostics/**/*.json"
+      - "data/diagnostics/**/*.csv"
+      - "data/diagnostics/**/*.bin"
+      # Continue validating historical captures while the old folder is retired.
       - "extracted/**/*.json"
       - "extracted/**/*.csv"
       - "extracted/**/*.bin"
@@ -17,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate diagnostic files
+      - name: Validate diagnostic files and reject empty traces
         run: |
           python - <<'PY'
           import csv
@@ -25,18 +29,27 @@ jobs:
           import struct
           from pathlib import Path
 
-          root = Path("extracted")
+          roots = [Path("data/diagnostics"), Path("extracted")]
           extensions = {".json", ".csv", ".bin"}
-          files = sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in extensions)
+          files = sorted(
+              p for root in roots if root.exists()
+              for p in root.rglob("*") if p.is_file() and p.suffix.lower() in extensions
+          )
           if not files:
-              raise SystemExit("No JSON, CSV, or binary diagnostics found.")
+              raise SystemExit("No JSON, CSV, or binary diagnostics found in data/diagnostics or extracted.")
 
           for path in files:
               if path.suffix.lower() == ".json":
                   json.loads(path.read_text(encoding="utf-8"))
               elif path.suffix.lower() == ".csv":
+                  if path.stat().st_size == 0:
+                      raise SystemExit(f"Empty diagnostic CSV: {path}")
                   with path.open(newline="", encoding="utf-8") as stream:
-                      list(csv.reader(stream))
+                      rows = list(csv.reader(stream))
+                  if not rows:
+                      raise SystemExit(f"CSV has no header: {path}")
+                  if path.name.startswith(("opening-trace-", "worker-route-", "active-run-")) and len(rows) < 2:
+                      raise SystemExit(f"Diagnostic trace has a header but no observations: {path}")
               else:
                   data = path.read_bytes()
                   if len(data) < 8 or data[:4] != b"SC2T":
@@ -58,14 +71,20 @@ jobs:
                       data[offset + 50:end].decode("utf-8", errors="strict")
                       offset = end
                       records += 1
+                  if records == 0:
+                      raise SystemExit(f"SC2 event timeline contains no records: {path}")
                   print(f"Validated {path} ({records} binary records)")
                   continue
               print(f"Validated {path}")
+
+          print(f"Validated {len(files)} diagnostic files.")
           PY
       - name: Archive diagnostics for review
         uses: actions/upload-artifact@v4
         with:
           name: sc2-diagnostics-${{ github.sha }}
-          path: extracted/
+          path: |
+            data/diagnostics/
+            extracted/
           if-no-files-found: error
           retention-days: 30

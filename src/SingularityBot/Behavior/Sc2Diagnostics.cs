@@ -11,6 +11,15 @@ namespace SingularityBot.Behavior;
 internal static class Sc2Diagnostics
 {
     private static readonly object SessionLogGate = new();
+    private static string _configuredOutputDirectory;
+
+    /// <summary>Overrides the diagnostics destination before any capture starts.</summary>
+    public static void ConfigureOutputDirectory(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("A non-empty diagnostics output directory is required.", nameof(path));
+        _configuredOutputDirectory = path;
+    }
     private static StreamWriter _sessionLog;
     private static string _sessionLogPath;
 
@@ -109,7 +118,7 @@ internal static class Sc2Diagnostics
         get
         {
             var repositoryRoot = FindRepositoryRoot();
-            var configured = Environment.GetEnvironmentVariable("SINGULARITYBOT_DIAGNOSTICS_DIR");
+            var configured = _configuredOutputDirectory ?? Environment.GetEnvironmentVariable("SINGULARITYBOT_DIAGNOSTICS_DIR");
             if (!string.IsNullOrWhiteSpace(configured))
             {
                 if (Path.IsPathRooted(configured))

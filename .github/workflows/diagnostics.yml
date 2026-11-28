@@ -4,13 +4,7 @@ on:
   push:
     branches: [development]
     paths:
-      - "data/diagnostics/**/*.json"
-      - "data/diagnostics/**/*.csv"
-      - "data/diagnostics/**/*.bin"
-      # Continue validating historical captures while the old folder is retired.
-      - "extracted/**/*.json"
-      - "extracted/**/*.csv"
-      - "extracted/**/*.bin"
+      - "data/diagnostics/**"
   workflow_dispatch:
 
 permissions:
@@ -29,14 +23,13 @@ jobs:
           import struct
           from pathlib import Path
 
-          roots = [Path("data/diagnostics"), Path("extracted")]
+          root = Path("data/diagnostics")
           extensions = {".json", ".csv", ".bin"}
           files = sorted(
-              p for root in roots if root.exists()
-              for p in root.rglob("*") if p.is_file() and p.suffix.lower() in extensions
-          )
+              p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in extensions
+          ) if root.exists() else []
           if not files:
-              raise SystemExit("No JSON, CSV, or binary diagnostics found in data/diagnostics or extracted.")
+              raise SystemExit("No JSON, CSV, or binary diagnostics found in data/diagnostics.")
 
           for path in files:
               if path.suffix.lower() == ".json":
@@ -83,8 +76,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sc2-diagnostics-${{ github.sha }}
-          path: |
-            data/diagnostics/
-            extracted/
+          path: data/diagnostics/
           if-no-files-found: error
           retention-days: 30

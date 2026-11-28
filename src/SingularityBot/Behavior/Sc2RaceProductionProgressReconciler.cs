@@ -41,14 +41,21 @@ public static class Sc2RaceProductionProgressReconciler
         // etc.). Zerg morph orders instead live on an Egg. Count the order once,
         // then compare its expected output with visible target units so a unit
         // represented by both observations is not double-counted.
-        var inProgressOrders = selfUnits
-            .Where(unit =>
-                unit.UnitKind.Equals(profile.ProducerUnit, StringComparison.OrdinalIgnoreCase) ||
-                unit.UnitKind.Equals("Egg", StringComparison.OrdinalIgnoreCase))
+        var producerOrders = selfUnits
+            .Where(unit => unit.UnitKind.Equals(profile.ProducerUnit, StringComparison.OrdinalIgnoreCase))
+            .Sum(unit => unit.Orders.Count(order => order.AbilityId == target.AbilityId));
+        var eggOrders = selfUnits
+            .Where(unit => unit.UnitKind.Equals("Egg", StringComparison.OrdinalIgnoreCase))
             .Sum(unit => unit.Orders.Count(order => order.AbilityId == target.AbilityId));
 
-        var orderOutput = checked(inProgressOrders * profile.UnitsPerOrder);
-        var inProgress = Math.Max(observedInProgressUnits, orderOutput);
+        // A visible incomplete unit may be the output of a producer order, so
+        // use the larger count for that lane. An Egg is itself the Zerg morph
+        // container: its paired output is additional to any separately visible
+        // incomplete target unit.
+        var producerOrderOutput = checked(producerOrders * profile.UnitsPerOrder);
+        var eggOrderOutput = checked(eggOrders * profile.UnitsPerOrder);
+        var inProgress = checked(eggOrderOutput + Math.Max(observedInProgressUnits, producerOrderOutput));
+        var inProgressOrders = checked(producerOrders + eggOrders);
         return new Sc2RaceProductionProgress(completed, inProgress, inProgressOrders);
     }
 }

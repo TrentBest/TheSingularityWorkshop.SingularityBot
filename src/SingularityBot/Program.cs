@@ -82,6 +82,10 @@ public static class Program
             !string.Equals(argument, "--diagnostics", StringComparison.Ordinal) &&
             !string.Equals(argument, "--no-diagnostics", StringComparison.Ordinal) &&
             !(index > 0 && args[index - 1] == "--Map")).ToArray();
+        // Never infer ladder mode from the presence of connection arguments. IDE
+        // launch profiles and host processes can contribute arguments; local Play
+        // must remain local unless the operator explicitly opts in with --ladder.
+        var ladderModeRequested = args.Contains("--ladder", StringComparer.Ordinal);
         var hasLadderArguments = connectionArgs.Any(argument =>
             argument is "--GamePort" or "-g" or
                 "--StartPort" or "-o" or
@@ -90,14 +94,16 @@ public static class Program
                 "--ComputerOpponent" or "-c" or
                 "--ComputerRace" or "-a" or
                 "--ComputerDifficulty" or "-d");
-        var localRun = !hasLadderArguments;
+        var localRun = !ladderModeRequested;
+        if (!localRun && !hasLadderArguments)
+            throw new ArgumentException("--ladder requires explicit SC2 ladder connection arguments such as --GamePort and --StartPort.", nameof(args));
         if (localRun && connectionArgs.Length > 0)
         {
-            Console.Error.WriteLine("[LaunchDiagnostics] Unrecognized arguments (not treated as ladder options):");
+            Console.Error.WriteLine("[LaunchDiagnostics] Unexpected arguments for local mode:");
             foreach (var argument in connectionArgs)
                 Console.Error.WriteLine($"[LaunchDiagnostics] <{argument}>");
             throw new ArgumentException(
-                "Unrecognized launch arguments. Local mode is the default; ladder mode requires explicit --GamePort and --StartPort arguments.",
+                "Unexpected launch arguments. Local mode is the default; remove the unexpected arguments or explicitly opt into ladder mode with --ladder.",
                 nameof(args));
         }
         if (!localRun)

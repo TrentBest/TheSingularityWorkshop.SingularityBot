@@ -13,6 +13,22 @@ public static class Program
     public static void Run(string[] args, Action<SingularityBot> beforeConnect = null, System.Action afterConnect = null)
     {
         args ??= [];
+        var diagnosticsDirectoryArgument = args.FirstOrDefault(argument =>
+            argument.StartsWith("--diagnostics-dir=", StringComparison.Ordinal));
+        var matchOutputDirectoryArgument = args.FirstOrDefault(argument =>
+            argument.StartsWith("--match-output-dir=", StringComparison.Ordinal));
+        var matchRunStartedAtUtc = DateTime.UtcNow;
+        if (diagnosticsDirectoryArgument is not null)
+        {
+            var requestedDirectory = diagnosticsDirectoryArgument["--diagnostics-dir=".Length..];
+            if (string.IsNullOrWhiteSpace(requestedDirectory))
+                throw new ArgumentException("--diagnostics-dir requires a non-empty path.", nameof(args));
+            Sc2Diagnostics.ConfigureOutputDirectory(requestedDirectory);
+        }
+        if (matchOutputDirectoryArgument is not null &&
+            string.IsNullOrWhiteSpace(matchOutputDirectoryArgument["--match-output-dir=".Length..]))
+            throw new ArgumentException("--match-output-dir requires a non-empty path.", nameof(args));
+
         if (!args.Contains("--no-diagnostics", StringComparer.Ordinal))
             Sc2Diagnostics.StartSessionLog();
 
@@ -56,6 +72,8 @@ public static class Program
             !argument.StartsWith("--race=", StringComparison.Ordinal) &&
             !argument.StartsWith("--definition=", StringComparison.Ordinal) &&
             !argument.StartsWith("--map=", StringComparison.Ordinal) &&
+            !argument.StartsWith("--diagnostics-dir=", StringComparison.Ordinal) &&
+            !argument.StartsWith("--match-output-dir=", StringComparison.Ordinal) &&
             !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
@@ -67,6 +85,8 @@ public static class Program
         var localRun = connectionArgs.Length == 0;
         if (mapArgument is not null && !localRun)
             throw new ArgumentException("--map is a local training option and cannot be combined with ladder connection arguments.", nameof(args));
+        if ((diagnosticsDirectoryArgument is not null || matchOutputDirectoryArgument is not null) && !localRun)
+            throw new ArgumentException("--diagnostics-dir and --match-output-dir are local-run options, not ladder arguments.", nameof(args));
         if (passiveBaseline && !localRun)
             throw new ArgumentException("--passive-baseline is a local-run option, not a ladder argument.", nameof(args));
         if (args.Contains("--no-diagnostics", StringComparer.Ordinal) && !localRun)
@@ -165,7 +185,18 @@ public static class Program
         }
         finally
         {
-            afterConnect?.Invoke();
+            try
+            {
+                if (matchOutputDirectoryArgument is not null && diagnostics)
+                {
+                    var sourceDirectory = Path.GetFullPath(matchOutputDirectoryArgument["--match-output-dir=".Length..]);
+                    MatchArtifactCollector.Collect(sourceDirectory, Sc2Diagnostics.OutputDirectory, matchRunStartedAtUtc);
+                }
+            }
+            finally
+            {
+                afterConnect?.Invoke();
+            }
         }
     }
 }

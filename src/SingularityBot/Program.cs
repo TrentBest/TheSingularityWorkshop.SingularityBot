@@ -189,7 +189,7 @@ public static class Program
             {
                 if (matchOutputDirectoryArgument is not null && diagnostics)
                 {
-                    var sourceDirectory = Path.GetFullPath(matchOutputDirectoryArgument["--match-output-dir=".Length..]);
+                    var sourceDirectory = Environment.ExpandEnvironmentVariables(matchOutputDirectoryArgument["--match-output-dir=".Length..]);
                     MatchArtifactCollector.Collect(sourceDirectory, Sc2Diagnostics.OutputDirectory, matchRunStartedAtUtc);
                 }
             }

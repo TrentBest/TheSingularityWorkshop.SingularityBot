@@ -7,13 +7,33 @@
 
 # SingularityBot
 
-**A living, evidence-driven StarCraft II bot built on The Singularity Workshop.**
+**A living, evidence-driven StarCraft II decision-and-action runtime built on The Singularity Workshop.**
 
-SingularityBot is a single decision system: observations become a normalized world picture, persistent contexts preserve entity behavior, strategic and tactical controllers propose intent, arbitration resolves competing intent, and a validated action pipeline submits commands to StarCraft II.
+SingularityBot is not a fixed build-order script. It receives SC2 observations, normalizes the visible world, maintains persistent entity contexts, coordinates strategic intent, arbitrates competing work, updates unit behavior FSMs, validates actions against current facts, and submits commands through the SC2 protocol adapter.
 
-SingularityBot is a race-configurable agent: the runner requests Random by default, and the runtime has explicit race/mode selection checked against authoritative in-game race data. This is not yet equivalent to full Terran/Protoss/Zerg strategy support. Terran Marine Mode is the implemented baseline; Zergling has an experimental selectable opening; Protoss modes are registered but not yet executable. The target is one shared decision system with race-specific economy, production, and unit-capability compositions. See [Race support and first-tier pressure](race-support.md) for the current capability matrix and acceptance gates.
+The default match configuration is **Terran**, preserving the established Marine-oriented baseline. Explicit race and mode selections are bounded capabilities, not proof that every race has a complete, sustainable, ladder-ready composition. The runtime must use authoritative in-game race data and fail closed when a matching executable composition is unavailable. See [Race support and first-tier pressure](race-support.md) for the current capability matrix and acceptance gates.
 
 > **Engineering rule:** describe what the source does, prove what tests exercise, identify what CI verifies, and reserve claims of successful play for observed matches and replays.
+
+## See the machine at work
+
+```mermaid
+flowchart LR
+    A[SC2 observation] --> B[Normalized world]
+    B --> C[Persistent contexts]
+    C --> D[Executive + advisors]
+    D --> E[Intent review + arbitration]
+    E --> F[Unit behavior FSMs]
+    F --> G[Validated SC2 actions]
+    G --> H[Next observation]
+    H --> B
+```
+
+The loop above describes the runtime boundary. It is not a live telemetry display. The local Bot Studio snapshot and event journal provide a read-only inspection foundation; the optional bridge is loopback-only and is not a public browser endpoint.
+
+**Want to make one?** [Open Forge](forge/) to edit a portable BotDefinition, inspect its JSON, run browser-side checks, and import or export the artifact. The trusted Runner and runtime remain authoritative for validation and execution. The Test Arena remains disabled until ServerSC2's hosted match, observer, media, completion and replay contracts are proven end to end.
+
+**Want to watch it play?** The long-term Workshop experience is a hosted SC2 game view, followed by an evidence-backed match report and replay. That experience is not enabled yet: ServerSC2's independent observer topology, browser media delivery, remote input, authoritative completion and replay capture still require integration and live proof.
 
 ## Project state
 

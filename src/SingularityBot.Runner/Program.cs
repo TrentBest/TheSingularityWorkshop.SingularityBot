@@ -1,6 +1,12 @@
 using SingularityBot;
 using SingularityBot.Runner;
 
+Console.WriteLine($"[RunnerDiagnostics] Assembly: {typeof(Program).Assembly.Location}");
+Console.WriteLine($"[RunnerDiagnostics] Working directory: {Environment.CurrentDirectory}");
+Console.WriteLine($"[RunnerDiagnostics] Argument count: {args.Length}");
+for (var index = 0; index < args.Length; index++)
+    Console.WriteLine($"[RunnerDiagnostics] args[{index}] = <{args[index]}>");
+
 if (args.Length == 1 && args[0] is "--help" or "-h")
 {
     Console.WriteLine("SingularityBot runner");

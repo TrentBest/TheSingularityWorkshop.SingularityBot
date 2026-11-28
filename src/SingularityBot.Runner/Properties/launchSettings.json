@@ -2,7 +2,7 @@
   "profiles": {
     "SingularityBot": {
       "commandName": "Project",
-      "commandLineArgs": ""
+      "commandLineArgs": "--match-output-dir=\\"%USERPROFILE%\\Documents\\StarCraft II\\Accounts\\""
     }
   }
 }

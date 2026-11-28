@@ -132,17 +132,34 @@ internal static class Sc2Diagnostics
 
     private static string FindRepositoryRoot()
     {
-        foreach (var start in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
+        var starts = new[] { Environment.CurrentDirectory, AppContext.BaseDirectory };
+
+        // Prefer the repository's own solution/project markers. The developer may
+        // launch from a workspace parent that is itself another Git checkout.
+        foreach (var start in starts)
         {
             var directory = new DirectoryInfo(start);
             while (directory is not null)
             {
                 var root = directory.FullName;
                 if (File.Exists(Path.Combine(root, "TheSingularityWorkshop.SingularityBot.sln")) ||
-                    File.Exists(Path.Combine(root, "src", "SingularityBot", "SingularityBot.csproj")) ||
-                    Directory.Exists(Path.Combine(root, ".git")) ||
-                    File.Exists(Path.Combine(root, ".git")))
+                    File.Exists(Path.Combine(root, "src", "SingularityBot", "SingularityBot.csproj")))
                     return root;
+
+                directory = directory.Parent;
+            }
+        }
+
+        // Support source checkouts where the solution is not present, including
+        // worktrees whose .git entry is a file rather than a directory.
+        foreach (var start in starts)
+        {
+            var directory = new DirectoryInfo(start);
+            while (directory is not null)
+            {
+                var gitEntry = Path.Combine(directory.FullName, ".git");
+                if (Directory.Exists(gitEntry) || File.Exists(gitEntry))
+                    return directory.FullName;
 
                 directory = directory.Parent;
             }

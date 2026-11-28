@@ -83,6 +83,16 @@ public static class Program
             !string.Equals(argument, "--no-diagnostics", StringComparison.Ordinal) &&
             !(index > 0 && args[index - 1] == "--Map")).ToArray();
         var localRun = connectionArgs.Length == 0;
+        if (!localRun)
+        {
+            Console.Error.WriteLine($"[LaunchDiagnostics] Local-run options: diagnostics-dir={diagnosticsDirectoryArgument is not null}, match-output-dir={matchOutputDirectoryArgument is not null}.");
+            Console.Error.WriteLine($"[LaunchDiagnostics] Original argument count={args.Length}; ladder argument count={connectionArgs.Length}.");
+            for (var index = 0; index < args.Length; index++)
+                Console.Error.WriteLine($"[LaunchDiagnostics] args[{index}] = <{args[index]}>");
+            Console.Error.WriteLine("[LaunchDiagnostics] Arguments remaining after local-option filtering:");
+            for (var index = 0; index < connectionArgs.Length; index++)
+                Console.Error.WriteLine($"[LaunchDiagnostics] connectionArgs[{index}] = <{connectionArgs[index]}>");
+        }
         if (mapArgument is not null && !localRun)
             throw new ArgumentException("--map is a local training option and cannot be combined with ladder connection arguments.", nameof(args));
         if ((diagnosticsDirectoryArgument is not null || matchOutputDirectoryArgument is not null) && !localRun)

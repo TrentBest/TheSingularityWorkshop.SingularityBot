@@ -76,6 +76,7 @@ public static class Program
             !argument.StartsWith("--match-output-dir=", StringComparison.Ordinal) &&
             !argument.StartsWith("--studio-bridge-port=", StringComparison.Ordinal) &&
             !string.Equals(argument, "--studio-bridge", StringComparison.Ordinal) &&
+            !string.Equals(argument, "--ladder", StringComparison.Ordinal) &&
             !string.Equals(argument, "--CreateGame", StringComparison.Ordinal) &&
             !string.Equals(argument, "--Map", StringComparison.Ordinal) &&
             !string.Equals(argument, "--passive-baseline", StringComparison.Ordinal) &&

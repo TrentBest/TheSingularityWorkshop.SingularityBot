@@ -71,6 +71,25 @@ public sealed class ProductionDemandPlanAdapterTests
     }
 
     [Fact]
+    public void Apply_ZeroDemandStillRejectsConflictingProducerDefinition()
+    {
+        var (gameData, ledger) = CreateTerranFixture();
+        Assert.True(ledger.Set(new Sc2UnitFacts(48, "Marine", 560, 50, 0, 1, 0), 0, 85));
+        var adapter = new ProductionDemandPlanAdapter();
+        using var runtime = new ProductionPlanRuntime(_ => { });
+        var stepId = ProductionDemandPlanAdapter.GetStepId(48);
+        var conflicting = runtime.AddStep(new ProductionStepDefinition(
+            stepId, "Marine", "Factory", 10, 0, 50, Lane: ProductionLane.Units));
+
+        var result = adapter.Apply(ledger, runtime, gameData,
+            Sc2RaceProductionProfileCatalog.CreateDefault(), Race.Terran);
+
+        Assert.Single(result.Rejections);
+        Assert.Contains("conflicts with the resolved target, producer, or lane", result.Rejections[0]);
+        Assert.Equal(10, conflicting.EffectiveDesiredCount);
+    }
+
+    [Fact]
     public void Apply_RejectsUnknownRaceAndDoesNotCreateBuildingObjectives()
     {
         var (gameData, ledger) = CreateTerranFixture();

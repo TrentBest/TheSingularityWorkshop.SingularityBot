@@ -95,7 +95,11 @@ public static class Program
                 "--ComputerOpponent" or "-c" or
                 "--ComputerRace" or "-a" or
                 "--ComputerDifficulty" or "-d");
+        // USER-VISIBLE EDIT MARKER (BEFORE localRun): this comment confirms the
+        // active development source is being edited through the GitHub connection.
         var localRun = !ladderModeRequested;
+        // USER-VISIBLE EDIT MARKER (AFTER localRun): local launches stay local
+        // unless --ladder is explicitly supplied.
         if (!localRun && !hasLadderArguments)
             throw new ArgumentException("--ladder requires explicit SC2 ladder connection arguments such as --GamePort and --StartPort.", nameof(args));
         if (localRun && connectionArgs.Length > 0)

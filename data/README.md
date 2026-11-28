@@ -10,7 +10,19 @@ The runner writes diagnostic output to:
 
 The path is resolved from the SingularityBot repository root, not from the IDE's working directory or the executable's `bin/` directory. The startup session log prints the resolved absolute path. If the repository root cannot be identified, capture fails visibly instead of silently writing beside the executable.
 
-Hosts may override the destination with `SINGULARITYBOT_DIAGNOSTICS_DIR`:
+Hosts may override the destination with either the command-line argument `--diagnostics-dir=<path>` or the environment variable `SINGULARITYBOT_DIAGNOSTICS_DIR`. The command-line argument takes precedence. Relative diagnostic paths are resolved from the repository root.
+
+To collect files emitted by the game/runner, supply `--match-output-dir=<source-folder>`. After the SC2 connection returns (after the bot's `OnEnd` callback), the runner copies files in that source folder that were modified during the current run into a timestamped `data/diagnostics/match-output/<run-id>/` folder. It writes a `manifest.json` with relative source/destination paths, byte counts, and SHA-256 hashes. The source folder is never modified. The source folder must be supplied explicitly; the runner does not guess the platform-specific StarCraft II replay directory.
+
+Example local launch:
+
+```text
+SingularityBot.exe --diagnostics-dir="D:\\SC2-Experiments\\BotRuns" --match-output-dir="D:\\Documents\\StarCraft II\\Accounts\\<account>\\Replays\\Multiplayer"
+```
+
+The handoff is best-effort: it retries transient file locks, but if SC2 writes a replay after the connection has already returned, that late file may not be included. The log and manifest make collection results visible. These options are local-run options and are rejected for ladder launches.
+
+Hosts may also override the destination with `SINGULARITYBOT_DIAGNOSTICS_DIR`:
 - An absolute value is used as-is.
 - A relative value is resolved from the repository root.
 

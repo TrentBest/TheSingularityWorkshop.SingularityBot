@@ -108,11 +108,24 @@ internal static class MatchArtifactCollector
         {
             try
             {
-                using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-                using var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None);
-                input.CopyTo(output);
-                output.Flush(true);
-                return;
+                var before = new FileInfo(source);
+                var expectedLength = before.Length;
+                var expectedWriteTime = before.LastWriteTimeUtc;
+                using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    input.CopyTo(output);
+                    output.Flush(true);
+                }
+
+                var after = new FileInfo(source);
+                if (after.Exists && after.Length == expectedLength &&
+                    after.LastWriteTimeUtc == expectedWriteTime &&
+                    new FileInfo(destination).Length == expectedLength)
+                    return;
+
+                File.Delete(destination);
+                last = new IOException("The source artifact was still changing during collection.");
             }
             catch (IOException exception)
             {
